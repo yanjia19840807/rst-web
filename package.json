@@ -24,11 +24,13 @@
   },
   "dependencies": {
     "@azure/msal-browser": "^5.17.3",
+    "@internationalized/date": "^3.12.3",
     "@lucide/vue": "^1.28.0",
     "@tanstack/vue-query": "^5.101.4",
     "@tanstack/vue-table": "^8.21.3",
     "@tanstack/vue-virtual": "^3.13.35",
     "@vee-validate/zod": "^4.15.1",
+    "@vueuse/core": "^14.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -85,5 +87,10 @@
     "vue-demi@0.14.10": true,
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

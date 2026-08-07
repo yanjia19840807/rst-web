@@ -1,11 +1,14 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { RouterView } from 'vue-router'
+import { Toaster } from 'vue-sonner'
+
+import AppShell from '@/components/layout/AppShell.vue'
+import 'vue-sonner/style.css'
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <AppShell>
+    <RouterView />
+  </AppShell>
+  <Toaster rich-colors position="top-right" />
 </template>
-
-<style scoped></style>

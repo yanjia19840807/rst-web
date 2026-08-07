@@ -1,0 +1,62 @@
+export interface ToolkitSubtask {
+  id: string
+  name: string
+  description: string
+  displayOrder: number
+  deletedAt: string | null
+}
+
+export interface SharedKpiKey {
+  carrier: string
+  site: string
+  customerCountry: string
+}
+
+export interface SharedKpiCandidate extends SharedKpiKey {
+  deliveryHc: number
+  valid: boolean
+}
+
+export interface SupervisorToolkit {
+  id: string
+  name: string
+  description: string
+  supervisorPositionId: string
+  center: string
+  domain: string
+  pl1: string
+  pl2: string
+  pl3Code: string
+  pl3Name: string
+  combineSubtasksTime: boolean
+  subtasks: ToolkitSubtask[]
+  sharedKpiSelections: SharedKpiKey[]
+  version: number
+  deletedAt: string | null
+}
+
+export interface HierarchyOption {
+  supervisorPositionId: string
+  center: string
+  domain: string
+  pl1: string
+  pl2: string
+  pl3Code: string
+  pl3Name: string
+}
+
+export interface ToolkitEditorPayload {
+  name: string
+  description: string
+  supervisorPositionId: string
+  center: string
+  domain: string
+  pl1: string
+  pl2: string
+  pl3Code: string
+  pl3Name: string
+  combineSubtasksTime: boolean
+  subtasks: ToolkitSubtask[]
+  sharedKpiSelections: SharedKpiKey[]
+  version?: number
+}

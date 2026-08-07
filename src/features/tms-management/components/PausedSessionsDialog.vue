@@ -1,0 +1,179 @@
+<script setup lang="ts">
+import { computed, reactive, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
+
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+import { useTmsSessionMutations } from '../api/mutations'
+import { useTmsSessionsQuery } from '../api/queries'
+
+defineProps<{
+  open: boolean
+  hasRunningSession: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+}>()
+
+const filters = reactive({
+  status: 'paused' as const,
+  query: '',
+  page: 1,
+  pageSize: 5,
+})
+const queryFilters = computed(() => ({ ...filters }))
+const pausedQuery = useTmsSessionsQuery(queryFilters)
+const { resume, discard } = useTmsSessionMutations()
+const deleteTargetId = ref('')
+const deleteOpen = ref(false)
+
+watch(
+  () => filters.query,
+  () => {
+    filters.page = 1
+  },
+)
+
+function formatDate(value: string | null) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+async function resumeSession(id: string) {
+  try {
+    await resume.mutateAsync(id)
+    toast.success(`Resumed ${id}`)
+    emit('update:open', false)
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not resume the session.')
+  }
+}
+
+function openDelete(id: string) {
+  deleteTargetId.value = id
+  deleteOpen.value = true
+}
+
+async function confirmDelete(reason: string) {
+  try {
+    await discard.mutateAsync({ id: deleteTargetId.value, reason })
+    deleteOpen.value = false
+    toast.success('Paused session deleted.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not delete the session.')
+  }
+}
+</script>
+
+<template>
+  <Dialog :open="open" @update:open="emit('update:open', $event)">
+    <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>Paused Sessions</DialogTitle>
+        <DialogDescription>
+          {{ pausedQuery.data.value?.total ?? 0 }} session{{
+            (pausedQuery.data.value?.total ?? 0) === 1 ? '' : 's'
+          }}
+          currently paused
+        </DialogDescription>
+      </DialogHeader>
+
+      <Input v-model="filters.query" placeholder="Session No / Reference" />
+
+      <div class="overflow-x-auto rounded-lg border">
+        <Table class="min-w-[680px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Session No</TableHead>
+              <TableHead>Pause Time</TableHead>
+              <TableHead>Reference</TableHead>
+              <TableHead class="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="session in pausedQuery.data.value?.items ?? []" :key="session.id">
+              <TableCell class="font-mono text-xs">{{ session.id }}</TableCell>
+              <TableCell>{{ formatDate(session.pausedAt) }}</TableCell>
+              <TableCell>{{ session.reference || '—' }}</TableCell>
+              <TableCell>
+                <div class="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    :disabled="hasRunningSession || resume.isPending.value"
+                    @click="resumeSession(session.id)"
+                  >
+                    Resume
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    :disabled="discard.isPending.value"
+                    @click="openDelete(session.id)"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="!pausedQuery.isPending.value && !pausedQuery.data.value?.items.length">
+              <TableCell colspan="4" class="h-20 text-center text-muted-foreground">
+                No paused sessions found.
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" :disabled="filters.page <= 1" @click="filters.page--">
+          Previous
+        </Button>
+        <span class="text-xs text-muted-foreground">
+          {{ pausedQuery.data.value?.page ?? 1 }} / {{ pausedQuery.data.value?.totalPages ?? 1 }}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="filters.page >= (pausedQuery.data.value?.totalPages ?? 1)"
+          @click="filters.page++"
+        >
+          Next
+        </Button>
+      </div>
+    </DialogContent>
+  </Dialog>
+
+  <ConfirmDialog
+    v-model:open="deleteOpen"
+    title="Delete Session"
+    warning="This will discard the paused timing session."
+    :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
+    confirm-label="Delete"
+    require-reason
+    reason-label="Reason"
+    reason-placeholder="Reason for deleting this session"
+    :pending="discard.isPending.value"
+    @confirm="confirmDelete"
+  />
+</template>

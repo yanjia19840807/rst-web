@@ -12,7 +12,8 @@ nvm use
 npm install
 ```
 
-Copy `.env.example` to `.env.local` and provide the Azure application values.
+Copy `.env.example` to `.env.local`. Keep `VITE_ENABLE_MSW=true` while developing without
+`rst-api`; set it to `false` when a compatible API is available.
 
 ## Commands
 
@@ -42,3 +43,64 @@ npx playwright install
 - Forms use VeeValidate with Zod schemas.
 - API clients are generated from the Spring Boot OpenAPI contract with `@hey-api/openapi-ts`.
 - shadcn-vue components are copied into `src/components/ui` as needed.
+- Business code is grouped by capability under `src/features`; route-level pages only compose
+  features and layouts.
+- Features must not depend on pages or on another feature's internal files. Move genuinely shared,
+  business-neutral code to `src/components`, `src/composables`, or `src/lib`.
+
+## Source Structure
+
+```text
+src/
+├── api/             # API client and TanStack Query infrastructure
+├── assets/          # Global styles and static assets
+├── components/      # Business-neutral UI and application layouts
+├── features/        # Business capabilities such as TMS, approval, and governance
+├── lib/             # Framework-independent utilities
+├── pages/           # Route entries that compose features
+├── router/          # Route declarations and navigation guards
+├── stores/          # Client and session state only
+├── App.vue          # Root application shell
+└── main.ts          # Application bootstrap
+```
+
+Create feature subdirectories only when the implementation needs them. A feature can start with a
+single component and grow `api`, `components`, `composables`, and `schemas` directories as required.
+
+## Agent TMS
+
+The first implemented vertical slice follows the Agent workflow from `rst-prototype`:
+
+- `/agent/session` starts, pauses, resumes, and ends timing sessions.
+- `/agent/sessions` lists completed sessions with keyword/date filters and server-style pagination.
+- `src/features/tms-management` owns the form schema, timer state, Query/Mutation hooks, and UI.
+- `src/mocks/handlers/tms.ts` implements the temporary REST contract. Mock state is persisted in
+  browser local storage so a refresh restores the current and paused sessions.
+
+MSW is enabled only in Vite development mode. Unit tests use the same handlers through the Node
+server adapter, while production builds always call `VITE_API_BASE_URL`.
+
+## Supervisor Toolkit and Exercise
+
+- `/supervisor/toolkits` manages Toolkit hierarchy, Subtasks, `combineSubtasksTime`, Shared KPI
+  selections and optimistic-lock `version`.
+- Shared KPI is a two-stage choice (Customer Country, then carrier/site/country rows). Delivery HC
+  is read-only and recalculated from the ACTIVE Timesheet; it is not part of the save payload.
+- `/supervisor/exercises` creates an Exercise and freezes Toolkit, active Subtasks, selected KPI
+  rows and Delivery HC from the ACTIVE Timesheet.
+- Until login integration is available, route metadata drives the role badge while both Agent and
+  Supervisor navigation remain visible for development.
+
+### Temporary REST contract
+
+- `GET /api/v1/toolkits` — Toolkits dynamically visible to the current Agent.
+- `GET|POST /api/v1/supervisor/toolkits` and
+  `GET|PUT|DELETE /api/v1/supervisor/toolkits/{id}` — Supervisor CRUD; update requires `version`,
+  delete is soft-delete.
+- `GET /api/v1/timesheet/toolkit-hierarchy` — Center → Domain → PL1 → PL2 → PL3 candidates.
+- `GET /api/v1/timesheet/shared-kpi-candidates` — country-filtered rows and dynamic Delivery HC.
+- `GET|POST /api/v1/supervisor/exercises` and
+  `GET /api/v1/supervisor/exercises/{id}` — Exercise list, create-with-freeze, and detail.
+
+Toolkit Shared KPI write payloads contain only `carrier`, `site`, and `customerCountry`. Exercise
+snapshots additionally contain the resolved `deliveryHc` and `timesheetSyncDate`.
