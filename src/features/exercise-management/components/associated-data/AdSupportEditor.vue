@@ -120,7 +120,7 @@ async function removeItem(itemId: string) {
       />
     </div>
 
-    <section class="rounded-lg border p-4">
+    <section class="rounded-lg border bg-card p-4">
       <div class="mb-3 flex items-center justify-between gap-2">
         <h3 class="text-sm font-bold">Workload Registry</h3>
         <Button v-if="!readOnly" size="sm" variant="outline" :disabled="adding" @click="startAdd">
@@ -166,7 +166,8 @@ async function removeItem(itemId: string) {
               <TableCell v-if="!readOnly">
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="link-destructive"
+                  class="h-auto px-0 font-semibold"
                   :disabled="busy"
                   @click="removeItem(item.id)"
                 >
@@ -186,9 +187,23 @@ async function removeItem(itemId: string) {
               <TableCell class="text-muted-foreground">—</TableCell>
               <TableCell><Input v-model="draft.comments" placeholder="Comments" /></TableCell>
               <TableCell>
-                <div class="flex gap-1.5">
-                  <Button size="sm" :disabled="busy" @click="confirmAdd">Confirm</Button>
-                  <Button size="sm" variant="outline" :disabled="busy" @click="cancelAdd">
+                <div class="flex gap-3">
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    :disabled="busy"
+                    @click="confirmAdd"
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    :disabled="busy"
+                    @click="cancelAdd"
+                  >
                     Cancel
                   </Button>
                 </div>

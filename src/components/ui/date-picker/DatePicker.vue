@@ -14,11 +14,13 @@ const props = withDefaults(
     modelValue: string
     placeholder?: string
     ariaLabel?: string
+    disabled?: boolean
     class?: string
   }>(),
   {
     placeholder: 'Pick a date',
     ariaLabel: 'Choose date',
+    disabled: false,
     class: undefined,
   },
 )
@@ -51,6 +53,7 @@ const date = computed<DateValue | undefined>({
       <Button
         type="button"
         variant="outline"
+        :disabled="disabled"
         :aria-label="ariaLabel"
         :class="
           cn(

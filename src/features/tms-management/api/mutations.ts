@@ -34,16 +34,23 @@ export function useTmsSessionMutations() {
   const end = useMutation({
     mutationFn: (id: string) =>
       apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/end`, { method: 'POST' }),
-    onSuccess: refreshTmsData,
+    onSuccess: () => {
+      // Clear immediately so the workspace does not rehydrate from a stale current-session cache.
+      queryClient.setQueryData(tmsQueryKeys.current(), null)
+      refreshTmsData()
+    },
   })
 
   const discard = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+    mutationFn: (id: string) =>
       apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/discard`, {
         method: 'POST',
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({}),
       }),
-    onSuccess: refreshTmsData,
+    onSuccess: () => {
+      queryClient.setQueryData(tmsQueryKeys.current(), null)
+      refreshTmsData()
+    },
   })
 
   return { start, pause, resume, end, discard }

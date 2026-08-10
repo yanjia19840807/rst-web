@@ -18,8 +18,9 @@ defineProps<{
   deletingId?: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   delete: [id: string]
+  open: [id: string]
 }>()
 
 function formatDate(value: string | null) {
@@ -57,8 +58,15 @@ function cycleTime(session: TmsSession) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="session in sessions" :key="session.id">
-          <TableCell class="font-mono text-xs">{{ session.id }}</TableCell>
+        <TableRow
+          v-for="session in sessions"
+          :key="session.id"
+          class="cursor-pointer hover:bg-muted/40"
+          @click="emit('open', session.id)"
+        >
+          <TableCell class="font-mono text-xs text-primary underline-offset-2 hover:underline">
+            {{ session.id }}
+          </TableCell>
           <TableCell>{{ session.toolkitName }}</TableCell>
           <TableCell>{{ session.subtaskName }}</TableCell>
           <TableCell>{{ formatDate(session.startedAt) }}</TableCell>
@@ -66,14 +74,15 @@ function cycleTime(session: TmsSession) {
           <TableCell>{{ formatDuration(session.netDurationSeconds) }}</TableCell>
           <TableCell>{{ cycleTime(session) }}</TableCell>
           <TableCell>{{ session.reference || '—' }}</TableCell>
-          <TableCell>{{ session.processedVolume }}</TableCell>
+          <TableCell>{{ session.processedVolume ?? '—' }}</TableCell>
           <TableCell class="max-w-52 truncate">{{ session.remarks || '—' }}</TableCell>
-          <TableCell class="text-right">
+          <TableCell class="text-right" @click.stop>
             <Button
               size="sm"
-              variant="outline"
+              variant="link-destructive"
+              class="h-auto px-0 font-semibold"
               :disabled="deletingId === session.id"
-              @click="$emit('delete', session.id)"
+              @click="emit('delete', session.id)"
             >
               Delete
             </Button>

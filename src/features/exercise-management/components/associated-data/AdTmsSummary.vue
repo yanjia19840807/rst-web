@@ -107,7 +107,7 @@ function onPickFiles(event: Event) {
         <tbody>
           <tr class="border-b">
             <td class="w-[32%] py-2 text-muted-foreground">Median source</td>
-            <td class="py-2 font-semibold">{{ sourceLabel }}</td>
+            <td class="py-2">{{ sourceLabel }}</td>
           </tr>
           <template v-if="source === 'manual'">
             <tr class="border-b">
@@ -160,7 +160,7 @@ function onPickFiles(event: Event) {
         :class="
           source === option.value
             ? 'border-primary bg-primary/5'
-            : 'border-border bg-background'
+            : 'border-border bg-card'
         "
       >
         <input
@@ -231,7 +231,7 @@ function onPickFiles(event: Event) {
           <TableBody>
             <TableRow v-for="row in metrics" :key="row.metric">
               <TableCell>{{ row.metric }}</TableCell>
-              <TableCell :class="row.warn ? 'font-semibold text-amber-600' : 'font-semibold'">
+              <TableCell :class="row.warn ? 'text-amber-600' : undefined">
                 {{ row.value }}
               </TableCell>
               <TableCell class="text-muted-foreground">{{ row.description }}</TableCell>
@@ -243,7 +243,7 @@ function onPickFiles(event: Event) {
       <div>
         <h3 class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
         <div
-          class="relative h-44 overflow-hidden rounded-lg border bg-background"
+          class="relative h-44 overflow-hidden rounded-lg border bg-card"
           aria-hidden="true"
         >
           <svg class="absolute inset-3" viewBox="0 0 600 156" preserveAspectRatio="none">

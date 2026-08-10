@@ -59,11 +59,12 @@ const supportFte = computed(() => {
   return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
 })
 
-const countryBaselineLabel = computed(() => {
-  const country = calendar.value?.countryCode || '—'
+const templateSourceLabel = computed(() => {
   const source = calendar.value?.baselineSource
-  if (!source) return country === '—' ? '—' : `${country} baseline`
-  return `${country} · ${source}`
+  const version = calendar.value?.sourceTemplateVersion
+  if (!source) return '—'
+  if (version != null) return `${source} v${version}`
+  return source
 })
 
 const volumeSummary = computed(() => {
@@ -167,6 +168,25 @@ function syncMedianFromBaseline() {
 function openEditor(kind: AdTab) {
   editor.value = kind
   editorOpen.value = true
+}
+
+async function reapplyTemplate() {
+  try {
+    const result = await exerciseApi.reapplyHolidayTemplate(props.exerciseId)
+    const cal = result.calendar
+    // Replace refs with fresh objects so summary + open editor stay in sync.
+    calendar.value = { ...cal, holidays: [...(cal.holidays ?? [])] }
+    teamSetup.value = await exerciseApi.getTeamSetup(props.exerciseId)
+    const count = cal.holidays?.length ?? 0
+    toast.success(
+      `Template applied (${count} holiday day${count === 1 ? '' : 's'}). CUSTOM rows kept.`,
+    )
+    for (const notice of result.notices ?? []) {
+      toast.message(notice)
+    }
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not re-apply template.')
+  }
 }
 
 async function applyManualBaseline() {
@@ -318,7 +338,29 @@ defineExpose({
       </template>
 
       <template v-else-if="activeTab === 'calendar'">
-        <div class="mb-2.5 flex justify-end">
+        <div
+          v-if="!readOnly && calendar?.templateUpdateAvailable"
+          class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          <p>
+            {{
+              calendar.templateUpdateMessage ||
+              'A newer Center holiday template is available.'
+            }}
+          </p>
+          <Button size="sm" class="mt-2" variant="outline" @click="reapplyTemplate">
+            Apply published template
+          </Button>
+        </div>
+        <div class="mb-2.5 flex justify-end gap-2">
+          <Button
+            v-if="!readOnly"
+            size="sm"
+            variant="outline"
+            @click="reapplyTemplate"
+          >
+            Re-apply template
+          </Button>
           <Button size="sm" variant="outline" @click="openEditor('calendar')">
             {{ readOnly ? 'View' : 'Edit' }}
           </Button>
@@ -326,12 +368,20 @@ defineExpose({
         <table class="w-full border-collapse text-sm">
           <tbody>
             <tr class="border-b">
-              <td class="w-[32%] py-2 text-muted-foreground">Country Baseline</td>
-              <td class="py-2">{{ countryBaselineLabel }}</td>
+              <td class="w-[32%] py-2 text-muted-foreground">Template source</td>
+              <td class="py-2">{{ templateSourceLabel }}</td>
+            </tr>
+            <tr class="border-b">
+              <td class="py-2 text-muted-foreground">Weekend</td>
+              <td class="py-2">{{ calendar?.weekendCode || '—' }}</td>
+            </tr>
+            <tr class="border-b">
+              <td class="py-2 text-muted-foreground">Working days / year</td>
+              <td class="py-2">{{ formatNumber(calendar?.workingDaysPerYear) }}</td>
             </tr>
             <tr class="border-b">
               <td class="py-2 text-muted-foreground">Holiday days</td>
-              <td class="py-2 font-semibold">{{ calendar?.holidays.length ?? 0 }}</td>
+              <td class="py-2">{{ calendar?.holidays.length ?? 0 }}</td>
             </tr>
           </tbody>
         </table>

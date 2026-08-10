@@ -75,9 +75,9 @@ function openDelete(id: string) {
   deleteOpen.value = true
 }
 
-async function confirmDelete(reason: string) {
+async function confirmDelete() {
   try {
-    await discard.mutateAsync({ id: deleteTargetId.value, reason })
+    await discard.mutateAsync(deleteTargetId.value)
     deleteOpen.value = false
     toast.success('Paused session deleted.')
   } catch (error) {
@@ -117,9 +117,11 @@ async function confirmDelete(reason: string) {
               <TableCell>{{ formatDate(session.pausedAt) }}</TableCell>
               <TableCell>{{ session.reference || '—' }}</TableCell>
               <TableCell>
-                <div class="flex justify-end gap-2">
+                <div class="flex justify-end gap-3">
                   <Button
                     size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
                     :disabled="hasRunningSession || resume.isPending.value"
                     @click="resumeSession(session.id)"
                   >
@@ -127,7 +129,8 @@ async function confirmDelete(reason: string) {
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="link-destructive"
+                    class="h-auto px-0 font-semibold"
                     :disabled="discard.isPending.value"
                     @click="openDelete(session.id)"
                   >
@@ -170,9 +173,6 @@ async function confirmDelete(reason: string) {
     warning="This will discard the paused timing session."
     :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
     confirm-label="Delete"
-    require-reason
-    reason-label="Reason"
-    reason-placeholder="Reason for deleting this session"
     :pending="discard.isPending.value"
     @confirm="confirmDelete"
   />

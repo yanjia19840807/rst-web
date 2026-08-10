@@ -132,7 +132,7 @@ async function save() {
     <DialogContent
       class="flex h-[92vh] w-[min(1180px,94vw)] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[94vw]"
     >
-      <DialogHeader class="shrink-0 border-b px-5 py-4 text-left">
+      <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>
           {{
@@ -185,7 +185,7 @@ async function save() {
         />
       </div>
 
-      <DialogFooter class="shrink-0 border-t px-5 py-3 sm:justify-end">
+      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3 sm:justify-end">
         <Button type="button" variant="outline" :disabled="busy" @click="onOpenChange(false)">
           {{ readOnly || editor === 'volume' ? 'Close' : 'Cancel' }}
         </Button>

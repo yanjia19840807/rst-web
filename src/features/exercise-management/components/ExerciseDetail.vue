@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -29,6 +30,7 @@ import { exerciseApi } from '../api'
 import type { Exercise, Scenario } from '../types'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import SubmitDialog from './SubmitDialog.vue'
+import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
 const props = defineProps<{
   exerciseId: string
@@ -46,6 +48,7 @@ const createPending = ref(false)
 const officialOpen = ref(false)
 const officialPending = ref(false)
 const submitOpen = ref(false)
+const toolkitInfoOpen = ref(false)
 
 const locked = computed(() => !exercise.value?.canEdit)
 const nextScenarioCode = computed(() => `S${scenarios.value.length + 1}`)
@@ -160,7 +163,11 @@ onMounted(load)
   <div v-else-if="exercise" class="grid gap-4">
     <PageActions>
       <template #left>
-        <Button variant="link" class="px-0" @click="router.push({ name: 'supervisor-exercises' })">
+        <Button
+          variant="link"
+          class="h-auto px-0 font-semibold"
+          @click="router.push({ name: 'supervisor-exercises' })"
+        >
           ← Back to Exercise List
         </Button>
       </template>
@@ -187,8 +194,8 @@ onMounted(load)
       <CardContent class="grid gap-3">
         <DetailTable
           :rows="[
-            { label: 'Toolkit', value: exercise.snapshot.toolkit.name, strong: true },
-            { label: 'Exercise No', value: exercise.exerciseCode, strong: true },
+            { key: 'toolkit', label: 'Toolkit', value: exercise.snapshot.toolkit.name },
+            { label: 'Exercise No', value: exercise.exerciseCode },
             { label: 'Created', value: formatDate(exercise.createdAt) },
             { label: 'Sizing Month', value: exercise.sizingMonth },
             {
@@ -199,7 +206,22 @@ onMounted(load)
             { label: 'Status', value: exercise.workflowStatus },
             { label: 'Delivery HC', value: deliveryHc.toFixed(1) },
           ]"
-        />
+        >
+          <template #toolkit="{ row }">
+            <span class="inline-flex items-center gap-1.5">
+              <span>{{ row.value || '—' }}</span>
+              <button
+                type="button"
+                class="inline-flex size-5 items-center justify-center rounded text-primary hover:bg-primary/10"
+                title="Toolkit info"
+                @click="toolkitInfoOpen = true"
+              >
+                <Info class="size-3.5" />
+                <span class="sr-only">Toolkit info</span>
+              </button>
+            </span>
+          </template>
+        </DetailTable>
         <div
           v-if="!locked"
           class="rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
@@ -209,6 +231,8 @@ onMounted(load)
         </div>
       </CardContent>
     </Card>
+
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
 
     <AssociatedDataPanel :exercise-id="exerciseId" :read-only="locked" />
 
@@ -250,14 +274,15 @@ onMounted(load)
                 <TableCell class="text-center">
                   <span v-if="scenario.status === 'OFFICIAL'" class="text-amber-500">★</span>
                 </TableCell>
-                <TableCell class="font-semibold">{{ scenario.scenarioCode }}</TableCell>
+                <TableCell>{{ scenario.scenarioCode }}</TableCell>
                 <TableCell>{{ scenario.name }}</TableCell>
                 <TableCell>{{ scenario.status }}</TableCell>
                 <TableCell>{{ scenario.assumptions.length }}</TableCell>
                 <TableCell class="text-right" @click.stop>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
                     @click="
                       router.push({
                         name: 'supervisor-scenario-form',
@@ -284,22 +309,28 @@ onMounted(load)
     </Card>
 
     <Dialog v-model:open="newScenarioOpen">
-      <DialogContent class="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent
+        class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+      >
+        <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
           <DialogTitle>Create New Scenario</DialogTitle>
           <DialogDescription>
             A new scenario will be created with the following identity. You can adjust assumptions
             on the next page.
           </DialogDescription>
         </DialogHeader>
-        <DetailTable
-          :rows="[
-            { label: 'Toolkit', value: exercise.snapshot.toolkit.name },
-            { label: 'Exercise NO', value: exercise.exerciseCode },
-            { label: 'Scenario NO', value: nextScenarioCode, strong: true },
-          ]"
-        />
-        <DialogFooter>
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div class="rounded-lg border bg-card p-4">
+            <DetailTable
+              :rows="[
+                { label: 'Toolkit', value: exercise.snapshot.toolkit.name },
+                { label: 'Exercise NO', value: exercise.exerciseCode },
+                { label: 'Scenario NO', value: nextScenarioCode },
+              ]"
+            />
+          </div>
+        </div>
+        <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
           <Button variant="outline" :disabled="createPending" @click="newScenarioOpen = false">
             Cancel
           </Button>
@@ -311,23 +342,28 @@ onMounted(load)
     </Dialog>
 
     <Dialog v-model:open="officialOpen">
-      <DialogContent class="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent
+        class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+      >
+        <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
           <DialogTitle>Save Official Scenario</DialogTitle>
           <DialogDescription>
             Review the package below and confirm to mark this as the official scenario.
           </DialogDescription>
         </DialogHeader>
-        <DetailTable
-          v-if="selectedScenario"
-          :rows="[
-            { label: 'Scenario', value: selectedScenario.scenarioCode, strong: true },
-            { label: 'Name', value: selectedScenario.name },
-            { label: 'Status', value: selectedScenario.status },
-            { label: 'Assumptions', value: String(selectedScenario.assumptions.length) },
-          ]"
-        />
-        <DialogFooter>
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div v-if="selectedScenario" class="rounded-lg border bg-card p-4">
+            <DetailTable
+              :rows="[
+                { label: 'Scenario', value: selectedScenario.scenarioCode },
+                { label: 'Name', value: selectedScenario.name },
+                { label: 'Status', value: selectedScenario.status },
+                { label: 'Assumptions', value: String(selectedScenario.assumptions.length) },
+              ]"
+            />
+          </div>
+        </div>
+        <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
           <Button variant="outline" :disabled="officialPending" @click="officialOpen = false">
             Cancel
           </Button>
@@ -341,7 +377,16 @@ onMounted(load)
     <ConfirmDialog
       v-model:open="deleteOpen"
       title="Delete Exercise"
-      description="This removes the In Progress exercise. This action cannot be undone."
+      warning="This action cannot be undone. All scenarios and unsubmitted data associated with this exercise will be deleted."
+      :rows="
+        exercise
+          ? [
+              { label: 'Exercise Code', value: exercise.exerciseCode, strong: true },
+              { label: 'Toolkit', value: exercise.snapshot.toolkit.name },
+              { label: 'Scenario Count', value: scenarios.length },
+            ]
+          : []
+      "
       confirm-label="Delete Exercise"
       :pending="deletePending"
       @confirm="confirmDelete"

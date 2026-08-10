@@ -18,7 +18,7 @@ describe('supervisor mock contract', () => {
     const [toolkit] = await toolkitApi.list()
     expect(toolkit).toBeDefined()
 
-    const exercise = await exerciseApi.create({
+    const result = await exerciseApi.create({
       toolkitId: toolkit!.id,
       sizingMonth: '2026-09',
       slotStartDate: '2026-09-01',
@@ -27,8 +27,9 @@ describe('supervisor mock contract', () => {
       tmsTo: '2026-08-31',
     })
 
-    expect(exercise.snapshot.toolkit.version).toBe(toolkit!.version)
-    expect(exercise.snapshot.subtasks.every((item) => item.deletedAt === null)).toBe(true)
-    expect(exercise.snapshot.sharedKpis.every((item) => item.valid)).toBe(true)
+    expect(result.exercise.snapshot.toolkit.version).toBe(toolkit!.version)
+    expect(result.exercise.snapshot.subtasks.every((item) => item.deletedAt === null)).toBe(true)
+    expect(result.exercise.snapshot.sharedKpis.every((item) => item.valid)).toBe(true)
+    expect(result.notices.length).toBeGreaterThan(0)
   })
 })

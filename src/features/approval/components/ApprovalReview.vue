@@ -105,7 +105,11 @@ onMounted(load)
   <div v-else-if="detail" class="grid gap-4">
     <PageActions>
       <template #left>
-        <Button variant="link" class="px-0" @click="router.push({ name: 'approver-queue' })">
+        <Button
+          variant="link"
+          class="h-auto px-0 font-semibold"
+          @click="router.push({ name: 'approver-queue' })"
+        >
           ← Back to Approval Queue
         </Button>
       </template>

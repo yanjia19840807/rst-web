@@ -10,6 +10,7 @@ export const tmsQueryKeys = {
   toolkits: () => [...tmsQueryKeys.all, 'toolkits'] as const,
   summary: () => [...tmsQueryKeys.all, 'summary'] as const,
   current: () => [...tmsQueryKeys.all, 'current'] as const,
+  session: (id: string) => [...tmsQueryKeys.all, 'session', id] as const,
   sessions: (filters: SessionFilters & { status: 'paused' | 'completed' }) =>
     [...tmsQueryKeys.all, 'sessions', filters] as const,
 }
@@ -35,6 +36,15 @@ export function useCurrentSessionQuery() {
   })
 }
 
+export function useTmsSessionDetailQuery(id: MaybeRefOrGetter<string>) {
+  const sessionId = computed(() => toValue(id))
+  return useQuery({
+    queryKey: computed(() => tmsQueryKeys.session(sessionId.value)),
+    queryFn: () => apiRequest<TmsSession>(`/api/v1/tms/sessions/${sessionId.value}`),
+    enabled: computed(() => Boolean(sessionId.value)),
+  })
+}
+
 export function useTmsSessionsQuery(
   filters: MaybeRefOrGetter<SessionFilters & { status: 'paused' | 'completed' }>,
 ) {
@@ -42,12 +52,15 @@ export function useTmsSessionsQuery(
   return useQuery({
     queryKey: computed(() => tmsQueryKeys.sessions(resolvedFilters.value)),
     queryFn: () => {
-      const { status, query, dateFrom, dateTo, page, pageSize } = resolvedFilters.value
+      const { status, sessionNo, reference, query, dateFrom, dateTo, page, pageSize } =
+        resolvedFilters.value
       const params = new URLSearchParams({
         status,
         page: String(page),
         pageSize: String(pageSize),
       })
+      if (sessionNo) params.set('sessionNo', sessionNo)
+      if (reference) params.set('reference', reference)
       if (query) params.set('query', query)
       if (dateFrom) params.set('dateFrom', dateFrom)
       if (dateTo) params.set('dateTo', dateTo)

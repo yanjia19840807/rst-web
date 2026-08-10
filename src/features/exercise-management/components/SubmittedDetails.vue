@@ -68,7 +68,7 @@ onMounted(load)
       <template #left>
         <Button
           variant="link"
-          class="px-0"
+          class="h-auto px-0 font-semibold"
           @click="router.push({ name: 'supervisor-exercises' })"
         >
           ← Back to Under Review

@@ -116,7 +116,7 @@ const totalHc = computed(() =>
 const activeSubtasks = computed(() => form.subtasks.filter((item) => !item.deletedAt))
 
 const controlClass =
-  'h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+  'h-9 w-full rounded-md border border-input bg-card px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
 
 function resetFormDefaults() {
   Object.assign(form, {
@@ -340,11 +340,17 @@ onMounted(load)
 <template>
   <div>
     <PageActions>
+      <template #left>
+        <Button
+          variant="link"
+          class="h-auto px-0 font-semibold"
+          @click="router.push({ name: 'supervisor-toolkits' })"
+        >
+          ← Back to Toolkit List
+        </Button>
+      </template>
       <Button v-if="toolkitId" variant="destructive" @click="deleteOpen = true">
         Delete Toolkit
-      </Button>
-      <Button variant="outline" @click="router.push({ name: 'supervisor-toolkits' })">
-        Cancel
       </Button>
       <Button :disabled="busy" @click="save">
         {{ busy ? 'Saving…' : 'Save Toolkit' }}
@@ -474,17 +480,39 @@ onMounted(load)
                     <span v-else>{{ subtask.name }}</span>
                   </TableCell>
                   <TableCell>
-                    <div v-if="editingSubtaskId === subtask.id" class="flex gap-1">
-                      <Button size="sm" @click="saveEditSubtask">Save</Button>
-                      <Button size="sm" variant="outline" @click="editingSubtaskId = null">
-                        ✕
+                    <div v-if="editingSubtaskId === subtask.id" class="flex gap-3">
+                      <Button
+                        size="sm"
+                        variant="link"
+                        class="h-auto px-0 font-semibold"
+                        @click="saveEditSubtask"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="link"
+                        class="h-auto px-0 font-semibold"
+                        @click="editingSubtaskId = null"
+                      >
+                        Cancel
                       </Button>
                     </div>
-                    <div v-else class="flex gap-1">
-                      <Button size="sm" variant="outline" @click="startEditSubtask(subtask)">
+                    <div v-else class="flex gap-3">
+                      <Button
+                        size="sm"
+                        variant="link"
+                        class="h-auto px-0 font-semibold"
+                        @click="startEditSubtask(subtask)"
+                      >
                         Edit
                       </Button>
-                      <Button size="sm" variant="outline" @click="softDeleteSubtask(subtask)">
+                      <Button
+                        size="sm"
+                        variant="link-destructive"
+                        class="h-auto px-0 font-semibold"
+                        @click="softDeleteSubtask(subtask)"
+                      >
                         Delete
                       </Button>
                     </div>
@@ -502,9 +530,23 @@ onMounted(load)
                     />
                   </TableCell>
                   <TableCell>
-                    <div class="flex justify-end gap-1">
-                      <Button size="sm" @click="confirmAddSubtask">Add</Button>
-                      <Button size="sm" variant="outline" @click="addingSubtask = false">✕</Button>
+                    <div class="flex justify-end gap-3">
+                      <Button
+                        size="sm"
+                        variant="link"
+                        class="h-auto px-0 font-semibold"
+                        @click="confirmAddSubtask"
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="link"
+                        class="h-auto px-0 font-semibold"
+                        @click="addingSubtask = false"
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -563,10 +605,17 @@ onMounted(load)
                 <TableCell>{{ item.customerCountry }}</TableCell>
                 <TableCell>{{ item.deliveryHc ?? '—' }}</TableCell>
                 <TableCell class="text-right">
-                  <Button size="sm" variant="outline" @click="removeKpi(item)">Remove</Button>
+                  <Button
+                    size="sm"
+                    variant="link-destructive"
+                    class="h-auto px-0 font-semibold"
+                    @click="removeKpi(item)"
+                  >
+                    Remove
+                  </Button>
                 </TableCell>
               </TableRow>
-              <TableRow class="bg-muted/40 font-semibold">
+              <TableRow class="bg-muted/40">
                 <TableCell>Total</TableCell>
                 <TableCell />
                 <TableCell />

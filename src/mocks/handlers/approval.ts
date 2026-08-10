@@ -52,6 +52,9 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
     requiredRole: requiredRole(submitted),
     status: submitted.submissionStatus,
     submittedAt: submitted.submittedAt,
+    toolkitName: exercise.snapshot.toolkit.name,
+    pl3Name: exercise.snapshot.toolkit.pl3Name,
+    archivedAt: submitted.submittedAt,
   }
 }
 

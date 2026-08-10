@@ -61,15 +61,22 @@ function onConfirm() {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent class="bg-card sm:max-w-md">
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription v-if="description">{{ description }}</DialogDescription>
+        <DialogDescription v-else class="sr-only">
+          {{ warning || title }}
+        </DialogDescription>
       </DialogHeader>
 
-      <div class="grid gap-4">
+      <div class="grid gap-4 py-1">
         <p v-if="warning" class="text-sm font-semibold text-destructive">{{ warning }}</p>
-        <DetailTable v-if="rows?.length" :rows="rows" />
+        <DetailTable
+          v-if="rows?.length"
+          :rows="rows"
+          class="grid-cols-[minmax(120px,0.9fr)_1fr]"
+        />
         <div v-if="requireReason" class="grid gap-1.5">
           <Label for="confirm-reason">{{ reasonLabel }}</Label>
           <Textarea

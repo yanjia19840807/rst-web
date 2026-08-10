@@ -25,18 +25,39 @@ const sessionStore = useTmsSessionStore()
 const { currentSession } = storeToRefs(sessionStore)
 const { formattedElapsed } = useTmsTimer(currentSession)
 
-const { defineField, errors, handleSubmit, setFieldValue, resetField } = useForm<SessionFormValues>(
+const defaultFormValues = (): SessionFormValues => ({
+  toolkitId: toolkitsQuery.data.value?.[0]?.id ?? '',
+  subtaskId: '',
+  processedVolume: '',
+  reference: '',
+  remarks: '',
+})
+
+const { defineField, errors, handleSubmit, setFieldValue, resetForm } = useForm<SessionFormValues>(
   {
     validationSchema: toTypedSchema(sessionSchema),
     initialValues: {
       toolkitId: '',
       subtaskId: '',
-      processedVolume: 25,
+      processedVolume: '',
       reference: '',
       remarks: '',
     },
   },
 )
+
+function resetSessionForm(keepToolkitId?: string) {
+  const toolkit =
+    keepToolkitId && toolkitsQuery.data.value?.some((item) => item.id === keepToolkitId)
+      ? keepToolkitId
+      : (toolkitsQuery.data.value?.[0]?.id ?? '')
+  resetForm({
+    values: {
+      ...defaultFormValues(),
+      toolkitId: toolkit,
+    },
+  })
+}
 
 const [toolkitId] = defineField('toolkitId')
 const [subtaskId] = defineField('subtaskId')
@@ -84,8 +105,8 @@ watch(
     sessionStore.setCurrentSession(session ?? null)
     if (!session) return
     setFieldValue('toolkitId', session.toolkitId)
-    setFieldValue('subtaskId', session.subtaskId)
-    setFieldValue('processedVolume', session.processedVolume)
+    setFieldValue('subtaskId', session.subtaskId ?? '')
+    setFieldValue('processedVolume', session.processedVolume ?? '')
     setFieldValue('reference', session.reference)
     setFieldValue('remarks', session.remarks)
   },
@@ -95,7 +116,7 @@ watch(
 watch(
   () => toolkitsQuery.data.value,
   (toolkits) => {
-    if (!toolkits?.length || toolkitId.value) return
+    if (!toolkits?.length || toolkitId.value || currentSession.value) return
     setFieldValue('toolkitId', toolkits[0]?.id ?? '')
   },
   { immediate: true },
@@ -104,10 +125,11 @@ watch(
 watch(
   [toolkitId, () => toolkitsQuery.data.value],
   () => {
+    if (currentSession.value) return
     const availableSubtasks =
       selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt) ?? []
-    if (!availableSubtasks.some((item) => item.id === subtaskId.value)) {
-      setFieldValue('subtaskId', availableSubtasks[0]?.id ?? '')
+    if (subtaskId.value && !availableSubtasks.some((item) => item.id === subtaskId.value)) {
+      setFieldValue('subtaskId', '')
     }
   },
   { immediate: true },
@@ -115,7 +137,16 @@ watch(
 
 const startSession = handleSubmit(async (values) => {
   try {
-    const session = await mutations.start.mutateAsync(values)
+    const session = await mutations.start.mutateAsync({
+      toolkitId: values.toolkitId,
+      subtaskId: values.subtaskId?.trim() ? values.subtaskId : null,
+      processedVolume:
+        values.processedVolume === '' || values.processedVolume == null
+          ? null
+          : Number(values.processedVolume),
+      reference: values.reference,
+      remarks: values.remarks,
+    })
     sessionStore.setCurrentSession(session)
     toast.success('New session started.')
   } catch (error) {
@@ -147,11 +178,11 @@ async function resumeSession() {
 
 async function endSession() {
   if (!currentSession.value) return
+  const endedToolkitId = currentSession.value.toolkitId
   try {
     await mutations.end.mutateAsync(currentSession.value.id)
     sessionStore.setCurrentSession(null)
-    resetField('reference')
-    resetField('remarks')
+    resetSessionForm(endedToolkitId)
     toast.success('Session ended and saved to the TMS list.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not end the session.')
@@ -174,7 +205,7 @@ function onToolkitChange(event: Event) {
             <select
               :value="toolkitId"
               :disabled="sessionReadOnly || !(toolkitsQuery.data.value?.length)"
-              class="h-8 min-w-[190px] rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              class="h-9 min-w-[190px] rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               @change="onToolkitChange"
             >
               <option v-for="toolkit in toolkitsQuery.data.value ?? []" :key="toolkit.id" :value="toolkit.id">

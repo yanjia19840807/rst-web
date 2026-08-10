@@ -15,6 +15,7 @@ import type {
   TeamSetupRequest,
   UpdateScenarioRequest,
 } from '@/features/exercise-management/types'
+import { computeNetworkDays } from '@/features/holiday-templates/workingDays'
 import type {
   SharedKpiCandidate,
   SharedKpiKey,
@@ -22,6 +23,8 @@ import type {
   ToolkitEditorPayload,
 } from '@/features/toolkit-management/types'
 
+import { ensureShell, exerciseShells, recomputeTeamSetup } from '../data/exercise-store'
+import { holidayTemplateStore } from '../data/holiday-templates'
 import {
   activeTimesheetSyncDate,
   exercises,
@@ -30,7 +33,6 @@ import {
   supervisorPositionId,
   supervisorToolkits,
 } from '../data/supervisor'
-import { ensureShell, exerciseShells, recomputeTeamSetup } from '../data/exercise-store'
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Supervisor request failed', status, detail }, { status })
@@ -233,7 +235,16 @@ export const supervisorHandlers = [
     }
     exercises.unshift(exercise)
     ensureShell(exercise)
-    return HttpResponse.json(exercise, { status: 201 })
+    return HttpResponse.json(
+      {
+        exercise,
+        notices: [
+          'Associated Data initialized from archived exercise (mock).',
+          'Working Days / Year computed for sizing year.',
+        ],
+      },
+      { status: 201 },
+    )
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id', ({ params }) => {
@@ -390,22 +401,90 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as CalendarRequest
+    const holidays = (body.holidays ?? []).map((holiday) => ({
+      id: crypto.randomUUID(),
+      holidayDate: holiday.holidayDate,
+      holidayName: holiday.holidayName,
+      holidayType: holiday.holidayType,
+      workingDayOverride: holiday.workingDayOverride ?? null,
+    }))
+    const year = ctx.shell.calendar.baselineYear ?? Number(ctx.exercise.sizingMonth.slice(0, 4))
+    const weekend = body.weekendCode ?? ctx.shell.calendar.weekendCode ?? 'SAT_SUN'
     ctx.shell.calendar = {
-      countryCode: body.countryCode ?? null,
-      timezone: body.timezone ?? null,
-      weekendCode: body.weekendCode ?? null,
-      baselineSource: body.baselineSource ?? null,
-      baselineVersion: body.baselineVersion ?? null,
+      ...ctx.shell.calendar,
+      weekendCode: weekend,
+      baselineSource: body.baselineSource ?? ctx.shell.calendar.baselineSource,
+      baselineVersion: body.baselineVersion ?? ctx.shell.calendar.baselineVersion,
+      workingDaysPerYear: computeNetworkDays(
+        year,
+        weekend,
+        holidays.map((h) => h.holidayDate),
+      ),
       version: ctx.shell.calendar.version + 1,
-      holidays: (body.holidays ?? []).map((holiday) => ({
-        id: crypto.randomUUID(),
-        holidayDate: holiday.holidayDate,
-        holidayName: holiday.holidayName,
-        holidayType: holiday.holidayType,
-        workingDayOverride: holiday.workingDayOverride ?? null,
-      })),
+      holidays,
     }
     return HttpResponse.json(ctx.shell.calendar)
+  }),
+
+  http.post('*/api/v1/supervisor/exercises/:id/calendar/reapply-template', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    const center = ctx.exercise.snapshot.toolkit.center
+    const year = Number(ctx.exercise.sizingMonth.slice(0, 4))
+    const allTemplates = holidayTemplateStore
+      .list()
+      .map((s) => holidayTemplateStore.get(s.id)!)
+      .filter(Boolean)
+    const published =
+      allTemplates.find((t) => t.center === center && t.year === year && t.status === 'PUBLISHED') ??
+      allTemplates.find((t) => t.center === center && t.year === year && t.version > 0)
+    const notices: string[] = []
+    if (!published) {
+      notices.push(
+        `No published holiday template for Center ${center} / ${year}. Create and Publish a template for that year, then Re-apply.`,
+      )
+    }
+    const customs = ctx.shell.calendar.holidays.filter(
+      (h) => h.holidayType?.toUpperCase() === 'CUSTOM',
+    )
+    const baseline = (published?.holidays ?? []).map((h) => ({
+      id: crypto.randomUUID(),
+      holidayDate: h.holidayDate,
+      holidayName: h.holidayName,
+      holidayType: 'BASELINE',
+      workingDayOverride: null as boolean | null,
+    }))
+    const holidays = [...baseline, ...customs]
+    const weekend = published?.defaultWeekendCode ?? ctx.shell.calendar.weekendCode ?? 'SAT_SUN'
+    ctx.shell.calendar = {
+      ...ctx.shell.calendar,
+      weekendCode: weekend,
+      baselineSource: published ? 'CENTER_TEMPLATE' : 'NO_TEMPLATE',
+      baselineVersion: published ? String(published.version) : null,
+      sourceTemplateId: published?.id ?? null,
+      sourceTemplateVersion: published?.version ?? null,
+      baselineYear: year,
+      workingDaysPerYear: computeNetworkDays(
+        year,
+        weekend,
+        holidays.map((h) => h.holidayDate),
+      ),
+      version: ctx.shell.calendar.version + 1,
+      templateUpdateAvailable: false,
+      publishedTemplateVersion: null,
+      templateUpdateMessage: null,
+      holidays,
+    }
+    if (ctx.shell.teamSetup) {
+      ctx.shell.teamSetup = {
+        ...ctx.shell.teamSetup,
+        weekendCode: weekend,
+        workingDaysPerYear: ctx.shell.calendar.workingDaysPerYear ?? null,
+        version: ctx.shell.teamSetup.version + 1,
+      }
+    }
+    return HttpResponse.json({ calendar: ctx.shell.calendar, notices })
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly', ({ params }) => {

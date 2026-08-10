@@ -116,7 +116,6 @@ function isSelected(month: number) {
           type="button"
           size="sm"
           :variant="isSelected(monthDate.month) ? 'default' : 'ghost'"
-          class="h-9"
           @click="selectMonth(monthDate.month)"
         >
           {{ monthFormatter.format(monthDate.toDate(getLocalTimeZone())) }}

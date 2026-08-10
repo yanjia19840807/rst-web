@@ -30,6 +30,16 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/agent/sessions/:id',
+    name: 'agent-session-detail',
+    component: () => import('@/pages/agent/TmsSessionDetailPage.vue'),
+    meta: {
+      title: 'TMS Session Detail',
+      subtitle: 'Read-only timing session',
+      roles: ['agent'],
+    },
+  },
+  {
     path: '/supervisor',
     redirect: { name: 'supervisor-toolkits' },
   },
@@ -60,6 +70,36 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       title: 'Edit Toolkit',
       subtitle: 'Process mapping, Subtasks, and Shared KPI Scope Split',
+      roles: ['supervisor'],
+    },
+  },
+  {
+    path: '/supervisor/holiday-templates',
+    name: 'supervisor-holiday-templates',
+    component: () => import('@/pages/supervisor/HolidayTemplateListPage.vue'),
+    meta: {
+      title: 'Holiday Templates',
+      subtitle: 'Center legal holiday baselines by year',
+      roles: ['supervisor'],
+    },
+  },
+  {
+    path: '/supervisor/holiday-templates/new',
+    name: 'supervisor-holiday-template-new',
+    component: () => import('@/pages/supervisor/HolidayTemplateFormPage.vue'),
+    meta: {
+      title: 'Add Holiday Template',
+      subtitle: 'Create a Center + year legal holiday baseline',
+      roles: ['supervisor'],
+    },
+  },
+  {
+    path: '/supervisor/holiday-templates/:id',
+    name: 'supervisor-holiday-template-edit',
+    component: () => import('@/pages/supervisor/HolidayTemplateFormPage.vue'),
+    meta: {
+      title: 'Edit Holiday Template',
+      subtitle: 'Maintain holidays, import Excel, and publish',
       roles: ['supervisor'],
     },
   },
@@ -126,6 +166,77 @@ export const routes: RouteRecordRaw[] = [
       subtitle: 'Approve or return the official scenario package',
       roles: ['approver'],
     },
+  },
+  {
+    path: '/approver/repository',
+    name: 'approver-repository',
+    component: () => import('@/pages/approver/RstRepositoryPage.vue'),
+    meta: {
+      title: 'RST Repository',
+      subtitle: 'All submitted RST records by Shared KPI line.',
+      roles: ['approver', 'ho'],
+    },
+  },
+  {
+    path: '/approver/support-repository',
+    name: 'approver-support-repository',
+    component: () => import('@/pages/approver/SupportRepositoryPage.vue'),
+    meta: {
+      title: 'Support Repository',
+      subtitle: 'Production Support FTE across validated submissions.',
+      roles: ['approver', 'ho'],
+    },
+  },
+  {
+    path: '/approver/validation-workflow',
+    name: 'approver-validation-workflow',
+    component: () => import('@/pages/approver/ValidationWorkflowPage.vue'),
+    meta: {
+      title: 'Validation Workflow',
+      subtitle: 'RST stuck in validation — aging and capacity impact.',
+      roles: ['approver'],
+    },
+  },
+  {
+    path: '/approver/dashboard',
+    name: 'approver-dashboard',
+    component: () => import('@/pages/approver/GlobalDashboardPage.vue'),
+    meta: {
+      title: 'Global Dashboard',
+      subtitle: 'Completion, aging, and capacity creation overview.',
+      roles: ['approver', 'ho'],
+    },
+  },
+  {
+    path: '/approver/benchmarking',
+    name: 'approver-benchmarking',
+    component: () => import('@/pages/approver/BenchmarkingPage.vue'),
+    meta: {
+      title: 'Benchmarking',
+      subtitle: 'Same-PL3 cycle time and capacity benchmarks.',
+      roles: ['approver', 'ho'],
+    },
+  },
+  // Legacy HO paths — same screens as Approver governance (permission-gated in the menu).
+  {
+    path: '/ho',
+    redirect: { name: 'approver-dashboard' },
+  },
+  {
+    path: '/ho/dashboard',
+    redirect: { name: 'approver-dashboard' },
+  },
+  {
+    path: '/ho/repository',
+    redirect: { name: 'approver-repository' },
+  },
+  {
+    path: '/ho/support-repository',
+    redirect: { name: 'approver-support-repository' },
+  },
+  {
+    path: '/ho/benchmarking',
+    redirect: { name: 'approver-benchmarking' },
   },
   {
     path: '/:pathMatch(.*)*',

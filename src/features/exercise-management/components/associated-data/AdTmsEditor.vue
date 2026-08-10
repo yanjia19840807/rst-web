@@ -39,7 +39,7 @@ const medianLabel = computed(() =>
       />
     </div>
 
-    <section class="rounded-lg border p-4">
+    <section class="rounded-lg border bg-card p-4">
       <div class="mb-3 flex items-baseline gap-2">
         <h3 class="text-base font-bold">TMS Sessions</h3>
         <span class="text-xs text-muted-foreground">

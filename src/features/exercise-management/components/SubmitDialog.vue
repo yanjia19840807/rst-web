@@ -139,7 +139,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
               <TableBody>
                 <TableRow v-for="finding in preview?.findings ?? []" :key="finding.ruleCode">
                   <TableCell>{{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}</TableCell>
-                  <TableCell class="font-semibold">
+                  <TableCell>
                     {{ finding.passed ? 'Passed' : 'Failed' }}
                   </TableCell>
                   <TableCell>{{ severityLabel(finding) }}</TableCell>

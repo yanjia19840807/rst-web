@@ -14,7 +14,7 @@ const props = defineProps<{
   toolkits: Toolkit[]
   toolkitId: string
   subtaskId: string
-  processedVolume: number
+  processedVolume: number | '' | null
   reference: string
   remarks: string
   errors: Partial<
@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:subtaskId': [value: string]
-  'update:processedVolume': [value: number]
+  'update:processedVolume': [value: number | '']
   'update:reference': [value: string]
   'update:remarks': [value: string]
   'open-paused': []
@@ -51,24 +51,29 @@ function valueOf(event: Event) {
     <CardHeader class="items-center">
       <CardTitle>Session</CardTitle>
       <CardAction>
-        <Button variant="outline" size="sm" @click="emit('open-paused')">
+        <Button
+          variant="link"
+          class="h-auto px-0 font-semibold"
+          @click="emit('open-paused')"
+        >
           Paused Sessions
-          <span class="rounded-full bg-muted px-1.5 py-0.5 text-xs">{{ pausedCount }}</span>
+          <span class="text-muted-foreground">({{ pausedCount }})</span>
         </Button>
       </CardAction>
     </CardHeader>
     <CardContent class="grid gap-4">
       <div class="grid gap-1.5">
-        <Label for="session-subtask">Subtask</Label>
+        <Label for="session-subtask">Subtask <span class="font-normal text-muted-foreground">(optional)</span></Label>
         <ReadOnlyField v-if="readOnly" :value="selectedSubtaskName" />
         <select
           v-else
           id="session-subtask"
           :value="subtaskId"
-          class="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          class="h-9 w-full rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           :aria-invalid="Boolean(errors.subtaskId)"
           @change="emit('update:subtaskId', valueOf($event))"
         >
+          <option value="">—</option>
           <option
             v-for="item in selectedToolkit?.subtasks.filter((subtask) => !subtask.deletedAt) ?? []"
             :key="item.id"
@@ -81,16 +86,23 @@ function valueOf(event: Event) {
       </div>
 
       <div class="grid gap-1.5">
-        <Label for="session-volume">Volume</Label>
-        <ReadOnlyField v-if="readOnly" :value="processedVolume" />
+        <Label for="session-volume"
+          >Volume <span class="font-normal text-muted-foreground">(optional)</span></Label
+        >
+        <ReadOnlyField v-if="readOnly" :value="processedVolume || '—'" />
         <Input
           v-else
           id="session-volume"
           type="number"
           min="1"
-          :model-value="processedVolume"
+          :model-value="processedVolume ?? ''"
           :aria-invalid="Boolean(errors.processedVolume)"
-          @update:model-value="emit('update:processedVolume', Number($event))"
+          @update:model-value="
+            emit(
+              'update:processedVolume',
+              $event === '' || $event == null ? '' : Number($event),
+            )
+          "
         />
         <p v-if="errors.processedVolume" class="text-xs text-destructive">
           {{ errors.processedVolume }}

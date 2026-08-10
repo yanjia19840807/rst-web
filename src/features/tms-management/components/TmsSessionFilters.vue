@@ -4,19 +4,19 @@ import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 const props = defineProps<{
-  query: string
+  sessionNo: string
+  reference: string
   dateFrom: string
   dateTo: string
 }>()
 
 const emit = defineEmits<{
-  'update:query': [value: string]
+  'update:sessionNo': [value: string]
+  'update:reference': [value: string]
   'update:dateFrom': [value: string]
   'update:dateTo': [value: string]
-  clear: []
 }>()
 
 const moreOpen = ref(false)
@@ -45,35 +45,47 @@ function clearDraftDates() {
 
 <template>
   <div class="grid gap-3">
-    <div class="flex flex-wrap items-center gap-2">
-      <Input
-        class="max-w-xs"
-        :model-value="query"
-        placeholder="Session No / Reference"
-        @update:model-value="emit('update:query', String($event))"
-      />
+    <div class="flex flex-wrap items-end gap-2.5">
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Session No
+        <Input
+          class="w-[200px]"
+          :model-value="sessionNo"
+          placeholder="Search session no"
+          @update:model-value="emit('update:sessionNo', String($event))"
+        />
+      </label>
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Reference
+        <Input
+          class="w-[180px]"
+          :model-value="reference"
+          placeholder="Search reference"
+          @update:model-value="emit('update:reference', String($event))"
+        />
+      </label>
       <Button variant="outline" @click="moreOpen = !moreOpen">
         More Filters{{ dateFrom || dateTo ? ' (1)' : '' }}
       </Button>
     </div>
 
-    <div v-if="moreOpen" class="flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 p-3">
-      <div class="grid gap-1.5">
-        <Label>Session Date From</Label>
+    <div v-if="moreOpen" class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3">
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Session Date From
         <DatePicker
           v-model="draftFrom"
           aria-label="Choose session start date"
           placeholder="Select start date"
         />
-      </div>
-      <div class="grid gap-1.5">
-        <Label>Session Date To</Label>
+      </label>
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Session Date To
         <DatePicker
           v-model="draftTo"
           aria-label="Choose session end date"
           placeholder="Select end date"
         />
-      </div>
+      </label>
       <Button variant="outline" @click="clearDraftDates">Clear</Button>
       <Button @click="applyDates">Apply Filters</Button>
     </div>
@@ -81,14 +93,14 @@ function clearDraftDates() {
     <div v-if="dateFrom || dateTo" class="flex flex-wrap gap-2">
       <button
         v-if="dateFrom"
-        class="rounded-full border bg-background px-3 py-1 text-xs"
+        class="rounded-full border bg-card px-3 py-1 text-xs"
         @click="emit('update:dateFrom', '')"
       >
         Date after: {{ dateFrom }} ×
       </button>
       <button
         v-if="dateTo"
-        class="rounded-full border bg-background px-3 py-1 text-xs"
+        class="rounded-full border bg-card px-3 py-1 text-xs"
         @click="emit('update:dateTo', '')"
       >
         Date before: {{ dateTo }} ×

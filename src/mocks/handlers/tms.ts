@@ -62,6 +62,8 @@ export const tmsHandlers = [
     await delay(150)
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
+    const sessionNo = url.searchParams.get('sessionNo')?.trim().toLowerCase() ?? ''
+    const reference = url.searchParams.get('reference')?.trim().toLowerCase() ?? ''
     const query = url.searchParams.get('query')?.trim().toLowerCase() ?? ''
     const dateFrom = url.searchParams.get('dateFrom')
     const dateTo = url.searchParams.get('dateTo')
@@ -70,6 +72,8 @@ export const tmsHandlers = [
 
     const filtered = sessions
       .filter((session) => !status || session.status === status)
+      .filter((session) => !sessionNo || session.id.toLowerCase().includes(sessionNo))
+      .filter((session) => !reference || session.reference.toLowerCase().includes(reference))
       .filter(
         (session) =>
           !query ||
@@ -91,8 +95,14 @@ export const tmsHandlers = [
 
     const input = (await request.json()) as StartSessionInput
     const toolkit = getAgentToolkits().find((item) => item.id === input.toolkitId)
-    const subtask = toolkit?.subtasks.find((item) => item.id === input.subtaskId)
-    if (!toolkit || !subtask || input.processedVolume <= 0) {
+    const subtask = input.subtaskId
+      ? toolkit?.subtasks.find((item) => item.id === input.subtaskId)
+      : undefined
+    if (
+      !toolkit ||
+      (input.subtaskId && !subtask) ||
+      (input.processedVolume != null && input.processedVolume <= 0)
+    ) {
       return problem(422, 'The session details are invalid.')
     }
 
@@ -101,9 +111,9 @@ export const tmsHandlers = [
       id: `TMS-${now.getTime()}`,
       toolkitId: toolkit.id,
       toolkitName: toolkit.name,
-      subtaskId: subtask.id,
-      subtaskName: subtask.name,
-      processedVolume: input.processedVolume,
+      subtaskId: subtask?.id ?? null,
+      subtaskName: subtask?.name ?? '—',
+      processedVolume: input.processedVolume ?? null,
       reference: input.reference,
       remarks: input.remarks,
       status: 'running',
@@ -182,15 +192,20 @@ export const tmsHandlers = [
     return HttpResponse.json(updated)
   }),
 
-  http.post('*/api/v1/tms/sessions/:id/discard', async ({ params, request }) => {
+  http.get('*/api/v1/tms/sessions/:id', async ({ params }) => {
+    await delay(80)
+    const session = sessions.find((candidate) => candidate.id === params.id)
+    if (!session) return problem(404, 'The TMS session was not found.')
+    return HttpResponse.json(session)
+  }),
+
+  http.post('*/api/v1/tms/sessions/:id/discard', async ({ params }) => {
     await delay(100)
     const session = sessions.find((candidate) => candidate.id === params.id)
-    const body = (await request.json()) as { reason?: string }
     if (!session) {
       return problem(404, 'The session no longer exists.')
     }
-    if (!body.reason?.trim()) return problem(422, 'A discard reason is required.')
-    const discarded = { ...session, status: 'discarded' as const, discardReason: body.reason }
+    const discarded = { ...session, status: 'discarded' as const }
     // Discard is a state transition; TMS history must remain queryable.
     save(sessions.map((item) => (item.id === discarded.id ? discarded : item)))
     return HttpResponse.json(discarded)

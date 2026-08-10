@@ -2,28 +2,24 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-const agentNavigation = [
-  { label: 'TMS Session', to: '/agent/session' },
-  { label: 'TMS List', to: '/agent/sessions' },
-] as const
-const supervisorNavigation = [
-  { label: 'Toolkits', to: '/supervisor/toolkits' },
-  { label: 'Exercises', to: '/supervisor/exercises' },
-] as const
-const approverNavigation = [
-  { label: 'Approval Queue', to: '/approver/queue' },
-] as const
+import { useSessionStore } from '@/auth/session'
+import { isMenuItemActive, menuItems } from '@/navigation/menu'
 
 const route = useRoute()
-const title = computed(() => String(route.meta.title ?? 'Agent workspace'))
+const session = useSessionStore()
+
+const title = computed(() => String(route.meta.title ?? 'Right Sizing Tool'))
 const subtitle = computed(() => String(route.meta.subtitle ?? 'Right Sizing Tool'))
-// Route metadata is a temporary presentation-only role switch until authentication is integrated.
-const role = computed(() => (route.meta.roles as string[] | undefined)?.[0] ?? 'agent')
-const roleLabel = computed(() => {
-  if (role.value === 'supervisor') return 'Supervisor'
-  if (role.value === 'approver') return 'Approver'
-  return 'Agent'
-})
+
+const visibleMenu = computed(() =>
+  menuItems.filter((item) => session.hasPermission(item.permission)),
+)
+
+const linkClass =
+  'block rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+
+const activeLinkClass = 'bg-sidebar-accent text-sidebar-accent-foreground'
+const copyrightYear = new Date().getFullYear()
 </script>
 
 <template>
@@ -49,48 +45,12 @@ const roleLabel = computed(() => {
       </div>
 
       <div class="px-3 py-5">
-        <p class="px-3 text-xs font-semibold tracking-wider text-sidebar-foreground/55 uppercase">
-          Agent
-        </p>
-        <nav class="mt-2" aria-label="Agent navigation">
+        <nav aria-label="Application">
           <ul class="flex gap-1 overflow-x-auto lg:flex-col">
-            <li v-for="item in agentNavigation" :key="item.to" class="shrink-0">
+            <li v-for="item in visibleMenu" :key="item.to" class="shrink-0">
               <RouterLink
                 :to="item.to"
-                class="block rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                active-class="bg-sidebar-accent text-sidebar-accent-foreground"
-              >
-                {{ item.label }}
-              </RouterLink>
-            </li>
-          </ul>
-        </nav>
-        <p class="mt-6 px-3 text-xs font-semibold tracking-wider text-sidebar-foreground/55 uppercase">
-          Supervisor
-        </p>
-        <nav class="mt-2" aria-label="Supervisor navigation">
-          <ul class="flex gap-1 overflow-x-auto lg:flex-col">
-            <li v-for="item in supervisorNavigation" :key="item.to" class="shrink-0">
-              <RouterLink
-                :to="item.to"
-                class="block rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                active-class="bg-sidebar-accent text-sidebar-accent-foreground"
-              >
-                {{ item.label }}
-              </RouterLink>
-            </li>
-          </ul>
-        </nav>
-        <p class="mt-6 px-3 text-xs font-semibold tracking-wider text-sidebar-foreground/55 uppercase">
-          Approver
-        </p>
-        <nav class="mt-2" aria-label="Approver navigation">
-          <ul class="flex gap-1 overflow-x-auto lg:flex-col">
-            <li v-for="item in approverNavigation" :key="item.to" class="shrink-0">
-              <RouterLink
-                :to="item.to"
-                class="block rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                active-class="bg-sidebar-accent text-sidebar-accent-foreground"
+                :class="[linkClass, isMenuItemActive(item, route.path) ? activeLinkClass : '']"
               >
                 {{ item.label }}
               </RouterLink>
@@ -100,22 +60,31 @@ const roleLabel = computed(() => {
       </div>
     </aside>
 
-    <div class="min-w-0">
+    <div class="flex min-h-screen min-w-0 flex-col">
       <header class="border-b bg-card">
         <div class="flex min-h-16 items-center justify-between gap-6 px-4 py-3 sm:px-6">
           <div>
             <h1 class="text-lg font-semibold">{{ title }}</h1>
             <p class="text-sm text-muted-foreground">{{ subtitle }}</p>
           </div>
-          <span class="rounded-full bg-brand-red/10 px-3 py-1 text-xs font-semibold text-brand-red">
-            {{ roleLabel }}
-          </span>
+          <div class="min-w-0 text-right">
+            <div class="truncate text-sm font-semibold text-foreground">
+              {{ session.displayName }}
+            </div>
+            <div class="truncate text-xs text-muted-foreground" :title="session.rolesLabel">
+              {{ session.ccgid }} · {{ session.rolesLabel }}
+            </div>
+          </div>
         </div>
       </header>
 
-      <main id="main-content" class="w-full px-4 py-5 sm:px-6">
+      <main id="main-content" class="w-full flex-1 px-4 py-5 sm:px-6">
         <slot />
       </main>
+
+      <footer class="border-t px-4 py-3 text-center text-xs text-muted-foreground sm:px-6">
+        © {{ copyrightYear }} CMA CGM Group
+      </footer>
     </div>
   </div>
 </template>

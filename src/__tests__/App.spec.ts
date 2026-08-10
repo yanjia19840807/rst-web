@@ -31,7 +31,10 @@ describe('App', () => {
 
     expect(wrapper.text()).toContain('Right Sizing Tool')
     expect(wrapper.get('h1').text()).toBe('TMS Session')
-    expect(wrapper.get('nav[aria-label="Agent navigation"]').text()).toContain('TMS List')
+    expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('TMS List')
+    expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('Approval Queue')
+    expect(wrapper.text()).toContain('Chen Wei')
+    expect(wrapper.text()).toContain('SUPERVISOR001')
 
     wrapper.unmount()
     queryClient.clear()

@@ -16,9 +16,9 @@ export interface TmsSession {
   id: string
   toolkitId: string
   toolkitName: string
-  subtaskId: string
+  subtaskId: string | null
   subtaskName: string
-  processedVolume: number
+  processedVolume: number | null
   reference: string
   remarks: string
   status: TmsSessionStatus
@@ -43,6 +43,8 @@ export interface PageResult<T> {
 }
 
 export interface SessionFilters {
+  sessionNo?: string
+  reference?: string
   query?: string
   dateFrom?: string
   dateTo?: string
@@ -52,8 +54,8 @@ export interface SessionFilters {
 
 export interface StartSessionInput {
   toolkitId: string
-  subtaskId: string
-  processedVolume: number
+  subtaskId: string | null
+  processedVolume: number | null
   reference: string
   remarks: string
 }

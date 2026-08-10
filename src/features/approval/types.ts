@@ -6,6 +6,9 @@ export interface ApprovalQueueItem {
   requiredRole: string
   status: string
   submittedAt: string
+  toolkitName?: string | null
+  pl3Name?: string | null
+  archivedAt?: string | null
 }
 
 export interface ScopeView {

@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { MonthPicker } from '@/components/ui/month-picker'
 import {
   Table,
   TableBody,
@@ -273,7 +275,7 @@ function formatSlot(start: string, end: string) {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-4 rounded-lg border bg-card p-4">
     <div class="flex gap-1 border-b">
       <button
         v-for="item in [
@@ -332,7 +334,17 @@ function formatSlot(start: string, end: string) {
         </TableHeader>
         <TableBody>
           <TableRow v-for="{ row, index } in pagedMonthly" :key="`${row.month}-${index}`">
-            <TableCell>{{ row.month }}</TableCell>
+            <TableCell>
+              <MonthPicker
+                v-if="!readOnly"
+                v-model="row.month"
+                aria-label="Volume month"
+                placeholder="Select month"
+                class="w-[160px]"
+                @update:model-value="persistMonthly"
+              />
+              <span v-else>{{ row.month }}</span>
+            </TableCell>
             <TableCell>{{ formatNumber(row.actualVolume) }}</TableCell>
             <TableCell>
               <Input
@@ -343,15 +355,31 @@ function formatSlot(start: string, end: string) {
               <span v-else>{{ formatNumber(volumeOfMonth(row)) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
-              <div class="flex gap-1.5">
+              <div class="flex gap-3">
                 <template v-if="editingIndex === index">
-                  <Button size="sm" :disabled="busy" @click="confirmEdit">Confirm</Button>
-                  <Button size="sm" variant="outline" @click="editingIndex = null">Cancel</Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    :disabled="busy"
+                    @click="confirmEdit"
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    @click="editingIndex = null"
+                  >
+                    Cancel
+                  </Button>
                 </template>
                 <Button
                   v-else
                   size="sm"
-                  variant="outline"
+                  variant="link"
+                  class="h-auto px-0 font-semibold"
                   @click="startEdit(index, volumeOfMonth(row))"
                 >
                   Edit
@@ -378,7 +406,17 @@ function formatSlot(start: string, end: string) {
         </TableHeader>
         <TableBody>
           <TableRow v-for="{ row, index } in pagedDaily" :key="`${row.volumeDate}-${index}`">
-            <TableCell>{{ row.volumeDate }}</TableCell>
+            <TableCell>
+              <DatePicker
+                v-if="!readOnly"
+                v-model="row.volumeDate"
+                aria-label="Volume date"
+                placeholder="Select date"
+                class="w-[180px]"
+                @update:model-value="persistDaily"
+              />
+              <span v-else>{{ row.volumeDate }}</span>
+            </TableCell>
             <TableCell>{{ dayName(row.volumeDate) }}</TableCell>
             <TableCell>
               <Input
@@ -389,15 +427,31 @@ function formatSlot(start: string, end: string) {
               <span v-else>{{ formatNumber(volumeOfDay(row)) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
-              <div class="flex gap-1.5">
+              <div class="flex gap-3">
                 <template v-if="editingIndex === index">
-                  <Button size="sm" :disabled="busy" @click="confirmEdit">Confirm</Button>
-                  <Button size="sm" variant="outline" @click="editingIndex = null">Cancel</Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    :disabled="busy"
+                    @click="confirmEdit"
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    @click="editingIndex = null"
+                  >
+                    Cancel
+                  </Button>
                 </template>
                 <Button
                   v-else
                   size="sm"
-                  variant="outline"
+                  variant="link"
+                  class="h-auto px-0 font-semibold"
                   @click="startEdit(index, volumeOfDay(row))"
                 >
                   Edit
@@ -438,15 +492,31 @@ function formatSlot(start: string, end: string) {
               <span v-else>{{ formatNumber(row.rawVolume) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
-              <div class="flex gap-1.5">
+              <div class="flex gap-3">
                 <template v-if="editingIndex === index">
-                  <Button size="sm" :disabled="busy" @click="confirmEdit">Confirm</Button>
-                  <Button size="sm" variant="outline" @click="editingIndex = null">Cancel</Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    :disabled="busy"
+                    @click="confirmEdit"
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="link"
+                    class="h-auto px-0 font-semibold"
+                    @click="editingIndex = null"
+                  >
+                    Cancel
+                  </Button>
                 </template>
                 <Button
                   v-else
                   size="sm"
-                  variant="outline"
+                  variant="link"
+                  class="h-auto px-0 font-semibold"
                   @click="startEdit(index, row.rawVolume)"
                 >
                   Edit
@@ -476,7 +546,7 @@ function formatSlot(start: string, end: string) {
         <span>Rows per page:</span>
         <select
           v-model.number="pageSize"
-          class="rounded border bg-transparent px-2 py-1"
+          class="rounded border border-input bg-card px-2 py-1"
           @change="page = 1"
         >
           <option :value="10">10</option>

@@ -6,6 +6,7 @@ import type {
   CalendarRequest,
   CalendarView,
   CreateExerciseInput,
+  CreateExerciseResult,
   CreateScenarioRequest,
   CycleTimeBaseline,
   DailyVolume,
@@ -14,6 +15,7 @@ import type {
   ManualBaselineRequest,
   MonthlyVolume,
   MonthlyVolumeRequest,
+  ReapplyCalendarResult,
   Scenario,
   Shift,
   ShiftRequest,
@@ -40,7 +42,7 @@ export const exerciseApi = {
   list: () => apiRequest<Exercise[]>(base),
   toolkits: () => apiRequest<SupervisorToolkit[]>('/api/v1/supervisor/toolkits'),
   create: (input: CreateExerciseInput) =>
-    apiRequest<Exercise>(base, {
+    apiRequest<CreateExerciseResult>(base, {
       method: 'POST',
       body: JSON.stringify(input),
     }),
@@ -105,6 +107,10 @@ export const exerciseApi = {
     apiRequest<CalendarView>(exercisePath(exerciseId, '/calendar'), {
       method: 'PUT',
       body: JSON.stringify(body),
+    }),
+  reapplyHolidayTemplate: (exerciseId: string) =>
+    apiRequest<ReapplyCalendarResult>(exercisePath(exerciseId, '/calendar/reapply-template'), {
+      method: 'POST',
     }),
 
   getMonthlyVolumes: (exerciseId: string) =>

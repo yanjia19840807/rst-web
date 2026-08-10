@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -22,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { exerciseApi } from '../api'
 import type { Exercise, Scenario, ShiftRequest } from '../types'
+import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
 const props = defineProps<{
   exerciseId: string
@@ -33,6 +35,7 @@ const loading = ref(true)
 const busy = ref(false)
 const deleteOpen = ref(false)
 const deletePending = ref(false)
+const toolkitInfoOpen = ref(false)
 const exercise = ref<Exercise | null>(null)
 const scenario = ref<Scenario | null>(null)
 const simTab = ref<'sizing' | 'slot'>('sizing')
@@ -220,7 +223,7 @@ onMounted(load)
       <template #left>
         <Button
           variant="link"
-          class="px-0"
+          class="h-auto px-0 font-semibold"
           @click="router.push({ name: 'supervisor-exercise-detail', params: { id: exerciseId } })"
         >
           ← Back to Exercise
@@ -245,12 +248,27 @@ onMounted(load)
       <CardContent class="grid gap-3">
         <DetailTable
           :rows="[
-            { label: 'Toolkit', value: exercise.snapshot.toolkit.name, strong: true },
+            { key: 'toolkit', label: 'Toolkit', value: exercise.snapshot.toolkit.name },
             { label: 'Exercise No', value: exercise.exerciseCode },
-            { label: 'Scenario No.', value: scenario.scenarioCode, strong: true },
+            { label: 'Scenario No.', value: scenario.scenarioCode },
             { label: 'Status', value: scenario.status },
           ]"
-        />
+        >
+          <template #toolkit="{ row }">
+            <span class="inline-flex items-center gap-1.5">
+              <span>{{ row.value || '—' }}</span>
+              <button
+                type="button"
+                class="inline-flex size-5 items-center justify-center rounded text-primary hover:bg-primary/10"
+                title="Toolkit info"
+                @click="toolkitInfoOpen = true"
+              >
+                <Info class="size-3.5" />
+                <span class="sr-only">Toolkit info</span>
+              </button>
+            </span>
+          </template>
+        </DetailTable>
         <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
           Sizing Month, Slot Period, TMS period, and Associated Data are maintained on the Exercise
           ({{ exercise.sizingMonth }} · {{ exercise.slotStartDate }}). This scenario only adjusts
@@ -258,6 +276,8 @@ onMounted(load)
         </div>
       </CardContent>
     </Card>
+
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
 
     <Card>
       <CardHeader>

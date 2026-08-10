@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -11,9 +12,12 @@ import { useTmsSessionsQuery } from '../api/queries'
 import TmsSessionFilters from './TmsSessionFilters.vue'
 import TmsSessionsTable from './TmsSessionsTable.vue'
 
+const router = useRouter()
+
 const filters = reactive({
   status: 'completed' as const,
-  query: '',
+  sessionNo: '',
+  reference: '',
   dateFrom: '',
   dateTo: '',
   page: 1,
@@ -27,14 +31,15 @@ const deleteTargetId = ref('')
 const deleteOpen = ref(false)
 
 watch(
-  () => [filters.query, filters.dateFrom, filters.dateTo],
+  () => [filters.sessionNo, filters.reference, filters.dateFrom, filters.dateTo],
   () => {
     filters.page = 1
   },
 )
 
 function clearFilters() {
-  filters.query = ''
+  filters.sessionNo = ''
+  filters.reference = ''
   filters.dateFrom = ''
   filters.dateTo = ''
   filters.page = 1
@@ -45,10 +50,10 @@ function openDelete(id: string) {
   deleteOpen.value = true
 }
 
-async function confirmDelete(reason: string) {
+async function confirmDelete() {
   deletingId.value = deleteTargetId.value
   try {
-    await discard.mutateAsync({ id: deleteTargetId.value, reason })
+    await discard.mutateAsync(deleteTargetId.value)
     deleteOpen.value = false
     toast.success('TMS session deleted.')
   } catch (error) {
@@ -57,18 +62,19 @@ async function confirmDelete(reason: string) {
     deletingId.value = ''
   }
 }
+
+function openDetail(id: string) {
+  void router.push({ name: 'agent-session-detail', params: { id } })
+}
 </script>
 
 <template>
   <Card>
     <CardHeader class="items-baseline">
-      <div class="flex items-baseline gap-2">
-        <CardTitle>My TMS Sessions</CardTitle>
-        <span class="text-xs text-muted-foreground">
-          {{ sessionsQuery.data.value?.total ?? 0 }} records
-        </span>
-      </div>
-      <CardAction v-if="filters.query || filters.dateFrom || filters.dateTo">
+      <CardTitle>My TMS Sessions</CardTitle>
+      <CardAction
+        v-if="filters.sessionNo || filters.reference || filters.dateFrom || filters.dateTo"
+      >
         <Button variant="ghost" size="sm" class="text-primary" @click="clearFilters">
           Clear All
         </Button>
@@ -76,10 +82,10 @@ async function confirmDelete(reason: string) {
     </CardHeader>
     <CardContent class="grid gap-4">
       <TmsSessionFilters
-        v-model:query="filters.query"
+        v-model:session-no="filters.sessionNo"
+        v-model:reference="filters.reference"
         v-model:date-from="filters.dateFrom"
         v-model:date-to="filters.dateTo"
-        @clear="clearFilters"
       />
 
       <TmsSessionsTable
@@ -87,6 +93,7 @@ async function confirmDelete(reason: string) {
         :pending="sessionsQuery.isPending.value"
         :deleting-id="deletingId"
         @delete="openDelete"
+        @open="openDetail"
       />
 
       <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -94,7 +101,7 @@ async function confirmDelete(reason: string) {
           Rows per page
           <select
             v-model.number="filters.pageSize"
-            class="h-8 rounded-lg border border-input bg-background px-2 text-foreground"
+            class="h-8 rounded-lg border border-input bg-card px-2 text-foreground"
             @change="filters.page = 1"
           >
             <option v-for="size in [10, 20, 50, 100]" :key="size" :value="size">
@@ -130,9 +137,6 @@ async function confirmDelete(reason: string) {
     warning="This will discard the completed timing session from the list."
     :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
     confirm-label="Delete"
-    require-reason
-    reason-label="Reason"
-    reason-placeholder="Reason for deleting this session"
     :pending="Boolean(deletingId)"
     @confirm="confirmDelete"
   />

@@ -74,6 +74,11 @@ export interface CreateExerciseInput {
   tmsTo: string
 }
 
+export interface CreateExerciseResult {
+  exercise: Exercise
+  notices: string[]
+}
+
 export interface TeamSetup {
   agentsLt6m: number | null
   agents6To24m: number | null
@@ -99,6 +104,7 @@ export interface TeamSetup {
   totalAgents: number | null
   averageTenureYears: number | null
   workingDaysPerYear: number | null
+  maxCapacityDays: number | null
   dailyCapacityPerAgent: number | null
   calculationVersion: string | null
   version: number
@@ -109,6 +115,7 @@ export type TeamSetupRequest = Omit<
   | 'totalAgents'
   | 'averageTenureYears'
   | 'workingDaysPerYear'
+  | 'maxCapacityDays'
   | 'dailyCapacityPerAgent'
   | 'calculationVersion'
   | 'version'
@@ -181,22 +188,30 @@ export interface HolidayRequest {
 }
 
 export interface CalendarView {
-  countryCode: string | null
-  timezone: string | null
   weekendCode: string | null
   baselineSource: string | null
   baselineVersion: string | null
+  sourceTemplateId?: string | null
+  sourceTemplateVersion?: number | null
+  baselineYear?: number | null
+  workingDaysPerYear?: number | null
   version: number
   holidays: Holiday[]
+  templateUpdateAvailable?: boolean
+  publishedTemplateVersion?: number | null
+  templateUpdateMessage?: string | null
 }
 
 export interface CalendarRequest {
-  countryCode?: string | null
-  timezone?: string | null
   weekendCode?: string | null
   baselineSource?: string | null
   baselineVersion?: string | null
   holidays?: HolidayRequest[]
+}
+
+export interface ReapplyCalendarResult {
+  calendar: CalendarView
+  notices: string[]
 }
 
 export interface MonthlyVolume {

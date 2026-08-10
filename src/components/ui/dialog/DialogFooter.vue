@@ -20,7 +20,8 @@ const props = withDefaults(
     data-slot="dialog-footer"
     :class="
       cn(
-        'bg-muted/50 -mx-4 -mb-4 rounded-b-xl border-t p-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
+        // Bleed to dialog edges when DialogContent uses p-4; override with mx-0 mb-0 mt-0 on p-0 dialogs.
+        'flex flex-col-reverse gap-2 border-t bg-card -mx-4 -mt-4 -mb-4 rounded-b-xl px-4 py-3 sm:flex-row sm:justify-end',
         props.class,
       )
     "
