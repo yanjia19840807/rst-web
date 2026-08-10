@@ -59,6 +59,11 @@ const supportFte = computed(() => {
   return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
 })
 
+const supportAnnualHours = computed(() => {
+  if (!support.value.length) return null
+  return support.value.reduce((sum, item) => sum + (Number(item.workloadPerYearHours) || 0), 0)
+})
+
 const templateSourceLabel = computed(() => {
   const source = calendar.value?.baselineSource
   const version = calendar.value?.sourceTemplateVersion
@@ -331,6 +336,15 @@ defineExpose({
                   {{ supportFte != null ? formatNumber(supportFte, 2) : '—' }}
                 </TableCell>
                 <TableCell class="text-muted-foreground">Summed from registry</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Annual support hours</TableCell>
+                <TableCell>
+                  {{
+                    supportAnnualHours != null ? formatNumber(supportAnnualHours, 1) : '—'
+                  }}
+                </TableCell>
+                <TableCell class="text-muted-foreground">Sum of Hours / year</TableCell>
               </TableRow>
             </TableBody>
           </Table>

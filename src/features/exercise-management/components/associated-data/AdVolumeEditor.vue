@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
+import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
@@ -533,41 +534,18 @@ function formatSlot(start: string, end: string) {
       </Table>
     </div>
 
-    <div
-      class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"
-    >
-      <div class="flex flex-wrap items-center gap-2">
-        <span
-          >{{
-            tab === 'monthly' ? 'Monthly' : tab === 'daily' ? 'Daily' : 'Slot'
-          }}
-          · {{ currentTotal }} rows</span
-        >
-        <span>Rows per page:</span>
-        <select
-          v-model.number="pageSize"
-          class="rounded border border-input bg-card px-2 py-1"
-          @change="page = 1"
-        >
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-        </select>
-        <span>Page {{ page }} / {{ totalPages }}</span>
-      </div>
-      <div class="flex gap-2">
-        <Button size="sm" variant="outline" :disabled="page <= 1" @click="page--">
-          Previous
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          :disabled="page >= totalPages"
-          @click="page++"
-        >
-          Next
-        </Button>
-      </div>
-    </div>
+    <TablePager
+      :total="currentTotal"
+      :page="page"
+      :page-size="pageSize"
+      :label="tab === 'monthly' ? 'months' : tab === 'daily' ? 'days' : 'slots'"
+      @update:page="page = $event"
+      @update:page-size="
+        (size) => {
+          pageSize = size
+          page = 1
+        }
+      "
+    />
   </div>
 </template>

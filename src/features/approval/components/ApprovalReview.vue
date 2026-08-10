@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { approvalApi } from '../api'
 import type { ApprovalDetailView } from '../types'
+import { formatDate } from '@/lib/datetime'
 
 const props = defineProps<{
   submissionId: string
@@ -36,17 +37,6 @@ const awaiting = computed(() => {
   const status = detail.value?.submissionStatus ?? ''
   return status.startsWith('AWAITING_')
 })
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
 
 async function load() {
   loading.value = true

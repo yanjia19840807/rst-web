@@ -94,7 +94,7 @@ const subtaskRows = computed(() =>
               >
                 Toolkit details
               </div>
-              <DetailTable :rows="detailRows" class="grid-cols-[minmax(140px,0.9fr)_1fr]" />
+              <DetailTable :rows="detailRows" />
             </div>
 
             <div>

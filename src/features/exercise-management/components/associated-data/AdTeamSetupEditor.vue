@@ -30,7 +30,6 @@ const form = reactive({
   agents6To24m: null as number | null,
   agents24To48m: null as number | null,
   agentsGt48m: null as number | null,
-  workingHoursPerDay: null as number | null,
   paidLeaveDays: null as number | null,
   otherLeaveDays: null as number | null,
   weekendCode: '' as string,
@@ -65,7 +64,6 @@ watch(
       agents6To24m: t.agents6To24m ?? null,
       agents24To48m: t.agents24To48m ?? null,
       agentsGt48m: t.agentsGt48m ?? null,
-      workingHoursPerDay: t.workingHoursPerDay ?? null,
       paidLeaveDays: t.paidLeaveDays ?? null,
       otherLeaveDays: t.otherLeaveDays ?? null,
       weekendCode: t.weekendCode ?? '',
@@ -96,10 +94,100 @@ const draftTotalAgents = computed(() =>
   ),
 )
 
-/** Prefer server Max Capacity (WorkingDays − leaves); fall back to working days. */
-const maxCapacityDays = computed(() => {
-  if (props.modelValue?.maxCapacityDays != null) return props.modelValue.maxCapacityDays
-  return props.modelValue?.workingDaysPerYear ?? null
+/** Live preview; formula matches backend ExerciseTeamSetup.recalculateDerived. */
+const draftAverageTenureYears = computed(() => {
+  const total = draftTotalAgents.value
+  if (total <= 0) return null
+  const weighted =
+    (form.agentsLt6m ?? 0) * 0.25 +
+    (form.agents6To24m ?? 0) * 1.25 +
+    (form.agents24To48m ?? 0) * 3 +
+    (form.agentsGt48m ?? 0) * 5
+  return weighted / total
+})
+
+/** Backend stores 0–1 ratios; UI edits 0–100 percent. */
+function ratioToPercent(ratio: number | null): number | null {
+  if (ratio == null) return null
+  return Math.round(ratio * 10000) / 100
+}
+
+function percentToRatio(percent: number | null): number | null {
+  if (percent == null) return null
+  return Math.round(percent * 100) / 10000
+}
+
+function formatPercent(ratio: number | null): string {
+  const percent = ratioToPercent(ratio)
+  return percent == null ? '—' : `${formatNumber(percent, 1)}%`
+}
+
+function percentModel(
+  key: 'slaTargetRatio' | 'availabilityRatio' | 'skeletonRatio' | 'automationRatio',
+) {
+  return computed({
+    get: () => ratioToPercent(form[key]),
+    set: (value: number | null) => {
+      form[key] = percentToRatio(value)
+    },
+  })
+}
+
+const slaTargetPercent = percentModel('slaTargetRatio')
+const availabilityPercent = percentModel('availabilityRatio')
+const skeletonPercent = percentModel('skeletonRatio')
+const automationPercent = percentModel('automationRatio')
+
+/** Minutes (with fractional seconds) from HH:mm[:ss]; null when invalid/empty. */
+function parseClockToMinutes(value: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim())
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  const seconds = Number(match[3] ?? 0)
+  if (hours > 23 || minutes > 59 || seconds > 59) return null
+  return hours * 60 + minutes + seconds / 60
+}
+
+/** Live preview: SLA end − start (overnight wraps +24h). Matches backend. */
+const draftWorkingHoursPerDay = computed(() => {
+  const start = parseClockToMinutes(form.slaStartTime)
+  const end = parseClockToMinutes(form.slaEndTime)
+  if (start == null || end == null) return null
+  let minutes = end - start
+  if (minutes <= 0) minutes += 24 * 60
+  return Math.round((minutes / 60) * 1_000_000) / 1_000_000
+})
+
+/** Calendar NETWORKDAYS — not editable here; still the capacity baseline. */
+const workingDaysPerYear = computed(() => props.modelValue?.workingDaysPerYear ?? null)
+
+/** Live: WorkingDays − paidLeave − otherLeave. Matches backend. */
+const draftMaxCapacityDays = computed(() => {
+  const workingDays = workingDaysPerYear.value
+  if (workingDays == null) return null
+  return workingDays - (form.paidLeaveDays ?? 0) - (form.otherLeaveDays ?? 0)
+})
+
+/** Live: maxCapacity / workingDays. Matches backend. */
+const draftCapacityRatio = computed(() => {
+  const workingDays = workingDaysPerYear.value
+  const maxCapacity = draftMaxCapacityDays.value
+  if (workingDays == null || maxCapacity == null || workingDays <= 0) return null
+  return Math.round((maxCapacity / workingDays) * 1e8) / 1e8
+})
+
+/**
+ * Live BRD: WorkingHoursPerDay × AvailabilityRatio × 3600 / CycleTime.
+ */
+const draftDailyCapacityPerAgent = computed(() => {
+  const hours = draftWorkingHoursPerDay.value
+  const availability = form.availabilityRatio
+  const cycleTime = props.cycleTimeSeconds != null ? Number(props.cycleTimeSeconds) : NaN
+  if (hours == null || availability == null || !Number.isFinite(cycleTime) || cycleTime <= 0) {
+    return null
+  }
+  return Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
 })
 
 function toRequest(): TeamSetupRequest {
@@ -109,14 +197,13 @@ function toRequest(): TeamSetupRequest {
     agents24To48m: form.agents24To48m,
     agentsGt48m: form.agentsGt48m,
     deliveryHc: hidden.deliveryHc,
-    workingHoursPerDay: form.workingHoursPerDay,
+    workingHoursPerDay: draftWorkingHoursPerDay.value,
     paidLeaveDays: form.paidLeaveDays,
     otherLeaveDays: form.otherLeaveDays,
     weekendCode: form.weekendCode || null,
     availabilityRatio: form.availabilityRatio,
     automationRatio: form.automationRatio,
-    // Backend daily-capacity formula requires capacityRatio; default 1 when unset.
-    capacityRatio: hidden.capacityRatio ?? 1,
+    capacityRatio: draftCapacityRatio.value ?? hidden.capacityRatio ?? 1,
     maxOvertimeMinutes: form.maxOvertimeMinutes,
     slaType: form.slaType || null,
     slaTargetRatio: form.slaTargetRatio,
@@ -147,12 +234,12 @@ defineExpose({ toRequest })
       />
       <AdMetric
         label="Daily capacity / agent"
-        :value="formatNumber(modelValue?.dailyCapacityPerAgent)"
+        :value="formatNumber(draftDailyCapacityPerAgent)"
         hint="Calculated from baseline inputs"
       />
       <AdMetric
         label="Working days"
-        :value="formatNumber(modelValue?.workingDaysPerYear)"
+        :value="formatNumber(workingDaysPerYear)"
         hint="Calendar and holiday adjusted"
       />
     </div>
@@ -219,8 +306,8 @@ defineExpose({ toRequest })
                 <TableCell>Average tenure</TableCell>
                 <TableCell>
                   {{
-                    modelValue?.averageTenureYears != null
-                      ? `${formatNumber(modelValue.averageTenureYears, 1)} years`
+                    draftAverageTenureYears != null
+                      ? `${formatNumber(draftAverageTenureYears, 1)} years`
                       : '—'
                   }}
                 </TableCell>
@@ -244,15 +331,15 @@ defineExpose({ toRequest })
             <ReadOnlyField v-else :value="form.slaTurnaroundMinutes" />
           </label>
           <label class="grid gap-1 text-sm"
-            >SLA target
+            >SLA target (%)
             <NumberFieldControl
               v-if="!readOnly"
-              v-model="form.slaTargetRatio"
+              v-model="slaTargetPercent"
               :min="0"
-              :max="1"
-              :step="0.01"
+              :max="100"
+              :step="1"
             />
-            <ReadOnlyField v-else :value="form.slaTargetRatio" />
+            <ReadOnlyField v-else :value="formatPercent(form.slaTargetRatio)" />
           </label>
           <label class="grid gap-1 text-sm"
             >SLA type
@@ -270,7 +357,6 @@ defineExpose({ toRequest })
           <label class="grid gap-1 text-sm">
             Weekend code
             <ReadOnlyField :value="form.weekendCode || '—'" />
-            <span class="text-xs text-muted-foreground">Maintained on Calendar</span>
           </label>
           <label class="grid gap-1 text-sm"
             >SLA clock start
@@ -291,37 +377,49 @@ defineExpose({ toRequest })
             <ReadOnlyField v-else :value="form.slaEndTime" />
           </label>
           <label class="grid gap-1 text-sm"
-            >Working hours / day
+            >Availability ratio (%)
             <NumberFieldControl
               v-if="!readOnly"
-              v-model="form.workingHoursPerDay"
+              v-model="availabilityPercent"
               :min="0"
-              :step="0.1"
+              :max="100"
+              :step="1"
             />
-            <ReadOnlyField v-else :value="form.workingHoursPerDay" />
+            <ReadOnlyField v-else :value="formatPercent(form.availabilityRatio)" />
           </label>
           <label class="grid gap-1 text-sm"
-            >Availability ratio
+            >Skeleton coverage (%)
             <NumberFieldControl
               v-if="!readOnly"
-              v-model="form.availabilityRatio"
+              v-model="skeletonPercent"
               :min="0"
-              :max="1"
-              :step="0.01"
+              :max="100"
+              :step="1"
             />
-            <ReadOnlyField v-else :value="form.availabilityRatio" />
+            <ReadOnlyField v-else :value="formatPercent(form.skeletonRatio)" />
           </label>
-          <label class="grid gap-1 text-sm"
-            >Skeleton coverage
-            <NumberFieldControl
-              v-if="!readOnly"
-              v-model="form.skeletonRatio"
-              :min="0"
-              :max="1"
-              :step="0.01"
-            />
-            <ReadOnlyField v-else :value="form.skeletonRatio" />
-          </label>
+        </div>
+        <div class="mt-3 overflow-hidden rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Calculated</TableHead>
+                <TableHead>Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell>Working hours / day</TableCell>
+                <TableCell>
+                  {{
+                    draftWorkingHoursPerDay != null
+                      ? formatNumber(draftWorkingHoursPerDay, 1)
+                      : '—'
+                  }}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </section>
 
@@ -369,15 +467,15 @@ defineExpose({ toRequest })
             <ReadOnlyField v-else :value="form.weekendShiftHc" />
           </label>
           <label class="grid gap-1 text-sm"
-            >Automation ratio
+            >Automation ratio (%)
             <NumberFieldControl
               v-if="!readOnly"
-              v-model="form.automationRatio"
+              v-model="automationPercent"
               :min="0"
-              :max="1"
-              :step="0.01"
+              :max="100"
+              :step="1"
             />
-            <ReadOnlyField v-else :value="form.automationRatio" />
+            <ReadOnlyField v-else :value="formatPercent(form.automationRatio)" />
           </label>
         </div>
         <div class="mt-3 overflow-hidden rounded-md border">
@@ -391,11 +489,11 @@ defineExpose({ toRequest })
             <TableBody>
               <TableRow>
                 <TableCell>Working days / year</TableCell>
-                <TableCell>{{ formatNumber(modelValue?.workingDaysPerYear) }}</TableCell>
+                <TableCell>{{ formatNumber(workingDaysPerYear) }}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Max capacity days</TableCell>
-                <TableCell>{{ formatNumber(maxCapacityDays) }}</TableCell>
+                <TableCell>{{ formatNumber(draftMaxCapacityDays) }}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Production support FTE</TableCell>
@@ -407,8 +505,8 @@ defineExpose({ toRequest })
                 <TableCell>Daily capacity / agent</TableCell>
                 <TableCell>
                   {{
-                    modelValue?.dailyCapacityPerAgent != null
-                      ? `${formatNumber(modelValue.dailyCapacityPerAgent)} transactions`
+                    draftDailyCapacityPerAgent != null
+                      ? `${formatNumber(draftDailyCapacityPerAgent)} transactions`
                       : '—'
                   }}
                 </TableCell>
@@ -416,9 +514,6 @@ defineExpose({ toRequest })
             </TableBody>
           </Table>
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">
-          Derived metrics refresh after Save (server calculation).
-        </p>
       </section>
     </div>
   </div>

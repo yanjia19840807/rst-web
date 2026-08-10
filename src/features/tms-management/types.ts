@@ -7,9 +7,15 @@ export interface Toolkit {
   domain: string
   pl1: string
   pl2: string
+  pl3Code?: string
   pl3Name: string
   combineSubtasksTime: boolean
   subtasks: Array<{ id: string; name: string; deletedAt: string | null }>
+}
+
+export interface Pl3Option {
+  code: string
+  name: string
 }
 
 export interface TmsSession {
@@ -18,6 +24,8 @@ export interface TmsSession {
   toolkitName: string
   subtaskId: string | null
   subtaskName: string
+  agentName?: string | null
+  agentCcgid?: string | null
   processedVolume: number | null
   reference: string
   remarks: string
@@ -27,6 +35,13 @@ export interface TmsSession {
   endedAt: string | null
   netDurationSeconds: number
 }
+
+export interface TeamAgentOption {
+  ccgid: string
+  name: string
+}
+
+export type TmsListMode = 'agent' | 'supervisor'
 
 export interface TmsSummary {
   sessionsToday: number
@@ -48,6 +63,9 @@ export interface SessionFilters {
   query?: string
   dateFrom?: string
   dateTo?: string
+  agentCcgid?: string
+  toolkitId?: string
+  pl3Code?: string
   page: number
   pageSize: number
 }

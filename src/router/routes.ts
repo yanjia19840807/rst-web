@@ -44,6 +44,26 @@ export const routes: RouteRecordRaw[] = [
     redirect: { name: 'supervisor-toolkits' },
   },
   {
+    path: '/supervisor/sessions',
+    name: 'supervisor-sessions',
+    component: () => import('@/pages/supervisor/TmsListPage.vue'),
+    meta: {
+      title: 'TMS List',
+      subtitle: 'Team timing sessions across your agents and toolkits',
+      roles: ['supervisor'],
+    },
+  },
+  {
+    path: '/supervisor/sessions/:id',
+    name: 'supervisor-session-detail',
+    component: () => import('@/pages/supervisor/TmsSessionDetailPage.vue'),
+    meta: {
+      title: 'TMS Session Detail',
+      subtitle: 'Read-only team timing session',
+      roles: ['supervisor'],
+    },
+  },
+  {
     path: '/supervisor/toolkits',
     name: 'supervisor-toolkits',
     component: () => import('@/pages/supervisor/ToolkitManagementPage.vue'),
@@ -80,7 +100,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       title: 'Holiday Templates',
       subtitle: 'Center legal holiday baselines by year',
-      roles: ['supervisor'],
+      roles: ['lth'],
     },
   },
   {
@@ -90,7 +110,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       title: 'Add Holiday Template',
       subtitle: 'Create a Center + year legal holiday baseline',
-      roles: ['supervisor'],
+      roles: ['lth'],
     },
   },
   {
@@ -100,7 +120,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       title: 'Edit Holiday Template',
       subtitle: 'Maintain holidays, import Excel, and publish',
-      roles: ['supervisor'],
+      roles: ['lth'],
     },
   },
   {

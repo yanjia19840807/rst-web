@@ -19,6 +19,7 @@ import {
 
 import { approvalApi } from '../api'
 import type { ApprovalQueueItem } from '../types'
+import { formatDate } from '@/lib/datetime'
 
 type TabKey = 'Awaiting Review' | 'Archived'
 
@@ -196,17 +197,6 @@ async function load() {
   } finally {
     loading.value = false
   }
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
 }
 
 function openReview(item: ApprovalQueueItem) {

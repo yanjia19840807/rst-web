@@ -136,24 +136,54 @@ export function ensureShell(exercise: Exercise): ExerciseShell {
   return shell
 }
 
-export function recomputeTeamSetup(setup: TeamSetup): TeamSetup {
+function workingHoursFromSlaClock(start: string | null | undefined, end: string | null | undefined) {
+  const parse = (value: string | null | undefined) => {
+    const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(value ?? '').trim())
+    if (!match) return null
+    const hours = Number(match[1])
+    const minutes = Number(match[2])
+    const seconds = Number(match[3] ?? 0)
+    if (hours > 23 || minutes > 59 || seconds > 59) return null
+    return hours * 3600 + minutes * 60 + seconds
+  }
+  const startSec = parse(start)
+  const endSec = parse(end)
+  if (startSec == null || endSec == null) return null
+  let seconds = endSec - startSec
+  if (seconds <= 0) seconds += 24 * 3600
+  return Math.round((seconds / 3600) * 1_000_000) / 1_000_000
+}
+
+export function recomputeTeamSetup(
+  setup: TeamSetup,
+  cycleTimeSeconds?: number | null,
+): TeamSetup {
   const a = Number(setup.agentsLt6m ?? 0)
   const b = Number(setup.agents6To24m ?? 0)
   const c = Number(setup.agents24To48m ?? 0)
   const d = Number(setup.agentsGt48m ?? 0)
   const total = a + b + c + d
-  const leave = Number(setup.paidLeaveDays ?? 0) + Number(setup.otherLeaveDays ?? 0)
-  const workingDays = Math.max(0, 260 - leave)
-  const hours = Number(setup.workingHoursPerDay ?? 8)
-  const availability = Number(setup.availabilityRatio ?? 1)
+  const workingDays = setup.workingDaysPerYear ?? Math.max(0, 260)
+  const hours = workingHoursFromSlaClock(setup.slaStartTime, setup.slaEndTime)
+  const availability = setup.availabilityRatio
+  const cycleTime = cycleTimeSeconds != null ? Number(cycleTimeSeconds) : null
+  const dailyCapacity =
+    hours != null && availability != null && cycleTime != null && cycleTime > 0
+      ? Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
+      : null
   return {
     ...setup,
+    workingHoursPerDay: hours,
     totalAgents: total || null,
     averageTenureYears: total
       ? (a * 0.25 + b * 1.25 + c * 3 + d * 5) / total
       : null,
     workingDaysPerYear: workingDays || null,
-    dailyCapacityPerAgent: hours * availability || null,
+    maxCapacityDays:
+      workingDays != null
+        ? workingDays - Number(setup.paidLeaveDays ?? 0) - Number(setup.otherLeaveDays ?? 0)
+        : null,
+    dailyCapacityPerAgent: dailyCapacity,
     version: setup.version + 1,
   }
 }

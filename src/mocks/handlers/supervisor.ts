@@ -23,6 +23,13 @@ import type {
   ToolkitEditorPayload,
 } from '@/features/toolkit-management/types'
 
+import {
+  annualMultiplier,
+  fteAnnualHours,
+  hoursPerYear,
+  supportFte,
+} from '@/features/exercise-management/components/associated-data/supportOptions'
+
 import { ensureShell, exerciseShells, recomputeTeamSetup } from '../data/exercise-store'
 import { holidayTemplateStore } from '../data/holiday-templates'
 import {
@@ -254,6 +261,43 @@ export const supervisorHandlers = [
     return HttpResponse.json(exercise)
   }),
 
+  http.put('*/api/v1/supervisor/exercises/:id/periods', async ({ params, request }) => {
+    const exercise = findExercise(params.id)
+    if (!exercise) return problem(404, 'Exercise not found.')
+    syncFlags(exercise)
+    if (!exercise.canEdit) return problem(422, 'Exercise periods can only be changed while In Progress or Returned.')
+    const body = (await request.json()) as Pick<
+      CreateExerciseInput,
+      'sizingMonth' | 'slotStartDate' | 'slotWeeks' | 'tmsFrom' | 'tmsTo'
+    >
+    if (
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.sizingMonth) ||
+      body.slotWeeks < 1 ||
+      body.slotWeeks > 12 ||
+      body.tmsTo < body.tmsFrom
+    ) {
+      return problem(422, 'Exercise dates are invalid.')
+    }
+    const previousYear = exercise.sizingMonth.slice(0, 4)
+    const nextYear = body.sizingMonth.slice(0, 4)
+    Object.assign(exercise, {
+      sizingMonth: body.sizingMonth,
+      slotStartDate: body.slotStartDate,
+      slotWeeks: body.slotWeeks,
+      tmsFrom: body.tmsFrom,
+      tmsTo: body.tmsTo,
+      version: exercise.version + 1,
+    })
+    const notices: string[] = []
+    if (previousYear !== nextYear) {
+      notices.push(
+        `Sizing year changed (${previousYear} → ${nextYear}). Holiday templates were re-applied.`,
+      )
+      notices.push(`Working Days / Year computed for ${nextYear}.`)
+    }
+    return HttpResponse.json({ exercise, notices })
+  }),
+
   http.delete('*/api/v1/supervisor/exercises/:id', ({ params }) => {
     const index = exercises.findIndex((item) => item.id === params.id)
     const exercise = exercises[index]
@@ -276,7 +320,10 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as TeamSetupRequest
-    ctx.shell.teamSetup = recomputeTeamSetup({ ...ctx.shell.teamSetup, ...body })
+    ctx.shell.teamSetup = recomputeTeamSetup(
+      { ...ctx.shell.teamSetup, ...body },
+      ctx.shell.cycleTime?.medianSeconds,
+    )
     return HttpResponse.json(ctx.shell.teamSetup)
   }),
 
@@ -313,9 +360,14 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as SupportItemRequest
-    const hours =
-      (Number(body.volume) * Number(body.workloadPerUnitMinutes) * Number(body.annualMultiplier)) /
-      60
+    const setup = ctx.shell.teamSetup
+    const multiplier = annualMultiplier(body.frequencyCode, setup.workingDaysPerYear)
+    const hours = hoursPerYear(
+      Number(body.volume),
+      Number(body.workloadPerUnitMinutes),
+      multiplier,
+    )
+    const fte = supportFte(hours, fteAnnualHours(setup))
     const item = {
       id: crypto.randomUUID(),
       lineageId: crypto.randomUUID(),
@@ -325,11 +377,11 @@ export const supervisorHandlers = [
       volume: body.volume,
       unitOfMeasure: body.unitOfMeasure,
       workloadPerUnitMinutes: body.workloadPerUnitMinutes,
-      annualMultiplier: body.annualMultiplier,
+      annualMultiplier: multiplier,
       workloadPerYearHours: hours,
-      supportFte: hours / 1800,
+      supportFte: fte,
       comments: body.comments ?? null,
-      calculationVersion: 'v1',
+      calculationVersion: 'v1.2',
       scopes: (body.kpiLineIds?.length
         ? body.kpiLineIds
         : ctx.exercise.snapshot.sharedKpis.map((kpi) => kpi.id)
@@ -352,9 +404,14 @@ export const supervisorHandlers = [
       const current = ctx.shell.support[index]
       if (!current) return problem(404, 'The support item was not found.')
       const body = (await request.json()) as SupportItemRequest
-      const hours =
-        (Number(body.volume) * Number(body.workloadPerUnitMinutes) * Number(body.annualMultiplier)) /
-        60
+      const setup = ctx.shell.teamSetup
+      const multiplier = annualMultiplier(body.frequencyCode, setup.workingDaysPerYear)
+      const hours = hoursPerYear(
+        Number(body.volume),
+        Number(body.workloadPerUnitMinutes),
+        multiplier,
+      )
+      const fte = supportFte(hours, fteAnnualHours(setup))
       const updated = {
         ...current,
         category: body.category,
@@ -363,10 +420,11 @@ export const supervisorHandlers = [
         volume: body.volume,
         unitOfMeasure: body.unitOfMeasure,
         workloadPerUnitMinutes: body.workloadPerUnitMinutes,
-        annualMultiplier: body.annualMultiplier,
+        annualMultiplier: multiplier,
         comments: body.comments ?? null,
         workloadPerYearHours: hours,
-        supportFte: hours / 1800,
+        supportFte: fte,
+        calculationVersion: 'v1.2',
         scopes: (body.kpiLineIds?.length
           ? body.kpiLineIds
           : ctx.exercise.snapshot.sharedKpis.map((kpi) => kpi.id)
@@ -578,13 +636,12 @@ export const supervisorHandlers = [
       baselineType: 'MANUAL',
       medianSeconds: body.medianSeconds,
       sampleCount: null,
-      coverageRatio: null,
-      calculationMethod: 'MANUAL',
-      methodVersion: 'v1',
+      calculationMethod: 'MANUAL_ENTRY',
       manualReason: body.manualReason,
       active: true,
       calculatedAt: new Date().toISOString(),
     }
+    ctx.shell.teamSetup = recomputeTeamSetup(ctx.shell.teamSetup, body.medianSeconds)
     return HttpResponse.json(ctx.shell.cycleTime, { status: 201 })
   }),
 

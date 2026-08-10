@@ -79,6 +79,19 @@ export interface CreateExerciseResult {
   notices: string[]
 }
 
+export interface UpdateExercisePeriodsInput {
+  sizingMonth: string
+  slotStartDate: string
+  slotWeeks: number
+  tmsFrom: string
+  tmsTo: string
+}
+
+export interface UpdateExercisePeriodsResult {
+  exercise: Exercise
+  notices: string[]
+}
+
 export interface TeamSetup {
   agentsLt6m: number | null
   agents6To24m: number | null
@@ -167,7 +180,8 @@ export interface SupportItemRequest {
   volume: number
   unitOfMeasure: string
   workloadPerUnitMinutes: number
-  annualMultiplier: number
+  /** Optional; server derives from Frequency (+ Working Days for Daily). */
+  annualMultiplier?: number | null
   comments?: string | null
   kpiLineIds?: string[]
 }
@@ -267,12 +281,38 @@ export interface CycleTimeBaseline {
   baselineType: string
   medianSeconds: number
   sampleCount: number | null
-  coverageRatio: number | null
   calculationMethod: string | null
-  methodVersion: string | null
   manualReason: string | null
   active: boolean
   calculatedAt: string
+}
+
+export interface ExerciseTmsSession {
+  sessionNo: string
+  reference: string
+  agentName: string
+  subtaskName: string
+  processedVolume: number | null
+  netDurationSeconds: number
+  cycleTimeSeconds: number | null
+  zScore: number | null
+  included: boolean
+  exclusionReason: string | null
+  startedAt: string
+  endedAt: string | null
+}
+
+export interface PatchExerciseTmsSessionResult {
+  session: ExerciseTmsSession
+  baseline: CycleTimeBaseline | null
+}
+
+export interface PageResult<T> {
+  items: T[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
 }
 
 export interface ManualBaselineRequest {

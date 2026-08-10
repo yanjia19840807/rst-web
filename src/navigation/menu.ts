@@ -22,6 +22,12 @@ export const menuItems: readonly MenuItem[] = [
     match: ['/agent/sessions'],
   },
   {
+    label: 'TMS List',
+    to: '/supervisor/sessions',
+    permission: PERMISSIONS.tmsTeamList,
+    match: ['/supervisor/sessions'],
+  },
+  {
     label: 'Toolkits',
     to: '/supervisor/toolkits',
     permission: PERMISSIONS.toolkitManage,

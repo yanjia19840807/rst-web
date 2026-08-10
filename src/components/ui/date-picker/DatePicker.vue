@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { DateValue } from '@internationalized/date'
-import { DateFormatter, getLocalTimeZone, parseDate, today } from '@internationalized/date'
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
 import { CalendarIcon } from '@lucide/vue'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { formatDate } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
 const props = withDefaults(
@@ -29,8 +30,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const formatter = new DateFormatter('en-GB', { dateStyle: 'medium' })
-const defaultPlaceholder = today(getLocalTimeZone())
+const open = ref(false)
 
 const date = computed<DateValue | undefined>({
   get() {
@@ -45,10 +45,23 @@ const date = computed<DateValue | undefined>({
     emit('update:modelValue', value?.toString() ?? '')
   },
 })
+
+/** Drives month/year dropdowns; stays on selected date or today when empty. */
+const calendarPlaceholder = ref<DateValue>(today(getLocalTimeZone()))
+
+function syncPlaceholder() {
+  calendarPlaceholder.value = date.value ?? today(getLocalTimeZone())
+}
+
+watch(() => props.modelValue, syncPlaceholder, { immediate: true })
+
+watch(open, (isOpen) => {
+  if (isOpen) syncPlaceholder()
+})
 </script>
 
 <template>
-  <Popover v-slot="{ close }">
+  <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <Button
         type="button"
@@ -64,16 +77,16 @@ const date = computed<DateValue | undefined>({
         "
       >
         <CalendarIcon />
-        {{ date ? formatter.format(date.toDate(getLocalTimeZone())) : placeholder }}
+        {{ date ? formatDate(date.toString()) : placeholder }}
       </Button>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-0" align="start">
       <Calendar
         v-model="date"
-        :default-placeholder="defaultPlaceholder"
+        v-model:placeholder="calendarPlaceholder"
         layout="month-and-year"
         initial-focus
-        @update:model-value="close"
+        @update:model-value="open = false"
       />
     </PopoverContent>
   </Popover>

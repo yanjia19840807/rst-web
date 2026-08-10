@@ -23,6 +23,7 @@ import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 import { exerciseApi } from '../api'
 import type { Exercise, WorkflowStatus } from '../types'
 import CreateExerciseDialog from './CreateExerciseDialog.vue'
+import { formatDate } from '@/lib/datetime'
 
 type TabKey = 'In Progress' | 'Under Review' | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
@@ -349,15 +350,6 @@ async function confirmWithdraw() {
   } finally {
     withdrawPending.value = false
   }
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value))
 }
 
 function deliveryHc(exercise: Exercise) {

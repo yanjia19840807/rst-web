@@ -26,9 +26,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { formatDate } from '@/lib/datetime'
+
 import { exerciseApi } from '../api'
+import { sizingHintLines, slotHintLines } from '../periodWindows'
 import type { Exercise, Scenario } from '../types'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
+import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
+import PeriodDerivedHints from './PeriodDerivedHints.vue'
 import SubmitDialog from './SubmitDialog.vue'
 import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
@@ -49,6 +54,7 @@ const officialOpen = ref(false)
 const officialPending = ref(false)
 const submitOpen = ref(false)
 const toolkitInfoOpen = ref(false)
+const periodsEditOpen = ref(false)
 
 const locked = computed(() => !exercise.value?.canEdit)
 const nextScenarioCode = computed(() => `S${scenarios.value.length + 1}`)
@@ -58,14 +64,23 @@ const selectedScenario = computed(
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce((sum, item) => sum + Number(item.deliveryHc), 0),
 )
+const sizingHints = computed(() =>
+  exercise.value ? sizingHintLines(exercise.value.sizingMonth) : [],
+)
+const slotHints = computed(() =>
+  exercise.value
+    ? slotHintLines(exercise.value.slotStartDate, exercise.value.slotWeeks)
+    : [],
+)
+const slotPeriodSummary = computed(() => {
+  if (!exercise.value) return '—'
+  const weeks = exercise.value.slotWeeks
+  const weekLabel = weeks === 1 ? '1 week' : `${weeks} weeks`
+  return `${formatDate(exercise.value.slotStartDate)} · ${weekLabel}`
+})
 
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value))
+function onPeriodsSaved(updated: Exercise) {
+  exercise.value = updated
 }
 
 async function load() {
@@ -188,8 +203,11 @@ onMounted(load)
     </PageActions>
 
     <Card>
-      <CardHeader>
+      <CardHeader class="items-center">
         <CardTitle class="text-base">Exercise Info</CardTitle>
+        <CardAction v-if="!locked">
+          <Button size="sm" variant="outline" @click="periodsEditOpen = true">Edit</Button>
+        </CardAction>
       </CardHeader>
       <CardContent class="grid gap-3">
         <DetailTable
@@ -197,12 +215,12 @@ onMounted(load)
             { key: 'toolkit', label: 'Toolkit', value: exercise.snapshot.toolkit.name },
             { label: 'Exercise No', value: exercise.exerciseCode },
             { label: 'Created', value: formatDate(exercise.createdAt) },
-            { label: 'Sizing Month', value: exercise.sizingMonth },
+            { key: 'sizingMonth', label: 'Sizing Month', value: exercise.sizingMonth },
+            { key: 'slotPeriod', label: 'Slot Period', value: slotPeriodSummary },
             {
-              label: 'Slot Period',
-              value: `${exercise.slotStartDate} · ${exercise.slotWeeks} week(s)`,
+              label: 'TMS period',
+              value: `${formatDate(exercise.tmsFrom)} – ${formatDate(exercise.tmsTo)}`,
             },
-            { label: 'TMS period', value: `${exercise.tmsFrom} – ${exercise.tmsTo}` },
             { label: 'Status', value: exercise.workflowStatus },
             { label: 'Delivery HC', value: deliveryHc.toFixed(1) },
           ]"
@@ -221,6 +239,18 @@ onMounted(load)
               </button>
             </span>
           </template>
+          <template #sizingMonth="{ row }">
+            <div>
+              <div>{{ row.value || '—' }}</div>
+              <PeriodDerivedHints :lines="sizingHints" />
+            </div>
+          </template>
+          <template #slotPeriod="{ row }">
+            <div>
+              <div>{{ row.value || '—' }}</div>
+              <PeriodDerivedHints :lines="slotHints" />
+            </div>
+          </template>
         </DetailTable>
         <div
           v-if="!locked"
@@ -232,9 +262,20 @@ onMounted(load)
       </CardContent>
     </Card>
 
+    <EditExercisePeriodsDialog
+      v-if="exercise"
+      v-model:open="periodsEditOpen"
+      :exercise="exercise"
+      @saved="onPeriodsSaved"
+    />
+
     <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
 
-    <AssociatedDataPanel :exercise-id="exerciseId" :read-only="locked" />
+    <AssociatedDataPanel
+      :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.version}`"
+      :exercise-id="exerciseId"
+      :read-only="locked"
+    />
 
     <Card>
       <CardHeader class="items-center">

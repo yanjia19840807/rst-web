@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 import type { CycleTimeBaseline } from '../../types'
 import type { MedianSourceMode } from './adTypes'
-import { formatNumber, formatPercentRatio } from './adTypes'
+import { formatNumber } from './adTypes'
 
 const props = defineProps<{
   source: MedianSourceMode
@@ -68,18 +68,6 @@ const metrics = computed(() => {
       metric: 'Accepted records',
       value: ct?.sampleCount != null ? formatNumber(ct.sampleCount) : '—',
       description: 'After outlier exclusion',
-      warn: false,
-    },
-    {
-      metric: 'Volume sampled',
-      value: ct?.coverageRatio != null ? formatPercentRatio(ct.coverageRatio) : '—',
-      description: 'Target >= 80% of week volume',
-      warn: ct?.coverageRatio != null && Number(ct.coverageRatio) < 0.8,
-    },
-    {
-      metric: 'Sample week',
-      value: ct?.methodVersion ?? '—',
-      description: ct?.calculationMethod ?? 'From active baseline',
       warn: false,
     },
   ]

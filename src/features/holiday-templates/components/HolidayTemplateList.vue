@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { YearPicker } from '@/components/ui/year-picker'
+import { formatDate } from '@/lib/datetime'
 
 import { holidayTemplateApi } from '../api'
 import { GBS_CENTERS } from '../centers'
@@ -161,7 +162,7 @@ onMounted(load)
                 <TableCell>{{ row.year }}</TableCell>
                 <TableCell>{{ row.holidayCount }}</TableCell>
                 <TableCell>{{ row.status }}</TableCell>
-                <TableCell>{{ row.updatedAt?.slice?.(0, 10) || '—' }}</TableCell>
+                <TableCell>{{ formatDate(row.updatedAt) }}</TableCell>
                 <TableCell>
                   <div class="flex justify-end gap-3">
                     <Button

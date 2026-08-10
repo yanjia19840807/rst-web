@@ -26,10 +26,20 @@ function slotName(row: DetailRow) {
 </script>
 
 <template>
-  <dl :class="cn('grid grid-cols-[minmax(120px,0.7fr)_1fr] text-sm', props.class)">
+  <dl
+    :class="
+      cn(
+        'grid grid-cols-[minmax(5.5rem,max-content)_minmax(0,1fr)] gap-x-4 text-sm',
+        props.class,
+      )
+    "
+  >
     <template v-for="row in rows" :key="slotName(row)">
-      <dt class="border-b py-2 text-muted-foreground">{{ row.label }}</dt>
-      <dd class="border-b py-2" :class="row.strong ? 'font-medium' : undefined">
+      <dt class="max-w-40 border-b py-2 pr-1 text-muted-foreground">{{ row.label }}</dt>
+      <dd
+        class="min-w-0 border-b py-2 break-words"
+        :class="row.strong ? 'font-medium' : undefined"
+      >
         <slot :name="slotName(row)" :row="row">
           {{ displayValue(row.value) }}
         </slot>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
+import TablePager from '@/components/TablePager.vue'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -10,17 +13,116 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import type { CycleTimeBaseline } from '../../types'
+import { exerciseApi } from '../../api'
+import type { CycleTimeBaseline, ExerciseTmsSession, TeamSetup } from '../../types'
 import AdMetric from './AdMetric.vue'
-import { formatNumber, formatPercentRatio } from './adTypes'
+import { formatNumber } from './adTypes'
 
 const props = defineProps<{
+  exerciseId: string
   cycleTime: CycleTimeBaseline | null
   readOnly?: boolean
 }>()
 
+const emit = defineEmits<{
+  'update:cycleTime': [value: CycleTimeBaseline]
+  'update:teamSetup': [value: TeamSetup]
+}>()
+
+const sessions = ref<ExerciseTmsSession[]>([])
+const loading = ref(false)
+const loadError = ref<string | null>(null)
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const busySessionNo = ref<string | null>(null)
+const localCycleTime = ref<CycleTimeBaseline | null>(props.cycleTime)
+
+watch(
+  () => props.cycleTime,
+  (value) => {
+    localCycleTime.value = value
+  },
+)
+
 const medianLabel = computed(() =>
-  props.cycleTime ? `${props.cycleTime.medianSeconds}s` : '—',
+  localCycleTime.value ? `${localCycleTime.value.medianSeconds}s` : '—',
+)
+
+const sessionTotalLabel = computed(() => {
+  if (localCycleTime.value?.sampleCount != null) {
+    return formatNumber(localCycleTime.value.sampleCount)
+  }
+  if (loading.value) return '…'
+  return total.value > 0 ? formatNumber(total.value) : '0'
+})
+
+function formatZScore(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return value.toFixed(2)
+}
+
+async function loadSessions() {
+  if (!props.exerciseId) return
+  loading.value = true
+  loadError.value = null
+  try {
+    const result = await exerciseApi.listExerciseTmsSessions(
+      props.exerciseId,
+      page.value,
+      pageSize.value,
+    )
+    sessions.value = result.items
+    total.value = result.total
+    page.value = result.page
+  } catch (error) {
+    sessions.value = []
+    total.value = 0
+    loadError.value = error instanceof Error ? error.message : 'Could not load TMS sessions.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function toggleIncluded(row: ExerciseTmsSession) {
+  if (props.readOnly || busySessionNo.value) return
+  busySessionNo.value = row.sessionNo
+  try {
+    const result = await exerciseApi.patchExerciseTmsSession(
+      props.exerciseId,
+      row.sessionNo,
+      !row.included,
+    )
+    if (result.baseline) {
+      localCycleTime.value = result.baseline
+      emit('update:cycleTime', result.baseline)
+    }
+    try {
+      emit('update:teamSetup', await exerciseApi.getTeamSetup(props.exerciseId))
+    } catch {
+      // Team Setup may be absent; cycle-time update still applies.
+    }
+    await loadSessions()
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not update session inclusion.')
+  } finally {
+    busySessionNo.value = null
+  }
+}
+
+watch(
+  () => props.exerciseId,
+  () => {
+    page.value = 1
+  },
+)
+
+watch(
+  [() => props.exerciseId, page, pageSize],
+  () => {
+    void loadSessions()
+  },
+  { immediate: true },
 )
 </script>
 
@@ -29,8 +131,8 @@ const medianLabel = computed(() =>
     <div class="grid max-w-xl gap-3 sm:grid-cols-2">
       <AdMetric
         label="Sessions"
-        :value="cycleTime?.sampleCount != null ? formatNumber(cycleTime.sampleCount) : '—'"
-        hint="Timing entries used by active baseline"
+        :value="sessionTotalLabel"
+        hint="Included samples used for the median"
       />
       <AdMetric
         label="Median cycle time"
@@ -40,21 +142,10 @@ const medianLabel = computed(() =>
     </div>
 
     <section class="rounded-lg border bg-card p-4">
-      <div class="mb-3 flex items-baseline gap-2">
-        <h3 class="text-base font-bold">TMS Sessions</h3>
-        <span class="text-xs text-muted-foreground">
-          {{ cycleTime?.sampleCount != null ? `${cycleTime.sampleCount} records` : 'No session feed' }}
-        </span>
-      </div>
-
-      <p class="mb-3 text-sm text-muted-foreground">
-        Session-level filter and raw TMS browse match the prototype layout. Detailed session rows
-        become available when the TMS sample feed is connected for this exercise window
-        {{ cycleTime ? `(active ${cycleTime.baselineType} baseline)` : '' }}.
-      </p>
+      <h3 class="mb-3 text-base font-bold">TMS Sessions</h3>
 
       <div class="overflow-x-auto rounded-md border">
-        <Table>
+        <Table class="min-w-[880px]">
           <TableHeader>
             <TableRow>
               <TableHead>Session</TableHead>
@@ -62,30 +153,84 @@ const medianLabel = computed(() =>
               <TableHead>Agent</TableHead>
               <TableHead>Subtask</TableHead>
               <TableHead>Cycle time</TableHead>
-              <TableHead v-if="!readOnly">Action</TableHead>
+              <TableHead>Z-Score</TableHead>
+              <TableHead v-if="!readOnly" class="w-[120px]">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
+            <TableRow v-if="loading">
               <TableCell
-                :colspan="readOnly ? 5 : 6"
+                :colspan="readOnly ? 6 : 7"
+                class="h-24 text-center text-sm text-muted-foreground"
+              >
+                Loading sessions…
+              </TableCell>
+            </TableRow>
+            <TableRow v-else-if="loadError">
+              <TableCell
+                :colspan="readOnly ? 6 : 7"
+                class="h-24 text-center text-sm text-destructive"
+              >
+                {{ loadError }}
+              </TableCell>
+            </TableRow>
+            <TableRow v-else-if="sessions.length === 0">
+              <TableCell
+                :colspan="readOnly ? 6 : 7"
                 class="h-24 text-center text-sm text-muted-foreground italic"
               >
-                <template v-if="cycleTime">
-                  Active median {{ medianLabel }} · coverage
-                  {{
-                    cycleTime.coverageRatio != null
-                      ? formatPercentRatio(cycleTime.coverageRatio)
-                      : '—'
-                  }}
-                  · sample method {{ cycleTime.calculationMethod || '—' }}
-                </template>
-                <template v-else>No active Cycle Time baseline yet.</template>
+                No TMS sessions linked to this exercise.
+              </TableCell>
+            </TableRow>
+            <TableRow
+              v-for="row in sessions"
+              :key="row.sessionNo"
+              :class="row.included ? undefined : 'text-muted-foreground'"
+            >
+              <TableCell class="font-mono text-xs">{{ row.sessionNo }}</TableCell>
+              <TableCell>{{ row.reference || '—' }}</TableCell>
+              <TableCell>{{ row.agentName || '—' }}</TableCell>
+              <TableCell>{{ row.subtaskName || '—' }}</TableCell>
+              <TableCell>
+                {{ row.cycleTimeSeconds != null ? `${row.cycleTimeSeconds}s` : '—' }}
+              </TableCell>
+              <TableCell
+                :class="
+                  row.zScore != null && row.zScore > 2 ? 'font-medium text-amber-700' : undefined
+                "
+              >
+                {{ formatZScore(row.zScore) }}
+              </TableCell>
+              <TableCell v-if="!readOnly">
+                <Button
+                  size="sm"
+                  variant="link"
+                  class="h-auto px-0"
+                  :class="row.included ? undefined : 'text-amber-600 hover:text-amber-700'"
+                  :disabled="busySessionNo === row.sessionNo"
+                  @click="toggleIncluded(row)"
+                >
+                  {{ row.included ? 'Exclude' : 'Restore' }}
+                </Button>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
       </div>
+
+      <TablePager
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        label="sessions"
+        @update:page="page = $event"
+        @update:page-size="
+          (size) => {
+            pageSize = size
+            page = 1
+          }
+        "
+      />
     </section>
   </div>
 </template>

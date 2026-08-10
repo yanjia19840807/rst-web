@@ -8,11 +8,16 @@ import type {
   CreateExerciseInput,
   CreateExerciseResult,
   CreateScenarioRequest,
+  UpdateExercisePeriodsInput,
+  UpdateExercisePeriodsResult,
   CycleTimeBaseline,
   DailyVolume,
   DailyVolumeRequest,
   Exercise,
+  ExerciseTmsSession,
+  PatchExerciseTmsSessionResult,
   ManualBaselineRequest,
+  PageResult,
   MonthlyVolume,
   MonthlyVolumeRequest,
   ReapplyCalendarResult,
@@ -47,6 +52,11 @@ export const exerciseApi = {
       body: JSON.stringify(input),
     }),
   detail: (id: string) => apiRequest<Exercise>(exercisePath(id)),
+  updatePeriods: (id: string, body: UpdateExercisePeriodsInput) =>
+    apiRequest<UpdateExercisePeriodsResult>(exercisePath(id, '/periods'), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   delete: (id: string) =>
     apiRequest<void>(exercisePath(id), {
       method: 'DELETE',
@@ -142,6 +152,30 @@ export const exerciseApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  listExerciseTmsSessions: (exerciseId: string, page = 1, pageSize = 10) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+    })
+    return apiRequest<PageResult<ExerciseTmsSession>>(
+      `${exercisePath(exerciseId, '/cycle-time/sessions')}?${params}`,
+    )
+  },
+  patchExerciseTmsSession: (
+    exerciseId: string,
+    sessionNo: string,
+    included: boolean,
+  ) =>
+    apiRequest<PatchExerciseTmsSessionResult>(
+      exercisePath(
+        exerciseId,
+        `/cycle-time/sessions/${encodeURIComponent(sessionNo)}`,
+      ),
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ included }),
+      },
+    ),
 
   listScenarios: (exerciseId: string) =>
     apiRequest<Scenario[]>(exercisePath(exerciseId, '/scenarios')),

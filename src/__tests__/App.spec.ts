@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
@@ -18,7 +18,7 @@ describe('App', () => {
       defaultOptions: { queries: { retry: false } },
     })
 
-    await router.push('/agent/session')
+    await router.push('/supervisor/toolkits')
     await router.isReady()
 
     const wrapper = mount(App, {
@@ -29,12 +29,16 @@ describe('App', () => {
       },
     })
 
+    await flushPromises()
+
     expect(wrapper.text()).toContain('Right Sizing Tool')
-    expect(wrapper.get('h1').text()).toBe('TMS Session')
-    expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('TMS List')
-    expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('Approval Queue')
-    expect(wrapper.text()).toContain('Chen Wei')
-    expect(wrapper.text()).toContain('SUPERVISOR001')
+    expect(wrapper.get('h1').text()).toBe('Toolkits')
+    expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('Toolkits')
+    expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('Exercises')
+    expect(wrapper.get('nav[aria-label="Application"]').text()).not.toContain('Approval Queue')
+    expect(wrapper.text()).toContain('YANG Brenda')
+    expect(wrapper.text()).toContain('S00628182')
+    expect(wrapper.text()).toContain('Supervisor')
 
     wrapper.unmount()
     queryClient.clear()

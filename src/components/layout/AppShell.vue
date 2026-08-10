@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { useSessionStore } from '@/auth/session'
@@ -7,6 +7,10 @@ import { isMenuItemActive, menuItems } from '@/navigation/menu'
 
 const route = useRoute()
 const session = useSessionStore()
+
+onMounted(() => {
+  void session.load()
+})
 
 const title = computed(() => String(route.meta.title ?? 'Right Sizing Tool'))
 const subtitle = computed(() => String(route.meta.subtitle ?? 'Right Sizing Tool'))
@@ -69,10 +73,14 @@ const copyrightYear = new Date().getFullYear()
           </div>
           <div class="min-w-0 text-right">
             <div class="truncate text-sm font-semibold text-foreground">
-              {{ session.displayName }}
+              {{ session.loading ? 'Loading…' : session.displayName || '—' }}
             </div>
             <div class="truncate text-xs text-muted-foreground" :title="session.rolesLabel">
-              {{ session.ccgid }} · {{ session.rolesLabel }}
+              <template v-if="session.ccgid">
+                {{ session.ccgid }}
+                <template v-if="session.rolesLabel"> · {{ session.rolesLabel }}</template>
+              </template>
+              <template v-else-if="!session.loading">—</template>
             </div>
           </div>
         </div>

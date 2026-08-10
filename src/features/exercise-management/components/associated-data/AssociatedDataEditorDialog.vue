@@ -73,17 +73,16 @@ function onOpenChange(next: boolean) {
   if (!next) emit('close')
 }
 
+/** Editors that only need Close (no dialog-level Save). */
+const closeOnly = computed(
+  () =>
+    props.editor === 'volume' ||
+    props.editor === 'support' ||
+    props.editor === 'tms',
+)
+
 async function save() {
-  if (!props.editor || props.readOnly || busy.value) return
-  if (props.editor === 'volume') {
-    onOpenChange(false)
-    return
-  }
-  if (props.editor === 'support') {
-    toast.success(`${title.value} saved.`)
-    onOpenChange(false)
-    return
-  }
+  if (!props.editor || props.readOnly || busy.value || closeOnly.value) return
 
   busy.value = true
   try {
@@ -95,6 +94,8 @@ async function save() {
       }
       const saved = await exerciseApi.putTeamSetup(props.exerciseId, body)
       emit('update:teamSetup', saved)
+      // Support FTE denominator depends on Team Setup — refresh rows.
+      emit('update:support', await exerciseApi.listSupport(props.exerciseId))
     } else if (props.editor === 'calendar') {
       const body = calendarEditor.value?.toRequest()
       if (!body) {
@@ -103,19 +104,7 @@ async function save() {
       }
       const saved = await exerciseApi.putCalendar(props.exerciseId, body)
       emit('update:calendar', saved)
-    } else if (props.editor === 'tms') {
-      if (props.medianSource === 'manual') {
-        const seconds = Number(props.manualMedian)
-        if (!seconds || !props.manualReason.trim()) {
-          toast.warning('Median seconds and reason are required for manual baseline.')
-          return
-        }
-        const saved = await exerciseApi.createManualCycleTime(props.exerciseId, {
-          medianSeconds: seconds,
-          manualReason: props.manualReason.trim(),
-        })
-        emit('update:cycleTime', saved)
-      }
+      emit('update:support', await exerciseApi.listSupport(props.exerciseId))
     }
     toast.success(`${title.value} saved.`)
     onOpenChange(false)
@@ -140,7 +129,11 @@ async function save() {
               ? 'Read-only data snapshot for this exercise.'
               : editor === 'volume'
                 ? 'View and maintain the associated volume input data.'
-                : 'Edit the exercise Associated Data, then save your changes.'
+                : editor === 'support'
+                  ? 'Add, edit, or delete workload rows — changes are saved immediately.'
+                  : editor === 'tms'
+                    ? 'Review TMS sessions linked to this exercise Cycle Time population.'
+                    : 'Edit the exercise Associated Data, then save your changes.'
           }}
         </DialogDescription>
       </DialogHeader>
@@ -156,13 +149,17 @@ async function save() {
         />
         <AdTmsEditor
           v-else-if="editor === 'tms'"
+          :exercise-id="exerciseId"
           :cycle-time="cycleTime"
           :read-only="readOnly"
+          @update:cycle-time="emit('update:cycleTime', $event)"
+          @update:team-setup="emit('update:teamSetup', $event)"
         />
         <AdSupportEditor
           v-else-if="editor === 'support'"
           :exercise-id="exerciseId"
           :items="support"
+          :team-setup="teamSetup"
           :read-only="readOnly"
           @update:items="emit('update:support', $event)"
         />
@@ -187,10 +184,10 @@ async function save() {
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3 sm:justify-end">
         <Button type="button" variant="outline" :disabled="busy" @click="onOpenChange(false)">
-          {{ readOnly || editor === 'volume' ? 'Close' : 'Cancel' }}
+          {{ readOnly || closeOnly ? 'Close' : 'Cancel' }}
         </Button>
         <Button
-          v-if="editor !== 'volume' && !readOnly"
+          v-if="!closeOnly && !readOnly"
           type="button"
           :disabled="busy"
           @click="save"

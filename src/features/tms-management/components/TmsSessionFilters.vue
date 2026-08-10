@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+
+import type { Pl3Option, TeamAgentOption, Toolkit } from '../types'
 
 const props = defineProps<{
   sessionNo: string
   reference: string
   dateFrom: string
   dateTo: string
+  agentCcgid?: string
+  toolkitId?: string
+  pl3Code?: string
+  showTeamFilters?: boolean
+  agents?: TeamAgentOption[]
+  toolkits?: Toolkit[]
+  pl3Options?: Pl3Option[]
 }>()
 
 const emit = defineEmits<{
@@ -17,11 +26,23 @@ const emit = defineEmits<{
   'update:reference': [value: string]
   'update:dateFrom': [value: string]
   'update:dateTo': [value: string]
+  'update:agentCcgid': [value: string]
+  'update:toolkitId': [value: string]
+  'update:pl3Code': [value: string]
 }>()
+
+const selectClass =
+  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 const moreOpen = ref(false)
 const draftFrom = ref(props.dateFrom)
 const draftTo = ref(props.dateTo)
+
+const toolkitOptions = computed(() => {
+  const all = props.toolkits ?? []
+  if (!props.pl3Code) return all
+  return all.filter((toolkit) => toolkit.pl3Code === props.pl3Code)
+})
 
 watch(
   () => [props.dateFrom, props.dateTo],
@@ -40,6 +61,19 @@ function applyDates() {
 function clearDraftDates() {
   draftFrom.value = ''
   draftTo.value = ''
+}
+
+function onPl3Change(value: string) {
+  emit('update:pl3Code', value)
+  if (
+    props.toolkitId &&
+    value &&
+    !(props.toolkits ?? []).some(
+      (toolkit) => toolkit.id === props.toolkitId && toolkit.pl3Code === value,
+    )
+  ) {
+    emit('update:toolkitId', '')
+  }
 }
 </script>
 
@@ -63,6 +97,62 @@ function clearDraftDates() {
           placeholder="Search reference"
           @update:model-value="emit('update:reference', String($event))"
         />
+      </label>
+      <label
+        v-if="showTeamFilters"
+        class="grid gap-1.5 text-xs text-muted-foreground"
+      >
+        Agent
+        <select
+          :class="[selectClass, 'w-[200px]']"
+          :value="agentCcgid ?? ''"
+          @change="emit('update:agentCcgid', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">All agents</option>
+          <option v-for="agent in agents ?? []" :key="agent.ccgid" :value="agent.ccgid">
+            {{ agent.name }}
+          </option>
+        </select>
+      </label>
+      <label
+        v-if="showTeamFilters"
+        class="grid gap-1.5 text-xs text-muted-foreground"
+      >
+        Toolkit
+        <select
+          :class="[selectClass, 'w-[220px]']"
+          :value="toolkitId ?? ''"
+          @change="emit('update:toolkitId', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">All toolkits</option>
+          <option
+            v-for="toolkit in toolkitOptions"
+            :key="toolkit.id"
+            :value="toolkit.id"
+          >
+            {{ toolkit.name }}
+          </option>
+        </select>
+      </label>
+      <label
+        v-if="showTeamFilters"
+        class="grid gap-1.5 text-xs text-muted-foreground"
+      >
+        PL3
+        <select
+          :class="[selectClass, 'w-[220px]']"
+          :value="pl3Code ?? ''"
+          @change="onPl3Change(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">All PL3</option>
+          <option
+            v-for="pl3 in pl3Options ?? []"
+            :key="pl3.code"
+            :value="pl3.code"
+          >
+            {{ pl3.name }}
+          </option>
+        </select>
       </label>
       <Button variant="outline" @click="moreOpen = !moreOpen">
         More Filters{{ dateFrom || dateTo ? ' (1)' : '' }}

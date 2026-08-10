@@ -31,8 +31,3 @@ export function numOrNull(value: string | number | null | undefined) {
   const n = Number(value)
   return Number.isFinite(n) ? n : null
 }
-
-export function formatPercentRatio(value: number | null | undefined) {
-  if (value == null) return '—'
-  return `${(Number(value) * 100).toFixed(0)}%`
-}

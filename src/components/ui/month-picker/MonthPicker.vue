@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { CalendarDate, DateFormatter, getLocalTimeZone, today } from '@internationalized/date'
+import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date'
 import { CalendarIcon, ChevronLeft, ChevronRight } from '@lucide/vue'
 import { createYear } from 'reka-ui/date'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { formatMonth, formatMonthNumber } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
 const props = withDefaults(
@@ -26,8 +27,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const formatter = new DateFormatter('en-GB', { month: 'short', year: 'numeric' })
-const monthFormatter = new DateFormatter('en-GB', { month: 'short' })
 const open = ref(false)
 
 function parseMonthValue(value: string): CalendarDate | undefined {
@@ -54,7 +53,7 @@ const months = computed(() =>
 )
 
 function selectMonth(month: number) {
-  const next = `${viewYear.value}-${String(month).padStart(2, '0')}`
+  const next = `${viewYear.value}-${formatMonthNumber(month)}`
   emit('update:modelValue', next)
   open.value = false
 }
@@ -80,11 +79,7 @@ function isSelected(month: number) {
         "
       >
         <CalendarIcon />
-        {{
-          selected
-            ? formatter.format(selected.toDate(getLocalTimeZone()))
-            : placeholder
-        }}
+        {{ selected ? formatMonth(modelValue) : placeholder }}
       </Button>
     </PopoverTrigger>
     <PopoverContent class="w-64 p-3" align="start">
@@ -118,7 +113,7 @@ function isSelected(month: number) {
           :variant="isSelected(monthDate.month) ? 'default' : 'ghost'"
           @click="selectMonth(monthDate.month)"
         >
-          {{ monthFormatter.format(monthDate.toDate(getLocalTimeZone())) }}
+          {{ formatMonthNumber(monthDate.month) }}
         </Button>
       </div>
     </PopoverContent>

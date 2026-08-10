@@ -19,6 +19,7 @@ import {
 import { exerciseApi } from '../api'
 import type { Exercise, SubmittedDetails } from '../types'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
+import { formatDate } from '@/lib/datetime'
 
 const props = defineProps<{
   exerciseId: string
@@ -29,17 +30,6 @@ const loading = ref(true)
 const pageTab = ref<'exercise' | 'approval'>('exercise')
 const details = ref<SubmittedDetails | null>(null)
 const exercise = ref<Exercise | null>(null)
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
 
 async function load() {
   loading.value = true

@@ -9,27 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { useTmsSessionDetailQuery } from '../api/queries'
 import { formatDuration } from '../composables/useTmsTimer'
+import type { TmsListMode } from '../types'
+import { formatDate } from '@/lib/datetime'
 
-const props = defineProps<{
-  sessionId: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    sessionId: string
+    mode?: TmsListMode
+  }>(),
+  { mode: 'agent' },
+)
 
 const router = useRouter()
-const detailQuery = useTmsSessionDetailQuery(() => props.sessionId)
+const detailQuery = useTmsSessionDetailQuery(
+  () => props.sessionId,
+  () => props.mode,
+)
 
 const session = computed(() => detailQuery.data.value ?? null)
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(new Date(value))
-}
+const isSupervisor = computed(() => props.mode === 'supervisor')
 
 function cycleTimeLabel() {
   const item = session.value
@@ -40,9 +38,21 @@ function cycleTimeLabel() {
 const rows = computed(() => {
   const item = session.value
   if (!item) return []
-  return [
+  const base = [
     { label: 'Session No', value: item.id, strong: true },
     { label: 'Status', value: item.status },
+  ]
+  if (isSupervisor.value) {
+    base.push({
+      label: 'Agent',
+      value: item.agentName
+        ? item.agentCcgid
+          ? `${item.agentName} (${item.agentCcgid})`
+          : item.agentName
+        : '—',
+    })
+  }
+  base.push(
     { label: 'Toolkit', value: item.toolkitName },
     { label: 'Subtask', value: item.subtaskName || '—' },
     { label: 'Start', value: formatDate(item.startedAt) },
@@ -52,8 +62,15 @@ const rows = computed(() => {
     { label: 'Volume', value: item.processedVolume ?? '—' },
     { label: 'Reference', value: item.reference || '—' },
     { label: 'Remarks', value: item.remarks || '—' },
-  ]
+  )
+  return base
 })
+
+function goBack() {
+  void router.push({
+    name: isSupervisor.value ? 'supervisor-sessions' : 'agent-sessions',
+  })
+}
 </script>
 
 <template>
@@ -63,7 +80,7 @@ const rows = computed(() => {
         <Button
           variant="link"
           class="h-auto px-0 font-semibold"
-          @click="router.push({ name: 'agent-sessions' })"
+          @click="goBack"
         >
           ← Back to TMS List
         </Button>

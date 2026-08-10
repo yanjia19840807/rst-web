@@ -1,6 +1,7 @@
 export const PERMISSIONS = {
   tmsSession: 'tms:session',
   tmsList: 'tms:list',
+  tmsTeamList: 'tms:team-list',
   toolkitManage: 'toolkit:manage',
   exerciseManage: 'exercise:manage',
   holidayTemplateManage: 'holiday-template:manage',
@@ -14,31 +15,45 @@ export const PERMISSIONS = {
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
 
-export type AppRole = 'AGENT' | 'SUPERVISOR' | 'APPROVER' | 'HO'
+/** Six RST product roles (aligned with backend / Role Matrix). */
+export type AppRole = 'AGENT' | 'SUPERVISOR' | 'MANAGER' | 'CDH' | 'LTH' | 'HO'
+
+const SHARED_REPORTS: readonly Permission[] = [
+  PERMISSIONS.governanceRepository,
+  PERMISSIONS.governanceSupport,
+  PERMISSIONS.governanceDashboard,
+  PERMISSIONS.governanceBenchmarking,
+]
 
 const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   AGENT: [PERMISSIONS.tmsSession, PERMISSIONS.tmsList],
   SUPERVISOR: [
+    PERMISSIONS.tmsTeamList,
     PERMISSIONS.toolkitManage,
     PERMISSIONS.exerciseManage,
-    PERMISSIONS.holidayTemplateManage,
   ],
-  APPROVER: [
+  MANAGER: [PERMISSIONS.approvalQueue],
+  CDH: [PERMISSIONS.approvalQueue],
+  LTH: [
+    PERMISSIONS.holidayTemplateManage,
     PERMISSIONS.approvalQueue,
-    PERMISSIONS.holidayTemplateManage,
-    PERMISSIONS.governanceRepository,
-    PERMISSIONS.governanceSupport,
     PERMISSIONS.governanceValidationWorkflow,
-    PERMISSIONS.governanceDashboard,
-    PERMISSIONS.governanceBenchmarking,
+    ...SHARED_REPORTS,
   ],
-  HO: [
-    PERMISSIONS.holidayTemplateManage,
-    PERMISSIONS.governanceRepository,
-    PERMISSIONS.governanceSupport,
-    PERMISSIONS.governanceDashboard,
-    PERMISSIONS.governanceBenchmarking,
-  ],
+  HO: [...SHARED_REPORTS],
+}
+
+const APP_ROLES = new Set<string>([
+  'AGENT',
+  'SUPERVISOR',
+  'MANAGER',
+  'CDH',
+  'LTH',
+  'HO',
+])
+
+export function isAppRole(value: string): value is AppRole {
+  return APP_ROLES.has(value)
 }
 
 export function permissionsForRoles(roles: readonly AppRole[]): Permission[] {
@@ -54,6 +69,8 @@ export function permissionsForRoles(roles: readonly AppRole[]): Permission[] {
 export const ROLE_LABELS: Record<AppRole, string> = {
   AGENT: 'Agent',
   SUPERVISOR: 'Supervisor',
-  APPROVER: 'Approver',
+  MANAGER: 'Manager',
+  CDH: 'CDH',
+  LTH: 'LTH',
   HO: 'HO',
 }

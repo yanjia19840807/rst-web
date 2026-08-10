@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,6 +24,7 @@ import {
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionsQuery } from '../api/queries'
+import { formatDate } from '@/lib/datetime'
 
 defineProps<{
   open: boolean
@@ -37,7 +39,7 @@ const filters = reactive({
   status: 'paused' as const,
   query: '',
   page: 1,
-  pageSize: 5,
+  pageSize: 10,
 })
 const queryFilters = computed(() => ({ ...filters }))
 const pausedQuery = useTmsSessionsQuery(queryFilters)
@@ -51,14 +53,6 @@ watch(
     filters.page = 1
   },
 )
-
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
-}
 
 async function resumeSession(id: string) {
   try {
@@ -148,22 +142,19 @@ async function confirmDelete() {
         </Table>
       </div>
 
-      <div class="flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" :disabled="filters.page <= 1" @click="filters.page--">
-          Previous
-        </Button>
-        <span class="text-xs text-muted-foreground">
-          {{ pausedQuery.data.value?.page ?? 1 }} / {{ pausedQuery.data.value?.totalPages ?? 1 }}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="filters.page >= (pausedQuery.data.value?.totalPages ?? 1)"
-          @click="filters.page++"
-        >
-          Next
-        </Button>
-      </div>
+      <TablePager
+        :total="pausedQuery.data.value?.total ?? 0"
+        :page="filters.page"
+        :page-size="filters.pageSize"
+        label="sessions"
+        @update:page="filters.page = $event"
+        @update:page-size="
+          (size) => {
+            filters.pageSize = size
+            filters.page = 1
+          }
+        "
+      />
     </DialogContent>
   </Dialog>
 

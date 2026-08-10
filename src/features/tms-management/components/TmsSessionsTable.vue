@@ -11,40 +11,42 @@ import {
 
 import { formatDuration } from '../composables/useTmsTimer'
 import type { TmsSession } from '../types'
+import { formatDate } from '@/lib/datetime'
 
-defineProps<{
-  sessions: TmsSession[]
-  pending?: boolean
-  deletingId?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    sessions: TmsSession[]
+    pending?: boolean
+    deletingId?: string
+    showAgent?: boolean
+    canDelete?: boolean
+  }>(),
+  {
+    showAgent: false,
+    canDelete: true,
+  },
+)
 
 const emit = defineEmits<{
   delete: [id: string]
   open: [id: string]
 }>()
 
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
-
 function cycleTime(session: TmsSession) {
   if (!session.processedVolume) return '—'
   return `${Math.round(session.netDurationSeconds / session.processedVolume)}s`
 }
+
+const colCount = () => 11 + (props.showAgent ? 1 : 0)
 </script>
 
 <template>
   <div class="overflow-x-auto rounded-lg border">
-    <Table class="min-w-[1120px]">
+    <Table :class="showAgent ? 'min-w-[1240px]' : 'min-w-[1120px]'">
       <TableHeader>
         <TableRow>
           <TableHead>Session No</TableHead>
+          <TableHead v-if="showAgent">Agent</TableHead>
           <TableHead>Toolkit</TableHead>
           <TableHead>Subtask</TableHead>
           <TableHead>Start</TableHead>
@@ -58,15 +60,11 @@ function cycleTime(session: TmsSession) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow
-          v-for="session in sessions"
-          :key="session.id"
-          class="cursor-pointer hover:bg-muted/40"
-          @click="emit('open', session.id)"
-        >
-          <TableCell class="font-mono text-xs text-primary underline-offset-2 hover:underline">
+        <TableRow v-for="session in sessions" :key="session.id">
+          <TableCell class="font-mono text-xs">
             {{ session.id }}
           </TableCell>
+          <TableCell v-if="showAgent">{{ session.agentName || '—' }}</TableCell>
           <TableCell>{{ session.toolkitName }}</TableCell>
           <TableCell>{{ session.subtaskName }}</TableCell>
           <TableCell>{{ formatDate(session.startedAt) }}</TableCell>
@@ -76,25 +74,36 @@ function cycleTime(session: TmsSession) {
           <TableCell>{{ session.reference || '—' }}</TableCell>
           <TableCell>{{ session.processedVolume ?? '—' }}</TableCell>
           <TableCell class="max-w-52 truncate">{{ session.remarks || '—' }}</TableCell>
-          <TableCell class="text-right" @click.stop>
-            <Button
-              size="sm"
-              variant="link-destructive"
-              class="h-auto px-0 font-semibold"
-              :disabled="deletingId === session.id"
-              @click="emit('delete', session.id)"
-            >
-              Delete
-            </Button>
+          <TableCell class="text-right">
+            <div class="flex items-center justify-end gap-3">
+              <Button
+                size="sm"
+                variant="link"
+                class="h-auto px-0 font-semibold"
+                @click="emit('open', session.id)"
+              >
+                View
+              </Button>
+              <Button
+                v-if="canDelete"
+                size="sm"
+                variant="link-destructive"
+                class="h-auto px-0 font-semibold"
+                :disabled="deletingId === session.id"
+                @click="emit('delete', session.id)"
+              >
+                Delete
+              </Button>
+            </div>
           </TableCell>
         </TableRow>
         <TableRow v-if="!pending && sessions.length === 0">
-          <TableCell colspan="11" class="h-24 text-center text-muted-foreground">
+          <TableCell :colspan="colCount()" class="h-24 text-center text-muted-foreground">
             No sessions found.
           </TableCell>
         </TableRow>
         <TableRow v-if="pending">
-          <TableCell colspan="11" class="h-24 text-center text-muted-foreground">
+          <TableCell :colspan="colCount()" class="h-24 text-center text-muted-foreground">
             Loading sessions…
           </TableCell>
         </TableRow>
