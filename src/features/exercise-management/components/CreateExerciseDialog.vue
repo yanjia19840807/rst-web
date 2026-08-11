@@ -181,9 +181,11 @@ async function create() {
           <div
             class="mt-4 rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
           >
-            Associated Data will be initialized from the latest Approved archive for this Toolkit.
-            Creating the Exercise freezes the current Toolkit, Subtasks, Shared KPI selections and
-            Delivery HC from the ACTIVE Timesheet.
+            Associated Data (Team Setup, Support, Calendar, Volume) will be initialized from the
+            latest Approved archive for this Toolkit when training periods overlap. Volume Input
+            rows are auto-generated for training windows only (not forecast). Creating the Exercise
+            freezes the current Toolkit, Subtasks, Shared KPI selections and Delivery HC from the
+            ACTIVE Timesheet.
           </div>
         </div>
       </div>

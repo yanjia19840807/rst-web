@@ -25,6 +25,7 @@ import type {
 import type { AdTab, MedianSourceMode } from './adTypes'
 import { AD_EDITOR_TITLES } from './adTypes'
 import AdCalendarEditor from './AdCalendarEditor.vue'
+import AdManualMedianEditor from './AdManualMedianEditor.vue'
 import AdSupportEditor from './AdSupportEditor.vue'
 import AdTeamSetupEditor from './AdTeamSetupEditor.vue'
 import AdTmsEditor from './AdTmsEditor.vue'
@@ -34,6 +35,9 @@ const props = defineProps<{
   open: boolean
   editor: AdTab | null
   exerciseId: string
+  sizingMonth: string
+  slotStartDate: string
+  slotWeeks: number
   teamSetup: TeamSetup | null
   support: SupportItem[]
   calendar: CalendarView | null
@@ -42,8 +46,6 @@ const props = defineProps<{
   slot: SlotVolume[]
   cycleTime: CycleTimeBaseline | null
   medianSource: MedianSourceMode
-  manualMedian: string
-  manualReason: string
   readOnly?: boolean
 }>()
 
@@ -62,10 +64,37 @@ const emit = defineEmits<{
 const busy = ref(false)
 const teamEditor = ref<InstanceType<typeof AdTeamSetupEditor> | null>(null)
 const calendarEditor = ref<InstanceType<typeof AdCalendarEditor> | null>(null)
+const manualEditor = ref<InstanceType<typeof AdManualMedianEditor> | null>(null)
 
-const title = computed(() => (props.editor ? AD_EDITOR_TITLES[props.editor] : ''))
+const isManualTms = computed(
+  () => props.editor === 'tms' && props.medianSource === 'manual',
+)
+
+const title = computed(() => {
+  if (isManualTms.value) return 'Manual median input'
+  return props.editor ? AD_EDITOR_TITLES[props.editor] : ''
+})
+
 const supportFte = computed(() =>
   props.support.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0),
+)
+
+const manualSeedMedian = computed(() =>
+  props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL'
+    ? String(props.cycleTime.medianSeconds)
+    : '',
+)
+
+const manualSeedReason = computed(() =>
+  props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL'
+    ? (props.cycleTime.manualReason ?? '')
+    : '',
+)
+
+const manualSeedFiles = computed(() =>
+  props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL'
+    ? (props.cycleTime.files ?? [])
+    : [],
 )
 
 function onOpenChange(next: boolean) {
@@ -78,7 +107,7 @@ const closeOnly = computed(
   () =>
     props.editor === 'volume' ||
     props.editor === 'support' ||
-    props.editor === 'tms',
+    (props.editor === 'tms' && props.medianSource === 'system'),
 )
 
 async function save() {
@@ -94,7 +123,6 @@ async function save() {
       }
       const saved = await exerciseApi.putTeamSetup(props.exerciseId, body)
       emit('update:teamSetup', saved)
-      // Support FTE denominator depends on Team Setup — refresh rows.
       emit('update:support', await exerciseApi.listSupport(props.exerciseId))
     } else if (props.editor === 'calendar') {
       const body = calendarEditor.value?.toRequest()
@@ -105,6 +133,16 @@ async function save() {
       const saved = await exerciseApi.putCalendar(props.exerciseId, body)
       emit('update:calendar', saved)
       emit('update:support', await exerciseApi.listSupport(props.exerciseId))
+    } else if (isManualTms.value) {
+      const body = manualEditor.value?.toRequest()
+      if (!body) return
+      const saved = await exerciseApi.createManualCycleTime(props.exerciseId, body)
+      emit('update:cycleTime', saved)
+      try {
+        emit('update:teamSetup', await exerciseApi.getTeamSetup(props.exerciseId))
+      } catch {
+        // Team Setup may be absent; baseline save still applies.
+      }
     }
     toast.success(`${title.value} saved.`)
     onOpenChange(false)
@@ -119,9 +157,17 @@ async function save() {
 <template>
   <Dialog :open="open" @update:open="onOpenChange">
     <DialogContent
-      class="flex h-[92vh] w-[min(1180px,94vw)] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[94vw]"
+      class="flex flex-col gap-0 overflow-hidden p-0"
+      :class="
+        isManualTms
+          ? 'max-h-[88vh] w-full sm:max-w-2xl'
+          : 'h-[92vh] w-[min(1180px,94vw)] max-w-[94vw] sm:max-w-[94vw]'
+      "
     >
-      <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
+      <DialogHeader
+        class="mx-0 mt-0 shrink-0 rounded-none"
+        :class="isManualTms ? 'px-6 py-4' : 'px-5 py-4'"
+      >
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>
           {{
@@ -131,9 +177,11 @@ async function save() {
                 ? 'View and maintain the associated volume input data.'
                 : editor === 'support'
                   ? 'Add, edit, or delete workload rows — changes are saved immediately.'
-                  : editor === 'tms'
-                    ? 'Review TMS sessions linked to this exercise Cycle Time population.'
-                    : 'Edit the exercise Associated Data, then save your changes.'
+                  : isManualTms
+                    ? 'Enter the manual median override and reason, then save. Support files are optional.'
+                    : editor === 'tms'
+                      ? 'Review TMS sessions linked to this exercise Cycle Time population.'
+                      : 'Edit the exercise Associated Data, then save your changes.'
           }}
         </DialogDescription>
       </DialogHeader>
@@ -145,6 +193,15 @@ async function save() {
           :model-value="teamSetup"
           :cycle-time-seconds="cycleTime?.medianSeconds"
           :support-fte="supportFte"
+          :read-only="readOnly"
+        />
+        <AdManualMedianEditor
+          v-else-if="isManualTms"
+          ref="manualEditor"
+          :exercise-id="exerciseId"
+          :median-seconds="manualSeedMedian"
+          :reason="manualSeedReason"
+          :files="manualSeedFiles"
           :read-only="readOnly"
         />
         <AdTmsEditor
@@ -172,6 +229,9 @@ async function save() {
         <AdVolumeEditor
           v-else-if="editor === 'volume'"
           :exercise-id="exerciseId"
+          :sizing-month="sizingMonth"
+          :slot-start-date="slotStartDate"
+          :slot-weeks="slotWeeks"
           :monthly="monthly"
           :daily="daily"
           :slot="slot"
@@ -182,7 +242,10 @@ async function save() {
         />
       </div>
 
-      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3 sm:justify-end">
+      <DialogFooter
+        class="mx-0 mt-0 mb-0 shrink-0 rounded-none sm:justify-end"
+        :class="isManualTms ? 'px-6 py-4' : 'px-5 py-3'"
+      >
         <Button type="button" variant="outline" :disabled="busy" @click="onOpenChange(false)">
           {{ readOnly || closeOnly ? 'Close' : 'Cancel' }}
         </Button>

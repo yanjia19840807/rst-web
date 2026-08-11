@@ -98,73 +98,93 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-      <DialogHeader>
+    <DialogContent
+      class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+    >
+      <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Submit For Validation</DialogTitle>
         <DialogDescription>
           System checks run before lock. Failed severe checks require remarks.
         </DialogDescription>
       </DialogHeader>
 
-      <div v-if="loading" class="py-8 text-center text-sm text-muted-foreground">
-        Running pre-submit validation…
-      </div>
-      <div v-else class="grid gap-4">
-        <DetailTable
-          :rows="[
-            { label: 'Next step', value: 'Manager Review' },
-            { label: 'Current owner', value: 'Manager queue' },
-            { label: 'Notification', value: 'HO Transformation Team after validation' },
-          ]"
-        />
-
-        <div>
-          <div class="mb-1 text-sm font-semibold">Pre-submit Validation</div>
-          <p class="mb-3 text-xs text-muted-foreground">
-            {{
-              remarksRequired
-                ? 'One or more severe checks failed. Add remarks before confirming.'
-                : 'All severe checks passed. Remarks are optional.'
-            }}
+      <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div v-if="loading" class="rounded-lg border bg-card p-4">
+          <p class="py-6 text-center text-sm text-muted-foreground">
+            Running pre-submit validation…
           </p>
-          <div class="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Check</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead class="w-28">Severity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="finding in preview?.findings ?? []" :key="finding.ruleCode">
-                  <TableCell>{{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}</TableCell>
-                  <TableCell>
-                    {{ finding.passed ? 'Passed' : 'Failed' }}
-                  </TableCell>
-                  <TableCell>{{ severityLabel(finding) }}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+        </div>
+        <div v-else class="rounded-lg border bg-card p-4">
+          <div>
+            <div class="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Submission path
+            </div>
+            <DetailTable
+              :rows="[
+                { label: 'Next step', value: 'Manager Review' },
+                { label: 'Current owner', value: 'Manager queue' },
+                { label: 'Notification', value: 'HO Transformation Team after validation' },
+              ]"
+            />
+          </div>
+
+          <div class="mt-4">
+            <div class="mb-2 flex items-baseline justify-between gap-2">
+              <div class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Pre-submit Validation
+              </div>
+              <span class="text-xs text-muted-foreground">
+                {{
+                  remarksRequired
+                    ? 'Severe checks failed — remarks required'
+                    : 'All severe checks passed'
+                }}
+              </span>
+            </div>
+            <div class="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Check</TableHead>
+                    <TableHead>Result</TableHead>
+                    <TableHead class="w-28">Severity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="finding in preview?.findings ?? []" :key="finding.ruleCode">
+                    <TableCell>{{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}</TableCell>
+                    <TableCell>
+                      {{ finding.passed ? 'Passed' : 'Failed' }}
+                    </TableCell>
+                    <TableCell>{{ severityLabel(finding) }}</TableCell>
+                  </TableRow>
+                  <TableRow v-if="!(preview?.findings?.length)">
+                    <TableCell colspan="3" class="text-muted-foreground">
+                      No validation findings returned.
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <div class="mt-4 grid gap-1.5">
+            <Label for="submit-remarks">
+              Submission remarks{{ remarksRequired ? ' *' : '' }}
+            </Label>
+            <p class="text-xs text-muted-foreground">
+              {{
+                remarksRequired
+                  ? 'Required because at least one severe check failed.'
+                  : 'Optional context for the Manager reviewer.'
+              }}
+            </p>
+            <Textarea id="submit-remarks" v-model="remarks" rows="3" />
           </div>
         </div>
-
-        <div class="grid gap-1.5">
-          <Label for="submit-remarks">
-            Submission remarks{{ remarksRequired ? ' *' : '' }}
-          </Label>
-          <p class="text-xs text-muted-foreground">
-            {{
-              remarksRequired
-                ? 'Required because at least one severe check failed.'
-                : 'Optional context for the Manager reviewer.'
-            }}
-          </p>
-          <Textarea id="submit-remarks" v-model="remarks" rows="3" />
-        </div>
       </div>
 
-      <DialogFooter>
+      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="submitting" @click="open = false">Cancel</Button>
         <Button :disabled="loading || submitting" @click="confirm">
           {{ submitting ? 'Submitting…' : 'Confirm Submit' }}

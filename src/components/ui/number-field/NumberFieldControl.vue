@@ -3,8 +3,6 @@ import type { HTMLAttributes } from 'vue'
 
 import NumberField from './NumberField.vue'
 import NumberFieldContent from './NumberFieldContent.vue'
-import NumberFieldDecrement from './NumberFieldDecrement.vue'
-import NumberFieldIncrement from './NumberFieldIncrement.vue'
 import NumberFieldInput from './NumberFieldInput.vue'
 
 const props = withDefaults(
@@ -49,9 +47,7 @@ function onUpdate(value: number | undefined) {
     @update:model-value="onUpdate"
   >
     <NumberFieldContent>
-      <NumberFieldDecrement />
       <NumberFieldInput />
-      <NumberFieldIncrement />
     </NumberFieldContent>
   </NumberField>
 </template>

@@ -13,6 +13,17 @@ export interface DerivedHintLine {
   value: string
 }
 
+export interface SlotKey {
+  slotStartAt: string
+  slotEndAt: string
+}
+
+const SLOT_MINUTES = 30
+/** Inclusive start of first slot each day (prototype: 09:00). */
+const SLOT_DAY_START_MINUTES = 9 * 60
+/** Exclusive end of last slot each day (prototype: 22:00 → last slot 21:30–22:00). */
+const SLOT_DAY_END_MINUTES = 22 * 60
+
 function parseYearMonth(ym: string): { year: number; month: number } | null {
   const match = /^(\d{4})-(\d{2})$/.exec(ym.trim())
   if (!match) return null
@@ -93,4 +104,53 @@ export function slotHintLines(startDate: string, weeks: number): DerivedHintLine
       value: deriveSlotPeriodLabel(startDate, weeks),
     },
   ]
+}
+
+/** Volume Input monthly train keys: sizingMonth-2 … sizingMonth. */
+export function monthlyTrainMonths(sizingMonth: string): string[] {
+  if (!parseYearMonth(sizingMonth)) return []
+  return [-2, -1, 0].map((delta) => shiftYearMonth(sizingMonth, delta))
+}
+
+/** Volume Input daily train keys: all days in sizing month. */
+export function dailyTrainDates(sizingMonth: string): string[] {
+  const parsed = parseYearMonth(sizingMonth)
+  if (!parsed) return []
+  const last = new Date(parsed.year, parsed.month, 0).getDate()
+  const out: string[] = []
+  for (let day = 1; day <= last; day++) {
+    out.push(`${sizingMonth}-${String(day).padStart(2, '0')}`)
+  }
+  return out
+}
+
+/** Slot training date range end (inclusive). */
+export function slotTrainEndDate(startDate: string, weeks: number): string {
+  const n = Number(weeks)
+  if (!startDate || !Number.isFinite(n) || n < 1) return startDate
+  return addDaysIso(startDate, n * 7 - 1)
+}
+
+/** Volume Input per-slot train keys: 09:00–22:00 in 30-minute steps (prototype). */
+export function slotTrainKeys(startDate: string, weeks: number): SlotKey[] {
+  const endDate = slotTrainEndDate(startDate, weeks)
+  if (!startDate || !endDate || endDate < startDate) return []
+  const out: SlotKey[] = []
+  let cur = startDate
+  while (cur <= endDate) {
+    for (let minutes = SLOT_DAY_START_MINUTES; minutes < SLOT_DAY_END_MINUTES; minutes += SLOT_MINUTES) {
+      const startH = Math.floor(minutes / 60)
+      const startM = minutes % 60
+      const endTotal = minutes + SLOT_MINUTES
+      const endH = Math.floor(endTotal / 60)
+      const endM = endTotal % 60
+      const slotStartAt = `${cur}T${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}:00.000Z`
+      const endDay = endH === 24 ? addDaysIso(cur, 1) : cur
+      const endHour = endH === 24 ? 0 : endH
+      const slotEndAt = `${endDay}T${String(endHour).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00.000Z`
+      out.push({ slotStartAt, slotEndAt })
+    }
+    cur = addDaysIso(cur, 1)
+  }
+  return out
 }

@@ -14,6 +14,12 @@ import {
 } from '@/components/ui/table'
 
 import { exerciseApi } from '../api'
+import {
+  dailyTrainDates,
+  deriveSizingWindows,
+  deriveSlotPeriodLabel,
+  monthlyTrainMonths,
+} from '../periodWindows'
 import type {
   CalendarView,
   CycleTimeBaseline,
@@ -31,6 +37,9 @@ import AssociatedDataEditorDialog from './associated-data/AssociatedDataEditorDi
 
 const props = defineProps<{
   exerciseId: string
+  sizingMonth: string
+  slotStartDate: string
+  slotWeeks: number
   readOnly?: boolean
 }>()
 
@@ -50,9 +59,6 @@ const editorOpen = ref(false)
 const editor = ref<AdTab | null>(null)
 
 const medianSource = ref<MedianSourceMode>('system')
-const manualMedian = ref('')
-const manualReason = ref('')
-const applyingManual = ref(false)
 
 const supportFte = computed(() => {
   if (!support.value.length) return null
@@ -73,51 +79,37 @@ const templateSourceLabel = computed(() => {
 })
 
 const volumeSummary = computed(() => {
-  const monthPeriod = periodLabel(
-    monthly.value.map((r) => r.month),
-    (m) => m,
-  )
+  const sizing = deriveSizingWindows(props.sizingMonth)
   const monthVolume = monthly.value.reduce(
-    (sum, row) => sum + Number(row.manualForecastVolume ?? row.actualVolume ?? 0),
+    (sum, row) => sum + Number(row.actualVolume ?? 0),
     0,
-  )
-  const dayPeriod = periodLabel(
-    daily.value.map((r) => r.volumeDate),
-    (d) => d,
   )
   const dayVolume = daily.value.reduce(
-    (sum, row) => sum + Number(row.manualForecastVolume ?? row.actualVolume ?? 0),
+    (sum, row) => sum + Number(row.actualVolume ?? 0),
     0,
   )
-  const slotPeriod = slot.value.length
-    ? `${slot.value[0].slotStartAt.slice(0, 16)} …`
-    : '—'
   const slotVolume = slot.value.reduce((sum, row) => sum + Number(row.rawVolume || 0), 0)
   return [
     {
       granularity: 'Month',
-      period: monthPeriod || '—',
+      period: sizing.monthTrain,
       volume: monthly.value.length ? formatNumber(monthVolume) : '—',
+      rows: `${monthly.value.length || monthlyTrainMonths(props.sizingMonth).length} train months`,
     },
     {
       granularity: 'Daily',
-      period: dayPeriod || '—',
+      period: sizing.dailyTrain,
       volume: daily.value.length ? formatNumber(dayVolume) : '—',
+      rows: `${daily.value.length || dailyTrainDates(props.sizingMonth).length} train days`,
     },
     {
       granularity: 'Slot',
-      period: slotPeriod,
+      period: deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks),
       volume: slot.value.length ? formatNumber(slotVolume) : '—',
+      rows: `${slot.value.length} train slots`,
     },
   ]
 })
-
-function periodLabel(values: string[], format: (v: string) => string) {
-  if (!values.length) return ''
-  const sorted = [...values].sort()
-  if (sorted.length === 1) return format(sorted[0])
-  return `${format(sorted[0])}–${format(sorted[sorted.length - 1])}`
-}
 
 async function load() {
   loading.value = true
@@ -155,18 +147,12 @@ function syncMedianFromBaseline() {
   const ct = cycleTime.value
   if (!ct) {
     medianSource.value = 'system'
-    manualMedian.value = ''
-    manualReason.value = ''
     return
   }
   if (ct.baselineType?.toUpperCase() === 'MANUAL') {
     medianSource.value = 'manual'
-    manualMedian.value = String(ct.medianSeconds)
-    manualReason.value = ct.manualReason ?? ''
   } else {
     medianSource.value = 'system'
-    manualMedian.value = ''
-    manualReason.value = ''
   }
 }
 
@@ -194,24 +180,9 @@ async function reapplyTemplate() {
   }
 }
 
-async function applyManualBaseline() {
-  const seconds = Number(manualMedian.value)
-  if (!seconds || !manualReason.value.trim()) {
-    toast.warning('Median seconds and reason are required for manual baseline.')
-    return
-  }
-  applyingManual.value = true
-  try {
-    cycleTime.value = await exerciseApi.createManualCycleTime(props.exerciseId, {
-      medianSeconds: seconds,
-      manualReason: manualReason.value.trim(),
-    })
-    toast.success('Manual median baseline saved.')
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not save manual baseline.')
-  } finally {
-    applyingManual.value = false
-  }
+function onCycleTimeUpdated(value: CycleTimeBaseline) {
+  cycleTime.value = value
+  syncMedianFromBaseline()
 }
 
 watch(
@@ -298,20 +269,10 @@ defineExpose({
       <template v-else-if="activeTab === 'tms'">
         <AdTmsSummary
           v-model:source="medianSource"
-          v-model:manual-median="manualMedian"
-          v-model:reason="manualReason"
           :cycle-time="cycleTime"
           :read-only="readOnly"
           @edit="openEditor('tms')"
         />
-        <div
-          v-if="!readOnly && medianSource === 'manual'"
-          class="mt-3 flex justify-end"
-        >
-          <Button size="sm" :disabled="applyingManual" @click="applyManualBaseline">
-            {{ applyingManual ? 'Saving…' : 'Apply manual baseline' }}
-          </Button>
-        </div>
       </template>
 
       <template v-else-if="activeTab === 'support'">
@@ -433,6 +394,9 @@ defineExpose({
     v-model:open="editorOpen"
     :editor="editor"
     :exercise-id="exerciseId"
+    :sizing-month="sizingMonth"
+    :slot-start-date="slotStartDate"
+    :slot-weeks="slotWeeks"
     :team-setup="teamSetup"
     :support="support"
     :calendar="calendar"
@@ -441,8 +405,6 @@ defineExpose({
     :slot="slot"
     :cycle-time="cycleTime"
     :median-source="medianSource"
-    :manual-median="manualMedian"
-    :manual-reason="manualReason"
     :read-only="readOnly"
     @update:team-setup="teamSetup = $event"
     @update:support="support = $event"
@@ -450,7 +412,7 @@ defineExpose({
     @update:monthly="monthly = $event"
     @update:daily="daily = $event"
     @update:slot="slot = $event"
-    @update:cycle-time="cycleTime = $event"
+    @update:cycle-time="onCycleTimeUpdated"
     @close="editor = null"
   />
 </template>

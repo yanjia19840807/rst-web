@@ -30,7 +30,7 @@ import {
   supportFte,
 } from '@/features/exercise-management/components/associated-data/supportOptions'
 
-import { ensureShell, exerciseShells, recomputeTeamSetup } from '../data/exercise-store'
+import { ensureShell, exerciseShells, recomputeTeamSetup, seedTrainVolumes } from '../data/exercise-store'
 import { holidayTemplateStore } from '../data/holiday-templates'
 import {
   activeTimesheetSyncDate,
@@ -247,6 +247,8 @@ export const supervisorHandlers = [
         exercise,
         notices: [
           'Associated Data initialized from archived exercise (mock).',
+          'Volume seeded from archived exercise for overlapping training periods.',
+          'Volume Input rows generated for training windows (monthly / daily / per-slot).',
           'Working Days / Year computed for sizing year.',
         ],
       },
@@ -295,6 +297,8 @@ export const supervisorHandlers = [
       )
       notices.push(`Working Days / Year computed for ${nextYear}.`)
     }
+    seedTrainVolumes(exercise, ensureShell(exercise))
+    notices.push('Volume Input grids refreshed for the updated training windows.')
     return HttpResponse.json({ exercise, notices })
   }),
 
@@ -616,12 +620,119 @@ export const supervisorHandlers = [
     return HttpResponse.json(ctx.shell.slotVolumes)
   }),
 
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly/export-template', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="volume-monthly-template.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="volume-monthly.xlsx"',
+      },
+    }),
+  ),
+  http.post('*/api/v1/supervisor/exercises/:id/volumes/monthly/import', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(ctx.shell.monthlyVolumes)
+  }),
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/daily/export-template', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="volume-daily-template.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/daily/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="volume-daily.xlsx"',
+      },
+    }),
+  ),
+  http.post('*/api/v1/supervisor/exercises/:id/volumes/daily/import', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(ctx.shell.dailyVolumes)
+  }),
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/slot/export-template', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="volume-slot-template.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/slot/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="volume-slot.xlsx"',
+      },
+    }),
+  ),
+  http.post('*/api/v1/supervisor/exercises/:id/volumes/slot/import', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(ctx.shell.slotVolumes)
+  }),
+
   http.get('*/api/v1/supervisor/exercises/:id/cycle-time/active', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!ctx.shell.cycleTime) return problem(404, 'No active Cycle Time baseline.')
-    return HttpResponse.json(ctx.shell.cycleTime)
+    return HttpResponse.json({
+      ...ctx.shell.cycleTime,
+      files: ctx.shell.cycleTime.files ?? [],
+    })
   }),
+
+  http.post(
+    '*/api/v1/supervisor/exercises/:id/cycle-time/support-files',
+    async ({ params, request }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+      const form = await request.formData()
+      const file = form.get('file')
+      if (!(file instanceof File) || file.size === 0) {
+        return problem(422, 'A support file is required.')
+      }
+      const uploaded = {
+        id: crypto.randomUUID(),
+        fileName: file.name || 'support-file',
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        webUrl: `https://example.local/files/${crypto.randomUUID()}`,
+        displayOrder: 0,
+      }
+      const pending = (ctx.shell as { pendingSupportFiles?: typeof uploaded[] }).pendingSupportFiles
+      if (pending) {
+        pending.push(uploaded)
+      } else {
+        ;(ctx.shell as { pendingSupportFiles?: typeof uploaded[] }).pendingSupportFiles = [
+          uploaded,
+        ]
+      }
+      return HttpResponse.json(uploaded, { status: 201 })
+    },
+  ),
 
   http.post('*/api/v1/supervisor/exercises/:id/cycle-time/manual', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
@@ -631,6 +742,25 @@ export const supervisorHandlers = [
     if (!body.medianSeconds || !body.manualReason?.trim()) {
       return problem(422, 'medianSeconds and manualReason are required.')
     }
+    const pending =
+      (ctx.shell as { pendingSupportFiles?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number; webUrl: string; displayOrder: number }> })
+        .pendingSupportFiles ?? []
+    const previousFiles = ctx.shell.cycleTime?.files ?? []
+    const known = [...pending, ...previousFiles]
+    const files = (body.fileArtifactIds ?? []).map((id, index) => {
+      const match = known.find((file) => file.id === id)
+      if (!match) {
+        return {
+          id,
+          fileName: `support-${index + 1}`,
+          mimeType: 'application/octet-stream',
+          sizeBytes: null,
+          webUrl: `https://example.local/files/${id}`,
+          displayOrder: index,
+        }
+      }
+      return { ...match, displayOrder: index }
+    })
     ctx.shell.cycleTime = {
       id: crypto.randomUUID(),
       baselineType: 'MANUAL',
@@ -640,6 +770,7 @@ export const supervisorHandlers = [
       manualReason: body.manualReason,
       active: true,
       calculatedAt: new Date().toISOString(),
+      files,
     }
     ctx.shell.teamSetup = recomputeTeamSetup(ctx.shell.teamSetup, body.medianSeconds)
     return HttpResponse.json(ctx.shell.cycleTime, { status: 201 })
@@ -659,10 +790,23 @@ export const supervisorHandlers = [
     if (!body.scenarioCode?.trim() || !body.name?.trim()) {
       return problem(422, 'scenarioCode and name are required.')
     }
+    let scenarioCode = body.scenarioCode.trim()
+    if (ctx.shell.scenarios.some((item) => item.scenarioCode === scenarioCode)) {
+      let max = 0
+      for (const item of ctx.shell.scenarios) {
+        const match = /^S(\d+)$/i.exec(item.scenarioCode?.trim() ?? '')
+        if (match) max = Math.max(max, Number(match[1]))
+      }
+      scenarioCode = `S${max + 1}`
+    }
+    const name =
+      body.name.includes(body.scenarioCode) && scenarioCode !== body.scenarioCode
+        ? body.name.replace(body.scenarioCode, scenarioCode)
+        : body.name
     const scenario = {
       id: crypto.randomUUID(),
-      scenarioCode: body.scenarioCode,
-      name: body.name,
+      scenarioCode,
+      name,
       description: body.description ?? null,
       status: 'DRAFT',
       officialAt: null,
@@ -716,6 +860,106 @@ export const supervisorHandlers = [
               })),
       }
       ctx.shell.scenarios[index] = updated
+      return HttpResponse.json(updated)
+    },
+  ),
+
+  http.put(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/commit',
+    async ({ params, request }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+      const index = ctx.shell.scenarios.findIndex((item) => item.id === params.scenarioId)
+      const current = ctx.shell.scenarios[index]
+      if (!current) return problem(404, 'The Scenario was not found.')
+      if (current.status !== 'DRAFT') return problem(409, 'Only DRAFT scenarios can be saved.')
+      const body = (await request.json()) as {
+        name: string
+        description?: string | null
+        assumptions?: Array<{
+          parameterCode: string
+          numericValue?: number | null
+          textValue?: string | null
+          booleanValue?: boolean | null
+          unit?: string | null
+        }>
+        shifts: Array<{
+          shiftNo: number
+          startTime: string
+          durationMinutes: number
+          headcount: number
+          worksOnWeekend: boolean
+        }>
+        results?: {
+          forecast: { monthly: unknown; daily: unknown }
+          monthly: unknown
+          daily: unknown
+          slot?: unknown | null
+        } | null
+      }
+      if (!body.shifts?.length) return problem(422, 'Shifts are required when saving a scenario.')
+      const updated = {
+        ...current,
+        name: body.name,
+        description: body.description ?? null,
+        version: current.version + 1,
+        assumptions:
+          body.assumptions === undefined
+            ? current.assumptions
+            : body.assumptions.map((item) => ({
+                id: crypto.randomUUID(),
+                parameterCode: item.parameterCode,
+                numericValue: item.numericValue ?? null,
+                textValue: item.textValue ?? null,
+                booleanValue: item.booleanValue ?? null,
+                unit: item.unit ?? null,
+              })),
+      }
+      ctx.shell.scenarios[index] = updated
+      ctx.shell.shifts = body.shifts.map((row) => ({
+        id: crypto.randomUUID(),
+        shiftNo: row.shiftNo,
+        startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
+        durationMinutes: row.durationMinutes,
+        headcount: row.headcount,
+        worksOnWeekend: row.worksOnWeekend,
+      }))
+
+      const shell = ctx.shell as {
+        latestForecastByScenario?: Record<string, Record<string, unknown>>
+        latestMonthlySizingByScenario?: Record<string, unknown>
+        latestDailySizingByScenario?: Record<string, unknown>
+        latestSlotByScenario?: Record<string, unknown>
+      }
+      if (shell.latestForecastByScenario) delete shell.latestForecastByScenario[current.id]
+      if (shell.latestMonthlySizingByScenario) delete shell.latestMonthlySizingByScenario[current.id]
+      if (shell.latestDailySizingByScenario) delete shell.latestDailySizingByScenario[current.id]
+      if (shell.latestSlotByScenario) delete shell.latestSlotByScenario[current.id]
+
+      if (body.results) {
+        shell.latestForecastByScenario = {
+          ...(shell.latestForecastByScenario ?? {}),
+          [current.id]: {
+            MONTHLY: body.results.forecast.monthly as Record<string, unknown>,
+            DAILY: body.results.forecast.daily as Record<string, unknown>,
+          },
+        }
+        shell.latestMonthlySizingByScenario = {
+          ...(shell.latestMonthlySizingByScenario ?? {}),
+          [current.id]: body.results.monthly,
+        }
+        shell.latestDailySizingByScenario = {
+          ...(shell.latestDailySizingByScenario ?? {}),
+          [current.id]: body.results.daily,
+        }
+        if (body.results.slot) {
+          shell.latestSlotByScenario = {
+            ...(shell.latestSlotByScenario ?? {}),
+            [current.id]: body.results.slot,
+          }
+        }
+      }
       return HttpResponse.json(updated)
     },
   ),
@@ -796,20 +1040,232 @@ export const supervisorHandlers = [
       if (scenario.status !== 'DRAFT') {
         return problem(409, 'Simulations can only run against DRAFT scenarios.')
       }
-      const runNo =
-        ctx.shell.stubRuns.filter(
-          (item) => item.scenarioId === scenario.id && item.runType === 'FORECAST',
-        ).length + 1
-      const run = {
-        id: crypto.randomUUID(),
-        scenarioId: scenario.id,
-        runType: 'FORECAST',
-        status: 'ACCEPTED',
-        runNo,
+      const sizing = ctx.exercise.sizingMonth || '2026-08'
+      const [y, m] = sizing.split('-').map(Number)
+      const nextYm = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 }
+      const nextMonth = `${nextYm.y}-${String(nextYm.m).padStart(2, '0')}`
+      const daysInMonth = new Date(nextYm.y, nextYm.m, 0).getDate()
+      const dailyPoints = Array.from({ length: daysInMonth }, (_, index) => {
+        const day = String(index + 1).padStart(2, '0')
+        const date = `${nextMonth}-${day}`
+        return {
+          id: crypto.randomUUID(),
+          periodStart: date,
+          periodEnd: date,
+          forecastMean: 100,
+          lowerBound: 90,
+          upperBound: 110,
+          acceptedValue: 100,
+        }
+      })
+      const now = new Date().toISOString()
+      return HttpResponse.json({
+        monthly: {
+          id: crypto.randomUUID(),
+          runNo: 0,
+          method: 'STUB',
+          methodVersion: 'stub-v1',
+          status: 'ACCEPTED',
+          forecastLevel: 'MONTHLY',
+          trainingFrom: `${sizing}-01`,
+          trainingTo: `${sizing}-28`,
+          featureMetadata: '{"stub":true,"level":"MONTHLY","preview":true}',
+          startedAt: now,
+          completedAt: now,
+          points: [
+            {
+              id: crypto.randomUUID(),
+              periodStart: `${nextMonth}-01`,
+              periodEnd: `${nextMonth}-${String(daysInMonth).padStart(2, '0')}`,
+              forecastMean: 1000,
+              lowerBound: 900,
+              upperBound: 1100,
+              acceptedValue: 1000,
+            },
+          ],
+        },
+        daily: {
+          id: crypto.randomUUID(),
+          runNo: 0,
+          method: 'STUB',
+          methodVersion: 'stub-v1',
+          status: 'ACCEPTED',
+          forecastLevel: 'DAILY',
+          trainingFrom: `${sizing}-01`,
+          trainingTo: `${sizing}-28`,
+          featureMetadata: '{"stub":true,"level":"DAILY","preview":true}',
+          startedAt: now,
+          completedAt: now,
+          points: dailyPoints,
+        },
+      })
+    },
+  ),
+
+  http.post(
+    /\/api\/v1\/supervisor\/exercises\/[^/]+\/scenarios\/[^/]+\/sizing:preview$/,
+    async ({ request }) => {
+      const parts = new URL(request.url).pathname.split('/')
+      const exerciseId = parts[parts.indexOf('exercises') + 1] ?? ''
+      const scenarioId = parts[parts.indexOf('scenarios') + 1] ?? ''
+      const ctx = requireExercise(exerciseId)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      if (scenario.status !== 'DRAFT') {
+        return problem(409, 'Simulations can only run against DRAFT scenarios.')
       }
-      ctx.shell.stubRuns.push(run)
-      const { scenarioId: _sid, ...view } = run
-      return HttpResponse.json(view, { status: 201 })
+      const body = (await request.json()) as { rightSizingHc?: number }
+      const rsHc = Number(body.rightSizingHc)
+      if (!Number.isFinite(rsHc) || rsHc <= 0) {
+        return problem(422, 'rightSizingHc must be a positive number.')
+      }
+      const sizing = ctx.exercise.sizingMonth || '2026-08'
+      const [y, m] = sizing.split('-').map(Number)
+      const nextYm = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 }
+      const nextMonth = `${nextYm.y}-${String(nextYm.m).padStart(2, '0')}`
+      const daysInMonth = new Date(nextYm.y, nextYm.m, 0).getDate()
+      const months = [1, 2, 3].map((delta) => {
+        const mm = m + delta
+        const yy = y + Math.floor((mm - 1) / 12)
+        const month = ((mm - 1) % 12) + 1
+        return `${yy}-${String(month).padStart(2, '0')}`
+      })
+      const now = new Date().toISOString()
+      const monthlyForecastId = crypto.randomUUID()
+      const dailyForecastId = crypto.randomUUID()
+      const dailyPoints = Array.from({ length: daysInMonth }, (_, index) => {
+        const day = String(index + 1).padStart(2, '0')
+        const date = `${nextMonth}-${day}`
+        return {
+          id: crypto.randomUUID(),
+          periodStart: date,
+          periodEnd: date,
+          forecastMean: 100,
+          lowerBound: 90,
+          upperBound: 110,
+          acceptedValue: 100,
+        }
+      })
+      let backlog = 0
+      const dailyRows = Array.from({ length: daysInMonth }, (_, index) => {
+        const day = String(index + 1).padStart(2, '0')
+        const date = `${nextMonth}-${day}`
+        const forecastVolume = 100
+        const manualVolume = 95
+        const standardCapacity = 110
+        const overtimeCapacity = 10
+        const backlogStart = backlog
+        backlog = Math.max(0, backlogStart + manualVolume - standardCapacity - overtimeCapacity)
+        return {
+          id: crypto.randomUUID(),
+          resultDate: date,
+          forecastVolume,
+          manualVolume,
+          holiday: false,
+          workingDay: true,
+          simulationHc: rsHc,
+          standardCapacity,
+          overtimeCapacity,
+          backlogStart,
+          backlogEnd: backlog,
+        }
+      })
+      return HttpResponse.json({
+        forecast: {
+          monthly: {
+            id: monthlyForecastId,
+            runNo: 0,
+            method: 'STUB',
+            methodVersion: 'stub-v1',
+            status: 'ACCEPTED',
+            forecastLevel: 'MONTHLY',
+            trainingFrom: `${sizing}-01`,
+            trainingTo: `${sizing}-28`,
+            featureMetadata: '{"stub":true,"level":"MONTHLY","preview":true}',
+            startedAt: now,
+            completedAt: now,
+            points: [
+              {
+                id: crypto.randomUUID(),
+                periodStart: `${nextMonth}-01`,
+                periodEnd: `${nextMonth}-${String(daysInMonth).padStart(2, '0')}`,
+                forecastMean: 1000,
+                lowerBound: 900,
+                upperBound: 1100,
+                acceptedValue: 1000,
+              },
+            ],
+          },
+          daily: {
+            id: dailyForecastId,
+            runNo: 0,
+            method: 'STUB',
+            methodVersion: 'stub-v1',
+            status: 'ACCEPTED',
+            forecastLevel: 'DAILY',
+            trainingFrom: `${sizing}-01`,
+            trainingTo: `${sizing}-28`,
+            featureMetadata: '{"stub":true,"level":"DAILY","preview":true}',
+            startedAt: now,
+            completedAt: now,
+            points: dailyPoints,
+          },
+        },
+        monthly: {
+          id: crypto.randomUUID(),
+          runNo: 0,
+          status: 'ACCEPTED',
+          calculationVersion: 'sizing-v1',
+          forecastRunId: monthlyForecastId,
+          startedAt: now,
+          completedAt: now,
+          rows: months.map((month, index) => ({
+            id: crypto.randomUUID(),
+            month,
+            forecastVolume: 1000 + index * 20,
+            manualVolume: 950 + index * 20,
+            workdays: 22,
+            weekendDays: 8,
+            cycleTimeSeconds: 120,
+            nominalHcWithoutOt: 10,
+            nominalHcWithOt: 9,
+            productionSupportFte: 0.5,
+            rightSizingHc: rsHc,
+            capacityCreation: 1.2,
+          })),
+        },
+        daily: {
+          id: crypto.randomUUID(),
+          runNo: 0,
+          status: 'ACCEPTED',
+          calculationVersion: 'sizing-v1',
+          forecastRunId: dailyForecastId,
+          startedAt: now,
+          completedAt: now,
+          rows: dailyRows,
+        },
+      })
+    },
+  ),
+
+  http.get(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/forecast/latest',
+    ({ params, request }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      const level = (new URL(request.url).searchParams.get('level') || 'MONTHLY').toUpperCase()
+      const map = (ctx.shell as { latestForecastByScenario?: Record<string, Record<string, unknown>> })
+        .latestForecastByScenario
+      const byLevel = map?.[scenario.id]
+      const forecast = byLevel?.[level] ?? (level === 'MONTHLY' ? byLevel?.MONTHLY : undefined)
+      if (!forecast) {
+        return problem(404, `No ACCEPTED ${level} forecast run exists for this scenario.`)
+      }
+      return HttpResponse.json(forecast)
     },
   ),
 
@@ -845,14 +1301,68 @@ export const supervisorHandlers = [
         status: 'ACCEPTED',
         runNo,
       }
+      const sizing = ctx.exercise.sizingMonth || '2026-08'
+      const [y, m] = sizing.split('-').map(Number)
+      const months = [1, 2, 3].map((delta) => {
+        const mm = m + delta
+        const yy = y + Math.floor((mm - 1) / 12)
+        const month = ((mm - 1) % 12) + 1
+        return `${yy}-${String(month).padStart(2, '0')}`
+      })
+      const rsHc =
+        scenario.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')?.numericValue ?? 8.6
+      ;(ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
+        .latestMonthlySizingByScenario = {
+        ...((ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
+          .latestMonthlySizingByScenario ?? {}),
+        [scenario.id]: {
+          id: run.id,
+          runNo,
+          status: 'ACCEPTED',
+          calculationVersion: 'sizing-v1',
+          forecastRunId: null,
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          rows: months.map((month, index) => ({
+            id: crypto.randomUUID(),
+            month,
+            forecastVolume: 1000 + index * 20,
+            manualVolume: 950 + index * 20,
+            workdays: 22,
+            weekendDays: 8,
+            cycleTimeSeconds: 120,
+            nominalHcWithoutOt: 10,
+            nominalHcWithOt: 9,
+            productionSupportFte: 0.5,
+            rightSizingHc: rsHc,
+            capacityCreation: 1.2,
+          })),
+        },
+      }
       ctx.shell.stubRuns.push(run)
-      const { scenarioId: _sid, ...view } = run
-      return HttpResponse.json(view, { status: 201 })
+      const monthlyView = (ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
+        .latestMonthlySizingByScenario?.[scenario.id]
+      return HttpResponse.json(monthlyView ?? null, { status: 201 })
+    },
+  ),
+
+  http.get(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/monthly/latest',
+    ({ params }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      const map = (ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
+        .latestMonthlySizingByScenario
+      const view = map?.[scenario.id]
+      if (!view) return problem(404, 'No ACCEPTED monthly sizing run exists for this scenario.')
+      return HttpResponse.json(view)
     },
   ),
 
   http.post(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/slot',
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/daily',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -862,20 +1372,205 @@ export const supervisorHandlers = [
       if (scenario.status !== 'DRAFT') {
         return problem(409, 'Simulations can only run against DRAFT scenarios.')
       }
+      if (
+        !ctx.shell.stubRuns.some(
+          (run) =>
+            run.scenarioId === scenario.id &&
+            run.runType === 'FORECAST_DAILY' &&
+            run.status === 'ACCEPTED',
+        )
+      ) {
+        return problem(422, 'Run an ACCEPTED daily forecast before daily simulation.')
+      }
       const runNo =
         ctx.shell.stubRuns.filter(
-          (item) => item.scenarioId === scenario.id && item.runType === 'SLOT',
+          (item) => item.scenarioId === scenario.id && item.runType === 'DAILY',
         ).length + 1
       const run = {
         id: crypto.randomUUID(),
         scenarioId: scenario.id,
-        runType: 'SLOT',
+        runType: 'DAILY',
         status: 'ACCEPTED',
         runNo,
       }
       ctx.shell.stubRuns.push(run)
-      const { scenarioId: _sid, ...view } = run
-      return HttpResponse.json(view, { status: 201 })
+      const sizing = ctx.exercise.sizingMonth || '2026-08'
+      const [y, m] = sizing.split('-').map(Number)
+      const nextYm = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 }
+      const nextMonth = `${nextYm.y}-${String(nextYm.m).padStart(2, '0')}`
+      const daysInMonth = new Date(nextYm.y, nextYm.m, 0).getDate()
+      let backlog = 0
+      const rows = Array.from({ length: daysInMonth }, (_, index) => {
+        const day = String(index + 1).padStart(2, '0')
+        const date = `${nextMonth}-${day}`
+        const forecastVolume = 100
+        const manualVolume = 95
+        const standardCapacity = 110
+        const overtimeCapacity = 10
+        const backlogStart = backlog
+        backlog = Math.max(0, backlogStart + manualVolume - standardCapacity - overtimeCapacity)
+        return {
+          id: crypto.randomUUID(),
+          resultDate: date,
+          forecastVolume,
+          manualVolume,
+          holiday: false,
+          workingDay: true,
+          simulationHc: 8.6,
+          standardCapacity,
+          overtimeCapacity,
+          backlogStart,
+          backlogEnd: backlog,
+        }
+      })
+      ;(ctx.shell as { latestDailySizingByScenario?: Record<string, unknown> })
+        .latestDailySizingByScenario = {
+        ...((ctx.shell as { latestDailySizingByScenario?: Record<string, unknown> })
+          .latestDailySizingByScenario ?? {}),
+        [scenario.id]: {
+          id: run.id,
+          runNo,
+          status: 'ACCEPTED',
+          calculationVersion: 'sizing-v1',
+          forecastRunId: null,
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          rows,
+        },
+      }
+      const dailyView = (ctx.shell as { latestDailySizingByScenario?: Record<string, unknown> })
+        .latestDailySizingByScenario?.[scenario.id]
+      return HttpResponse.json(dailyView ?? null, { status: 201 })
+    },
+  ),
+
+  http.get(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/daily/latest',
+    ({ params }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      const map = (ctx.shell as { latestDailySizingByScenario?: Record<string, unknown> })
+        .latestDailySizingByScenario
+      const view = map?.[scenario.id]
+      if (!view) return problem(404, 'No ACCEPTED daily simulation run exists for this scenario.')
+      return HttpResponse.json(view)
+    },
+  ),
+
+  http.post(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/slot',
+    async ({ params, request }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      if (scenario.status !== 'DRAFT') {
+        return problem(409, 'Simulations can only run against DRAFT scenarios.')
+      }
+      const body = (await request.json()) as {
+        shifts?: Array<{
+          shiftNo: number
+          startTime: string
+          durationMinutes: number
+          headcount: number
+          worksOnWeekend: boolean
+        }>
+      }
+      const shifts = body.shifts ?? []
+      if (!shifts.length) {
+        return problem(422, 'At least one shift is required before slot simulation.')
+      }
+      if (!ctx.shell.slotVolumes?.length) {
+        return problem(422, 'Slot volume inputs are required before slot simulation.')
+      }
+
+      const volumes = [...ctx.shell.slotVolumes].sort((a, b) =>
+        String(a.slotStartAt).localeCompare(String(b.slotStartAt)),
+      )
+      let backlog = 0
+      let manualSum = 0
+      let capacitySum = 0
+      let outsideSum = 0
+      const shiftKeys = shifts.map((s) => `shift${s.shiftNo}`)
+      const shiftFteByKey: Record<string, number[]> = Object.fromEntries(
+        shiftKeys.map((k) => [k, [] as number[]]),
+      )
+      const labels: string[] = []
+      const theoreticalFte: number[] = []
+      const cumulativeTat: number[] = []
+      const rows = volumes.map((volume, index) => {
+        const raw = Number(volume.rawVolume) || 0
+        const manual = raw * 0.95
+        const casesPerFte = 25
+        const theoretical = casesPerFte > 0 ? manual / casesPerFte : 0
+        const perShift = shifts.map((shift) => Number(shift.headcount) || 0)
+        perShift.forEach((v, i) => shiftFteByKey[shiftKeys[i]!]?.push(v))
+        const shiftFte = perShift.reduce((a, b) => a + b, 0)
+        const teamCapacity = shiftFte * casesPerFte
+        const outside = index > 10 && backlog > 0 ? Math.min(backlog * 0.1, manual * 0.05) : 0
+        const backlogStart = backlog
+        backlog = Math.max(0, backlogStart + manual - teamCapacity)
+        manualSum += manual
+        capacitySum += teamCapacity
+        outsideSum += outside
+        const tat = manualSum > 0 ? Math.max(0, 1 - outsideSum / manualSum) : 1
+        labels.push(String(volume.slotStartAt))
+        theoreticalFte.push(theoretical)
+        cumulativeTat.push(tat)
+        return {
+          id: crypto.randomUUID(),
+          slotStartAt: volume.slotStartAt,
+          slotEndAt: volume.slotEndAt,
+          rawVolume: raw,
+          manualVolume: manual,
+          theoreticalFte: theoretical,
+          shiftFte,
+          casesPerFte,
+          teamCapacity,
+          backlogStart,
+          backlogEnd: backlog,
+          volumeOutsideSla: outside,
+          tatResult: tat,
+          slaResult: tat,
+        }
+      })
+      const tatOnPeriod = manualSum > 0 ? Math.max(0, 1 - outsideSum / manualSum) : 1
+      const actualVsTheoretical = manualSum > 0 ? capacitySum / manualSum : 1
+      const now = new Date().toISOString()
+      const view = {
+        id: crypto.randomUUID(),
+        runNo: 0,
+        status: 'ACCEPTED',
+        calculationVersion: 'slot-v1',
+        forecastRunId: null,
+        startedAt: now,
+        completedAt: now,
+        tatOnPeriod,
+        actualVsTheoretical,
+        shiftCount: shifts.length,
+        applicability: true,
+        slaTargetRatio: ctx.shell.teamSetup?.slaTargetRatio ?? 0.9,
+        rows,
+        chart: { labels, theoreticalFte, shiftFteByKey, cumulativeTat },
+      }
+      return HttpResponse.json(view)
+    },
+  ),
+
+  http.get(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/slot/latest',
+    ({ params }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      const view = (ctx.shell as { latestSlotByScenario?: Record<string, unknown> })
+        .latestSlotByScenario?.[scenario.id]
+      if (!view) return problem(404, 'No ACCEPTED slot simulation run exists for this scenario.')
+      return HttpResponse.json(view)
     },
   ),
 

@@ -30,7 +30,7 @@ import { formatDate } from '@/lib/datetime'
 
 import { exerciseApi } from '../api'
 import { sizingHintLines, slotHintLines } from '../periodWindows'
-import type { Exercise, Scenario } from '../types'
+import type { CycleTimeBaseline, Exercise, Scenario, SupportItem, TeamSetup } from '../types'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
@@ -46,6 +46,10 @@ const loading = ref(true)
 const exercise = ref<Exercise | null>(null)
 const scenarios = ref<Scenario[]>([])
 const selectedId = ref<string | null>(null)
+const teamSetup = ref<TeamSetup | null>(null)
+const support = ref<SupportItem[]>([])
+const cycleTime = ref<CycleTimeBaseline | null>(null)
+const shiftCount = ref(0)
 const deleteOpen = ref(false)
 const deletePending = ref(false)
 const newScenarioOpen = ref(false)
@@ -57,13 +61,53 @@ const toolkitInfoOpen = ref(false)
 const periodsEditOpen = ref(false)
 
 const locked = computed(() => !exercise.value?.canEdit)
-const nextScenarioCode = computed(() => `S${scenarios.value.length + 1}`)
+const nextScenarioCode = computed(() => {
+  let max = 0
+  for (const scenario of scenarios.value) {
+    const match = /^S(\d+)$/i.exec(scenario.scenarioCode?.trim() ?? '')
+    if (match) max = Math.max(max, Number(match[1]))
+  }
+  return `S${max + 1}`
+})
 const selectedScenario = computed(
   () => scenarios.value.find((item) => item.id === selectedId.value) ?? null,
 )
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce((sum, item) => sum + Number(item.deliveryHc), 0),
 )
+const supportFte = computed(() => {
+  if (!support.value.length) return null
+  return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
+})
+const medianLabel = computed(() =>
+  cycleTime.value ? `${cycleTime.value.medianSeconds}s` : '—',
+)
+const slaTargetLabel = computed(() => {
+  const ratio = teamSetup.value?.slaTargetRatio
+  if (ratio == null) return '—'
+  return `${Math.round(Number(ratio) * 100)}%`
+})
+const shiftSetupLabel = computed(() => {
+  const n = shiftCount.value
+  if (n <= 0) return '—'
+  return n === 1 ? '1 shift' : `${n} shifts`
+})
+
+function assumptionHc(scenario: Scenario) {
+  const row = scenario.assumptions.find((item) => item.parameterCode === 'RIGHT_SIZING_HC')
+  return row?.numericValue != null ? Number(row.numericValue) : null
+}
+
+function capacityCreation(scenario: Scenario) {
+  const rs = assumptionHc(scenario)
+  if (rs == null || supportFte.value == null) return null
+  return deliveryHc.value - rs - supportFte.value
+}
+
+function formatSigned(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}`
+}
 const sizingHints = computed(() =>
   exercise.value ? sizingHintLines(exercise.value.sizingMonth) : [],
 )
@@ -92,6 +136,19 @@ async function load() {
     ])
     if (exercise.value.officialScenarioId) {
       selectedId.value = exercise.value.officialScenarioId
+    }
+    const [ts, sp, shifts] = await Promise.all([
+      exerciseApi.getTeamSetup(props.exerciseId).catch(() => null),
+      exerciseApi.listSupport(props.exerciseId).catch(() => [] as SupportItem[]),
+      exerciseApi.getShifts(props.exerciseId).catch(() => []),
+    ])
+    teamSetup.value = ts
+    support.value = sp
+    shiftCount.value = shifts.length
+    try {
+      cycleTime.value = await exerciseApi.getActiveCycleTime(props.exerciseId)
+    } catch {
+      cycleTime.value = null
     }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not load exercise.')
@@ -123,10 +180,7 @@ async function createScenario() {
       scenarioCode: nextScenarioCode.value,
       name: `${exercise.value.snapshot.toolkit.name} ${nextScenarioCode.value}`,
       description: null,
-      assumptions: [
-        { parameterCode: 'RIGHT_SIZING_HC', numericValue: 8.6, unit: 'HC' },
-        { parameterCode: 'SLA_TARGET_RATIO', numericValue: 0.9, unit: 'RATIO' },
-      ],
+      assumptions: [{ parameterCode: 'RIGHT_SIZING_HC', numericValue: 8.6, unit: 'HC' }],
     })
     newScenarioOpen.value = false
     toast.success(`${created.scenarioCode} created.`)
@@ -256,8 +310,9 @@ onMounted(load)
           v-if="!locked"
           class="rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
         >
-          Associated Data initialized from the latest Approved archive. Edit below — all scenarios
-          in this exercise share this baseline.
+          Associated Data initialized from the latest Approved archive. Volume Input covers training
+          windows only (not forecast periods); overlapping archive volume is seeded. Edit below —
+          all scenarios in this exercise share this baseline.
         </div>
       </CardContent>
     </Card>
@@ -272,8 +327,11 @@ onMounted(load)
     <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
 
     <AssociatedDataPanel
-      :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.version}`"
+      :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.slotStartDate}-${exercise.slotWeeks}-${exercise.version}`"
       :exercise-id="exerciseId"
+      :sizing-month="exercise.sizingMonth"
+      :slot-start-date="exercise.slotStartDate"
+      :slot-weeks="exercise.slotWeeks"
       :read-only="locked"
     />
 
@@ -287,14 +345,17 @@ onMounted(load)
       </CardHeader>
       <CardContent>
         <div class="overflow-x-auto rounded-lg border">
-          <Table class="min-w-[720px]">
+          <Table class="min-w-[960px]">
             <TableHeader>
               <TableRow>
                 <TableHead class="w-24 text-center">Is Official</TableHead>
                 <TableHead>Scenario</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assumptions</TableHead>
+                <TableHead>Actual size</TableHead>
+                <TableHead>SLA Target %</TableHead>
+                <TableHead>Shift Setup</TableHead>
+                <TableHead>Median Cycle Time</TableHead>
+                <TableHead>Right size HC</TableHead>
+                <TableHead>Capacity Creation</TableHead>
                 <TableHead class="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -316,9 +377,24 @@ onMounted(load)
                   <span v-if="scenario.status === 'OFFICIAL'" class="text-amber-500">★</span>
                 </TableCell>
                 <TableCell>{{ scenario.scenarioCode }}</TableCell>
-                <TableCell>{{ scenario.name }}</TableCell>
-                <TableCell>{{ scenario.status }}</TableCell>
-                <TableCell>{{ scenario.assumptions.length }}</TableCell>
+                <TableCell>{{ deliveryHc.toFixed(1) }}</TableCell>
+                <TableCell>{{ slaTargetLabel }}</TableCell>
+                <TableCell>{{ shiftSetupLabel }}</TableCell>
+                <TableCell>{{ medianLabel }}</TableCell>
+                <TableCell>
+                  {{
+                    assumptionHc(scenario) != null ? assumptionHc(scenario)!.toFixed(1) : '—'
+                  }}
+                </TableCell>
+                <TableCell
+                  :class="{
+                    'font-semibold text-emerald-600': (capacityCreation(scenario) ?? 0) >= 0
+                      && capacityCreation(scenario) != null,
+                    'font-semibold text-destructive': (capacityCreation(scenario) ?? 0) < 0,
+                  }"
+                >
+                  {{ formatSigned(capacityCreation(scenario)) }}
+                </TableCell>
                 <TableCell class="text-right" @click.stop>
                   <Button
                     size="sm"
@@ -336,7 +412,7 @@ onMounted(load)
                 </TableCell>
               </TableRow>
               <TableRow v-if="!scenarios.length">
-                <TableCell colspan="6" class="h-24 text-center text-muted-foreground">
+                <TableCell colspan="9" class="h-24 text-center text-muted-foreground">
                   No scenarios yet. Create one to start simulation.
                 </TableCell>
               </TableRow>
@@ -397,9 +473,25 @@ onMounted(load)
             <DetailTable
               :rows="[
                 { label: 'Scenario', value: selectedScenario.scenarioCode },
-                { label: 'Name', value: selectedScenario.name },
-                { label: 'Status', value: selectedScenario.status },
-                { label: 'Assumptions', value: String(selectedScenario.assumptions.length) },
+                { label: 'Actual size', value: deliveryHc.toFixed(1) },
+                { label: 'SLA Target %', value: slaTargetLabel },
+                { label: 'Shift Setup', value: shiftSetupLabel },
+                { label: 'Median Cycle Time', value: medianLabel },
+                {
+                  label: 'Right size HC',
+                  value:
+                    assumptionHc(selectedScenario) != null
+                      ? assumptionHc(selectedScenario)!.toFixed(1)
+                      : '—',
+                },
+                {
+                  label: 'Production support',
+                  value: supportFte != null ? supportFte.toFixed(1) : '—',
+                },
+                {
+                  label: 'Capacity Creation',
+                  value: formatSigned(capacityCreation(selectedScenario)),
+                },
               ]"
             />
           </div>

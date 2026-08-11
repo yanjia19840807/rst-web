@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/client'
+import { ApiError, apiRequest } from '@/api/client'
 
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 
@@ -11,6 +11,7 @@ import type {
   UpdateExercisePeriodsInput,
   UpdateExercisePeriodsResult,
   CycleTimeBaseline,
+  CycleTimeBaselineFile,
   DailyVolume,
   DailyVolumeRequest,
   Exercise,
@@ -26,7 +27,13 @@ import type {
   ShiftRequest,
   SlotVolume,
   SlotVolumeRequest,
-  StubRun,
+  CommitScenarioRequest,
+  DailySizingView,
+  ForecastBundle,
+  ForecastView,
+  MonthlySizingView,
+  SizingPreviewBundle,
+  SlotSimulationView,
   SubmitPreview,
   SubmitRequest,
   SubmittedDetails,
@@ -38,9 +45,42 @@ import type {
 } from './types'
 
 const base = '/api/v1/supervisor/exercises'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 function exercisePath(id: string, suffix = '') {
   return `${base}/${id}${suffix}`
+}
+
+async function downloadVolumeBlob(exerciseId: string, suffix: string, fallbackName: string) {
+  const response = await fetch(`${API_BASE_URL}${exercisePath(exerciseId, suffix)}`)
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { detail?: string } | null
+    throw new ApiError(body?.detail || 'Download failed.', response.status)
+  }
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = /filename="?([^"]+)"?/.exec(disposition)
+  const filename = match?.[1] || fallbackName
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+async function uploadVolumeExcel<T>(exerciseId: string, suffix: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch(`${API_BASE_URL}${exercisePath(exerciseId, suffix)}`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { detail?: string } | null
+    throw new ApiError(body?.detail || 'Import failed.', response.status)
+  }
+  return response.json() as Promise<T>
 }
 
 export const exerciseApi = {
@@ -145,6 +185,27 @@ export const exerciseApi = {
       body: JSON.stringify(body),
     }),
 
+  exportMonthlyVolumeTemplate: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/volumes/monthly/export-template', 'volume-monthly-template.xlsx'),
+  exportMonthlyVolumes: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/volumes/monthly/export', 'volume-monthly.xlsx'),
+  importMonthlyVolumes: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<MonthlyVolume[]>(exerciseId, '/volumes/monthly/import', file),
+
+  exportDailyVolumeTemplate: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/volumes/daily/export-template', 'volume-daily-template.xlsx'),
+  exportDailyVolumes: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/volumes/daily/export', 'volume-daily.xlsx'),
+  importDailyVolumes: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<DailyVolume[]>(exerciseId, '/volumes/daily/import', file),
+
+  exportSlotVolumeTemplate: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/volumes/slot/export-template', 'volume-slot-template.xlsx'),
+  exportSlotVolumes: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/volumes/slot/export', 'volume-slot.xlsx'),
+  importSlotVolumes: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<SlotVolume[]>(exerciseId, '/volumes/slot/import', file),
+
   getActiveCycleTime: (exerciseId: string) =>
     apiRequest<CycleTimeBaseline>(exercisePath(exerciseId, '/cycle-time/active')),
   createManualCycleTime: (exerciseId: string, body: ManualBaselineRequest) =>
@@ -152,6 +213,19 @@ export const exerciseApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  uploadCycleTimeSupportFile: async (exerciseId: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch(
+      `${API_BASE_URL}${exercisePath(exerciseId, '/cycle-time/support-files')}`,
+      { method: 'POST', body: form },
+    )
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { detail?: string } | null
+      throw new ApiError(body?.detail || 'Support file upload failed.', response.status)
+    }
+    return response.json() as Promise<CycleTimeBaselineFile>
+  },
   listExerciseTmsSessions: (exerciseId: string, page = 1, pageSize = 10) => {
     const params = new URLSearchParams({
       page: String(page),
@@ -191,6 +265,11 @@ export const exerciseApi = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+  commitScenario: (exerciseId: string, scenarioId: string, body: CommitScenarioRequest) =>
+    apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}/commit`), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   deleteScenario: (exerciseId: string, scenarioId: string) =>
     apiRequest<void>(exercisePath(exerciseId, `/scenarios/${scenarioId}`), {
       method: 'DELETE',
@@ -200,16 +279,46 @@ export const exerciseApi = {
       method: 'POST',
     }),
   runForecast: (exerciseId: string, scenarioId: string) =>
-    apiRequest<StubRun>(exercisePath(exerciseId, `/scenarios/${scenarioId}/forecast:run`), {
+    apiRequest<ForecastBundle>(exercisePath(exerciseId, `/scenarios/${scenarioId}/forecast:run`), {
       method: 'POST',
     }),
-  runMonthlySimulation: (exerciseId: string, scenarioId: string) =>
-    apiRequest<StubRun>(
-      exercisePath(exerciseId, `/scenarios/${scenarioId}/simulations/monthly`),
-      { method: 'POST' },
+  getLatestForecast: (
+    exerciseId: string,
+    scenarioId: string,
+    level: 'MONTHLY' | 'DAILY' = 'MONTHLY',
+  ) =>
+    apiRequest<ForecastView>(
+      exercisePath(
+        exerciseId,
+        `/scenarios/${scenarioId}/forecast/latest?level=${encodeURIComponent(level)}`,
+      ),
     ),
-  runSlotSimulation: (exerciseId: string, scenarioId: string) =>
-    apiRequest<StubRun>(exercisePath(exerciseId, `/scenarios/${scenarioId}/simulations/slot`), {
-      method: 'POST',
-    }),
+  previewSizing: (exerciseId: string, scenarioId: string, rightSizingHc: number) =>
+    apiRequest<SizingPreviewBundle>(
+      exercisePath(exerciseId, `/scenarios/${scenarioId}/sizing:preview`),
+      {
+        method: 'POST',
+        body: JSON.stringify({ rightSizingHc }),
+      },
+    ),
+  getLatestMonthlySizing: (exerciseId: string, scenarioId: string) =>
+    apiRequest<MonthlySizingView>(
+      exercisePath(exerciseId, `/scenarios/${scenarioId}/simulations/monthly/latest`),
+    ),
+  getLatestDailySimulation: (exerciseId: string, scenarioId: string) =>
+    apiRequest<DailySizingView>(
+      exercisePath(exerciseId, `/scenarios/${scenarioId}/simulations/daily/latest`),
+    ),
+  runSlotSimulation: (exerciseId: string, scenarioId: string, shifts: ShiftRequest[]) =>
+    apiRequest<SlotSimulationView>(
+      exercisePath(exerciseId, `/scenarios/${scenarioId}/simulations/slot`),
+      {
+        method: 'POST',
+        body: JSON.stringify({ shifts }),
+      },
+    ),
+  getLatestSlotSimulation: (exerciseId: string, scenarioId: string) =>
+    apiRequest<SlotSimulationView>(
+      exercisePath(exerciseId, `/scenarios/${scenarioId}/simulations/slot/latest`),
+    ),
 }

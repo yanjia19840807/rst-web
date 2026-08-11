@@ -12,6 +12,11 @@ import type {
   SupportItem,
   TeamSetup,
 } from '@/features/exercise-management/types'
+import {
+  dailyTrainDates,
+  monthlyTrainMonths,
+  slotTrainKeys,
+} from '@/features/exercise-management/periodWindows'
 
 export type ExerciseShell = {
   teamSetup: TeamSetup
@@ -59,6 +64,52 @@ const emptyTeamSetup = (): TeamSetup => ({
   calculationVersion: 'v1',
   version: 0,
 })
+
+export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
+  const months = monthlyTrainMonths(exercise.sizingMonth)
+  const monthMap = new Map(shell.monthlyVolumes.map((row) => [row.month, row]))
+  shell.monthlyVolumes = months.map((month) => {
+    const prior = monthMap.get(month)
+    return {
+      id: prior?.id ?? crypto.randomUUID(),
+      month,
+      actualVolume: prior?.actualVolume ?? null,
+      commercialRatio: prior?.commercialRatio ?? null,
+      manualForecastVolume: null,
+      sourceType: prior?.sourceType ?? 'MANUAL',
+    }
+  })
+
+  const dates = dailyTrainDates(exercise.sizingMonth)
+  const dayMap = new Map(shell.dailyVolumes.map((row) => [row.volumeDate, row]))
+  shell.dailyVolumes = dates.map((volumeDate) => {
+    const prior = dayMap.get(volumeDate)
+    return {
+      id: prior?.id ?? crypto.randomUUID(),
+      volumeDate,
+      actualVolume: prior?.actualVolume ?? null,
+      dailyAdjustmentRatio: prior?.dailyAdjustmentRatio ?? null,
+      manualForecastVolume: null,
+      sourceType: prior?.sourceType ?? 'MANUAL',
+    }
+  })
+
+  const slots = slotTrainKeys(exercise.slotStartDate, exercise.slotWeeks)
+  const slotMap = new Map(
+    shell.slotVolumes.map((row) => [`${row.slotStartAt}|${row.slotEndAt}`, row]),
+  )
+  shell.slotVolumes = slots.map(({ slotStartAt, slotEndAt }) => {
+    const prior = slotMap.get(`${slotStartAt}|${slotEndAt}`)
+    return {
+      id: prior?.id ?? crypto.randomUUID(),
+      slotStartAt,
+      slotEndAt,
+      rawVolume: prior?.rawVolume ?? 0,
+      timezone: prior?.timezone ?? 'Asia/Shanghai',
+      sourceType: prior?.sourceType ?? 'MANUAL',
+    }
+  })
+}
 
 export function createExerciseShell(deliveryHc = 0): ExerciseShell {
   return {
@@ -131,6 +182,7 @@ export function ensureShell(exercise: Exercise): ExerciseShell {
   if (!shell) {
     const deliveryHc = exercise.snapshot.sharedKpis.reduce((sum, item) => sum + item.deliveryHc, 0)
     shell = createExerciseShell(deliveryHc)
+    seedTrainVolumes(exercise, shell)
     exerciseShells.set(exercise.id, shell)
   }
   return shell
