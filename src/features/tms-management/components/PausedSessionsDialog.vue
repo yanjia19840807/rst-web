@@ -82,8 +82,10 @@ async function confirmDelete() {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
-      <DialogHeader>
+    <DialogContent
+      class="flex max-h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
+    >
+      <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Paused Sessions</DialogTitle>
         <DialogDescription>
           {{ pausedQuery.data.value?.total ?? 0 }} session{{
@@ -93,68 +95,79 @@ async function confirmDelete() {
         </DialogDescription>
       </DialogHeader>
 
-      <Input v-model="filters.query" placeholder="Session No / Reference" />
+      <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div class="rounded-lg border bg-card p-4">
+          <div class="grid gap-4">
+            <Input v-model="filters.query" placeholder="Session No / Reference" />
 
-      <div class="overflow-x-auto rounded-lg border">
-        <Table class="min-w-[680px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Session No</TableHead>
-              <TableHead>Pause Time</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead class="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="session in pausedQuery.data.value?.items ?? []" :key="session.id">
-              <TableCell class="font-mono text-xs">{{ session.id }}</TableCell>
-              <TableCell>{{ formatDate(session.pausedAt) }}</TableCell>
-              <TableCell>{{ session.reference || '—' }}</TableCell>
-              <TableCell>
-                <div class="flex justify-end gap-3">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="hasRunningSession || resume.isPending.value"
-                    @click="resumeSession(session.id)"
+            <div class="overflow-x-auto rounded-lg border">
+              <Table class="min-w-[680px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Session No</TableHead>
+                    <TableHead>Pause Time</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead class="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow
+                    v-for="session in pausedQuery.data.value?.items ?? []"
+                    :key="session.id"
                   >
-                    Resume
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link-destructive"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="discard.isPending.value"
-                    @click="openDelete(session.id)"
+                    <TableCell class="font-mono text-xs">{{ session.id }}</TableCell>
+                    <TableCell>{{ formatDate(session.pausedAt) }}</TableCell>
+                    <TableCell>{{ session.reference || '—' }}</TableCell>
+                    <TableCell>
+                      <div class="flex justify-end gap-3">
+                        <Button
+                          size="sm"
+                          variant="link"
+                          class="h-auto px-0 font-semibold"
+                          :disabled="hasRunningSession || resume.isPending.value"
+                          @click="resumeSession(session.id)"
+                        >
+                          Resume
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="link-destructive"
+                          class="h-auto px-0 font-semibold"
+                          :disabled="discard.isPending.value"
+                          @click="openDelete(session.id)"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow
+                    v-if="!pausedQuery.isPending.value && !pausedQuery.data.value?.items.length"
                   >
-                    Delete
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow v-if="!pausedQuery.isPending.value && !pausedQuery.data.value?.items.length">
-              <TableCell colspan="4" class="h-20 text-center text-muted-foreground">
-                No paused sessions found.
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+                    <TableCell colspan="4" class="h-20 text-center text-muted-foreground">
+                      No paused sessions found.
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+
+            <TablePager
+              :total="pausedQuery.data.value?.total ?? 0"
+              :page="filters.page"
+              :page-size="filters.pageSize"
+              label="sessions"
+              @update:page="filters.page = $event"
+              @update:page-size="
+                (size) => {
+                  filters.pageSize = size
+                  filters.page = 1
+                }
+              "
+            />
+          </div>
+        </div>
       </div>
-
-      <TablePager
-        :total="pausedQuery.data.value?.total ?? 0"
-        :page="filters.page"
-        :page-size="filters.pageSize"
-        label="sessions"
-        @update:page="filters.page = $event"
-        @update:page-size="
-          (size) => {
-            filters.pageSize = size
-            filters.page = 1
-          }
-        "
-      />
     </DialogContent>
   </Dialog>
 

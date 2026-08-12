@@ -33,8 +33,6 @@ import { formatNumber, numOrNull } from './adTypes'
 
 type VolumeTab = 'monthly' | 'daily' | 'slot'
 
-const DEFAULT_TIMEZONE = 'Asia/Shanghai'
-
 const props = defineProps<{
   exerciseId: string
   sizingMonth: string
@@ -71,20 +69,15 @@ watch(
     monthDrafts.value = m.map((row) => ({
       month: row.month,
       actualVolume: row.actualVolume,
-      commercialRatio: row.commercialRatio,
-      manualForecastVolume: null,
     }))
     dayDrafts.value = d.map((row) => ({
       volumeDate: row.volumeDate,
       actualVolume: row.actualVolume,
-      dailyAdjustmentRatio: row.dailyAdjustmentRatio,
-      manualForecastVolume: null,
     }))
     slotDrafts.value = s.map((row) => ({
       slotStartAt: row.slotStartAt,
       slotEndAt: row.slotEndAt,
-      rawVolume: row.rawVolume,
-      timezone: row.timezone || DEFAULT_TIMEZONE,
+      actualVolume: row.actualVolume,
     }))
     editingIndex.value = null
   },
@@ -191,7 +184,7 @@ async function confirmEdit() {
       await persistDaily()
     } else {
       const row = slotDrafts.value[idx]
-      if (row) row.rawVolume = Number(n ?? 0)
+      if (row) row.actualVolume = Number(n ?? 0)
       await persistSlot()
     }
     editingIndex.value = null
@@ -440,7 +433,7 @@ async function onImportFile(event: Event) {
             <TableCell>{{ formatSlotTime(row.slotStartAt, row.slotEndAt) }}</TableCell>
             <TableCell>
               <Input v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
-              <span v-else>{{ formatNumber(row.rawVolume) }}</span>
+              <span v-else>{{ formatNumber(row.actualVolume) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <div class="flex gap-3">
@@ -468,7 +461,7 @@ async function onImportFile(event: Event) {
                   size="sm"
                   variant="link"
                   class="h-auto px-0 font-semibold"
-                  @click="startEdit(index, row.rawVolume)"
+                  @click="startEdit(index, row.actualVolume)"
                 >
                   Edit
                 </Button>

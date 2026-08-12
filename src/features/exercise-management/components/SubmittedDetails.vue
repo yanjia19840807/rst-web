@@ -99,7 +99,7 @@ onMounted(load)
       </button>
     </div>
 
-    <template v-if="pageTab === 'exercise'">
+    <div v-if="pageTab === 'exercise'" class="grid gap-4">
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Official Scenario Package</CardTitle>
@@ -125,10 +125,17 @@ onMounted(load)
         </CardContent>
       </Card>
 
-      <AssociatedDataPanel :exercise-id="exerciseId" read-only />
-    </template>
+      <AssociatedDataPanel
+        :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.slotStartDate}-${exercise.slotWeeks}`"
+        :exercise-id="exerciseId"
+        :sizing-month="exercise.sizingMonth"
+        :slot-start-date="exercise.slotStartDate"
+        :slot-weeks="exercise.slotWeeks"
+        read-only
+      />
+    </div>
 
-    <template v-else>
+    <div v-else class="grid gap-4">
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Approval</CardTitle>
@@ -212,6 +219,9 @@ onMounted(load)
           </div>
         </CardContent>
       </Card>
-    </template>
+    </div>
+  </div>
+  <div v-else class="py-16 text-center text-sm text-muted-foreground">
+    Submitted details are unavailable for this exercise.
   </div>
 </template>

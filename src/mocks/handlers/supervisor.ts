@@ -148,8 +148,8 @@ export const supervisorHandlers = [
 
   http.post('*/api/v1/supervisor/toolkits', async ({ request }) => {
     const input = (await request.json()) as ToolkitEditorPayload
-    if (!input.name.trim() || !input.pl3Code || !input.subtasks.some((item) => !item.deletedAt)) {
-      return problem(422, 'Name, hierarchy and at least one active subtask are required.')
+    if (!input.name.trim() || !input.pl3Code) {
+      return problem(422, 'Name and hierarchy are required.')
     }
     if (
       supervisorToolkits.some(
@@ -223,7 +223,7 @@ export const supervisorHandlers = [
       return problem(422, 'Exercise dates are invalid.')
     }
     const frozen = snapshot(toolkit)
-    if (!frozen.subtasks.length || frozen.sharedKpis.some((item) => !item.valid)) {
+    if (frozen.sharedKpis.some((item) => !item.valid)) {
       return problem(422, 'Toolkit snapshot is not valid for Exercise creation.')
     }
     const exercise: Exercise = {
@@ -386,13 +386,6 @@ export const supervisorHandlers = [
       supportFte: fte,
       comments: body.comments ?? null,
       calculationVersion: 'v1.2',
-      scopes: (body.kpiLineIds?.length
-        ? body.kpiLineIds
-        : ctx.exercise.snapshot.sharedKpis.map((kpi) => kpi.id)
-      ).map((kpiId, _, all) => ({
-        exerciseSharedKpiLineId: kpiId,
-        allocationRatio: 1 / Math.max(all.length, 1),
-      })),
     }
     ctx.shell.support.push(item)
     return HttpResponse.json(item, { status: 201 })
@@ -429,13 +422,6 @@ export const supervisorHandlers = [
         workloadPerYearHours: hours,
         supportFte: fte,
         calculationVersion: 'v1.2',
-        scopes: (body.kpiLineIds?.length
-          ? body.kpiLineIds
-          : ctx.exercise.snapshot.sharedKpis.map((kpi) => kpi.id)
-        ).map((kpiId, _, all) => ({
-          exerciseSharedKpiLineId: kpiId,
-          allocationRatio: 1 / Math.max(all.length, 1),
-        })),
       }
       ctx.shell.support[index] = updated
       return HttpResponse.json(updated)
@@ -564,9 +550,8 @@ export const supervisorHandlers = [
       id: crypto.randomUUID(),
       month: row.month,
       actualVolume: row.actualVolume ?? null,
-      commercialRatio: row.commercialRatio ?? null,
-      manualForecastVolume: row.manualForecastVolume ?? null,
       sourceType: 'MANUAL',
+      importBatchId: null,
     }))
     return HttpResponse.json(ctx.shell.monthlyVolumes)
   }),
@@ -586,9 +571,8 @@ export const supervisorHandlers = [
       id: crypto.randomUUID(),
       volumeDate: row.volumeDate,
       actualVolume: row.actualVolume ?? null,
-      dailyAdjustmentRatio: row.dailyAdjustmentRatio ?? null,
-      manualForecastVolume: row.manualForecastVolume ?? null,
       sourceType: 'MANUAL',
+      importBatchId: null,
     }))
     return HttpResponse.json(ctx.shell.dailyVolumes)
   }),
@@ -613,9 +597,9 @@ export const supervisorHandlers = [
       id: crypto.randomUUID(),
       slotStartAt: row.slotStartAt,
       slotEndAt: row.slotEndAt,
-      rawVolume: row.rawVolume,
-      timezone: row.timezone,
+      actualVolume: row.actualVolume,
       sourceType: 'MANUAL',
+      importBatchId: null,
     }))
     return HttpResponse.json(ctx.shell.slotVolumes)
   }),
@@ -1502,7 +1486,7 @@ export const supervisorHandlers = [
       const theoreticalFte: number[] = []
       const cumulativeTat: number[] = []
       const rows = volumes.map((volume, index) => {
-        const raw = Number(volume.rawVolume) || 0
+        const raw = Number(volume.actualVolume) || 0
         const manual = raw * 0.95
         const casesPerFte = 25
         const theoretical = casesPerFte > 0 ? manual / casesPerFte : 0

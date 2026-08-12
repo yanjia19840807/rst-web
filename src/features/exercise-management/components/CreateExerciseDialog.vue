@@ -35,39 +35,60 @@ const emit = defineEmits<{
   created: [exercise: Exercise]
 }>()
 
-const today = new Date().toISOString().slice(0, 10)
-const month = today.slice(0, 7)
 const busy = ref(false)
 
-const form = reactive<CreateExerciseInput>({
-  toolkitId: '',
-  sizingMonth: month,
-  slotStartDate: today,
-  slotWeeks: 4,
-  tmsFrom: today,
-  tmsTo: today,
-})
+type CreateForm = Omit<CreateExerciseInput, 'slotWeeks'> & { slotWeeks: number | '' }
+
+function emptyForm(): CreateForm {
+  return {
+    toolkitId: '',
+    sizingMonth: '',
+    slotStartDate: '',
+    slotWeeks: '',
+    tmsFrom: '',
+    tmsTo: '',
+  }
+}
+
+const form = reactive<CreateForm>(emptyForm())
 
 const createdLabel = computed(() => formatDate(new Date()))
 const sizingHints = computed(() => sizingHintLines(form.sizingMonth))
-const slotHints = computed(() => slotHintLines(form.slotStartDate, form.slotWeeks))
+const slotHints = computed(() =>
+  slotHintLines(form.slotStartDate, typeof form.slotWeeks === 'number' ? form.slotWeeks : 0),
+)
+const formReady = computed(
+  () =>
+    Boolean(
+      form.toolkitId &&
+        form.sizingMonth &&
+        form.slotStartDate &&
+        form.slotWeeks &&
+        form.tmsFrom &&
+        form.tmsTo,
+    ),
+)
 
 watch(open, (value) => {
   if (!value) return
-  form.toolkitId =
-    props.initialToolkitId && props.toolkits.some((item) => item.id === props.initialToolkitId)
-      ? props.initialToolkitId
-      : (props.toolkits[0]?.id ?? '')
-  form.sizingMonth = month
-  form.slotStartDate = today
-  form.slotWeeks = 4
-  form.tmsFrom = today
-  form.tmsTo = today
+  Object.assign(form, emptyForm())
 })
 
 async function create() {
   if (!form.toolkitId) {
     toast.warning('Please select a Toolkit.')
+    return
+  }
+  if (!form.sizingMonth) {
+    toast.warning('Please select a Sizing Month.')
+    return
+  }
+  if (!form.slotStartDate || !form.slotWeeks) {
+    toast.warning('Please complete the Slot Period.')
+    return
+  }
+  if (!form.tmsFrom || !form.tmsTo) {
+    toast.warning('Please complete the TMS period.')
     return
   }
   if (form.tmsFrom > form.tmsTo) {
@@ -76,7 +97,15 @@ async function create() {
   }
   busy.value = true
   try {
-    const result = await exerciseApi.create({ ...form })
+    const payload: CreateExerciseInput = {
+      toolkitId: form.toolkitId,
+      sizingMonth: form.sizingMonth,
+      slotStartDate: form.slotStartDate,
+      slotWeeks: Number(form.slotWeeks),
+      tmsFrom: form.tmsFrom,
+      tmsTo: form.tmsTo,
+    }
+    const result = await exerciseApi.create(payload)
     emit('created', result.exercise)
     open.value = false
     toast.success(`${result.exercise.exerciseCode} created with a frozen snapshot.`)
@@ -84,7 +113,11 @@ async function create() {
       toast.message(notice)
     }
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Exercise could not be created.')
+    const message =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : 'Exercise could not be created.'
+    toast.error(message)
   } finally {
     busy.value = false
   }
@@ -119,6 +152,7 @@ async function create() {
               v-model="form.toolkitId"
               class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
             >
+              <option value="">Select toolkit</option>
               <option v-for="toolkit in toolkits" :key="toolkit.id" :value="toolkit.id">
                 {{ toolkit.name }}
               </option>
@@ -150,9 +184,10 @@ async function create() {
                 <label class="grid gap-1.5 text-xs text-muted-foreground">
                   Weeks
                   <select
-                    v-model.number="form.slotWeeks"
+                    v-model="form.slotWeeks"
                     class="h-9 w-20 rounded-md border border-input bg-card px-2 text-sm text-foreground"
                   >
+                    <option value="">—</option>
                     <option v-for="week in 12" :key="week" :value="week">{{ week }}</option>
                   </select>
                 </label>
@@ -192,7 +227,7 @@ async function create() {
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="busy" @click="open = false">Cancel</Button>
-        <Button :disabled="busy || !form.toolkitId" @click="create">
+        <Button :disabled="busy || !formReady" @click="create">
           {{ busy ? 'Creating…' : 'Confirm' }}
         </Button>
       </DialogFooter>

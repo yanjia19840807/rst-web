@@ -88,7 +88,7 @@ const volumeSummary = computed(() => {
     (sum, row) => sum + Number(row.actualVolume ?? 0),
     0,
   )
-  const slotVolume = slot.value.reduce((sum, row) => sum + Number(row.rawVolume || 0), 0)
+  const slotVolume = slot.value.reduce((sum, row) => sum + Number(row.actualVolume || 0), 0)
   return [
     {
       granularity: 'Month',

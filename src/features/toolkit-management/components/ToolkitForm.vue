@@ -233,13 +233,8 @@ function confirmAddSubtask() {
 }
 
 async function save() {
-  if (
-    !form.name.trim() ||
-    !form.pl3Code ||
-    !activeSubtasks.value.some((item) => item.name.trim()) ||
-    !form.sharedKpiSelections.length
-  ) {
-    toast.error('Complete the hierarchy, one active Subtask and one Shared KPI selection.')
+  if (!form.name.trim() || !form.pl3Code || !form.sharedKpiSelections.length) {
+    toast.error('Complete the hierarchy and at least one Shared KPI selection.')
     return
   }
   busy.value = true

@@ -300,7 +300,7 @@ onMounted(load)
                 <TableHead>PL2</TableHead>
                 <TableHead>PL3</TableHead>
                 <TableHead>Toolkit</TableHead>
-                <TableHead>Shared KPI Line</TableHead>
+                <TableHead>Customer Country</TableHead>
                 <TableHead>Delivery HC</TableHead>
                 <TableHead>Right Sizing HC</TableHead>
                 <TableHead>Production Support</TableHead>

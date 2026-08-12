@@ -151,11 +151,6 @@ export interface ShiftRequest {
   worksOnWeekend: boolean
 }
 
-export interface SupportScope {
-  exerciseSharedKpiLineId: string
-  allocationRatio: number
-}
-
 export interface SupportItem {
   id: string
   lineageId: string
@@ -170,7 +165,6 @@ export interface SupportItem {
   supportFte: number | null
   comments: string | null
   calculationVersion: string | null
-  scopes: SupportScope[]
 }
 
 export interface SupportItemRequest {
@@ -183,7 +177,6 @@ export interface SupportItemRequest {
   /** Optional; server derives from Frequency (+ Working Days for Daily). */
   annualMultiplier?: number | null
   comments?: string | null
-  kpiLineIds?: string[]
 }
 
 export interface Holiday {
@@ -232,48 +225,41 @@ export interface MonthlyVolume {
   id: string
   month: string
   actualVolume: number | null
-  commercialRatio: number | null
-  manualForecastVolume: number | null
   sourceType: string | null
+  importBatchId?: string | null
 }
 
 export interface MonthlyVolumeRequest {
   month: string
   actualVolume?: number | null
-  commercialRatio?: number | null
-  manualForecastVolume?: number | null
 }
 
 export interface DailyVolume {
   id: string
   volumeDate: string
   actualVolume: number | null
-  dailyAdjustmentRatio: number | null
-  manualForecastVolume: number | null
   sourceType: string | null
+  importBatchId?: string | null
 }
 
 export interface DailyVolumeRequest {
   volumeDate: string
   actualVolume?: number | null
-  dailyAdjustmentRatio?: number | null
-  manualForecastVolume?: number | null
 }
 
 export interface SlotVolume {
   id: string
   slotStartAt: string
   slotEndAt: string
-  rawVolume: number
-  timezone: string
+  actualVolume: number
   sourceType: string | null
+  importBatchId?: string | null
 }
 
 export interface SlotVolumeRequest {
   slotStartAt: string
   slotEndAt: string
-  rawVolume: number
-  timezone: string
+  actualVolume: number
 }
 
 export interface CycleTimeBaselineFile {

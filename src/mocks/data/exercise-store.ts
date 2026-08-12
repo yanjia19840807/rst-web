@@ -74,9 +74,8 @@ export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
       id: prior?.id ?? crypto.randomUUID(),
       month,
       actualVolume: prior?.actualVolume ?? null,
-      commercialRatio: prior?.commercialRatio ?? null,
-      manualForecastVolume: null,
       sourceType: prior?.sourceType ?? 'MANUAL',
+      importBatchId: prior?.importBatchId ?? null,
     }
   })
 
@@ -88,9 +87,8 @@ export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
       id: prior?.id ?? crypto.randomUUID(),
       volumeDate,
       actualVolume: prior?.actualVolume ?? null,
-      dailyAdjustmentRatio: prior?.dailyAdjustmentRatio ?? null,
-      manualForecastVolume: null,
       sourceType: prior?.sourceType ?? 'MANUAL',
+      importBatchId: prior?.importBatchId ?? null,
     }
   })
 
@@ -104,9 +102,9 @@ export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
       id: prior?.id ?? crypto.randomUUID(),
       slotStartAt,
       slotEndAt,
-      rawVolume: prior?.rawVolume ?? 0,
-      timezone: prior?.timezone ?? 'Asia/Shanghai',
+      actualVolume: prior?.actualVolume ?? 0,
       sourceType: prior?.sourceType ?? 'MANUAL',
+      importBatchId: prior?.importBatchId ?? null,
     }
   })
 }
