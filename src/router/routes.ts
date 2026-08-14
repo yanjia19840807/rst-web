@@ -179,7 +179,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/supervisor/SubmittedDetailsPage.vue'),
     meta: {
       title: 'Submitted Exercise Details',
-      subtitle: 'Read-only official package and approval history',
+      subtitle: 'Read-only official scenario and approval history',
       roles: ['supervisor'],
     },
   },

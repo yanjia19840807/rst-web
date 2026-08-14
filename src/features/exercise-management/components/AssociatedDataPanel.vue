@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { toast } from 'vue-sonner'
+import { computed } from 'vue'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,24 +12,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { exerciseApi } from '../api'
+import { useAssociatedDataPanel } from '../composables/useAssociatedDataPanel'
 import {
   dailyTrainDates,
   deriveSizingWindows,
   deriveSlotPeriodLabel,
   monthlyTrainMonths,
 } from '../periodWindows'
-import type {
-  CalendarView,
-  CycleTimeBaseline,
-  DailyVolume,
-  MonthlyVolume,
-  Shift,
-  SlotVolume,
-  SupportItem,
-  TeamSetup,
-} from '../types'
-import type { AdTab, MedianSourceMode } from './associated-data/adTypes'
 import { AD_TAB_LABELS, formatNumber } from './associated-data/adTypes'
 import AdTmsSummary from './associated-data/AdTmsSummary.vue'
 import AssociatedDataEditorDialog from './associated-data/AssociatedDataEditorDialog.vue'
@@ -43,22 +31,26 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-const tabs: AdTab[] = ['team', 'tms', 'support', 'calendar', 'volume']
-const activeTab = ref<AdTab>('team')
-const loading = ref(true)
-const teamSetup = ref<TeamSetup | null>(null)
-const shifts = ref<Shift[]>([])
-const support = ref<SupportItem[]>([])
-const calendar = ref<CalendarView | null>(null)
-const monthly = ref<MonthlyVolume[]>([])
-const daily = ref<DailyVolume[]>([])
-const slot = ref<SlotVolume[]>([])
-const cycleTime = ref<CycleTimeBaseline | null>(null)
-
-const editorOpen = ref(false)
-const editor = ref<AdTab | null>(null)
-
-const medianSource = ref<MedianSourceMode>('system')
+const {
+  tabs,
+  activeTab,
+  loading,
+  teamSetup,
+  shifts,
+  support,
+  calendar,
+  monthly,
+  daily,
+  slot,
+  cycleTime,
+  editorOpen,
+  editor,
+  medianSource,
+  openEditor,
+  reapplyTemplate,
+  onCycleTimeUpdated,
+  reload,
+} = useAssociatedDataPanel(() => props.exerciseId)
 
 const supportFte = computed(() => {
   if (!support.value.length) return null
@@ -111,92 +103,9 @@ const volumeSummary = computed(() => {
   ]
 })
 
-async function load() {
-  loading.value = true
-  try {
-    const [ts, sh, sp, cal, mon, day, sl] = await Promise.all([
-      exerciseApi.getTeamSetup(props.exerciseId),
-      exerciseApi.getShifts(props.exerciseId),
-      exerciseApi.listSupport(props.exerciseId),
-      exerciseApi.getCalendar(props.exerciseId),
-      exerciseApi.getMonthlyVolumes(props.exerciseId),
-      exerciseApi.getDailyVolumes(props.exerciseId),
-      exerciseApi.getSlotVolumes(props.exerciseId),
-    ])
-    teamSetup.value = ts
-    shifts.value = sh
-    support.value = sp
-    calendar.value = cal
-    monthly.value = mon
-    daily.value = day
-    slot.value = sl
-    try {
-      cycleTime.value = await exerciseApi.getActiveCycleTime(props.exerciseId)
-    } catch {
-      cycleTime.value = null
-    }
-    syncMedianFromBaseline()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load Associated Data.')
-  } finally {
-    loading.value = false
-  }
-}
-
-function syncMedianFromBaseline() {
-  const ct = cycleTime.value
-  if (!ct) {
-    medianSource.value = 'system'
-    return
-  }
-  if (ct.baselineType?.toUpperCase() === 'MANUAL') {
-    medianSource.value = 'manual'
-  } else {
-    medianSource.value = 'system'
-  }
-}
-
-function openEditor(kind: AdTab) {
-  editor.value = kind
-  editorOpen.value = true
-}
-
-async function reapplyTemplate() {
-  try {
-    const result = await exerciseApi.reapplyHolidayTemplate(props.exerciseId)
-    const cal = result.calendar
-    // Replace refs with fresh objects so summary + open editor stay in sync.
-    calendar.value = { ...cal, holidays: [...(cal.holidays ?? [])] }
-    teamSetup.value = await exerciseApi.getTeamSetup(props.exerciseId)
-    const count = cal.holidays?.length ?? 0
-    toast.success(
-      `Template applied (${count} holiday day${count === 1 ? '' : 's'}). CUSTOM rows kept.`,
-    )
-    for (const notice of result.notices ?? []) {
-      toast.message(notice)
-    }
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not re-apply template.')
-  }
-}
-
-function onCycleTimeUpdated(value: CycleTimeBaseline) {
-  cycleTime.value = value
-  syncMedianFromBaseline()
-}
-
-watch(
-  () => props.exerciseId,
-  () => {
-    void load()
-  },
-)
-
-onMounted(load)
-
 defineExpose({
   getShifts: () => shifts.value,
-  reload: load,
+  reload,
 })
 </script>
 

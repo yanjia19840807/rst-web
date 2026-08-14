@@ -132,10 +132,12 @@ function editable(exercise: Exercise) {
 function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
   const liveOfficial = shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
-  exercise.officialScenarioId = liveOfficial ?? shell.submitted?.scenarioId ?? exercise.officialScenarioId
+  // Prefer live OFFICIAL; otherwise keep the Exercise pointer (Withdraw/Return demote status to DRAFT).
+  exercise.officialScenarioId =
+    liveOfficial ?? exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
-  exercise.canSubmit = Boolean(liveOfficial) && exercise.canEdit
+  exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
   const ready = shell.submitted?.steps.find((step) => step.routingStatus === 'READY')
   if (exercise.workflowStatus === 'UNDER_REVIEW' && shell.submitted) {
     exercise.currentStep = shell.submitted.currentStep
@@ -158,7 +160,7 @@ function syncFlags(exercise: Exercise) {
   }
 }
 
-const OPEN_LIKE_STATUSES = new Set(['AWAITING_MANAGER', 'AWAITING_CDH', 'AWAITING_LTH'])
+const OPEN_LIKE_STATUSES = new Set(['OPEN', 'AWAITING'])
 
 function toDateKey(value?: string | null) {
   if (!value) return ''
@@ -302,7 +304,7 @@ export const supervisorHandlers = [
     const params = new URL(request.url).searchParams
     const tab = params.get('tab') || 'IN_PROGRESS'
     const tabStatuses = tab === 'ARCHIVED'
-      ? new Set(['VALIDATED', 'ARCHIVED'])
+      ? new Set(['APPROVED', 'REJECTED'])
       : new Set(['IN_PROGRESS', 'RETURNED', 'UNDER_REVIEW'])
     const source = exercises.filter((item) => tabStatuses.has(item.workflowStatus))
     const items = source.filter((item) => matchesExerciseList(item, params))
@@ -1080,13 +1082,6 @@ export const supervisorHandlers = [
     target.status = 'OFFICIAL'
     target.officialAt = new Date().toISOString()
     target.version += 1
-    const reopenable = ctx.shell.submitted
-      && (ctx.shell.submitted.submissionStatus === 'RETURNED'
-        || ctx.shell.submitted.submissionStatus === 'ARCHIVED')
-    if (!reopenable) {
-      ctx.shell.officialPackageId = crypto.randomUUID()
-      ctx.shell.packageVersion += 1
-    }
     syncFlags(ctx.exercise)
     return HttpResponse.json(target)
   }),
@@ -1647,8 +1642,9 @@ export const supervisorHandlers = [
       return problem(409, 'Exercise must have an Official Scenario and be editable to submit.')
     }
     const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
+    const official = ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
     return HttpResponse.json({
-      officialPackageId: ctx.shell.officialPackageId,
+      scenarioId: official?.id ?? ctx.exercise.officialScenarioId ?? '',
       findings: [
         {
           ruleCode: 'DAILY_VS_MONTHLY',
@@ -1685,19 +1681,13 @@ export const supervisorHandlers = [
     const official = ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
     const previous = ctx.shell.submitted
     const reopenable = previous
-      && (previous.submissionStatus === 'RETURNED' || previous.submissionStatus === 'ARCHIVED')
-    if (reopenable && !official) {
-      return problem(409, 'Save Official after Return before Submit.')
-    }
+      && (previous.submissionStatus === 'RETURNED' || previous.submissionStatus === 'WITHDRAWN')
     const now = new Date().toISOString()
-    const packageId = ctx.shell.officialPackageId ?? crypto.randomUUID()
-    ctx.shell.officialPackageId = packageId
-    ctx.shell.packageVersion = ctx.shell.packageVersion || 1
     if (reopenable && previous) {
       previous.actions.push({
         stepNo: 0,
         actionType: 'SUBMIT',
-        actorUserId: crypto.randomUUID(),
+        actorCcgid: crypto.randomUUID(),
         actorRoleCode: 'SUPERVISOR',
         comments: body.remarks ?? null,
         actionAt: now,
@@ -1714,19 +1704,16 @@ export const supervisorHandlers = [
         previous.steps.push({
           stepNo: 1,
           requiredRoleCode: 'MANAGER',
-          assigneeUserId: crypto.randomUUID(),
+          assigneeCcgid: crypto.randomUUID(),
           assigneeDisplayName: 'Grace Li',
           routingStatus: 'READY',
         })
       }
       previous.workflowStatus = 'UNDER_REVIEW'
       previous.submittedAt = now
-      previous.officialPackageId = packageId
-      previous.packageVersion = ctx.shell.packageVersion
-      previous.packageStatus = 'LOCKED'
       previous.scenarioId = official?.id ?? previous.scenarioId
       previous.scenarioName = official?.name ?? previous.scenarioName
-      previous.submissionStatus = 'AWAITING_MANAGER'
+      previous.submissionStatus = 'OPEN'
       previous.currentStep = 1
       previous.requiredRole = 'MANAGER'
       previous.remarks = body.remarks ?? null
@@ -1741,14 +1728,11 @@ export const supervisorHandlers = [
       exerciseCode: ctx.exercise.exerciseCode,
       workflowStatus: 'UNDER_REVIEW',
       submittedAt: now,
-      officialPackageId: packageId,
-      packageVersion: ctx.shell.packageVersion,
-      packageStatus: 'LOCKED',
       scenarioId: official?.id ?? '',
       scenarioName: official?.name ?? null,
       submissionId: crypto.randomUUID(),
       submissionCode: `SUB-${ctx.exercise.exerciseCode}`,
-      submissionStatus: 'AWAITING_MANAGER',
+      submissionStatus: 'OPEN',
       currentStep: 1,
       requiredRole: 'MANAGER',
       remarks: body.remarks ?? null,
@@ -1767,7 +1751,7 @@ export const supervisorHandlers = [
         {
           stepNo: 1,
           requiredRoleCode: 'MANAGER',
-          assigneeUserId: crypto.randomUUID(),
+          assigneeCcgid: crypto.randomUUID(),
           assigneeDisplayName: 'Grace Li',
           routingStatus: 'READY',
         },
@@ -1776,7 +1760,7 @@ export const supervisorHandlers = [
         {
           stepNo: 0,
           actionType: 'SUBMIT',
-          actorUserId: crypto.randomUUID(),
+          actorCcgid: crypto.randomUUID(),
           actorRoleCode: 'SUPERVISOR',
           comments: body.remarks ?? null,
           actionAt: now,
@@ -1816,20 +1800,23 @@ export const supervisorHandlers = [
     ctx.shell.submitted.actions.push({
       stepNo: step?.stepNo ?? ctx.shell.submitted.currentStep ?? 1,
       actionType: 'WITHDRAW',
-      actorUserId: crypto.randomUUID(),
+      actorCcgid: crypto.randomUUID(),
       actorRoleCode: 'SUPERVISOR',
       comments: null,
       actionAt: now,
       requestId: crypto.randomUUID(),
     })
-    ctx.shell.submitted.submissionStatus = 'ARCHIVED'
+    ctx.shell.submitted.submissionStatus = 'WITHDRAWN'
     ctx.shell.submitted.workflowStatusLabel = 'CANCELLED'
-    ctx.shell.submitted.packageStatus = 'RETURNED'
     ctx.shell.submitted.workflowStatus = 'IN_PROGRESS'
     ctx.exercise.workflowStatus = 'IN_PROGRESS'
-    const official = ctx.shell.scenarios.find((item) => item.id === ctx.shell.submitted.scenarioId)
-      ?? ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+    // Keep officialScenarioId; demote scenario to DRAFT so it can be edited / re-simulated.
+    const official =
+      ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId) ??
+      ctx.shell.scenarios.find((item) => item.id === ctx.shell.submitted?.scenarioId) ??
+      ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
     if (official) {
+      ctx.exercise.officialScenarioId = official.id
       official.status = 'DRAFT'
       official.officialAt = null
     }

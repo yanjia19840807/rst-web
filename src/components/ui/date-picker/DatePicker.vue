@@ -84,6 +84,7 @@ watch(open, (isOpen) => {
       <Calendar
         v-model="date"
         v-model:placeholder="calendarPlaceholder"
+        :default-placeholder="calendarPlaceholder"
         layout="month-and-year"
         initial-focus
         @update:model-value="open = false"

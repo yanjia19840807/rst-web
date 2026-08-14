@@ -12,7 +12,10 @@ import { exercises } from '../data/supervisor'
 import { ensureShell, exerciseShells } from '../data/exercise-store'
 import { buildApprovalWorkspace } from '../approvalWorkspace'
 
-const OPEN_STATUSES = new Set(['AWAITING_MANAGER', 'AWAITING_CDH', 'AWAITING_LTH'])
+/** Submission is open for review. Query status=AWAITING is accepted as an alias for OPEN. */
+function isOpenStatus(status: string) {
+  return status === 'OPEN' || status === 'AWAITING'
+}
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Approval request failed', status, detail }, { status })
@@ -66,11 +69,9 @@ function previousStepLabel(role?: string | null) {
   }
 }
 
-function awaitingRole(status: string) {
-  if (status === 'AWAITING_MANAGER') return 'MANAGER'
-  if (status === 'AWAITING_CDH') return 'CDH'
-  if (status === 'AWAITING_LTH') return 'LTH'
-  return null
+function currentAwaitingRole(submitted: SubmittedDetails) {
+  if (!isOpenStatus(submitted.submissionStatus)) return null
+  return requiredRole(submitted)
 }
 
 function roleDecision(submitted: SubmittedDetails) {
@@ -81,6 +82,10 @@ function roleDecision(submitted: SubmittedDetails) {
         action.actorRoleCode === 'CDH' ||
         action.actorRoleCode === 'LTH'),
   ).at(-1) ?? null
+}
+
+function isClosedSubmission(status: string) {
+  return status === 'APPROVED' || status === 'RETURNED' || status === 'WITHDRAWN'
 }
 
 function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQueueItem {
@@ -103,12 +108,9 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
       action.actionType === 'APPROVE',
   )
   const mine = roleDecision(submitted)
-  const archivedAt =
-    submitted.submissionStatus === 'VALIDATED' ||
-    submitted.submissionStatus === 'RETURNED' ||
-    submitted.submissionStatus === 'ARCHIVED'
-      ? (closeActions[closeActions.length - 1]?.actionAt ?? submitted.submittedAt)
-      : submitted.submittedAt
+  const archivedAt = isClosedSubmission(submitted.submissionStatus)
+    ? (closeActions[closeActions.length - 1]?.actionAt ?? submitted.submittedAt)
+    : submitted.submittedAt
   return {
     submissionId: submitted.submissionId,
     exerciseId: exercise.id,
@@ -129,17 +131,14 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
     createdAt: exercise.createdAt,
     submittedAt: submitted.submittedAt,
     archivedAt,
-    finalStatus: submitted.submissionStatus === 'VALIDATED'
+    finalStatus: submitted.submissionStatus === 'APPROVED'
       ? 'Approved'
-      : submitted.submissionStatus === 'RETURNED' || submitted.submissionStatus === 'ARCHIVED'
+      : submitted.submissionStatus === 'RETURNED' || submitted.submissionStatus === 'WITHDRAWN'
         ? 'Rejected'
         : null,
-    reviewDurationDays:
-      submitted.submissionStatus === 'VALIDATED' ||
-      submitted.submissionStatus === 'RETURNED' ||
-      submitted.submissionStatus === 'ARCHIVED'
-        ? daysBetween(submitted.submittedAt)
-        : null,
+    reviewDurationDays: isClosedSubmission(submitted.submissionStatus)
+      ? daysBetween(submitted.submittedAt)
+      : null,
     status: submitted.submissionStatus,
     myDecision:
       mine?.actionType === 'APPROVE' ? 'Approved' : mine?.actionType === 'RETURN' ? 'Returned' : null,
@@ -149,15 +148,12 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
 }
 
 function toDetail(exercise: Exercise, submitted: SubmittedDetails): ApprovalDetailView {
-  const canDecide = OPEN_STATUSES.has(submitted.submissionStatus)
+  const canDecide = isOpenStatus(submitted.submissionStatus)
   return {
     exerciseId: exercise.id,
     exerciseCode: exercise.exerciseCode,
     workflowStatus: exercise.workflowStatus,
     submittedAt: submitted.submittedAt,
-    officialPackageId: submitted.officialPackageId,
-    packageVersion: submitted.packageVersion,
-    packageStatus: submitted.packageStatus ?? 'LOCKED',
     scenarioId: submitted.scenarioId,
     scenarioName: submitted.scenarioName,
     submissionId: submitted.submissionId,
@@ -173,7 +169,7 @@ function toDetail(exercise: Exercise, submitted: SubmittedDetails): ApprovalDeta
     actions: submitted.actions.map((action) => ({
       stepNo: action.stepNo ?? 0,
       actionType: action.actionType,
-      actorUserId: action.actorUserId ?? null,
+      actorCcgid: action.actorCcgid ?? null,
       actorRoleCode: action.actorRoleCode ?? null,
       actorDisplayName: action.actorDisplayName ?? null,
       comments: action.comments ?? null,
@@ -251,15 +247,18 @@ export const approvalHandlers = [
   http.get('*/api/v1/approvals/queue', ({ request }) => {
     const url = new URL(request.url)
     const completed = url.searchParams.get('completed') === 'true'
+    const statusParam = url.searchParams.get('status')
+    const wantOpen =
+      !statusParam || statusParam === 'OPEN' || statusParam === 'AWAITING'
     const awaiting = listSubmitted()
-      .filter((item) => OPEN_STATUSES.has(item.submitted.submissionStatus))
+      .filter((item) => isOpenStatus(item.submitted.submissionStatus))
       .map((item) => toQueueItem(item.exercise, item.submitted))
     const source = completed
       ? listSubmitted()
           .map((item) => {
             const row = toQueueItem(item.exercise, item.submitted)
             const mine = roleDecision(item.submitted)
-            const current = awaitingRole(item.submitted.submissionStatus)
+            const current = currentAwaitingRole(item.submitted)
             return { row, include: Boolean(row.myDecision) && (!current || current !== mine?.actorRoleCode) }
           })
           .filter((item) => item.include)
@@ -268,7 +267,9 @@ export const approvalHandlers = [
             (a, b) =>
               new Date(b.myCompletedAt ?? 0).getTime() - new Date(a.myCompletedAt ?? 0).getTime(),
           )
-      : awaiting
+      : wantOpen
+        ? awaiting
+        : []
     const items = source.filter((item) =>
       matchesQueueItem(item, {
         exerciseCode: url.searchParams.get('exerciseCode'),
@@ -301,7 +302,7 @@ export const approvalHandlers = [
   http.post('*/api/v1/approvals/:submissionId/approve', async ({ params, request }) => {
     const ctx = findBySubmission(params.submissionId)
     if (!ctx) return problem(404, 'The Submission was not found.')
-    if (!OPEN_STATUSES.has(ctx.submitted.submissionStatus)) {
+    if (!isOpenStatus(ctx.submitted.submissionStatus)) {
       return problem(409, 'Submission is not awaiting approval.')
     }
     const body = ((await request.json().catch(() => ({}))) ?? {}) as ApproveRequest
@@ -319,7 +320,7 @@ export const approvalHandlers = [
     ctx.submitted.actions.push({
       stepNo,
       actionType: 'APPROVE',
-      actorUserId: crypto.randomUUID(),
+      actorCcgid: crypto.randomUUID(),
       actorRoleCode: role,
       actorDisplayName: 'Approver',
       comments: body.comments ?? null,
@@ -327,12 +328,11 @@ export const approvalHandlers = [
       requestId,
     })
 
-    // Happy-path MSW: single approve validates the submission.
-    ctx.submitted.submissionStatus = 'VALIDATED'
+    // Happy-path MSW: single approve completes the submission.
+    ctx.submitted.submissionStatus = 'APPROVED'
     ctx.submitted.workflowStatusLabel = 'COMPLETED'
-    ctx.submitted.packageStatus = 'VALIDATED'
     ctx.submitted.currentStep = stepNo
-    ctx.exercise.workflowStatus = 'VALIDATED'
+    ctx.exercise.workflowStatus = 'APPROVED'
     syncFlags(ctx.exercise)
     return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
   }),
@@ -340,7 +340,7 @@ export const approvalHandlers = [
   http.post('*/api/v1/approvals/:submissionId/return', async ({ params, request }) => {
     const ctx = findBySubmission(params.submissionId)
     if (!ctx) return problem(404, 'The Submission was not found.')
-    if (!OPEN_STATUSES.has(ctx.submitted.submissionStatus)) {
+    if (!isOpenStatus(ctx.submitted.submissionStatus)) {
       return problem(409, 'Submission is not awaiting approval.')
     }
     const body = ((await request.json().catch(() => ({}))) ?? {}) as ReturnRequest
@@ -361,7 +361,7 @@ export const approvalHandlers = [
     ctx.submitted.actions.push({
       stepNo,
       actionType: 'RETURN',
-      actorUserId: crypto.randomUUID(),
+      actorCcgid: crypto.randomUUID(),
       actorRoleCode: role,
       actorDisplayName: 'Approver',
       comments: body.comments,
@@ -370,7 +370,6 @@ export const approvalHandlers = [
     })
     ctx.submitted.submissionStatus = 'RETURNED'
     ctx.submitted.workflowStatusLabel = 'RETURNED'
-    ctx.submitted.packageStatus = 'RETURNED'
     ctx.exercise.workflowStatus = 'RETURNED'
     const official = ctx.shell.scenarios.find((item) => item.id === ctx.submitted.scenarioId)
       ?? ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')

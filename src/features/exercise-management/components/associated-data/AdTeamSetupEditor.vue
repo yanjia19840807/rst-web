@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table'
 import { TimePicker } from '@/components/ui/time-picker'
 
+import { teamSetupRequestSchema } from '../../schemas/teamSetup'
 import type { TeamSetup, TeamSetupRequest } from '../../types'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
@@ -245,7 +246,7 @@ const capacityRows = computed(() => [
 ])
 
 function toRequest(): TeamSetupRequest {
-  return {
+  const payload = {
     agentsLt6m: form.agentsLt6m,
     agents6To24m: form.agents6To24m,
     agents24To48m: form.agents24To48m,
@@ -264,6 +265,7 @@ function toRequest(): TeamSetupRequest {
     weekendShiftHc: form.weekendShiftHc,
     skeletonRatio: form.skeletonRatio,
   }
+  return teamSetupRequestSchema.parse(payload)
 }
 
 defineExpose({ toRequest })

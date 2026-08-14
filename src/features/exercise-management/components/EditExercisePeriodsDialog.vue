@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import { Button } from '@/components/ui/button'
@@ -14,10 +16,15 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
+import { showOperationNotices } from '@/composables/useOperationNotices'
 
-import { exerciseApi } from '../api'
+import { useExerciseMutations } from '../api/mutations'
 import { sizingHintLines, slotHintLines } from '../periodWindows'
-import type { Exercise, UpdateExercisePeriodsInput } from '../types'
+import {
+  editExercisePeriodsSchema,
+  emptyEditExercisePeriodsForm,
+} from '../schemas/exercisePeriods'
+import type { Exercise } from '../types'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -30,47 +37,63 @@ const emit = defineEmits<{
   saved: [exercise: Exercise]
 }>()
 
-const busy = ref(false)
-const form = reactive<UpdateExercisePeriodsInput>({
-  sizingMonth: '',
-  slotStartDate: '',
-  slotWeeks: 4,
-  tmsFrom: '',
-  tmsTo: '',
+const { updatePeriods } = useExerciseMutations()
+const busy = computed(() => updatePeriods.isPending.value)
+
+const { defineField, errors, handleSubmit, resetForm, values } = useForm({
+  validationSchema: toTypedSchema(editExercisePeriodsSchema),
+  initialValues: emptyEditExercisePeriodsForm(),
+  validateOnMount: false,
 })
 
-const sizingHints = computed(() => sizingHintLines(form.sizingMonth))
-const slotHints = computed(() => slotHintLines(form.slotStartDate, form.slotWeeks))
+const [sizingMonth] = defineField('sizingMonth')
+const [slotStartDate] = defineField('slotStartDate')
+const [slotWeeks] = defineField('slotWeeks')
+const [tmsFrom] = defineField('tmsFrom')
+const [tmsTo] = defineField('tmsTo')
+
+const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
+const slotHints = computed(() =>
+  slotHintLines(values.slotStartDate ?? '', Number(values.slotWeeks) || 0),
+)
 
 watch(open, (value) => {
   if (!value) return
-  form.sizingMonth = props.exercise.sizingMonth
-  form.slotStartDate = props.exercise.slotStartDate
-  form.slotWeeks = props.exercise.slotWeeks
-  form.tmsFrom = props.exercise.tmsFrom
-  form.tmsTo = props.exercise.tmsTo
+  resetForm({
+    values: {
+      sizingMonth: props.exercise.sizingMonth,
+      slotStartDate: props.exercise.slotStartDate,
+      slotWeeks: props.exercise.slotWeeks,
+      tmsFrom: props.exercise.tmsFrom,
+      tmsTo: props.exercise.tmsTo,
+    },
+  })
 })
 
-async function save() {
-  if (form.tmsFrom > form.tmsTo) {
-    toast.warning('TMS period end must be on or after the start date.')
-    return
-  }
-  busy.value = true
+const save = handleSubmit(async (formValues) => {
   try {
-    const result = await exerciseApi.updatePeriods(props.exercise.id, { ...form })
+    const result = await updatePeriods.mutateAsync({
+      id: props.exercise.id,
+      body: {
+        sizingMonth: formValues.sizingMonth,
+        slotStartDate: formValues.slotStartDate,
+        slotWeeks: formValues.slotWeeks,
+        tmsFrom: formValues.tmsFrom,
+        tmsTo: formValues.tmsTo,
+      },
+    })
     emit('saved', result.exercise)
     open.value = false
-    toast.success('Exercise periods updated.')
-    for (const notice of result.notices ?? []) {
-      toast.message(notice)
-    }
+    const summary = 'Exercise periods updated.'
+    const shown = showOperationNotices({
+      summary,
+      notices: result.notices ?? [],
+    })
+    if (!shown) toast.success(summary)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not update periods.')
-  } finally {
-    busy.value = false
   }
-}
+})
 </script>
 
 <template>
@@ -93,11 +116,14 @@ async function save() {
             <Label class="text-muted-foreground self-start pt-2">Sizing Month</Label>
             <div>
               <MonthPicker
-                v-model="form.sizingMonth"
+                v-model="sizingMonth"
                 aria-label="Choose sizing month"
                 placeholder="Select sizing month"
                 class="w-[200px]"
               />
+              <p v-if="errors.sizingMonth" class="mt-1 text-xs text-destructive">
+                {{ errors.sizingMonth }}
+              </p>
               <PeriodDerivedHints :lines="sizingHints" />
             </div>
 
@@ -107,7 +133,7 @@ async function save() {
                 <div class="grid gap-1.5">
                   <span class="text-xs text-muted-foreground">Start date</span>
                   <DatePicker
-                    v-model="form.slotStartDate"
+                    v-model="slotStartDate"
                     aria-label="Choose slot start date"
                     placeholder="Select start date"
                     class="w-[180px]"
@@ -116,31 +142,45 @@ async function save() {
                 <label class="grid gap-1.5 text-xs text-muted-foreground">
                   Weeks
                   <select
-                    v-model.number="form.slotWeeks"
+                    v-model.number="slotWeeks"
                     class="h-9 w-20 rounded-md border border-input bg-card px-2 text-sm text-foreground"
                   >
                     <option v-for="week in 12" :key="week" :value="week">{{ week }}</option>
                   </select>
                 </label>
               </div>
+              <p
+                v-if="errors.slotStartDate || errors.slotWeeks"
+                class="mt-1 text-xs text-destructive"
+              >
+                {{ errors.slotStartDate || errors.slotWeeks }}
+              </p>
               <PeriodDerivedHints :lines="slotHints" />
             </div>
 
             <Label class="text-muted-foreground">TMS period</Label>
-            <div class="flex flex-wrap items-center gap-2">
-              <DatePicker
-                v-model="form.tmsFrom"
-                aria-label="Choose TMS period start"
-                placeholder="From"
-                class="w-[180px]"
-              />
-              <span class="text-muted-foreground">to</span>
-              <DatePicker
-                v-model="form.tmsTo"
-                aria-label="Choose TMS period end"
-                placeholder="To"
-                class="w-[180px]"
-              />
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <DatePicker
+                  v-model="tmsFrom"
+                  aria-label="Choose TMS period start"
+                  placeholder="From"
+                  class="w-[180px]"
+                />
+                <span class="text-muted-foreground">to</span>
+                <DatePicker
+                  v-model="tmsTo"
+                  aria-label="Choose TMS period end"
+                  placeholder="To"
+                  class="w-[180px]"
+                />
+              </div>
+              <p
+                v-if="errors.tmsFrom || errors.tmsTo"
+                class="mt-1 text-xs text-destructive"
+              >
+                {{ errors.tmsFrom || errors.tmsTo }}
+              </p>
             </div>
           </div>
         </div>

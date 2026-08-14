@@ -263,9 +263,6 @@ function applyApprovalDetail(detail: ApprovalDetailView) {
     exerciseCode: detail.exerciseCode,
     workflowStatus: detail.workflowStatus,
     submittedAt: detail.submittedAt,
-    officialPackageId: detail.officialPackageId,
-    packageVersion: detail.packageVersion,
-    packageStatus: detail.packageStatus,
     scenarioId: detail.scenarioId,
     scenarioName: detail.scenarioName,
     submissionId: detail.submissionId,
@@ -480,7 +477,7 @@ watch(
     <div v-if="pageTab === 'exercise'" class="grid gap-4">
       <Card>
         <CardHeader>
-          <CardTitle class="text-base">Official Scenario Package</CardTitle>
+          <CardTitle class="text-base">Official Scenario</CardTitle>
         </CardHeader>
         <CardContent>
           <DetailTable :rows="packageRows">

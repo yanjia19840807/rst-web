@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
@@ -16,12 +18,16 @@ import {
 import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
-
+import { showOperationNotices } from '@/composables/useOperationNotices'
 import { formatDate } from '@/lib/datetime'
 
-import { exerciseApi } from '../api'
+import { useExerciseMutations } from '../api/mutations'
 import { sizingHintLines, slotHintLines } from '../periodWindows'
-import type { CreateExerciseInput, Exercise } from '../types'
+import {
+  createExercisePeriodsSchema,
+  emptyCreateExercisePeriodsForm,
+} from '../schemas/exercisePeriods'
+import type { Exercise } from '../types'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -35,93 +41,75 @@ const emit = defineEmits<{
   created: [exercise: Exercise]
 }>()
 
-const busy = ref(false)
+const { create: createMutation } = useExerciseMutations()
+const busy = computed(() => createMutation.isPending.value)
 
-type CreateForm = Omit<CreateExerciseInput, 'slotWeeks'> & { slotWeeks: number | '' }
+const { defineField, errors, handleSubmit, resetForm, values } = useForm({
+  validationSchema: toTypedSchema(createExercisePeriodsSchema),
+  initialValues: emptyCreateExercisePeriodsForm(),
+  validateOnMount: false,
+})
 
-function emptyForm(): CreateForm {
-  return {
-    toolkitId: '',
-    sizingMonth: '',
-    slotStartDate: '',
-    slotWeeks: '',
-    tmsFrom: '',
-    tmsTo: '',
-  }
-}
-
-const form = reactive<CreateForm>(emptyForm())
+const [toolkitId] = defineField('toolkitId')
+const [sizingMonth] = defineField('sizingMonth')
+const [slotStartDate] = defineField('slotStartDate')
+const [slotWeeks] = defineField('slotWeeks')
+const [tmsFrom] = defineField('tmsFrom')
+const [tmsTo] = defineField('tmsTo')
 
 const createdLabel = computed(() => formatDate(new Date()))
-const sizingHints = computed(() => sizingHintLines(form.sizingMonth))
+const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
 const slotHints = computed(() =>
-  slotHintLines(form.slotStartDate, typeof form.slotWeeks === 'number' ? form.slotWeeks : 0),
+  slotHintLines(
+    values.slotStartDate ?? '',
+    typeof values.slotWeeks === 'number' ? values.slotWeeks : 0,
+  ),
 )
 const formReady = computed(
   () =>
     Boolean(
-      form.toolkitId &&
-        form.sizingMonth &&
-        form.slotStartDate &&
-        form.slotWeeks &&
-        form.tmsFrom &&
-        form.tmsTo,
+      values.toolkitId &&
+        values.sizingMonth &&
+        values.slotStartDate &&
+        values.slotWeeks &&
+        values.tmsFrom &&
+        values.tmsTo,
     ),
 )
 
 watch(open, (value) => {
   if (!value) return
-  Object.assign(form, emptyForm())
+  resetForm({
+    values: emptyCreateExercisePeriodsForm(props.initialToolkitId ?? ''),
+  })
 })
 
-async function create() {
-  if (!form.toolkitId) {
-    toast.warning('Please select a Toolkit.')
-    return
-  }
-  if (!form.sizingMonth) {
-    toast.warning('Please select a Sizing Month.')
-    return
-  }
-  if (!form.slotStartDate || !form.slotWeeks) {
-    toast.warning('Please complete the Slot Period.')
-    return
-  }
-  if (!form.tmsFrom || !form.tmsTo) {
-    toast.warning('Please complete the TMS period.')
-    return
-  }
-  if (form.tmsFrom > form.tmsTo) {
-    toast.warning('TMS period end must be on or after the start date.')
-    return
-  }
-  busy.value = true
+const create = handleSubmit(async (formValues) => {
   try {
-    const payload: CreateExerciseInput = {
-      toolkitId: form.toolkitId,
-      sizingMonth: form.sizingMonth,
-      slotStartDate: form.slotStartDate,
-      slotWeeks: Number(form.slotWeeks),
-      tmsFrom: form.tmsFrom,
-      tmsTo: form.tmsTo,
-    }
-    const result = await exerciseApi.create(payload)
+    const result = await createMutation.mutateAsync({
+      toolkitId: formValues.toolkitId,
+      sizingMonth: formValues.sizingMonth,
+      slotStartDate: formValues.slotStartDate,
+      slotWeeks: formValues.slotWeeks,
+      tmsFrom: formValues.tmsFrom,
+      tmsTo: formValues.tmsTo,
+    })
     emit('created', result.exercise)
     open.value = false
-    toast.success(`${result.exercise.exerciseCode} created with a frozen snapshot.`)
-    for (const notice of result.notices ?? []) {
-      toast.message(notice)
-    }
+    const summary = `${result.exercise.exerciseCode} created with a frozen snapshot.`
+    const shown = showOperationNotices({
+      summary,
+      notices: result.notices ?? [],
+    })
+    if (!shown) toast.success(summary)
   } catch (error) {
     const message =
       error instanceof Error && error.message.trim()
         ? error.message
         : 'Exercise could not be created.'
     toast.error(message)
-  } finally {
-    busy.value = false
   }
-}
+})
 </script>
 
 <template>
@@ -148,24 +136,33 @@ async function create() {
             <ReadOnlyField :value="createdLabel" />
 
             <Label class="text-muted-foreground">Toolkit</Label>
-            <select
-              v-model="form.toolkitId"
-              class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
-            >
-              <option value="">Select toolkit</option>
-              <option v-for="toolkit in toolkits" :key="toolkit.id" :value="toolkit.id">
-                {{ toolkit.name }}
-              </option>
-            </select>
+            <div>
+              <select
+                v-model="toolkitId"
+                class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
+                :aria-invalid="Boolean(errors.toolkitId)"
+              >
+                <option value="">Select toolkit</option>
+                <option v-for="toolkit in toolkits" :key="toolkit.id" :value="toolkit.id">
+                  {{ toolkit.name }}
+                </option>
+              </select>
+              <p v-if="errors.toolkitId" class="mt-1 text-xs text-destructive">
+                {{ errors.toolkitId }}
+              </p>
+            </div>
 
             <Label class="text-muted-foreground self-start pt-2">Sizing Month</Label>
             <div>
               <MonthPicker
-                v-model="form.sizingMonth"
+                v-model="sizingMonth"
                 aria-label="Choose sizing month"
                 placeholder="Select sizing month"
                 class="w-[200px]"
               />
+              <p v-if="errors.sizingMonth" class="mt-1 text-xs text-destructive">
+                {{ errors.sizingMonth }}
+              </p>
               <PeriodDerivedHints :lines="sizingHints" />
             </div>
 
@@ -175,7 +172,7 @@ async function create() {
                 <div class="grid gap-1.5">
                   <span class="text-xs text-muted-foreground">Start date</span>
                   <DatePicker
-                    v-model="form.slotStartDate"
+                    v-model="slotStartDate"
                     aria-label="Choose slot start date"
                     placeholder="Select start date"
                     class="w-[180px]"
@@ -184,7 +181,7 @@ async function create() {
                 <label class="grid gap-1.5 text-xs text-muted-foreground">
                   Weeks
                   <select
-                    v-model="form.slotWeeks"
+                    v-model="slotWeeks"
                     class="h-9 w-20 rounded-md border border-input bg-card px-2 text-sm text-foreground"
                   >
                     <option value="">—</option>
@@ -192,24 +189,38 @@ async function create() {
                   </select>
                 </label>
               </div>
+              <p
+                v-if="errors.slotStartDate || errors.slotWeeks"
+                class="mt-1 text-xs text-destructive"
+              >
+                {{ errors.slotStartDate || errors.slotWeeks }}
+              </p>
               <PeriodDerivedHints :lines="slotHints" />
             </div>
 
             <Label class="text-muted-foreground">TMS period</Label>
-            <div class="flex flex-wrap items-center gap-2">
-              <DatePicker
-                v-model="form.tmsFrom"
-                aria-label="Choose TMS period start"
-                placeholder="From"
-                class="w-[180px]"
-              />
-              <span class="text-muted-foreground">to</span>
-              <DatePicker
-                v-model="form.tmsTo"
-                aria-label="Choose TMS period end"
-                placeholder="To"
-                class="w-[180px]"
-              />
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <DatePicker
+                  v-model="tmsFrom"
+                  aria-label="Choose TMS period start"
+                  placeholder="From"
+                  class="w-[180px]"
+                />
+                <span class="text-muted-foreground">to</span>
+                <DatePicker
+                  v-model="tmsTo"
+                  aria-label="Choose TMS period end"
+                  placeholder="To"
+                  class="w-[180px]"
+                />
+              </div>
+              <p
+                v-if="errors.tmsFrom || errors.tmsTo"
+                class="mt-1 text-xs text-destructive"
+              >
+                {{ errors.tmsFrom || errors.tmsTo }}
+              </p>
             </div>
           </div>
 

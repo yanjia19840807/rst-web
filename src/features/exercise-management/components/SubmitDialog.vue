@@ -24,6 +24,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 
 import { exerciseApi } from '../api'
+import { useExerciseMutations } from '../api/mutations'
 import type { SubmitPreview, SubmittedDetails } from '../types'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -36,12 +37,13 @@ const emit = defineEmits<{
   submitted: [details: SubmittedDetails]
 }>()
 
+const { submit } = useExerciseMutations()
 const loading = ref(false)
-const submitting = ref(false)
 const preview = ref<SubmitPreview | null>(null)
 const remarks = ref('')
 
 const remarksRequired = computed(() => preview.value?.remarksRequired ?? false)
+const submitting = computed(() => submit.isPending.value)
 
 const findingLabel: Record<string, string> = {
   DAILY_VS_MONTHLY: 'Daily total vs monthly total',
@@ -70,21 +72,18 @@ async function submitNow() {
     toast.warning('Remarks are required when severe validation checks fail.')
     return
   }
-  submitting.value = true
   try {
     const key = crypto.randomUUID()
-    const details = await exerciseApi.submit(
-      props.exerciseId,
-      { remarks: remarks.value.trim() || null, requestId: key },
-      key,
-    )
+    const details = await submit.mutateAsync({
+      id: props.exerciseId,
+      body: { remarks: remarks.value.trim() || null, requestId: key },
+      idempotencyKey: key,
+    })
     emit('submitted', details)
     open.value = false
     toast.success('Submitted for validation. Awaiting Manager approval.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Submit failed.')
-  } finally {
-    submitting.value = false
   }
 }
 
@@ -104,7 +103,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Submit For Validation</DialogTitle>
         <DialogDescription>
-          This will lock the official package and send the exercise to Manager Review.
+          This will lock the official scenario and send the exercise to Manager Review.
           You cannot edit it until it is returned or withdrawn. Failed severe checks require remarks.
         </DialogDescription>
       </DialogHeader>

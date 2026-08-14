@@ -22,9 +22,9 @@ export function exerciseStatusLabel(exercise: {
       return nextStepLabel(exercise.requiredRole)
     case 'RETURNED':
       return 'Returned'
-    case 'VALIDATED':
+    case 'APPROVED':
       return 'Approved'
-    case 'ARCHIVED':
+    case 'REJECTED':
       return 'Rejected'
     default:
       return 'In Progress'

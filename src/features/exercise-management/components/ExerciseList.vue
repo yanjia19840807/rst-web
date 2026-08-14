@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
@@ -8,26 +8,17 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DatePicker } from '@/components/ui/date-picker'
-import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
-import { toolkitApi } from '@/features/toolkit-management/api'
+import { useSupervisorToolkitsQuery } from '@/features/toolkit-management/api/queries'
+import { formatDate } from '@/lib/datetime'
 
-import { exerciseApi } from '../api'
+import { useExerciseMutations } from '../api/mutations'
+import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
 import CreateExerciseDialog from './CreateExerciseDialog.vue'
-import { formatDate } from '@/lib/datetime'
-import { exerciseStatusLabel, nextStepLabel } from '../workflowLabels'
+import ExerciseListFilters from './ExerciseListFilters.vue'
+import ExerciseListTable from './ExerciseListTable.vue'
 
 type TabKey = 'Active' | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
@@ -35,20 +26,15 @@ type ProgressStatusFilter = 'All statuses' | 'In Progress' | 'Returned' | 'Under
 
 const route = useRoute()
 const router = useRouter()
-const exercises = ref<Exercise[]>([])
-const toolkits = ref<SupervisorToolkit[]>([])
-const toolkitNames = ref<string[]>([])
-const pl3Names = ref<string[]>([])
-const reviewerNames = ref<string[]>([])
-const loading = ref(true)
+const { withdraw } = useExerciseMutations()
 const activeTab = ref<TabKey>('Active')
 const createOpen = ref(false)
 const initialToolkitId = ref<string | undefined>()
 const withdrawOpen = ref(false)
-const withdrawPending = ref(false)
 const withdrawTarget = ref<Exercise | null>(null)
 
 const exerciseCodeFilter = ref('')
+const appliedExerciseCode = ref('')
 const pl3Filter = ref('All PL3')
 const toolkitFilter = ref('All toolkits')
 const createdFrom = ref('')
@@ -79,46 +65,70 @@ const tabs: TabKey[] = ['Active', 'Archived']
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
+const listQuery = computed<ExerciseListQuery>(() => {
+  const inProgress = activeTab.value === 'Active'
+  return {
+    tab: inProgress ? 'IN_PROGRESS' : 'ARCHIVED',
+    exerciseCode: appliedExerciseCode.value,
+    toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
+    pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+    workflowStatus: inProgress
+      ? statusFilter.value === 'Returned'
+        ? 'RETURNED'
+        : statusFilter.value === 'Under Review'
+          ? 'UNDER_REVIEW'
+          : statusFilter.value === 'In Progress'
+            ? 'IN_PROGRESS'
+            : undefined
+      : finalStatusFilter.value === 'Approved'
+        ? 'APPROVED'
+        : finalStatusFilter.value === 'Rejected'
+          ? 'REJECTED'
+          : undefined,
+    reviewStage:
+      !inProgress || reviewStageFilter.value === 'All stages'
+        ? undefined
+        : reviewStageFilter.value === 'Manager Review'
+          ? 'MANAGER'
+          : reviewStageFilter.value === 'Center Delivery Head Review'
+            ? 'CDH'
+            : reviewStageFilter.value === 'Local Transformation Head Review'
+              ? 'LTH'
+              : undefined,
+    handler:
+      !inProgress || reviewerFilter.value === 'All reviewers'
+        ? undefined
+        : reviewerFilter.value,
+    officialScenario:
+      !inProgress || officialScenarioFilter.value === 'All scenarios'
+        ? undefined
+        : officialScenarioFilter.value === 'Assigned'
+          ? 'ASSIGNED'
+          : 'UNASSIGNED',
+    createdFrom: inProgress ? createdFrom.value || undefined : undefined,
+    createdTo: inProgress ? createdTo.value || undefined : undefined,
+    submittedFrom: inProgress ? submittedFrom.value || undefined : undefined,
+    submittedTo: inProgress ? submittedTo.value || undefined : undefined,
+    archivedFrom: inProgress ? undefined : archivedFrom.value || undefined,
+    archivedTo: inProgress ? undefined : archivedTo.value || undefined,
+  }
+})
+
+const exercisesQuery = useExercisesQuery(listQuery)
+const toolkitsQuery = useSupervisorToolkitsQuery()
+const exercises = computed(() => exercisesQuery.data.value?.items ?? [])
+const toolkits = computed<SupervisorToolkit[]>(() => toolkitsQuery.data.value?.items ?? [])
+const toolkitNames = computed(() => exercisesQuery.data.value?.toolkitNames ?? [])
+const pl3Names = computed(() => exercisesQuery.data.value?.pl3Names ?? [])
+const reviewerNames = computed(() => exercisesQuery.data.value?.reviewerNames ?? [])
+const loading = computed(
+  () => exercisesQuery.isPending.value && !exercisesQuery.data.value,
+)
+const withdrawPending = computed(() => withdraw.isPending.value)
+
 const pl3Options = computed(() => ['All PL3', ...pl3Names.value])
 const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
 const reviewerOptions = computed(() => ['All reviewers', ...reviewerNames.value])
-
-function formatHc(value?: number | string | null) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return n.toFixed(1)
-}
-
-function formatSigned(value?: number | string | null) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`
-}
-
-function capacityTone(value?: number | string | null) {
-  if (value == null || value === '') return ''
-  const n = Number(value)
-  if (!Number.isFinite(n)) return ''
-  return n < 0 ? 'text-destructive font-semibold' : 'text-emerald-600 font-semibold'
-}
-
-function agingTone(days?: number | null) {
-  if (days == null) return 'neutral' as const
-  if (days >= 5) return 'bad' as const
-  if (days >= 3) return 'warn' as const
-  return 'neutral' as const
-}
-
-function deliveryHc(exercise: Exercise) {
-  if (exercise.deliveryHc != null && exercise.deliveryHc !== '') {
-    return formatHc(exercise.deliveryHc)
-  }
-  return exercise.snapshot.sharedKpis
-    .reduce((sum, item) => sum + Number(item.deliveryHc), 0)
-    .toFixed(1)
-}
 
 const safePage = computed(() =>
   Math.min(page.value, Math.max(1, Math.ceil(exercises.value.length / pageSize.value) || 1)),
@@ -160,6 +170,7 @@ const hasCurrentFilters = computed(() =>
 function switchTab(tab: TabKey) {
   activeTab.value = tab
   exerciseCodeFilter.value = ''
+  appliedExerciseCode.value = ''
   advancedOpen.value = null
   resetPage()
 }
@@ -215,6 +226,7 @@ function applyAdvanced() {
 
 function clearCurrentFilters() {
   exerciseCodeFilter.value = ''
+  appliedExerciseCode.value = ''
   pl3Filter.value = 'All PL3'
   toolkitFilter.value = 'All toolkits'
   if (activeTab.value === 'Active') {
@@ -235,70 +247,6 @@ function clearCurrentFilters() {
   advancedOpen.value = null
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const inProgress = activeTab.value === 'Active'
-    const query: ExerciseListQuery = {
-      tab: inProgress ? 'IN_PROGRESS' : 'ARCHIVED',
-      exerciseCode: exerciseCodeFilter.value,
-      toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
-      pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
-      workflowStatus: inProgress
-        ? statusFilter.value === 'Returned'
-          ? 'RETURNED'
-          : statusFilter.value === 'Under Review'
-            ? 'UNDER_REVIEW'
-            : statusFilter.value === 'In Progress'
-              ? 'IN_PROGRESS'
-              : undefined
-        : finalStatusFilter.value === 'Approved'
-          ? 'VALIDATED'
-          : finalStatusFilter.value === 'Rejected'
-            ? 'ARCHIVED'
-            : undefined,
-      reviewStage: !inProgress || reviewStageFilter.value === 'All stages'
-        ? undefined
-        : reviewStageFilter.value === 'Manager Review'
-          ? 'MANAGER'
-          : reviewStageFilter.value === 'Center Delivery Head Review'
-            ? 'CDH'
-            : reviewStageFilter.value === 'Local Transformation Head Review'
-              ? 'LTH'
-              : undefined,
-      handler: !inProgress || reviewerFilter.value === 'All reviewers'
-        ? undefined
-        : reviewerFilter.value,
-      officialScenario: !inProgress || officialScenarioFilter.value === 'All scenarios'
-        ? undefined
-        : officialScenarioFilter.value === 'Assigned'
-          ? 'ASSIGNED'
-          : 'UNASSIGNED',
-      createdFrom: inProgress ? createdFrom.value || undefined : undefined,
-      createdTo: inProgress ? createdTo.value || undefined : undefined,
-      submittedFrom: inProgress ? submittedFrom.value || undefined : undefined,
-      submittedTo: inProgress ? submittedTo.value || undefined : undefined,
-      archivedFrom: inProgress ? undefined : archivedFrom.value || undefined,
-      archivedTo: inProgress ? undefined : archivedTo.value || undefined,
-    }
-    const [view, toolkitList] = await Promise.all([
-      exerciseApi.list(query),
-      toolkits.value.length ? Promise.resolve(toolkits.value) : toolkitApi.list().then((view) => view.items),
-    ])
-    exercises.value = view.items
-    toolkitNames.value = view.toolkitNames
-    pl3Names.value = view.pl3Names
-    reviewerNames.value = view.reviewerNames
-    if (!toolkits.value.length) {
-      toolkits.value = toolkitList
-    }
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load exercises.')
-  } finally {
-    loading.value = false
-  }
-}
-
 function openCreate(toolkitId?: string) {
   initialToolkitId.value = toolkitId
   createOpen.value = true
@@ -313,11 +261,12 @@ function onCreated(exercise: Exercise) {
 }
 
 function openExercise(exercise: Exercise) {
-  if (exercise.submittedAt || exercise.workflowStatus !== 'IN_PROGRESS') {
-    void router.push({ name: 'supervisor-submission', params: { id: exercise.id } })
+  // Editable exercises (including after Return / Withdraw) open the workbench.
+  if (exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED') {
+    void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
     return
   }
-  void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
+  void router.push({ name: 'supervisor-submission', params: { id: exercise.id } })
 }
 
 function askWithdraw(exercise: Exercise) {
@@ -327,38 +276,13 @@ function askWithdraw(exercise: Exercise) {
 
 async function confirmWithdraw() {
   if (!withdrawTarget.value || withdrawPending.value) return
-  withdrawPending.value = true
   try {
-    await exerciseApi.withdraw(withdrawTarget.value.id)
+    await withdraw.mutateAsync(withdrawTarget.value.id)
     toast.success('Submission withdrawn.')
     withdrawOpen.value = false
     withdrawTarget.value = null
-    await load()
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not withdraw submission.')
-  } finally {
-    withdrawPending.value = false
-  }
-}
-
-function reviewStage(exercise: Exercise) {
-  if (exercise.workflowStatus !== 'UNDER_REVIEW') return '—'
-  return nextStepLabel(exercise.requiredRole)
-}
-
-function currentReviewerName(exercise: Exercise) {
-  if (exercise.workflowStatus !== 'UNDER_REVIEW') return '—'
-  return exercise.currentReviewer || '—'
-}
-
-function activeStatusLabel(exercise: Exercise) {
-  switch (exercise.workflowStatus) {
-    case 'UNDER_REVIEW':
-      return 'Under Review'
-    case 'RETURNED':
-      return 'Returned'
-    default:
-      return 'In Progress'
   }
 }
 
@@ -391,20 +315,30 @@ watch(
   ],
   () => {
     resetPage()
-    void load()
   },
 )
 
 watchDebounced(
   exerciseCodeFilter,
-  () => {
+  (value) => {
+    appliedExerciseCode.value = value
     resetPage()
-    void load()
   },
   { debounce: 400 },
 )
 
-onMounted(load)
+watch(
+  () => exercisesQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        exercisesQuery.error.value instanceof Error
+          ? exercisesQuery.error.value.message
+          : 'Could not load exercises.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
@@ -444,302 +378,54 @@ onMounted(load)
         </div>
       </CardHeader>
       <CardContent class="space-y-3">
-        <!-- Active filters -->
-        <template v-if="activeTab === 'Active'">
-          <div class="flex flex-wrap items-end gap-2.5">
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Exercise Code
-              <Input
-                v-model="exerciseCodeFilter" class="w-[220px]"
-                placeholder="Search exercise code"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              PL3
-              <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
-                <option v-for="option in pl3Options" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Toolkit
-              <select v-model="toolkitFilter" :class="[selectClass, 'w-[240px]']">
-                <option v-for="option in toolkitOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Status
-              <select v-model="statusFilter" :class="[selectClass, 'w-[170px]']">
-                <option>All statuses</option>
-                <option>In Progress</option>
-                <option>Returned</option>
-                <option>Under Review</option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Review Stage
-              <select v-model="reviewStageFilter" :class="[selectClass, 'w-[260px]']">
-                <option>All stages</option>
-                <option>Manager Review</option>
-                <option>Center Delivery Head Review</option>
-                <option>Local Transformation Head Review</option>
-              </select>
-            </label>
-            <Button variant="outline" @click="toggleAdvanced">
-              More Filters{{ advancedCount ? ` (${advancedCount})` : '' }}
-            </Button>
-          </div>
-          <div
-            v-if="advancedOpen === 'Active'"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
-          >
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Created Date From
-              <DatePicker
-                v-model="draftCreatedFrom"
-                aria-label="Created date from"
-                placeholder="From"
-                class="w-[180px]"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Created Date To
-              <DatePicker
-                v-model="draftCreatedTo"
-                aria-label="Created date to"
-                placeholder="To"
-                class="w-[180px]"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Official Scenario
-              <select v-model="draftOfficialScenario" :class="[selectClass, 'w-[170px]']">
-                <option value="All scenarios">All scenarios</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Not assigned">Not assigned</option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Handler
-              <select v-model="draftReviewer" :class="[selectClass, 'w-[180px]']">
-                <option v-for="option in reviewerOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Submitted Date From
-              <DatePicker
-                v-model="draftSubmittedFrom"
-                aria-label="Submitted date from"
-                placeholder="From"
-                class="w-[180px]"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Submitted Date To
-              <DatePicker
-                v-model="draftSubmittedTo"
-                aria-label="Submitted date to"
-                placeholder="To"
-                class="w-[180px]"
-              />
-            </label>
-            <Button variant="outline" @click="clearAdvancedDrafts">Clear</Button>
-            <Button @click="applyAdvanced">Apply Filters</Button>
-          </div>
-        </template>
+        <ExerciseListFilters
+          :active-tab="activeTab"
+          :select-class="selectClass"
+          :exercise-code-filter="exerciseCodeFilter"
+          :pl3-filter="pl3Filter"
+          :toolkit-filter="toolkitFilter"
+          :status-filter="statusFilter"
+          :review-stage-filter="reviewStageFilter"
+          :final-status-filter="finalStatusFilter"
+          :advanced-open="advancedOpen"
+          :advanced-count="advancedCount"
+          :pl3-options="pl3Options"
+          :toolkit-options="toolkitOptions"
+          :reviewer-options="reviewerOptions"
+          :draft-created-from="draftCreatedFrom"
+          :draft-created-to="draftCreatedTo"
+          :draft-official-scenario="draftOfficialScenario"
+          :draft-reviewer="draftReviewer"
+          :draft-submitted-from="draftSubmittedFrom"
+          :draft-submitted-to="draftSubmittedTo"
+          :draft-archived-from="draftArchivedFrom"
+          :draft-archived-to="draftArchivedTo"
+          @update:exercise-code-filter="exerciseCodeFilter = $event"
+          @update:pl3-filter="pl3Filter = $event"
+          @update:toolkit-filter="toolkitFilter = $event"
+          @update:status-filter="statusFilter = $event"
+          @update:review-stage-filter="reviewStageFilter = $event"
+          @update:final-status-filter="finalStatusFilter = $event"
+          @update:draft-created-from="draftCreatedFrom = $event"
+          @update:draft-created-to="draftCreatedTo = $event"
+          @update:draft-official-scenario="draftOfficialScenario = $event"
+          @update:draft-reviewer="draftReviewer = $event"
+          @update:draft-submitted-from="draftSubmittedFrom = $event"
+          @update:draft-submitted-to="draftSubmittedTo = $event"
+          @update:draft-archived-from="draftArchivedFrom = $event"
+          @update:draft-archived-to="draftArchivedTo = $event"
+          @toggle-advanced="toggleAdvanced"
+          @clear-advanced-drafts="clearAdvancedDrafts"
+          @apply-advanced="applyAdvanced"
+        />
 
-        <!-- Archived filters -->
-        <template v-else>
-          <div class="flex flex-wrap items-end gap-2.5">
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Exercise Code
-              <Input
-                v-model="exerciseCodeFilter" class="w-[220px]"
-                placeholder="Search exercise code"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              PL3
-              <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
-                <option v-for="option in pl3Options" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Toolkit
-              <select v-model="toolkitFilter" :class="[selectClass, 'w-[240px]']">
-                <option v-for="option in toolkitOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Final Status
-              <select v-model="finalStatusFilter" :class="[selectClass, 'w-[170px]']">
-                <option>All statuses</option>
-                <option>Approved</option>
-                <option>Rejected</option>
-              </select>
-            </label>
-            <Button variant="outline" @click="toggleAdvanced">
-              More Filters{{ advancedCount ? ` (${advancedCount})` : '' }}
-            </Button>
-          </div>
-          <div
-            v-if="advancedOpen === 'Archived'"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
-          >
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Archived Date From
-              <DatePicker
-                v-model="draftArchivedFrom"
-                aria-label="Archived date from"
-                placeholder="From"
-                class="w-[180px]"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Archived Date To
-              <DatePicker
-                v-model="draftArchivedTo"
-                aria-label="Archived date to"
-                placeholder="To"
-                class="w-[180px]"
-              />
-            </label>
-            <Button variant="outline" @click="clearAdvancedDrafts">Clear</Button>
-            <Button @click="applyAdvanced">Apply Filters</Button>
-          </div>
-        </template>
-
-        <div class="overflow-x-auto rounded-lg border">
-          <Table :class="activeTab === 'Active' ? 'min-w-[1280px]' : 'min-w-[1200px]'">
-            <TableHeader>
-              <TableRow v-if="activeTab === 'Active'">
-                <TableHead>Exercise Code</TableHead>
-                <TableHead>Toolkit</TableHead>
-                <TableHead>Delivery HC</TableHead>
-                <TableHead>Right Sizing HC</TableHead>
-                <TableHead>Production Support</TableHead>
-                <TableHead>Capacity Creation</TableHead>
-                <TableHead>Created Date</TableHead>
-                <TableHead>Submitted Date</TableHead>
-                <TableHead>Review Stage</TableHead>
-                <TableHead>Current Reviewer</TableHead>
-                <TableHead>Aging</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead class="text-right">Action</TableHead>
-              </TableRow>
-              <TableRow v-else>
-                <TableHead>Exercise Code</TableHead>
-                <TableHead>Toolkit</TableHead>
-                <TableHead>Delivery HC</TableHead>
-                <TableHead>Right Sizing HC</TableHead>
-                <TableHead>Production Support</TableHead>
-                <TableHead>Capacity Creation</TableHead>
-                <TableHead>Created Date</TableHead>
-                <TableHead>Submitted Date</TableHead>
-                <TableHead>Archived Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead class="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="exercise in pagedRows" :key="exercise.id">
-                <template v-if="activeTab === 'Active'">
-                  <TableCell>{{ exercise.exerciseCode }}</TableCell>
-                  <TableCell>{{ exercise.snapshot.toolkit.name }}</TableCell>
-                  <TableCell>{{ deliveryHc(exercise) }}</TableCell>
-                  <TableCell>{{ formatHc(exercise.rightSizingHc) }}</TableCell>
-                  <TableCell>{{ formatHc(exercise.productionSupport) }}</TableCell>
-                  <TableCell :class="capacityTone(exercise.capacityCreation)">
-                    {{ formatSigned(exercise.capacityCreation) }}
-                  </TableCell>
-                  <TableCell>{{ formatDate(exercise.createdAt) }}</TableCell>
-                  <TableCell>{{ formatDate(exercise.submittedAt) }}</TableCell>
-                  <TableCell>{{ reviewStage(exercise) }}</TableCell>
-                  <TableCell>{{ currentReviewerName(exercise) }}</TableCell>
-                  <TableCell>
-                    <Badge
-                      v-if="exercise.agingDays != null"
-                      :variant="agingTone(exercise.agingDays) === 'bad' ? 'destructive' : 'outline'"
-                      :class="{
-                        'border-amber-200 bg-amber-50 text-amber-800':
-                          agingTone(exercise.agingDays) === 'warn',
-                      }"
-                    >
-                      {{ exercise.agingDays }}
-                      {{ exercise.agingDays === 1 ? 'day' : 'days' }}
-                    </Badge>
-                    <span v-else>—</span>
-                  </TableCell>
-                  <TableCell :title="exercise.lastDecisionComment || undefined">
-                    {{ activeStatusLabel(exercise) }}
-                  </TableCell>
-                </template>
-                <template v-else>
-                  <TableCell>{{ exercise.exerciseCode }}</TableCell>
-                  <TableCell>{{ exercise.snapshot.toolkit.name }}</TableCell>
-                  <TableCell>{{ deliveryHc(exercise) }}</TableCell>
-                  <TableCell>{{ formatHc(exercise.rightSizingHc) }}</TableCell>
-                  <TableCell>{{ formatHc(exercise.productionSupport) }}</TableCell>
-                  <TableCell :class="capacityTone(exercise.capacityCreation)">
-                    {{ formatSigned(exercise.capacityCreation) }}
-                  </TableCell>
-                  <TableCell>{{ formatDate(exercise.createdAt) }}</TableCell>
-                  <TableCell>{{ formatDate(exercise.submittedAt) }}</TableCell>
-                  <TableCell>{{ formatDate(exercise.archivedAt) }}</TableCell>
-                  <TableCell :title="exercise.lastDecisionComment || undefined">
-                    {{ exerciseStatusLabel(exercise) }}
-                  </TableCell>
-                </template>
-                <TableCell class="text-right">
-                  <div class="flex justify-end gap-3">
-                    <Button
-                      v-if="exercise.workflowStatus === 'UNDER_REVIEW'"
-                      size="sm"
-                      variant="link-destructive"
-                      class="h-auto px-0 font-semibold"
-                      @click="askWithdraw(exercise)"
-                    >
-                      Withdraw
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      @click="openExercise(exercise)"
-                    >
-                      Open
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="!loading && !pagedRows.length">
-                <TableCell
-                  :colspan="activeTab === 'Active' ? 13 : 11"
-                  class="h-24 text-center text-muted-foreground"
-                >
-                  No {{ activeTab }} exercises.
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="loading">
-                <TableCell
-                  :colspan="activeTab === 'Active' ? 13 : 11"
-                  class="h-24 text-center text-muted-foreground"
-                >
-                  Loading exercises…
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <ExerciseListTable
+          :active-tab="activeTab"
+          :rows="pagedRows"
+          :loading="loading"
+          @open="openExercise"
+          @withdraw="askWithdraw"
+        />
 
         <TablePager
           :total="exercises.length"

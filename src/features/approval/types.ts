@@ -66,7 +66,7 @@ export interface ScopeView {
 export interface StepView {
   stepNo: number
   requiredRoleCode: string
-  assigneeUserId: string | null
+  assigneeCcgid: string | null
   assigneePositionId?: string | null
   assigneeDisplayName?: string | null
   routingStatus: string
@@ -75,7 +75,7 @@ export interface StepView {
 export interface ActionView {
   stepNo: number
   actionType: string
-  actorUserId: string | null
+  actorCcgid: string | null
   actorRoleCode: string | null
   actorDisplayName?: string | null
   comments: string | null
@@ -84,7 +84,7 @@ export interface ActionView {
 }
 
 export interface ApprovalStatusBar {
-  state: 'IN_PROGRESS' | 'NOW' | 'ARCHIVED' | 'RETURNED' | 'WITHDRAWN' | string
+  state: 'IN_PROGRESS' | 'NOW' | 'APPROVED' | 'RETURNED' | 'WITHDRAWN' | string
   label: string
   step?: string | null
   reviewer?: string | null
@@ -121,9 +121,6 @@ export interface ApprovalDetailView {
   exerciseCode: string
   workflowStatus: string
   submittedAt: string
-  officialPackageId: string
-  packageVersion: number
-  packageStatus: string
   scenarioId: string
   scenarioName: string | null
   submissionId: string

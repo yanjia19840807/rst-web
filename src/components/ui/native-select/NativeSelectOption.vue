@@ -6,6 +6,7 @@ const props = defineProps<{
   value?: string | number
   class?: HTMLAttributes['class']
   disabled?: boolean
+  selected?: boolean
 }>()
 </script>
 
@@ -14,6 +15,7 @@ const props = defineProps<{
     data-slot="native-select-option"
     :value="props.value"
     :disabled="disabled"
+    :selected="selected"
     :class="cn('bg-[Canvas] text-[CanvasText]', props.class)"
   >
     <slot />

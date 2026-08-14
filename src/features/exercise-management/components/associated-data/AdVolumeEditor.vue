@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table'
 
 import { exerciseApi } from '../../api'
+import { triggerDownload } from '../../downloadBlob'
 import {
   dailyTrainDates,
   deriveSizingWindows,
@@ -198,9 +199,13 @@ async function confirmEdit() {
 
 async function downloadTemplate() {
   try {
-    if (tab.value === 'monthly') await exerciseApi.exportMonthlyVolumeTemplate(props.exerciseId)
-    else if (tab.value === 'daily') await exerciseApi.exportDailyVolumeTemplate(props.exerciseId)
-    else await exerciseApi.exportSlotVolumeTemplate(props.exerciseId)
+    const result =
+      tab.value === 'monthly'
+        ? await exerciseApi.exportMonthlyVolumeTemplate(props.exerciseId)
+        : tab.value === 'daily'
+          ? await exerciseApi.exportDailyVolumeTemplate(props.exerciseId)
+          : await exerciseApi.exportSlotVolumeTemplate(props.exerciseId)
+    triggerDownload(result.blob, result.filename)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Download failed.')
   }
@@ -208,9 +213,13 @@ async function downloadTemplate() {
 
 async function downloadCurrent() {
   try {
-    if (tab.value === 'monthly') await exerciseApi.exportMonthlyVolumes(props.exerciseId)
-    else if (tab.value === 'daily') await exerciseApi.exportDailyVolumes(props.exerciseId)
-    else await exerciseApi.exportSlotVolumes(props.exerciseId)
+    const result =
+      tab.value === 'monthly'
+        ? await exerciseApi.exportMonthlyVolumes(props.exerciseId)
+        : tab.value === 'daily'
+          ? await exerciseApi.exportDailyVolumes(props.exerciseId)
+          : await exerciseApi.exportSlotVolumes(props.exerciseId)
+    triggerDownload(result.blob, result.filename)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Export failed.')
   }

@@ -12,7 +12,6 @@ import {
 } from './permissions'
 
 export type CurrentUser = {
-  userId: string
   ccgid: string
   displayName: string
   email: string

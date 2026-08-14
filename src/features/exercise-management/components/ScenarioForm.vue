@@ -10,22 +10,13 @@ import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { NumberFieldControl } from '@/components/ui/number-field'
-import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-import { TimePicker } from '@/components/ui/time-picker'
 import { formatMonth } from '@/lib/datetime'
 
 import { exerciseApi } from '../api'
+import { useScenarioMutations } from '../api/mutations'
 import { deriveSlotPeriodLabel } from '../periodWindows'
+import { scenarioMetadataSchema } from '../schemas/scenario'
 import type {
   CycleTimeBaseline,
   DailySizingView,
@@ -37,19 +28,9 @@ import type {
   SupportItem,
   TeamSetup,
 } from '../types'
-
-/** Editable shift row; new Add rows start empty until filled. */
-type ShiftDraft = {
-  shiftNo: number
-  startTime: string
-  durationMinutes: number | null
-  headcount: number | null
-  worksOnWeekend: boolean
-}
+import ScenarioAssumptionsSection, { type ShiftDraft } from './ScenarioAssumptionsSection.vue'
 import ScenarioResultsPanel from './ScenarioResultsPanel.vue'
 import type { ScenarioResultRow } from './ScenarioResultsPanel.vue'
-import SizingSimulationCharts from './SizingSimulationCharts.vue'
-import SlotSimulationCharts from './SlotSimulationCharts.vue'
 import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
 const props = defineProps<{
@@ -59,11 +40,12 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
+const { commitScenario, deleteScenario } = useScenarioMutations()
 const snapshotMode = computed(() => route.name === 'supervisor-scenario-snapshot')
 const loading = ref(true)
 const busy = ref(false)
 const deleteOpen = ref(false)
-const deletePending = ref(false)
+const deletePending = computed(() => deleteScenario.isPending.value)
 const toolkitInfoOpen = ref(false)
 const exercise = ref<Exercise | null>(null)
 const scenario = ref<Scenario | null>(null)
@@ -404,6 +386,14 @@ function onShiftEdited() {
 
 async function save() {
   if (!scenario.value || readOnly.value) return
+  const meta = scenarioMetadataSchema.safeParse({
+    name: form.name,
+    description: form.description,
+  })
+  if (!meta.success) {
+    toast.warning(meta.error.issues[0]?.message ?? 'Enter a scenario name.')
+    return
+  }
   const shiftError = validateShiftDrafts(false)
   if (shiftError) {
     toast.warning(shiftError)
@@ -416,25 +406,29 @@ async function save() {
       latestForecastBundle.value != null &&
       latestMonthlySizing.value != null &&
       latestDailySizing.value != null
-    scenario.value = await exerciseApi.commitScenario(props.exerciseId, props.scenarioId, {
-      name: form.name.trim() || scenario.value.scenarioCode,
-      description: form.description.trim() || null,
-      assumptions: [
-        {
-          parameterCode: 'RIGHT_SIZING_HC',
-          numericValue: Number(form.rightSizingHc),
-          unit: 'HC',
-        },
-      ],
-      shifts: toShiftRequests(),
-      results: hasSizingResults
-        ? {
-            forecast: latestForecastBundle.value!,
-            monthly: latestMonthlySizing.value!,
-            daily: latestDailySizing.value!,
-            slot: slotCompleted.value ? latestSlotSimulation.value : null,
-          }
-        : null,
+    scenario.value = await commitScenario.mutateAsync({
+      exerciseId: props.exerciseId,
+      scenarioId: props.scenarioId,
+      body: {
+        name: meta.data.name || scenario.value.scenarioCode,
+        description: meta.data.description.trim() || null,
+        assumptions: [
+          {
+            parameterCode: 'RIGHT_SIZING_HC',
+            numericValue: Number(form.rightSizingHc),
+            unit: 'HC',
+          },
+        ],
+        shifts: toShiftRequests(),
+        results: hasSizingResults
+          ? {
+              forecast: latestForecastBundle.value!,
+              monthly: latestMonthlySizing.value!,
+              daily: latestDailySizing.value!,
+              slot: slotCompleted.value ? latestSlotSimulation.value : null,
+            }
+          : null,
+      },
     })
     toast.success('Scenario saved.')
   } catch (error) {
@@ -515,15 +509,16 @@ async function runSlot() {
 }
 
 async function confirmDelete() {
-  deletePending.value = true
   try {
-    await exerciseApi.deleteScenario(props.exerciseId, props.scenarioId)
+    await deleteScenario.mutateAsync({
+      exerciseId: props.exerciseId,
+      scenarioId: props.scenarioId,
+    })
     toast.success('Scenario deleted.')
     void router.push({ name: 'supervisor-exercise-detail', params: { id: props.exerciseId } })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Delete failed.')
   } finally {
-    deletePending.value = false
     deleteOpen.value = false
   }
 }
@@ -533,11 +528,6 @@ function goBack() {
     name: snapshotMode.value ? 'supervisor-exercise-snapshot' : 'supervisor-exercise-detail',
     params: { id: props.exerciseId },
   })
-}
-
-function formatShiftTime(value?: string | null) {
-  if (!value) return '—'
-  return value.length >= 5 ? value.slice(0, 5) : value
 }
 
 const scenarioInfoRows = computed(() => {
@@ -633,226 +623,26 @@ onMounted(load)
     <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
 
     <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
-      <div class="grid min-w-0 gap-3.5">
-        <!-- Sizing Simulation Panel -->
-        <section class="rounded-lg border bg-card p-4">
-          <h3 class="mb-3 text-base font-bold">1. Sizing Simulation</h3>
-          <div class="mb-3.5 rounded-lg border bg-card p-4">
-            <div class="mb-3 flex items-center justify-between gap-2">
-              <h4 class="text-sm font-bold">Sizing Inputs</h4>
-              <Button
-                v-if="!readOnly"
-                size="sm"
-                :disabled="busy"
-                @click="runSizing"
-              >
-                Run Simulation
-              </Button>
-            </div>
-            <DetailTable
-              v-if="readOnly"
-              :rows="[{ label: 'Right Sizing HC', value: Number.isFinite(form.rightSizingHc) ? form.rightSizingHc.toFixed(2) : '—' }]"
-            />
-            <label v-else class="grid max-w-xs gap-1 text-sm">
-              Right Sizing HC
-              <NumberFieldControl
-                v-model="form.rightSizingHc"
-                :min="0"
-              />
-            </label>
-          </div>
-
-          <SizingSimulationCharts
-            v-if="sizingCompleted"
-            :monthly="latestMonthlySizing"
-            :daily="latestDailySizing"
-            :sla-target-ratio="teamSetup?.slaTargetRatio ?? null"
-          />
-          <div
-            v-else
-            class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
-          >
-            {{
-              readOnly
-                ? 'No saved sizing simulation for this scenario.'
-                : 'Run Sizing Simulation to generate forecast and simulation results.'
-            }}
-          </div>
-        </section>
-
-        <!-- Slot Simulation Panel -->
-        <section
-          class="rounded-lg border bg-card p-4"
-          :class="!readOnly && slotLocked ? 'opacity-60' : undefined"
-        >
-          <h3 class="mb-1 text-base font-bold">2. Slot Simulation</h3>
-          <p v-if="!readOnly && slotLocked" class="mb-3 text-xs text-muted-foreground">
-            Run Sizing Simulation first to unlock Slot Simulation.
-          </p>
-
-          <div
-            class="mb-3.5 rounded-lg border bg-card p-4"
-            :class="!readOnly && slotLocked ? 'pointer-events-none' : undefined"
-          >
-            <div class="mb-3 flex items-center justify-between gap-2">
-              <h4 class="text-sm font-bold">Shift Inputs</h4>
-              <Button
-                v-if="!readOnly"
-                size="sm"
-                :disabled="busy || slotLocked"
-                @click="runSlot"
-              >
-                Run Simulation
-              </Button>
-            </div>
-
-            <div v-if="!readOnly" class="mb-2.5 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                :disabled="slotLocked"
-                @click="addShift"
-              >
-                Add
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                :disabled="slotLocked || shiftRows.length <= 1"
-                @click="removeShift"
-              >
-                Remove
-              </Button>
-            </div>
-
-            <div class="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead></TableHead>
-                    <TableHead v-for="row in shiftRows" :key="row.shiftNo">
-                      Shift {{ row.shiftNo }}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell class="text-muted-foreground">Start</TableCell>
-                    <TableCell v-for="row in shiftRows" :key="`start-${row.shiftNo}`">
-                      <span v-if="readOnly">{{ formatShiftTime(row.startTime) }}</span>
-                      <TimePicker
-                        v-else
-                        v-model="row.startTime"
-                        class="h-8"
-                        :disabled="slotLocked"
-                        :aria-label="`Shift ${row.shiftNo} start`"
-                        @update:model-value="onShiftEdited"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell class="text-muted-foreground">Duration (min)</TableCell>
-                    <TableCell v-for="row in shiftRows" :key="`dur-${row.shiftNo}`">
-                      <span v-if="readOnly">{{ row.durationMinutes ?? '—' }}</span>
-                      <NumberFieldControl
-                        v-else
-                        v-model="row.durationMinutes"
-                        :min="1"
-                        :disabled="slotLocked"
-                        @update:model-value="onShiftEdited"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell class="text-muted-foreground">Capacity FTE</TableCell>
-                    <TableCell v-for="row in shiftRows" :key="`hc-${row.shiftNo}`">
-                      <span v-if="readOnly">{{ row.headcount ?? '—' }}</span>
-                      <NumberFieldControl
-                        v-else
-                        v-model="row.headcount"
-                        :min="0"
-                        :disabled="slotLocked"
-                        @update:model-value="onShiftEdited"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell class="text-muted-foreground">Weekend</TableCell>
-                    <TableCell v-for="row in shiftRows" :key="`wk-${row.shiftNo}`">
-                      <span v-if="readOnly">{{ row.worksOnWeekend ? 'Yes' : 'No' }}</span>
-                      <Label v-else class="flex items-center gap-2 text-sm">
-                        <input
-                          v-model="row.worksOnWeekend"
-                          type="checkbox"
-                          :disabled="slotLocked"
-                          @change="onShiftEdited"
-                        />
-                        Yes
-                      </Label>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-
-          <section
-            v-if="slotCompleted && latestSlotSimulation"
-            class="rounded-lg border bg-card p-4"
-          >
-            <h4 class="mb-3 text-sm font-bold">Slot Simulation Result</h4>
-            <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div class="rounded-md border px-3 py-2.5">
-                <div class="text-xs text-muted-foreground">TAT on period</div>
-                <div
-                  class="mt-1 font-semibold"
-                  :class="
-                    latestSlotSimulation.slaTargetRatio != null &&
-                    Number(latestSlotSimulation.tatOnPeriod) <
-                      Number(latestSlotSimulation.slaTargetRatio)
-                      ? 'text-destructive'
-                      : undefined
-                  "
-                >
-                  {{ (Number(latestSlotSimulation.tatOnPeriod) * 100).toFixed(2) }}%
-                </div>
-                <div class="mt-0.5 text-xs text-muted-foreground">
-                  Target
-                  {{
-                    latestSlotSimulation.slaTargetRatio == null
-                      ? '—'
-                      : `${Math.round(Number(latestSlotSimulation.slaTargetRatio) * 100)}%`
-                  }}
-                </div>
-              </div>
-              <div class="rounded-md border px-3 py-2.5">
-                <div class="text-xs text-muted-foreground">Actual vs theoretical</div>
-                <div class="mt-1 font-semibold">
-                  {{ (Number(latestSlotSimulation.actualVsTheoretical) * 100).toFixed(0) }}%
-                </div>
-                <div class="mt-0.5 text-xs text-muted-foreground">
-                  sum(capacity) / sum(manual)
-                </div>
-              </div>
-              <div class="rounded-md border px-3 py-2.5">
-                <div class="text-xs text-muted-foreground">Shift setup</div>
-                <div class="mt-1 font-semibold">{{ latestSlotSimulation.shiftCount }}</div>
-                <div class="mt-0.5 text-xs text-muted-foreground">{{ shiftSetupLabel }}</div>
-              </div>
-              <div class="rounded-md border px-3 py-2.5">
-                <div class="text-xs text-muted-foreground">Applicability</div>
-                <div class="mt-1 font-semibold">
-                  {{ latestSlotSimulation.applicability ? 'On' : 'Off' }}
-                </div>
-                <div class="mt-0.5 text-xs text-muted-foreground">
-                  Calendar SLA &lt;= 24h or business-hours SLA &lt;= 8h
-                </div>
-              </div>
-            </div>
-            <SlotSimulationCharts :chart="latestSlotSimulation.chart" />
-          </section>
-        </section>
-      </div>
+      <ScenarioAssumptionsSection
+        :read-only="readOnly"
+        :busy="busy"
+        :right-sizing-hc="form.rightSizingHc"
+        :shift-rows="shiftRows"
+        :sizing-completed="sizingCompleted"
+        :slot-completed="slotCompleted"
+        :slot-locked="slotLocked"
+        :latest-monthly-sizing="latestMonthlySizing"
+        :latest-daily-sizing="latestDailySizing"
+        :latest-slot-simulation="latestSlotSimulation"
+        :team-setup="teamSetup"
+        :shift-setup-label="shiftSetupLabel"
+        @update:right-sizing-hc="form.rightSizingHc = $event"
+        @run-sizing="runSizing"
+        @run-slot="runSlot"
+        @add-shift="addShift"
+        @remove-shift="removeShift"
+        @shift-edited="onShiftEdited"
+      />
 
       <ScenarioResultsPanel
         class="lg:sticky lg:top-4"

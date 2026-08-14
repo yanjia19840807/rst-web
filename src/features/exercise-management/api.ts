@@ -51,7 +51,11 @@ function exercisePath(id: string, suffix = '') {
   return `${base}/${id}${suffix}`
 }
 
-async function downloadVolumeBlob(exerciseId: string, suffix: string, fallbackName: string) {
+async function downloadVolumeBlob(
+  exerciseId: string,
+  suffix: string,
+  fallbackName: string,
+): Promise<{ blob: Blob; filename: string }> {
   const response = await fetch(`${API_BASE_URL}${exercisePath(exerciseId, suffix)}`)
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { detail?: string } | null
@@ -61,12 +65,7 @@ async function downloadVolumeBlob(exerciseId: string, suffix: string, fallbackNa
   const disposition = response.headers.get('Content-Disposition') || ''
   const match = /filename="?([^"]+)"?/.exec(disposition)
   const filename = match?.[1] || fallbackName
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(url)
+  return { blob, filename }
 }
 
 async function uploadVolumeExcel<T>(exerciseId: string, suffix: string, file: File): Promise<T> {

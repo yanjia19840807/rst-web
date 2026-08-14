@@ -45,8 +45,13 @@ function decision(type?: string | null) {
 }
 
 function stepLabel(action: WorkflowActionView) {
-  if (action.actionType === 'SUBMIT') return 'Submit'
-  if (action.actionType === 'WITHDRAW') return 'Withdraw'
+  if (action.actionType === 'SUBMIT' || action.actionType === 'WITHDRAW') {
+    return 'Supervisor Workbench'
+  }
+  const stepNo = action.stepNo ?? 0
+  if (stepNo === 1) return reviewStage('MANAGER')
+  if (stepNo === 2) return reviewStage('CDH')
+  if (stepNo === 3) return reviewStage('LTH')
   return reviewStage(action.actorRoleCode)
 }
 

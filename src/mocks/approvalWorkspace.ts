@@ -4,7 +4,7 @@ import type {
 } from '@/features/approval/types'
 import type { SubmittedDetails, WorkflowActionView } from '@/features/exercise-management/types'
 
-const OPEN = new Set(['AWAITING_MANAGER', 'AWAITING_CDH', 'AWAITING_LTH'])
+const OPEN = new Set(['OPEN', 'AWAITING'])
 
 function reviewStage(role?: string | null) {
   switch (role) {
@@ -35,8 +35,13 @@ function roleLabel(role?: string | null) {
 }
 
 function historyStep(action: WorkflowActionView) {
-  if (action.actionType === 'SUBMIT') return 'Submit'
-  if (action.actionType === 'WITHDRAW') return 'Withdraw'
+  if (action.actionType === 'SUBMIT' || action.actionType === 'WITHDRAW') {
+    return 'Supervisor Workbench'
+  }
+  const stepNo = action.stepNo ?? 0
+  if (stepNo === 1) return reviewStage('MANAGER') ?? 'Manager Review'
+  if (stepNo === 2) return reviewStage('CDH') ?? 'Center Delivery Head Review'
+  if (stepNo === 3) return reviewStage('LTH') ?? 'Local Transformation Head Review'
   return reviewStage(action.actorRoleCode) ?? 'Review'
 }
 
@@ -131,11 +136,11 @@ export function buildApprovalWorkspace(
     }
   }
   const closed =
-    submitted.submissionStatus === 'VALIDATED'
-      ? { state: 'ARCHIVED', label: 'Archived' }
+    submitted.submissionStatus === 'APPROVED'
+      ? { state: 'APPROVED', label: 'Approved' }
       : submitted.submissionStatus === 'RETURNED'
         ? { state: 'RETURNED', label: 'Returned' }
-        : submitted.submissionStatus === 'ARCHIVED'
+        : submitted.submissionStatus === 'WITHDRAWN'
           ? { state: 'WITHDRAWN', label: 'Withdrawn' }
           : null
   return {

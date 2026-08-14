@@ -29,8 +29,6 @@ export type ExerciseShell = {
   cycleTime: CycleTimeBaseline | null
   scenarios: Scenario[]
   stubRuns: Array<StubRun & { scenarioId: string }>
-  officialPackageId: string | null
-  packageVersion: number
   submitted: SubmittedDetails | null
 }
 
@@ -156,8 +154,6 @@ export function createExerciseShell(): ExerciseShell {
     cycleTime: null,
     scenarios: [],
     stubRuns: [],
-    officialPackageId: null,
-    packageVersion: 0,
     submitted: null,
   }
 }
