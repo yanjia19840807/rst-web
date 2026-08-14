@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -25,12 +25,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-
+import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
+import { historyFromActions } from '@/features/approval/historyFromActions'
 import { formatDate } from '@/lib/datetime'
 
 import { exerciseApi } from '../api'
 import { sizingHintLines, slotHintLines } from '../periodWindows'
-import type { CycleTimeBaseline, Exercise, Scenario, SupportItem, TeamSetup } from '../types'
+import type { CycleTimeBaseline, Exercise, Scenario, SubmittedDetails, SupportItem, TeamSetup } from '../types'
+import { exerciseStatusLabel } from '../workflowLabels'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
@@ -41,7 +43,9 @@ const props = defineProps<{
   exerciseId: string
 }>()
 
+const route = useRoute()
 const router = useRouter()
+const snapshotMode = computed(() => route.name === 'supervisor-exercise-snapshot')
 const loading = ref(true)
 const exercise = ref<Exercise | null>(null)
 const scenarios = ref<Scenario[]>([])
@@ -49,7 +53,6 @@ const selectedId = ref<string | null>(null)
 const teamSetup = ref<TeamSetup | null>(null)
 const support = ref<SupportItem[]>([])
 const cycleTime = ref<CycleTimeBaseline | null>(null)
-const shiftCount = ref(0)
 const deleteOpen = ref(false)
 const deletePending = ref(false)
 const newScenarioOpen = ref(false)
@@ -59,6 +62,24 @@ const officialPending = ref(false)
 const submitOpen = ref(false)
 const toolkitInfoOpen = ref(false)
 const periodsEditOpen = ref(false)
+const pageTab = ref<'exercise' | 'approval'>('exercise')
+const submitted = ref<SubmittedDetails | null>(null)
+const historyError = ref(false)
+
+const workspace = computed(() => {
+  const raw = submitted.value?.workspace
+  if (!raw) return null
+  if (raw.history?.length) return raw
+  return {
+    ...raw,
+    history: historyFromActions(submitted.value?.actions ?? []),
+  }
+})
+const hasApprovalHistory = computed(
+  () =>
+    Boolean(exercise.value?.submittedAt) || exercise.value?.workflowStatus === 'RETURNED',
+)
+const showApprovalTab = computed(() => !snapshotMode.value && Boolean(exercise.value))
 
 const locked = computed(() => !exercise.value?.canEdit)
 const nextScenarioCode = computed(() => {
@@ -80,15 +101,15 @@ const supportFte = computed(() => {
   return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
 })
 const medianLabel = computed(() =>
-  cycleTime.value ? `${cycleTime.value.medianSeconds}s` : '—',
+  cycleTime.value ? `${Number(cycleTime.value.medianSeconds).toFixed(2)}s` : '—',
 )
 const slaTargetLabel = computed(() => {
   const ratio = teamSetup.value?.slaTargetRatio
   if (ratio == null) return '—'
-  return `${Math.round(Number(ratio) * 100)}%`
+  return `${(Number(ratio) * 100).toFixed(2)}%`
 })
 const shiftSetupLabel = computed(() => {
-  const n = shiftCount.value
+  const n = selectedScenario.value?.shifts?.length ?? 0
   if (n <= 0) return '—'
   return n === 1 ? '1 shift' : `${n} shifts`
 })
@@ -106,7 +127,7 @@ function capacityCreation(scenario: Scenario) {
 
 function formatSigned(value: number | null) {
   if (value == null || !Number.isFinite(value)) return '—'
-  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}`
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
 }
 const sizingHints = computed(() =>
   exercise.value ? sizingHintLines(exercise.value.sizingMonth) : [],
@@ -137,18 +158,26 @@ async function load() {
     if (exercise.value.officialScenarioId) {
       selectedId.value = exercise.value.officialScenarioId
     }
-    const [ts, sp, shifts] = await Promise.all([
+    const [ts, sp] = await Promise.all([
       exerciseApi.getTeamSetup(props.exerciseId).catch(() => null),
       exerciseApi.listSupport(props.exerciseId).catch(() => [] as SupportItem[]),
-      exerciseApi.getShifts(props.exerciseId).catch(() => []),
     ])
     teamSetup.value = ts
     support.value = sp
-    shiftCount.value = shifts.length
     try {
       cycleTime.value = await exerciseApi.getActiveCycleTime(props.exerciseId)
     } catch {
       cycleTime.value = null
+    }
+    submitted.value = null
+    historyError.value = false
+    if (hasApprovalHistory.value) {
+      try {
+        submitted.value = await exerciseApi.submittedDetails(props.exerciseId)
+      } catch {
+        submitted.value = null
+        historyError.value = true
+      }
     }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not load exercise.')
@@ -180,7 +209,7 @@ async function createScenario() {
       scenarioCode: nextScenarioCode.value,
       name: `${exercise.value.snapshot.toolkit.name} ${nextScenarioCode.value}`,
       description: null,
-      assumptions: [{ parameterCode: 'RIGHT_SIZING_HC', numericValue: 8.6, unit: 'HC' }],
+      assumptions: [{ parameterCode: 'RIGHT_SIZING_HC', numericValue: 0, unit: 'HC' }],
     })
     newScenarioOpen.value = false
     toast.success(`${created.scenarioCode} created.`)
@@ -235,9 +264,13 @@ onMounted(load)
         <Button
           variant="link"
           class="h-auto px-0 font-semibold"
-          @click="router.push({ name: 'supervisor-exercises' })"
+          @click="
+            snapshotMode
+              ? router.push({ name: 'supervisor-submission', params: { id: exerciseId } })
+              : router.push({ name: 'supervisor-exercises' })
+          "
         >
-          ← Back to Exercise List
+          {{ snapshotMode ? '← Back to Submitted Exercise Details' : '← Back to Exercise List' }}
         </Button>
       </template>
       <Button
@@ -248,13 +281,42 @@ onMounted(load)
         Delete Exercise
       </Button>
       <Button
-        v-if="locked && exercise.submittedAt"
+        v-if="!snapshotMode && locked && exercise.submittedAt"
         @click="router.push({ name: 'supervisor-submission', params: { id: exerciseId } })"
       >
         Submitted Exercise Details
       </Button>
-      <Button v-if="exercise.canSubmit" @click="submitOpen = true">Submit For Validation</Button>
+      <Button v-if="exercise.canSubmit && pageTab === 'exercise'" @click="submitOpen = true">Submit For Validation</Button>
     </PageActions>
+
+    <div v-if="showApprovalTab" class="flex gap-1 border-b">
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2.5 text-sm"
+        :class="
+          pageTab === 'exercise'
+            ? 'border-primary font-semibold text-primary'
+            : 'border-transparent text-muted-foreground'
+        "
+        @click="pageTab = 'exercise'"
+      >
+        Exercise
+      </button>
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2.5 text-sm"
+        :class="
+          pageTab === 'approval'
+            ? 'border-primary font-semibold text-primary'
+            : 'border-transparent text-muted-foreground'
+        "
+        @click="pageTab = 'approval'"
+      >
+        Approval
+      </button>
+    </div>
+
+    <div v-show="!showApprovalTab || pageTab === 'exercise'" class="grid gap-4">
 
     <Card>
       <CardHeader class="items-center">
@@ -275,8 +337,8 @@ onMounted(load)
               label: 'TMS period',
               value: `${formatDate(exercise.tmsFrom)} – ${formatDate(exercise.tmsTo)}`,
             },
-            { label: 'Status', value: exercise.workflowStatus },
-            { label: 'Delivery HC', value: deliveryHc.toFixed(1) },
+            { label: 'Status', value: exerciseStatusLabel(exercise) },
+            { label: 'Delivery HC', value: deliveryHc.toFixed(2) },
           ]"
         >
           <template #toolkit="{ row }">
@@ -377,13 +439,13 @@ onMounted(load)
                   <span v-if="scenario.status === 'OFFICIAL'" class="text-amber-500">★</span>
                 </TableCell>
                 <TableCell>{{ scenario.scenarioCode }}</TableCell>
-                <TableCell>{{ deliveryHc.toFixed(1) }}</TableCell>
+                <TableCell>{{ deliveryHc.toFixed(2) }}</TableCell>
                 <TableCell>{{ slaTargetLabel }}</TableCell>
                 <TableCell>{{ shiftSetupLabel }}</TableCell>
                 <TableCell>{{ medianLabel }}</TableCell>
                 <TableCell>
                   {{
-                    assumptionHc(scenario) != null ? assumptionHc(scenario)!.toFixed(1) : '—'
+                    assumptionHc(scenario) != null ? assumptionHc(scenario)!.toFixed(2) : '—'
                   }}
                 </TableCell>
                 <TableCell
@@ -402,7 +464,9 @@ onMounted(load)
                     class="h-auto px-0 font-semibold"
                     @click="
                       router.push({
-                        name: 'supervisor-scenario-form',
+                        name: snapshotMode
+                          ? 'supervisor-scenario-snapshot'
+                          : 'supervisor-scenario-form',
                         params: { id: exerciseId, scenarioId: scenario.id },
                       })
                     "
@@ -424,6 +488,14 @@ onMounted(load)
         </p>
       </CardContent>
     </Card>
+    </div>
+
+    <div v-if="showApprovalTab && pageTab === 'approval'">
+      <ApprovalCompletedPanel
+        :workspace="workspace"
+        :empty-message="historyError ? 'Approval history is unavailable.' : 'No approval history yet.'"
+      />
+    </div>
 
     <Dialog v-model:open="newScenarioOpen">
       <DialogContent
@@ -473,7 +545,7 @@ onMounted(load)
             <DetailTable
               :rows="[
                 { label: 'Scenario', value: selectedScenario.scenarioCode },
-                { label: 'Actual size', value: deliveryHc.toFixed(1) },
+                { label: 'Actual size', value: deliveryHc.toFixed(2) },
                 { label: 'SLA Target %', value: slaTargetLabel },
                 { label: 'Shift Setup', value: shiftSetupLabel },
                 { label: 'Median Cycle Time', value: medianLabel },
@@ -481,12 +553,12 @@ onMounted(load)
                   label: 'Right size HC',
                   value:
                     assumptionHc(selectedScenario) != null
-                      ? assumptionHc(selectedScenario)!.toFixed(1)
+                      ? assumptionHc(selectedScenario)!.toFixed(2)
                       : '—',
                 },
                 {
                   label: 'Production support',
-                  value: supportFte != null ? supportFte.toFixed(1) : '—',
+                  value: supportFte != null ? supportFte.toFixed(2) : '—',
                 },
                 {
                   label: 'Capacity Creation',

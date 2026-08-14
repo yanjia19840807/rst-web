@@ -15,17 +15,26 @@ defineOptions({
 
 const props = withDefaults(
   defineProps<
-    DialogContentProps & { class?: HTMLAttributes['class']; showCloseButton?: boolean }
+    DialogContentProps & {
+      class?: HTMLAttributes['class']
+      showCloseButton?: boolean
+      closeOnOutside?: boolean
+    }
   >(),
   {
     showCloseButton: true,
+    closeOnOutside: true,
   },
 )
 const emits = defineEmits<DialogContentEmits>()
 
-const delegatedProps = reactiveOmit(props, 'class')
+const delegatedProps = reactiveOmit(props, 'class', 'showCloseButton', 'closeOnOutside')
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+function preventOutsideDismiss(event: Event) {
+  if (!props.closeOnOutside) event.preventDefault()
+}
 </script>
 
 <template>
@@ -40,6 +49,9 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
           props.class,
         )
       "
+      @pointer-down-outside="preventOutsideDismiss"
+      @focus-outside="preventOutsideDismiss"
+      @interact-outside="preventOutsideDismiss"
     >
       <slot />
 

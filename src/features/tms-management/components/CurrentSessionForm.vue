@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
+import { NumberFieldControl } from '@/components/ui/number-field'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,20 +90,16 @@ function valueOf(event: Event) {
         <Label for="session-volume"
           >Volume <span class="font-normal text-muted-foreground">(optional)</span></Label
         >
-        <ReadOnlyField v-if="readOnly" :value="processedVolume || '—'" />
-        <Input
+        <ReadOnlyField
+          v-if="readOnly"
+          :value="processedVolume === '' || processedVolume == null ? '—' : Number(processedVolume).toFixed(2)"
+        />
+        <NumberFieldControl
           v-else
           id="session-volume"
-          type="number"
-          min="1"
-          :model-value="processedVolume ?? ''"
-          :aria-invalid="Boolean(errors.processedVolume)"
-          @update:model-value="
-            emit(
-              'update:processedVolume',
-              $event === '' || $event == null ? '' : Number($event),
-            )
-          "
+          :min="0"
+          :model-value="processedVolume === '' || processedVolume == null ? null : Number(processedVolume)"
+          @update:model-value="emit('update:processedVolume', $event ?? '')"
         />
         <p v-if="errors.processedVolume" class="text-xs text-destructive">
           {{ errors.processedVolume }}

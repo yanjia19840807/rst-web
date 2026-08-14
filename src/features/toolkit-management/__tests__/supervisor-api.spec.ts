@@ -15,7 +15,7 @@ describe('supervisor mock contract', () => {
   })
 
   it('creates an Exercise with an immutable frozen snapshot', async () => {
-    const [toolkit] = await toolkitApi.list()
+    const [toolkit] = (await toolkitApi.list()).items
     expect(toolkit).toBeDefined()
 
     const result = await exerciseApi.create({
@@ -31,5 +31,18 @@ describe('supervisor mock contract', () => {
     expect(result.exercise.snapshot.subtasks.every((item) => item.deletedAt === null)).toBe(true)
     expect(result.exercise.snapshot.sharedKpis.every((item) => item.valid)).toBe(true)
     expect(result.notices.length).toBeGreaterThan(0)
+  })
+
+  it('filters supervisor toolkits by name on the server', async () => {
+    const all = await toolkitApi.list()
+    expect(all.items.length).toBeGreaterThan(0)
+    expect(all.pl3Names).toContain('Bank Reconciliation')
+
+    const matched = await toolkitApi.list({ name: 'Bank' })
+    expect(matched.items.every((item) => item.name.includes('Bank'))).toBe(true)
+
+    const missed = await toolkitApi.list({ name: 'does-not-exist' })
+    expect(missed.items).toHaveLength(0)
+    expect(missed.pl3Names).toEqual(all.pl3Names)
   })
 })

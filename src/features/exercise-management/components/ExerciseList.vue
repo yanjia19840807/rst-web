@@ -2,11 +2,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
+import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
@@ -19,21 +21,27 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
+import { toolkitApi } from '@/features/toolkit-management/api'
 
 import { exerciseApi } from '../api'
-import type { Exercise, WorkflowStatus } from '../types'
+import type { Exercise, ExerciseListQuery } from '../types'
 import CreateExerciseDialog from './CreateExerciseDialog.vue'
 import { formatDate } from '@/lib/datetime'
+import { exerciseStatusLabel, nextStepLabel } from '../workflowLabels'
 
-type TabKey = 'In Progress' | 'Under Review' | 'Archived'
+type TabKey = 'Active' | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
+type ProgressStatusFilter = 'All statuses' | 'In Progress' | 'Returned' | 'Under Review'
 
 const route = useRoute()
 const router = useRouter()
 const exercises = ref<Exercise[]>([])
 const toolkits = ref<SupervisorToolkit[]>([])
+const toolkitNames = ref<string[]>([])
+const pl3Names = ref<string[]>([])
+const reviewerNames = ref<string[]>([])
 const loading = ref(true)
-const activeTab = ref<TabKey>('In Progress')
+const activeTab = ref<TabKey>('Active')
 const createOpen = ref(false)
 const initialToolkitId = ref<string | undefined>()
 const withdrawOpen = ref(false)
@@ -48,7 +56,7 @@ const createdTo = ref('')
 const officialScenarioFilter = ref<OfficialScenarioFilter>('All scenarios')
 const reviewStageFilter = ref('All stages')
 const reviewerFilter = ref('All reviewers')
-const reviewStatusFilter = ref('All statuses')
+const statusFilter = ref<ProgressStatusFilter>('All statuses')
 const submittedFrom = ref('')
 const submittedTo = ref('')
 const finalStatusFilter = ref('All statuses')
@@ -60,7 +68,6 @@ const draftCreatedFrom = ref('')
 const draftCreatedTo = ref('')
 const draftOfficialScenario = ref<OfficialScenarioFilter>('All scenarios')
 const draftReviewer = ref('All reviewers')
-const draftReviewStatus = ref('All statuses')
 const draftSubmittedFrom = ref('')
 const draftSubmittedTo = ref('')
 const draftArchivedFrom = ref('')
@@ -68,114 +75,58 @@ const draftArchivedTo = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 
-const tabs: TabKey[] = ['In Progress', 'Under Review', 'Archived']
+const tabs: TabKey[] = ['Active', 'Archived']
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-const inProgressStatuses: WorkflowStatus[] = ['IN_PROGRESS', 'RETURNED']
-const underReviewStatuses: WorkflowStatus[] = ['UNDER_REVIEW']
-const archivedStatuses: WorkflowStatus[] = ['VALIDATED', 'ARCHIVED']
+const pl3Options = computed(() => ['All PL3', ...pl3Names.value])
+const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
+const reviewerOptions = computed(() => ['All reviewers', ...reviewerNames.value])
 
-const pl3Options = computed(() => {
-  const names = new Set(toolkits.value.map((item) => item.pl3Name))
-  for (const exercise of exercises.value) {
-    names.add(exercise.snapshot.toolkit.pl3Name)
+function formatHc(value?: number | string | null) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return n.toFixed(1)
+}
+
+function formatSigned(value?: number | string | null) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`
+}
+
+function capacityTone(value?: number | string | null) {
+  if (value == null || value === '') return ''
+  const n = Number(value)
+  if (!Number.isFinite(n)) return ''
+  return n < 0 ? 'text-destructive font-semibold' : 'text-emerald-600 font-semibold'
+}
+
+function agingTone(days?: number | null) {
+  if (days == null) return 'neutral' as const
+  if (days >= 5) return 'bad' as const
+  if (days >= 3) return 'warn' as const
+  return 'neutral' as const
+}
+
+function deliveryHc(exercise: Exercise) {
+  if (exercise.deliveryHc != null && exercise.deliveryHc !== '') {
+    return formatHc(exercise.deliveryHc)
   }
-  return ['All PL3', ...Array.from(names).filter(Boolean).sort()]
-})
-
-const toolkitOptions = computed(() => {
-  const names = new Set(toolkits.value.map((item) => item.name))
-  for (const exercise of exercises.value) {
-    names.add(exercise.snapshot.toolkit.name)
-  }
-  return ['All toolkits', ...Array.from(names).sort()]
-})
-
-function toDateKey(value?: string | null) {
-  if (!value) return ''
-  return value.slice(0, 10)
+  return exercise.snapshot.sharedKpis
+    .reduce((sum, item) => sum + Number(item.deliveryHc), 0)
+    .toFixed(1)
 }
-
-function matchesPl3(exercise: Exercise) {
-  return (
-    pl3Filter.value === 'All PL3' || exercise.snapshot.toolkit.pl3Name === pl3Filter.value
-  )
-}
-
-function matchesToolkit(exercise: Exercise) {
-  return (
-    toolkitFilter.value === 'All toolkits' ||
-    exercise.snapshot.toolkit.name === toolkitFilter.value
-  )
-}
-
-function matchesExerciseCode(exercise: Exercise) {
-  return exercise.exerciseCode
-    .toLowerCase()
-    .includes(exerciseCodeFilter.value.trim().toLowerCase())
-}
-
-function matchesOfficialScenario(exercise: Exercise) {
-  if (officialScenarioFilter.value === 'All scenarios') return true
-  const assigned = Boolean(exercise.officialScenarioId)
-  return officialScenarioFilter.value === 'Assigned' ? assigned : !assigned
-}
-
-function finalStatusLabel(exercise: Exercise) {
-  if (exercise.workflowStatus === 'VALIDATED') return 'Approved'
-  if (exercise.workflowStatus === 'ARCHIVED') return 'Rejected'
-  return exercise.workflowStatus
-}
-
-const tabRows = computed(() => {
-  if (activeTab.value === 'In Progress') {
-    return exercises.value.filter((item) => inProgressStatuses.includes(item.workflowStatus))
-  }
-  if (activeTab.value === 'Under Review') {
-    return exercises.value.filter((item) => underReviewStatuses.includes(item.workflowStatus))
-  }
-  return exercises.value.filter((item) => archivedStatuses.includes(item.workflowStatus))
-})
-
-const filteredRows = computed(() => {
-  return tabRows.value.filter((exercise) => {
-    if (!matchesPl3(exercise) || !matchesToolkit(exercise) || !matchesExerciseCode(exercise)) {
-      return false
-    }
-
-    if (activeTab.value === 'In Progress') {
-      const created = toDateKey(exercise.createdAt)
-      if (createdFrom.value && created < createdFrom.value) return false
-      if (createdTo.value && created > createdTo.value) return false
-      return matchesOfficialScenario(exercise)
-    }
-
-    if (activeTab.value === 'Under Review') {
-      // Review Stage / Reviewer / Status keep prototype UI; list API has no fields yet.
-      const submitted = toDateKey(exercise.submittedAt)
-      if (submittedFrom.value && (!submitted || submitted < submittedFrom.value)) return false
-      if (submittedTo.value && (!submitted || submitted > submittedTo.value)) return false
-      return true
-    }
-
-    if (finalStatusFilter.value !== 'All statuses') {
-      if (finalStatusLabel(exercise) !== finalStatusFilter.value) return false
-    }
-    const archived = toDateKey(exercise.submittedAt)
-    if (archivedFrom.value && (!archived || archived < archivedFrom.value)) return false
-    if (archivedTo.value && (!archived || archived > archivedTo.value)) return false
-    return true
-  })
-})
 
 const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value) || 1)),
+  Math.min(page.value, Math.max(1, Math.ceil(exercises.value.length / pageSize.value) || 1)),
 )
 
 const pagedRows = computed(() => {
   const start = (safePage.value - 1) * pageSize.value
-  return filteredRows.value.slice(start, start + pageSize.value)
+  return exercises.value.slice(start, start + pageSize.value)
 })
 
 function resetPage() {
@@ -183,17 +134,12 @@ function resetPage() {
 }
 
 const advancedCount = computed(() => {
-  if (activeTab.value === 'In Progress') {
+  if (activeTab.value === 'Active') {
     return (
       Number(Boolean(createdFrom.value || createdTo.value)) +
-      Number(officialScenarioFilter.value !== 'All scenarios')
-    )
-  }
-  if (activeTab.value === 'Under Review') {
-    return (
-      Number(Boolean(submittedFrom.value || submittedTo.value)) +
+      Number(officialScenarioFilter.value !== 'All scenarios') +
       Number(reviewerFilter.value !== 'All reviewers') +
-      Number(reviewStatusFilter.value !== 'All statuses')
+      Number(Boolean(submittedFrom.value || submittedTo.value))
     )
   }
   return Number(Boolean(archivedFrom.value || archivedTo.value))
@@ -205,7 +151,8 @@ const hasCurrentFilters = computed(() =>
       pl3Filter.value !== 'All PL3' ||
       toolkitFilter.value !== 'All toolkits' ||
       advancedCount.value ||
-      (activeTab.value === 'Under Review' && reviewStageFilter.value !== 'All stages') ||
+      (activeTab.value === 'Active' && statusFilter.value !== 'All statuses') ||
+      (activeTab.value === 'Active' && reviewStageFilter.value !== 'All stages') ||
       (activeTab.value === 'Archived' && finalStatusFilter.value !== 'All statuses'),
   ),
 )
@@ -219,15 +166,13 @@ function switchTab(tab: TabKey) {
 
 function toggleAdvanced() {
   if (advancedOpen.value !== activeTab.value) {
-    if (activeTab.value === 'In Progress') {
+    if (activeTab.value === 'Active') {
       draftCreatedFrom.value = createdFrom.value
       draftCreatedTo.value = createdTo.value
       draftOfficialScenario.value = officialScenarioFilter.value
-    } else if (activeTab.value === 'Under Review') {
+      draftReviewer.value = reviewerFilter.value
       draftSubmittedFrom.value = submittedFrom.value
       draftSubmittedTo.value = submittedTo.value
-      draftReviewer.value = reviewerFilter.value
-      draftReviewStatus.value = reviewStatusFilter.value
     } else {
       draftArchivedFrom.value = archivedFrom.value
       draftArchivedTo.value = archivedTo.value
@@ -239,15 +184,13 @@ function toggleAdvanced() {
 }
 
 function clearAdvancedDrafts() {
-  if (activeTab.value === 'In Progress') {
+  if (activeTab.value === 'Active') {
     draftCreatedFrom.value = ''
     draftCreatedTo.value = ''
     draftOfficialScenario.value = 'All scenarios'
-  } else if (activeTab.value === 'Under Review') {
+    draftReviewer.value = 'All reviewers'
     draftSubmittedFrom.value = ''
     draftSubmittedTo.value = ''
-    draftReviewer.value = 'All reviewers'
-    draftReviewStatus.value = 'All statuses'
   } else {
     draftArchivedFrom.value = ''
     draftArchivedTo.value = ''
@@ -255,15 +198,13 @@ function clearAdvancedDrafts() {
 }
 
 function applyAdvanced() {
-  if (activeTab.value === 'In Progress') {
+  if (activeTab.value === 'Active') {
     createdFrom.value = draftCreatedFrom.value
     createdTo.value = draftCreatedTo.value
     officialScenarioFilter.value = draftOfficialScenario.value
-  } else if (activeTab.value === 'Under Review') {
+    reviewerFilter.value = draftReviewer.value
     submittedFrom.value = draftSubmittedFrom.value
     submittedTo.value = draftSubmittedTo.value
-    reviewerFilter.value = draftReviewer.value
-    reviewStatusFilter.value = draftReviewStatus.value
   } else {
     archivedFrom.value = draftArchivedFrom.value
     archivedTo.value = draftArchivedTo.value
@@ -276,14 +217,13 @@ function clearCurrentFilters() {
   exerciseCodeFilter.value = ''
   pl3Filter.value = 'All PL3'
   toolkitFilter.value = 'All toolkits'
-  if (activeTab.value === 'In Progress') {
+  if (activeTab.value === 'Active') {
+    statusFilter.value = 'All statuses'
     createdFrom.value = ''
     createdTo.value = ''
     officialScenarioFilter.value = 'All scenarios'
-  } else if (activeTab.value === 'Under Review') {
     reviewStageFilter.value = 'All stages'
     reviewerFilter.value = 'All reviewers'
-    reviewStatusFilter.value = 'All statuses'
     submittedFrom.value = ''
     submittedTo.value = ''
   } else {
@@ -298,10 +238,60 @@ function clearCurrentFilters() {
 async function load() {
   loading.value = true
   try {
-    ;[exercises.value, toolkits.value] = await Promise.all([
-      exerciseApi.list(),
-      exerciseApi.toolkits(),
+    const inProgress = activeTab.value === 'Active'
+    const query: ExerciseListQuery = {
+      tab: inProgress ? 'IN_PROGRESS' : 'ARCHIVED',
+      exerciseCode: exerciseCodeFilter.value,
+      toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
+      pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+      workflowStatus: inProgress
+        ? statusFilter.value === 'Returned'
+          ? 'RETURNED'
+          : statusFilter.value === 'Under Review'
+            ? 'UNDER_REVIEW'
+            : statusFilter.value === 'In Progress'
+              ? 'IN_PROGRESS'
+              : undefined
+        : finalStatusFilter.value === 'Approved'
+          ? 'VALIDATED'
+          : finalStatusFilter.value === 'Rejected'
+            ? 'ARCHIVED'
+            : undefined,
+      reviewStage: !inProgress || reviewStageFilter.value === 'All stages'
+        ? undefined
+        : reviewStageFilter.value === 'Manager Review'
+          ? 'MANAGER'
+          : reviewStageFilter.value === 'Center Delivery Head Review'
+            ? 'CDH'
+            : reviewStageFilter.value === 'Local Transformation Head Review'
+              ? 'LTH'
+              : undefined,
+      handler: !inProgress || reviewerFilter.value === 'All reviewers'
+        ? undefined
+        : reviewerFilter.value,
+      officialScenario: !inProgress || officialScenarioFilter.value === 'All scenarios'
+        ? undefined
+        : officialScenarioFilter.value === 'Assigned'
+          ? 'ASSIGNED'
+          : 'UNASSIGNED',
+      createdFrom: inProgress ? createdFrom.value || undefined : undefined,
+      createdTo: inProgress ? createdTo.value || undefined : undefined,
+      submittedFrom: inProgress ? submittedFrom.value || undefined : undefined,
+      submittedTo: inProgress ? submittedTo.value || undefined : undefined,
+      archivedFrom: inProgress ? undefined : archivedFrom.value || undefined,
+      archivedTo: inProgress ? undefined : archivedTo.value || undefined,
+    }
+    const [view, toolkitList] = await Promise.all([
+      exerciseApi.list(query),
+      toolkits.value.length ? Promise.resolve(toolkits.value) : toolkitApi.list().then((view) => view.items),
     ])
+    exercises.value = view.items
+    toolkitNames.value = view.toolkitNames
+    pl3Names.value = view.pl3Names
+    reviewerNames.value = view.reviewerNames
+    if (!toolkits.value.length) {
+      toolkits.value = toolkitList
+    }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not load exercises.')
   } finally {
@@ -315,8 +305,7 @@ function openCreate(toolkitId?: string) {
 }
 
 function onCreated(exercise: Exercise) {
-  exercises.value.unshift(exercise)
-  activeTab.value = 'In Progress'
+  activeTab.value = 'Active'
   if (route.query.create || route.query.toolkitId) {
     void router.replace({ name: 'supervisor-exercises' })
   }
@@ -324,7 +313,7 @@ function onCreated(exercise: Exercise) {
 }
 
 function openExercise(exercise: Exercise) {
-  if (exercise.workflowStatus === 'UNDER_REVIEW' && exercise.submittedAt) {
+  if (exercise.submittedAt || exercise.workflowStatus !== 'IN_PROGRESS') {
     void router.push({ name: 'supervisor-submission', params: { id: exercise.id } })
     return
   }
@@ -352,10 +341,25 @@ async function confirmWithdraw() {
   }
 }
 
-function deliveryHc(exercise: Exercise) {
-  return exercise.snapshot.sharedKpis
-    .reduce((sum, item) => sum + Number(item.deliveryHc), 0)
-    .toFixed(1)
+function reviewStage(exercise: Exercise) {
+  if (exercise.workflowStatus !== 'UNDER_REVIEW') return '—'
+  return nextStepLabel(exercise.requiredRole)
+}
+
+function currentReviewerName(exercise: Exercise) {
+  if (exercise.workflowStatus !== 'UNDER_REVIEW') return '—'
+  return exercise.currentReviewer || '—'
+}
+
+function activeStatusLabel(exercise: Exercise) {
+  switch (exercise.workflowStatus) {
+    case 'UNDER_REVIEW':
+      return 'Under Review'
+    case 'RETURNED':
+      return 'Returned'
+    default:
+      return 'In Progress'
+  }
 }
 
 watch(
@@ -370,15 +374,34 @@ watch(
 
 watch(
   [
-    exerciseCodeFilter,
+    activeTab,
     pl3Filter,
     toolkitFilter,
     reviewStageFilter,
+    statusFilter,
     finalStatusFilter,
+    createdFrom,
+    createdTo,
+    officialScenarioFilter,
+    reviewerFilter,
+    submittedFrom,
+    submittedTo,
+    archivedFrom,
+    archivedTo,
   ],
   () => {
     resetPage()
+    void load()
   },
+)
+
+watchDebounced(
+  exerciseCodeFilter,
+  () => {
+    resetPage()
+    void load()
+  },
+  { debounce: 400 },
 )
 
 onMounted(load)
@@ -421,8 +444,8 @@ onMounted(load)
         </div>
       </CardHeader>
       <CardContent class="space-y-3">
-        <!-- In Progress filters -->
-        <template v-if="activeTab === 'In Progress'">
+        <!-- Active filters -->
+        <template v-if="activeTab === 'Active'">
           <div class="flex flex-wrap items-end gap-2.5">
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Exercise Code
@@ -447,12 +470,30 @@ onMounted(load)
                 </option>
               </select>
             </label>
+            <label class="grid gap-1.5 text-xs text-muted-foreground">
+              Status
+              <select v-model="statusFilter" :class="[selectClass, 'w-[170px]']">
+                <option>All statuses</option>
+                <option>In Progress</option>
+                <option>Returned</option>
+                <option>Under Review</option>
+              </select>
+            </label>
+            <label class="grid gap-1.5 text-xs text-muted-foreground">
+              Review Stage
+              <select v-model="reviewStageFilter" :class="[selectClass, 'w-[260px]']">
+                <option>All stages</option>
+                <option>Manager Review</option>
+                <option>Center Delivery Head Review</option>
+                <option>Local Transformation Head Review</option>
+              </select>
+            </label>
             <Button variant="outline" @click="toggleAdvanced">
               More Filters{{ advancedCount ? ` (${advancedCount})` : '' }}
             </Button>
           </div>
           <div
-            v-if="advancedOpen === 'In Progress'"
+            v-if="advancedOpen === 'Active'"
             class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
           >
             <label class="grid gap-1.5 text-xs text-muted-foreground">
@@ -481,61 +522,12 @@ onMounted(load)
                 <option value="Not assigned">Not assigned</option>
               </select>
             </label>
-            <Button variant="outline" @click="clearAdvancedDrafts">Clear</Button>
-            <Button @click="applyAdvanced">Apply Filters</Button>
-          </div>
-        </template>
-
-        <!-- Under Review filters -->
-        <template v-else-if="activeTab === 'Under Review'">
-          <div class="flex flex-wrap items-end gap-2.5">
             <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Exercise Code
-              <Input
-                v-model="exerciseCodeFilter" class="w-[220px]"
-                placeholder="Search exercise code"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              PL3
-              <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
-                <option v-for="option in pl3Options" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Toolkit
-              <select v-model="toolkitFilter" :class="[selectClass, 'w-[240px]']">
-                <option v-for="option in toolkitOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Review Stage
-              <select v-model="reviewStageFilter" :class="[selectClass, 'w-[260px]']">
-                <option>All stages</option>
-                <option>Manager Review</option>
-                <option>Center Delivery Head Review</option>
-                <option>Local Transformation Head Review</option>
-              </select>
-            </label>
-            <Button variant="outline" @click="toggleAdvanced">
-              More Filters{{ advancedCount ? ` (${advancedCount})` : '' }}
-            </Button>
-          </div>
-          <div
-            v-if="advancedOpen === 'Under Review'"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
-          >
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Current Reviewer
+              Handler
               <select v-model="draftReviewer" :class="[selectClass, 'w-[180px]']">
-                <option>All reviewers</option>
-                <option>Grace Li</option>
-                <option>Ramesh Kumar</option>
-                <option>Allen HE</option>
+                <option v-for="option in reviewerOptions" :key="option" :value="option">
+                  {{ option }}
+                </option>
               </select>
             </label>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
@@ -555,14 +547,6 @@ onMounted(load)
                 placeholder="To"
                 class="w-[180px]"
               />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Status
-              <select v-model="draftReviewStatus" :class="[selectClass, 'w-[210px]']">
-                <option>All statuses</option>
-                <option>Pending Review</option>
-                <option>Awaiting Final Approval</option>
-              </select>
             </label>
             <Button variant="outline" @click="clearAdvancedDrafts">Clear</Button>
             <Button @click="applyAdvanced">Apply Filters</Button>
@@ -635,40 +619,90 @@ onMounted(load)
         </template>
 
         <div class="overflow-x-auto rounded-lg border">
-          <Table class="min-w-[980px]">
+          <Table :class="activeTab === 'Active' ? 'min-w-[1280px]' : 'min-w-[1200px]'">
             <TableHeader>
-              <TableRow>
+              <TableRow v-if="activeTab === 'Active'">
                 <TableHead>Exercise Code</TableHead>
-                <TableHead>GBS</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>PL3</TableHead>
                 <TableHead>Toolkit</TableHead>
-                <TableHead>Sizing Month</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead v-if="activeTab === 'Under Review'">Submitted</TableHead>
                 <TableHead>Delivery HC</TableHead>
+                <TableHead>Right Sizing HC</TableHead>
+                <TableHead>Production Support</TableHead>
+                <TableHead>Capacity Creation</TableHead>
+                <TableHead>Created Date</TableHead>
+                <TableHead>Submitted Date</TableHead>
+                <TableHead>Review Stage</TableHead>
+                <TableHead>Current Reviewer</TableHead>
+                <TableHead>Aging</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead class="text-right">Action</TableHead>
+              </TableRow>
+              <TableRow v-else>
+                <TableHead>Exercise Code</TableHead>
+                <TableHead>Toolkit</TableHead>
+                <TableHead>Delivery HC</TableHead>
+                <TableHead>Right Sizing HC</TableHead>
+                <TableHead>Production Support</TableHead>
+                <TableHead>Capacity Creation</TableHead>
+                <TableHead>Created Date</TableHead>
+                <TableHead>Submitted Date</TableHead>
+                <TableHead>Archived Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead class="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="exercise in pagedRows" :key="exercise.id">
-                <TableCell>{{ exercise.exerciseCode }}</TableCell>
-                <TableCell>{{ exercise.snapshot.toolkit.center }}</TableCell>
-                <TableCell>{{ exercise.snapshot.toolkit.domain }}</TableCell>
-                <TableCell>{{ exercise.snapshot.toolkit.pl3Name }}</TableCell>
-                <TableCell>{{ exercise.snapshot.toolkit.name }}</TableCell>
-                <TableCell>{{ exercise.sizingMonth }}</TableCell>
-                <TableCell>{{ formatDate(exercise.createdAt) }}</TableCell>
-                <TableCell v-if="activeTab === 'Under Review'">
-                  {{ formatDate(exercise.submittedAt) }}
-                </TableCell>
-                <TableCell>{{ deliveryHc(exercise) }}</TableCell>
-                <TableCell>{{ exercise.workflowStatus }}</TableCell>
+                <template v-if="activeTab === 'Active'">
+                  <TableCell>{{ exercise.exerciseCode }}</TableCell>
+                  <TableCell>{{ exercise.snapshot.toolkit.name }}</TableCell>
+                  <TableCell>{{ deliveryHc(exercise) }}</TableCell>
+                  <TableCell>{{ formatHc(exercise.rightSizingHc) }}</TableCell>
+                  <TableCell>{{ formatHc(exercise.productionSupport) }}</TableCell>
+                  <TableCell :class="capacityTone(exercise.capacityCreation)">
+                    {{ formatSigned(exercise.capacityCreation) }}
+                  </TableCell>
+                  <TableCell>{{ formatDate(exercise.createdAt) }}</TableCell>
+                  <TableCell>{{ formatDate(exercise.submittedAt) }}</TableCell>
+                  <TableCell>{{ reviewStage(exercise) }}</TableCell>
+                  <TableCell>{{ currentReviewerName(exercise) }}</TableCell>
+                  <TableCell>
+                    <Badge
+                      v-if="exercise.agingDays != null"
+                      :variant="agingTone(exercise.agingDays) === 'bad' ? 'destructive' : 'outline'"
+                      :class="{
+                        'border-amber-200 bg-amber-50 text-amber-800':
+                          agingTone(exercise.agingDays) === 'warn',
+                      }"
+                    >
+                      {{ exercise.agingDays }}
+                      {{ exercise.agingDays === 1 ? 'day' : 'days' }}
+                    </Badge>
+                    <span v-else>—</span>
+                  </TableCell>
+                  <TableCell :title="exercise.lastDecisionComment || undefined">
+                    {{ activeStatusLabel(exercise) }}
+                  </TableCell>
+                </template>
+                <template v-else>
+                  <TableCell>{{ exercise.exerciseCode }}</TableCell>
+                  <TableCell>{{ exercise.snapshot.toolkit.name }}</TableCell>
+                  <TableCell>{{ deliveryHc(exercise) }}</TableCell>
+                  <TableCell>{{ formatHc(exercise.rightSizingHc) }}</TableCell>
+                  <TableCell>{{ formatHc(exercise.productionSupport) }}</TableCell>
+                  <TableCell :class="capacityTone(exercise.capacityCreation)">
+                    {{ formatSigned(exercise.capacityCreation) }}
+                  </TableCell>
+                  <TableCell>{{ formatDate(exercise.createdAt) }}</TableCell>
+                  <TableCell>{{ formatDate(exercise.submittedAt) }}</TableCell>
+                  <TableCell>{{ formatDate(exercise.archivedAt) }}</TableCell>
+                  <TableCell :title="exercise.lastDecisionComment || undefined">
+                    {{ exerciseStatusLabel(exercise) }}
+                  </TableCell>
+                </template>
                 <TableCell class="text-right">
                   <div class="flex justify-end gap-3">
                     <Button
-                      v-if="activeTab === 'Under Review'"
+                      v-if="exercise.workflowStatus === 'UNDER_REVIEW'"
                       size="sm"
                       variant="link-destructive"
                       class="h-auto px-0 font-semibold"
@@ -689,7 +723,7 @@ onMounted(load)
               </TableRow>
               <TableRow v-if="!loading && !pagedRows.length">
                 <TableCell
-                  :colspan="activeTab === 'Under Review' ? 11 : 10"
+                  :colspan="activeTab === 'Active' ? 13 : 11"
                   class="h-24 text-center text-muted-foreground"
                 >
                   No {{ activeTab }} exercises.
@@ -697,7 +731,7 @@ onMounted(load)
               </TableRow>
               <TableRow v-if="loading">
                 <TableCell
-                  :colspan="activeTab === 'Under Review' ? 11 : 10"
+                  :colspan="activeTab === 'Active' ? 13 : 11"
                   class="h-24 text-center text-muted-foreground"
                 >
                   Loading exercises…
@@ -708,7 +742,7 @@ onMounted(load)
         </div>
 
         <TablePager
-          :total="filteredRows.length"
+          :total="exercises.length"
           :page="safePage"
           :page-size="pageSize"
           label="exercises"

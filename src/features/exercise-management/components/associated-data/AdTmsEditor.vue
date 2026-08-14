@@ -46,7 +46,7 @@ watch(
 )
 
 const medianLabel = computed(() =>
-  localCycleTime.value ? `${localCycleTime.value.medianSeconds}s` : '—',
+  localCycleTime.value ? `${Number(localCycleTime.value.medianSeconds).toFixed(2)}s` : '—',
 )
 
 const sessionTotalLabel = computed(() => {
@@ -192,7 +192,7 @@ watch(
               <TableCell>{{ row.agentName || '—' }}</TableCell>
               <TableCell>{{ row.subtaskName || '—' }}</TableCell>
               <TableCell>
-                {{ row.cycleTimeSeconds != null ? `${row.cycleTimeSeconds}s` : '—' }}
+                {{ row.cycleTimeSeconds != null ? `${Number(row.cycleTimeSeconds).toFixed(2)}s` : '—' }}
               </TableCell>
               <TableCell
                 :class="

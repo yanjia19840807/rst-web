@@ -218,7 +218,7 @@ function frequencyLabel(code: string) {
       />
       <AdMetric
         label="Annual support hours"
-        :value="totalAnnualHours != null ? formatNumber(totalAnnualHours, 1) : '—'"
+        :value="totalAnnualHours != null ? formatNumber(totalAnnualHours, 2) : '—'"
         hint="Sum of Hours / year"
       />
     </div>
@@ -286,7 +286,7 @@ function frequencyLabel(code: string) {
                   </select>
                 </TableCell>
                 <TableCell>
-                  <NumberFieldControl v-model="draft.volume" :min="0" :step="1" />
+                  <NumberFieldControl v-model="draft.volume" :min="0" />
                 </TableCell>
                 <TableCell>
                   <select v-model="draft.unitOfMeasure" :class="controlClass">
@@ -299,12 +299,11 @@ function frequencyLabel(code: string) {
                   <NumberFieldControl
                     v-model="draft.workloadPerUnitMinutes"
                     :min="0"
-                    :step="0.1"
                   />
                 </TableCell>
                 <TableCell>
                   <ReadOnlyField
-                    :value="draftHoursPerYear != null ? formatNumber(draftHoursPerYear, 1) : '—'"
+                    :value="draftHoursPerYear != null ? formatNumber(draftHoursPerYear, 2) : '—'"
                   />
                 </TableCell>
                 <TableCell>
@@ -342,11 +341,11 @@ function frequencyLabel(code: string) {
                 <TableCell>{{ frequencyLabel(item.frequencyCode) }}</TableCell>
                 <TableCell>{{ formatNumber(item.volume, 2) }}</TableCell>
                 <TableCell>{{ item.unitOfMeasure }}</TableCell>
-                <TableCell>{{ formatNumber(item.workloadPerUnitMinutes, 1) }}</TableCell>
+                <TableCell>{{ formatNumber(item.workloadPerUnitMinutes, 2) }}</TableCell>
                 <TableCell>
                   {{
                     item.workloadPerYearHours != null
-                      ? formatNumber(item.workloadPerYearHours, 1)
+                      ? formatNumber(item.workloadPerYearHours, 2)
                       : '—'
                   }}
                 </TableCell>
@@ -402,7 +401,7 @@ function frequencyLabel(code: string) {
                 </select>
               </TableCell>
               <TableCell>
-                <NumberFieldControl v-model="draft.volume" :min="0" :step="1" />
+                <NumberFieldControl v-model="draft.volume" :min="0" />
               </TableCell>
               <TableCell>
                 <select v-model="draft.unitOfMeasure" :class="controlClass">
@@ -412,11 +411,11 @@ function frequencyLabel(code: string) {
                 </select>
               </TableCell>
               <TableCell>
-                <NumberFieldControl v-model="draft.workloadPerUnitMinutes" :min="0" :step="0.1" />
+                <NumberFieldControl v-model="draft.workloadPerUnitMinutes" :min="0" />
               </TableCell>
               <TableCell>
                 <ReadOnlyField
-                  :value="draftHoursPerYear != null ? formatNumber(draftHoursPerYear, 1) : '—'"
+                  :value="draftHoursPerYear != null ? formatNumber(draftHoursPerYear, 2) : '—'"
                 />
               </TableCell>
               <TableCell>

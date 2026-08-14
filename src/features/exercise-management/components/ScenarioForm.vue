@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -10,6 +10,7 @@ import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { NumberFieldControl } from '@/components/ui/number-field'
 import { Label } from '@/components/ui/label'
 import {
   Table,
@@ -56,7 +57,9 @@ const props = defineProps<{
   scenarioId: string
 }>()
 
+const route = useRoute()
 const router = useRouter()
+const snapshotMode = computed(() => route.name === 'supervisor-scenario-snapshot')
 const loading = ref(true)
 const busy = ref(false)
 const deleteOpen = ref(false)
@@ -78,7 +81,7 @@ const latestSlotSimulation = ref<SlotSimulationView | null>(null)
 const form = reactive({
   name: '',
   description: '',
-  rightSizingHc: '8.6',
+  rightSizingHc: 0 as number,
 })
 
 const shiftRows = ref<ShiftDraft[]>([])
@@ -112,7 +115,7 @@ const shiftSetupLabel = computed(() => {
 })
 
 const medianLabel = computed(() =>
-  cycleTime.value ? `${cycleTime.value.medianSeconds}s` : '—',
+  cycleTime.value ? `${Number(cycleTime.value.medianSeconds).toFixed(2)}s` : '—',
 )
 
 const medianSourceLabel = computed(() => {
@@ -125,35 +128,34 @@ const medianSourceLabel = computed(() => {
 const slaTargetLabel = computed(() => {
   const ratio = teamSetup.value?.slaTargetRatio
   if (ratio == null) return '—'
-  return `${Math.round(Number(ratio) * 100)}%`
+  return `${(Number(ratio) * 100).toFixed(2)}%`
 })
 
 const slaTurntimeLabel = computed(() => {
   const minutes = teamSetup.value?.slaTurnaroundMinutes
   if (minutes == null) return '—'
   const hours = Number(minutes) / 60
-  if (Number.isInteger(hours)) return `${hours} business hours`
-  return `${hours.toFixed(1)} business hours`
+  return `${hours.toFixed(2)} business hours`
 })
 
 const workingDaysLabel = computed(() => {
   const days = teamSetup.value?.workingDaysPerYear
-  return days != null ? String(days) : '—'
+  return days != null ? Number(days).toFixed(2) : '—'
 })
 
 const dailyCapacityLabel = computed(() => {
   const cap = teamSetup.value?.dailyCapacityPerAgent
-  return cap != null ? String(cap) : '—'
+  return cap != null ? Number(cap).toFixed(2) : '—'
 })
 
 /** Exercise AD / snapshot inputs used by simulation (read-only on this page). */
 const baselineInputRows = computed(() => [
-  { label: 'Delivery HC', value: deliveryHc.value.toFixed(1) },
+  { label: 'Delivery HC', value: deliveryHc.value.toFixed(2) },
   { label: 'Median Cycle Time', value: medianLabel.value },
   { label: 'Median source', value: medianSourceLabel.value },
   {
     label: 'Production support',
-    value: supportFte.value != null ? supportFte.value.toFixed(1) : '—',
+    value: supportFte.value != null ? supportFte.value.toFixed(2) : '—',
   },
   { label: 'SLA Turntime', value: slaTurntimeLabel.value },
   { label: 'SLA Target %', value: slaTargetLabel.value },
@@ -173,21 +175,23 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
       ? deliveryHc.value - rsHc - supportVal
       : null
   const capacityLabel =
-    capacity == null ? '—' : `${capacity >= 0 ? '+' : ''}${capacity.toFixed(1)}`
+    capacity == null ? '—' : `${capacity >= 0 ? '+' : ''}${capacity.toFixed(2)}`
 
   const firstSizing = latestMonthlySizing.value?.rows[0]
   const rows: ScenarioResultRow[] = [
-    { label: 'Actual size', value: deliveryHc.value.toFixed(1) },
+    { label: 'Actual size', value: deliveryHc.value.toFixed(2) },
     {
       label: 'Right size HC',
       value: firstSizing
-        ? String(firstSizing.rightSizingHc)
-        : form.rightSizingHc || '—',
+        ? Number(firstSizing.rightSizingHc).toFixed(2)
+        : Number.isFinite(form.rightSizingHc)
+          ? form.rightSizingHc.toFixed(2)
+          : '—',
     },
     {
       label: 'Capacity Creation',
       value: firstSizing
-        ? `${Number(firstSizing.capacityCreation) >= 0 ? '+' : ''}${Number(firstSizing.capacityCreation).toFixed(1)}`
+        ? `${Number(firstSizing.capacityCreation) >= 0 ? '+' : ''}${Number(firstSizing.capacityCreation).toFixed(2)}`
         : capacityLabel,
       emphasize: firstSizing
         ? Number(firstSizing.capacityCreation) >= 0
@@ -205,7 +209,7 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
   if (firstSizing) {
     rows.splice(1, 0, {
       label: 'Nominal HC (w/o OT)',
-      value: String(firstSizing.nominalHcWithoutOt),
+      value: String(Number(firstSizing.nominalHcWithoutOt).toFixed(2)),
     })
   }
   if (latestMonthlySizing.value?.calculationVersion) {
@@ -274,10 +278,9 @@ async function load() {
     form.name = scenario.value.name
     form.description = scenario.value.description ?? ''
     const rs = scenario.value.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')
-    if (rs?.numericValue != null) form.rightSizingHc = String(rs.numericValue)
+    form.rightSizingHc = rs?.numericValue != null ? Number(rs.numericValue) : 0
 
-    const [shifts, ts, sp] = await Promise.all([
-      exerciseApi.getShifts(props.exerciseId),
+    const [ts, sp] = await Promise.all([
       exerciseApi.getTeamSetup(props.exerciseId).catch(() => null),
       exerciseApi.listSupport(props.exerciseId).catch(() => [] as SupportItem[]),
     ])
@@ -289,30 +292,30 @@ async function load() {
       cycleTime.value = null
     }
 
-    shiftRows.value = shifts.map((s) => ({
-      shiftNo: s.shiftNo,
-      startTime: s.startTime.length === 5 ? `${s.startTime}:00` : s.startTime,
-      durationMinutes: s.durationMinutes,
-      headcount: Number(s.headcount),
-      worksOnWeekend: s.worksOnWeekend,
-    }))
-    if (!shiftRows.value.length) {
-      shiftRows.value = [
-        {
-          shiftNo: 1,
-          startTime: '09:00:00',
-          durationMinutes: 540,
-          headcount: 1,
-          worksOnWeekend: false,
-        },
-      ]
-    }
+    const savedShifts = scenario.value.shifts ?? []
+    shiftRows.value = savedShifts.length
+      ? savedShifts.map((s) => ({
+          shiftNo: s.shiftNo,
+          startTime: s.startTime.length === 5 ? `${s.startTime}:00` : s.startTime,
+          durationMinutes: s.durationMinutes,
+          headcount: Number(s.headcount),
+          worksOnWeekend: s.worksOnWeekend,
+        }))
+      : [
+          {
+            shiftNo: 1,
+            startTime: '',
+            durationMinutes: null,
+            headcount: null,
+            worksOnWeekend: false,
+          },
+        ]
 
     // Reload only previously committed (Save) simulation outputs.
     await loadSimulationResults()
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not load scenario.')
-    void router.push({ name: 'supervisor-exercise-detail', params: { id: props.exerciseId } })
+    goBack()
   } finally {
     loading.value = false
   }
@@ -354,14 +357,20 @@ async function loadSimulationResults() {
   slotCompleted.value = slot != null && (slot.rows?.length ?? 0) > 0
 }
 
+function isBlankShift(row: ShiftDraft) {
+  return !row.startTime?.trim() && row.durationMinutes == null && row.headcount == null
+}
+
 function toShiftRequests() {
-  return shiftRows.value.map((row, index) => ({
-    shiftNo: index + 1,
-    startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
-    durationMinutes: Number(row.durationMinutes),
-    headcount: Number(row.headcount),
-    worksOnWeekend: row.worksOnWeekend,
-  }))
+  return shiftRows.value
+    .filter((row) => !isBlankShift(row))
+    .map((row, index) => ({
+      shiftNo: index + 1,
+      startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
+      durationMinutes: Number(row.durationMinutes),
+      headcount: Number(row.headcount),
+      worksOnWeekend: row.worksOnWeekend,
+    }))
 }
 
 function addShift() {
@@ -395,7 +404,7 @@ function onShiftEdited() {
 
 async function save() {
   if (!scenario.value || readOnly.value) return
-  const shiftError = validateShiftDrafts()
+  const shiftError = validateShiftDrafts(false)
   if (shiftError) {
     toast.warning(shiftError)
     return
@@ -462,9 +471,10 @@ async function runSizing() {
   }
 }
 
-function validateShiftDrafts(): string | null {
-  if (!shiftRows.value.length) return 'Add at least one shift.'
-  for (const row of shiftRows.value) {
+function validateShiftDrafts(requireAtLeastOne: boolean): string | null {
+  const filled = shiftRows.value.filter((row) => !isBlankShift(row))
+  if (requireAtLeastOne && !filled.length) return 'Add at least one shift.'
+  for (const row of filled) {
     if (!row.startTime?.trim()) {
       return `Shift ${row.shiftNo}: Start time is required.`
     }
@@ -480,7 +490,7 @@ function validateShiftDrafts(): string | null {
 
 async function runSlot() {
   if (readOnly.value || busy.value || slotLocked.value) return
-  const validationError = validateShiftDrafts()
+  const validationError = validateShiftDrafts(true)
   if (validationError) {
     toast.warning(validationError)
     return
@@ -518,10 +528,33 @@ async function confirmDelete() {
   }
 }
 
-function durationHoursLabel(minutes: number | null) {
-  if (minutes == null || !Number.isFinite(minutes)) return ''
-  return `${(Number(minutes) / 60).toFixed(1)}h`
+function goBack() {
+  void router.push({
+    name: snapshotMode.value ? 'supervisor-exercise-snapshot' : 'supervisor-exercise-detail',
+    params: { id: props.exerciseId },
+  })
 }
+
+function formatShiftTime(value?: string | null) {
+  if (!value) return '—'
+  return value.length >= 5 ? value.slice(0, 5) : value
+}
+
+const scenarioInfoRows = computed(() => {
+  const rows = [
+    { key: 'toolkit', label: 'Toolkit', value: exercise.value?.snapshot.toolkit.name },
+    { label: 'Exercise No', value: exercise.value?.exerciseCode },
+    { label: 'Scenario No.', value: scenario.value?.scenarioCode },
+    { label: 'Status', value: scenario.value?.status },
+  ]
+  if (readOnly.value) {
+    rows.push(
+      { label: 'Name', value: form.name },
+      { label: 'Description', value: form.description },
+    )
+  }
+  return rows
+})
 
 onMounted(load)
 </script>
@@ -536,9 +569,9 @@ onMounted(load)
         <Button
           variant="link"
           class="h-auto px-0 font-semibold"
-          @click="router.push({ name: 'supervisor-exercise-detail', params: { id: exerciseId } })"
+          @click="goBack"
         >
-          ← Back to Exercise
+          {{ snapshotMode ? '← Back to Exercise Snapshot' : '← Back to Exercise' }}
         </Button>
       </template>
       <Button v-if="!readOnly" variant="destructive" @click="deleteOpen = true">
@@ -554,14 +587,7 @@ onMounted(load)
         <CardTitle class="text-base">Scenario Info</CardTitle>
       </CardHeader>
       <CardContent class="grid gap-3">
-        <DetailTable
-          :rows="[
-            { key: 'toolkit', label: 'Toolkit', value: exercise.snapshot.toolkit.name },
-            { label: 'Exercise No', value: exercise.exerciseCode },
-            { label: 'Scenario No.', value: scenario.scenarioCode },
-            { label: 'Status', value: scenario.status },
-          ]"
-        >
+        <DetailTable :rows="scenarioInfoRows">
           <template #toolkit="{ row }">
             <span class="inline-flex items-center gap-1.5">
               <span>{{ row.value || '—' }}</span>
@@ -578,14 +604,14 @@ onMounted(load)
           </template>
         </DetailTable>
 
-        <div class="grid gap-3 sm:grid-cols-2">
+        <div v-if="!readOnly" class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1 text-sm sm:col-span-2">
             Name
-            <Input v-model="form.name" :disabled="readOnly" />
+            <Input v-model="form.name" />
           </label>
           <label class="grid gap-1 text-sm sm:col-span-2">
             Description
-            <Textarea v-model="form.description" rows="2" :disabled="readOnly" />
+            <Textarea v-model="form.description" rows="2" />
           </label>
         </div>
 
@@ -623,14 +649,15 @@ onMounted(load)
                 Run Simulation
               </Button>
             </div>
-            <label class="grid max-w-xs gap-1 text-sm">
+            <DetailTable
+              v-if="readOnly"
+              :rows="[{ label: 'Right Sizing HC', value: Number.isFinite(form.rightSizingHc) ? form.rightSizingHc.toFixed(2) : '—' }]"
+            />
+            <label v-else class="grid max-w-xs gap-1 text-sm">
               Right Sizing HC
-              <Input
+              <NumberFieldControl
                 v-model="form.rightSizingHc"
-                type="number"
-                min="0"
-                step="0.1"
-                :disabled="readOnly"
+                :min="0"
               />
             </label>
           </div>
@@ -645,23 +672,27 @@ onMounted(load)
             v-else
             class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
           >
-            Run Sizing Simulation to generate forecast and simulation results.
+            {{
+              readOnly
+                ? 'No saved sizing simulation for this scenario.'
+                : 'Run Sizing Simulation to generate forecast and simulation results.'
+            }}
           </div>
         </section>
 
         <!-- Slot Simulation Panel -->
         <section
           class="rounded-lg border bg-card p-4"
-          :class="slotLocked ? 'opacity-60' : undefined"
+          :class="!readOnly && slotLocked ? 'opacity-60' : undefined"
         >
           <h3 class="mb-1 text-base font-bold">2. Slot Simulation</h3>
-          <p v-if="slotLocked" class="mb-3 text-xs text-muted-foreground">
+          <p v-if="!readOnly && slotLocked" class="mb-3 text-xs text-muted-foreground">
             Run Sizing Simulation first to unlock Slot Simulation.
           </p>
 
           <div
             class="mb-3.5 rounded-lg border bg-card p-4"
-            :class="slotLocked ? 'pointer-events-none' : undefined"
+            :class="!readOnly && slotLocked ? 'pointer-events-none' : undefined"
           >
             <div class="mb-3 flex items-center justify-between gap-2">
               <h4 class="text-sm font-bold">Shift Inputs</h4>
@@ -708,10 +739,12 @@ onMounted(load)
                   <TableRow>
                     <TableCell class="text-muted-foreground">Start</TableCell>
                     <TableCell v-for="row in shiftRows" :key="`start-${row.shiftNo}`">
+                      <span v-if="readOnly">{{ formatShiftTime(row.startTime) }}</span>
                       <TimePicker
+                        v-else
                         v-model="row.startTime"
                         class="h-8"
-                        :disabled="readOnly || slotLocked"
+                        :disabled="slotLocked"
                         :aria-label="`Shift ${row.shiftNo} start`"
                         @update:model-value="onShiftEdited"
                       />
@@ -720,42 +753,38 @@ onMounted(load)
                   <TableRow>
                     <TableCell class="text-muted-foreground">Duration (min)</TableCell>
                     <TableCell v-for="row in shiftRows" :key="`dur-${row.shiftNo}`">
-                      <Input
-                        v-model.number="row.durationMinutes"
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="—"
-                        class="h-8"
-                        :disabled="readOnly || slotLocked"
-                        :title="durationHoursLabel(row.durationMinutes)"
-                        @change="onShiftEdited"
+                      <span v-if="readOnly">{{ row.durationMinutes ?? '—' }}</span>
+                      <NumberFieldControl
+                        v-else
+                        v-model="row.durationMinutes"
+                        :min="1"
+                        :disabled="slotLocked"
+                        @update:model-value="onShiftEdited"
                       />
                     </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell class="text-muted-foreground">Capacity FTE</TableCell>
                     <TableCell v-for="row in shiftRows" :key="`hc-${row.shiftNo}`">
-                      <Input
-                        v-model.number="row.headcount"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        placeholder="—"
-                        class="h-8"
-                        :disabled="readOnly || slotLocked"
-                        @change="onShiftEdited"
+                      <span v-if="readOnly">{{ row.headcount ?? '—' }}</span>
+                      <NumberFieldControl
+                        v-else
+                        v-model="row.headcount"
+                        :min="0"
+                        :disabled="slotLocked"
+                        @update:model-value="onShiftEdited"
                       />
                     </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell class="text-muted-foreground">Weekend</TableCell>
                     <TableCell v-for="row in shiftRows" :key="`wk-${row.shiftNo}`">
-                      <Label class="flex items-center gap-2 text-sm">
+                      <span v-if="readOnly">{{ row.worksOnWeekend ? 'Yes' : 'No' }}</span>
+                      <Label v-else class="flex items-center gap-2 text-sm">
                         <input
                           v-model="row.worksOnWeekend"
                           type="checkbox"
-                          :disabled="readOnly || slotLocked"
+                          :disabled="slotLocked"
                           @change="onShiftEdited"
                         />
                         Yes

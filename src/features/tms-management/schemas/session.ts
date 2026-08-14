@@ -9,7 +9,6 @@ export const sessionSchema = z.object({
       .number({
         invalid_type_error: 'Volume must be a number.',
       })
-      .int('Volume must be a whole number.')
       .positive('Volume must be greater than zero.')
       .optional(),
   ),

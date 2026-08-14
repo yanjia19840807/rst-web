@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { computed, type HTMLAttributes } from 'vue'
 
 import NumberField from './NumberField.vue'
 import NumberFieldContent from './NumberFieldContent.vue'
@@ -11,6 +11,7 @@ const props = withDefaults(
     min?: number
     max?: number
     step?: number
+    decimals?: number
     disabled?: boolean
     id?: string
     class?: HTMLAttributes['class']
@@ -18,7 +19,7 @@ const props = withDefaults(
   {
     modelValue: null,
     min: 0,
-    step: 1,
+    decimals: 2,
     disabled: false,
   },
 )
@@ -26,6 +27,16 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:modelValue': [value: number | null]
 }>()
+
+const resolvedStep = computed(() => {
+  if (props.step != null) return props.step
+  return props.decimals === 0 ? 1 : 10 ** -props.decimals
+})
+
+const formatOptions = computed<Intl.NumberFormatOptions>(() => ({
+  minimumFractionDigits: props.decimals,
+  maximumFractionDigits: props.decimals,
+}))
 
 function onUpdate(value: number | undefined) {
   emit(
@@ -41,7 +52,9 @@ function onUpdate(value: number | undefined) {
     :model-value="modelValue ?? undefined"
     :min="min"
     :max="max"
-    :step="step"
+    :step="resolvedStep"
+    :format-options="formatOptions"
+    locale="en-US"
     :disabled="disabled"
     :class="props.class"
     @update:model-value="onUpdate"

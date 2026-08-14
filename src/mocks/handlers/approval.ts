@@ -10,9 +10,9 @@ import type { Exercise, SubmittedDetails } from '@/features/exercise-management/
 
 import { exercises } from '../data/supervisor'
 import { ensureShell, exerciseShells } from '../data/exercise-store'
+import { buildApprovalWorkspace } from '../approvalWorkspace'
 
 const OPEN_STATUSES = new Set(['AWAITING_MANAGER', 'AWAITING_CDH', 'AWAITING_LTH'])
-const ARCHIVED_STATUSES = new Set(['VALIDATED', 'RETURNED', 'ARCHIVED'])
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Approval request failed', status, detail }, { status })
@@ -20,11 +20,11 @@ function problem(status: number, detail: string) {
 
 function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
-  exercise.officialScenarioId =
-    shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
+  const liveOfficial = shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
+  exercise.officialScenarioId = liveOfficial ?? shell.submitted?.scenarioId ?? exercise.officialScenarioId
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
-  exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
+  exercise.canSubmit = Boolean(liveOfficial) && exercise.canEdit
 }
 
 function findBySubmission(submissionId: string | readonly string[] | undefined) {
@@ -43,22 +43,113 @@ function requiredRole(submitted: SubmittedDetails) {
   return ready?.requiredRoleCode ?? 'MANAGER'
 }
 
+function daysBetween(from?: string | null) {
+  if (!from) return 0
+  const start = new Date(from)
+  if (Number.isNaN(start.getTime())) return 0
+  const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+  const now = new Date()
+  const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.max(0, Math.round((nowDay - startDay) / 86_400_000))
+}
+
+function previousStepLabel(role?: string | null) {
+  switch (role) {
+    case 'MANAGER':
+      return 'Manager Review'
+    case 'CDH':
+      return 'Center Delivery Head Review'
+    case 'LTH':
+      return 'Local Transformation Head Review'
+    default:
+      return role || null
+  }
+}
+
+function awaitingRole(status: string) {
+  if (status === 'AWAITING_MANAGER') return 'MANAGER'
+  if (status === 'AWAITING_CDH') return 'CDH'
+  if (status === 'AWAITING_LTH') return 'LTH'
+  return null
+}
+
+function roleDecision(submitted: SubmittedDetails) {
+  return submitted.actions.filter(
+    (action) =>
+      (action.actionType === 'APPROVE' || action.actionType === 'RETURN') &&
+      (action.actorRoleCode === 'MANAGER' ||
+        action.actorRoleCode === 'CDH' ||
+        action.actorRoleCode === 'LTH'),
+  ).at(-1) ?? null
+}
+
 function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQueueItem {
+  const deliveryHc = (exercise.snapshot.sharedKpis ?? []).reduce(
+    (sum, item) => sum + Number(item.deliveryHc || 0),
+    0,
+  )
+  const previousActions = submitted.actions.filter((action) => action.actionType === 'APPROVE')
+  const previous = previousActions[previousActions.length - 1] ?? null
+  const last = submitted.actions.filter(
+    (action) => action.actionType === 'SUBMIT' || action.actionType === 'APPROVE',
+  ).at(-1) ?? null
+  const supervisor =
+    submitted.actions.find((action) => action.actionType === 'SUBMIT')?.actorDisplayName ?? null
+  const agingFrom = previous?.actionAt ?? submitted.submittedAt
+  const closeActions = submitted.actions.filter(
+    (action) =>
+      action.actionType === 'RETURN' ||
+      action.actionType === 'WITHDRAW' ||
+      action.actionType === 'APPROVE',
+  )
+  const mine = roleDecision(submitted)
+  const archivedAt =
+    submitted.submissionStatus === 'VALIDATED' ||
+    submitted.submissionStatus === 'RETURNED' ||
+    submitted.submissionStatus === 'ARCHIVED'
+      ? (closeActions[closeActions.length - 1]?.actionAt ?? submitted.submittedAt)
+      : submitted.submittedAt
   return {
     submissionId: submitted.submissionId,
+    exerciseId: exercise.id,
     exerciseCode: exercise.exerciseCode,
-    packageVersion: submitted.packageVersion,
-    currentStep: submitted.currentStep,
-    requiredRole: requiredRole(submitted),
-    status: submitted.submissionStatus,
-    submittedAt: submitted.submittedAt,
-    toolkitName: exercise.snapshot.toolkit.name,
+    center: exercise.snapshot.toolkit.center,
+    domain: exercise.snapshot.toolkit.domain,
     pl3Name: exercise.snapshot.toolkit.pl3Name,
-    archivedAt: submitted.submittedAt,
+    toolkitName: exercise.snapshot.toolkit.name,
+    supervisor,
+    deliveryHc,
+    rightSizingHc: null,
+    productionSupport: 0,
+    capacityCreation: null,
+    previousStep: previous ? previousStepLabel(previous.actorRoleCode) : null,
+    previousActor: last?.actorDisplayName ?? supervisor,
+    previousStepAt: last?.actionAt ?? submitted.submittedAt,
+    agingDays: daysBetween(agingFrom),
+    createdAt: exercise.createdAt,
+    submittedAt: submitted.submittedAt,
+    archivedAt,
+    finalStatus: submitted.submissionStatus === 'VALIDATED'
+      ? 'Approved'
+      : submitted.submissionStatus === 'RETURNED' || submitted.submissionStatus === 'ARCHIVED'
+        ? 'Rejected'
+        : null,
+    reviewDurationDays:
+      submitted.submissionStatus === 'VALIDATED' ||
+      submitted.submissionStatus === 'RETURNED' ||
+      submitted.submissionStatus === 'ARCHIVED'
+        ? daysBetween(submitted.submittedAt)
+        : null,
+    status: submitted.submissionStatus,
+    myDecision:
+      mine?.actionType === 'APPROVE' ? 'Approved' : mine?.actionType === 'RETURN' ? 'Returned' : null,
+    myCompletedAt: mine?.actionAt ?? null,
+    completedStep: mine ? previousStepLabel(mine.actorRoleCode) : null,
   }
 }
 
 function toDetail(exercise: Exercise, submitted: SubmittedDetails): ApprovalDetailView {
+  const canDecide = OPEN_STATUSES.has(submitted.submissionStatus)
   return {
     exerciseId: exercise.id,
     exerciseCode: exercise.exerciseCode,
@@ -84,10 +175,16 @@ function toDetail(exercise: Exercise, submitted: SubmittedDetails): ApprovalDeta
       actionType: action.actionType,
       actorUserId: action.actorUserId ?? null,
       actorRoleCode: action.actorRoleCode ?? null,
+      actorDisplayName: action.actorDisplayName ?? null,
       comments: action.comments ?? null,
       actionAt: action.actionAt ?? submitted.submittedAt,
       requestId: action.requestId,
     })),
+    canDecide,
+    workspace: buildApprovalWorkspace(submitted, {
+      inProgress: canDecide,
+      mineStepNo: canDecide ? null : roleDecision(submitted)?.stepNo,
+    }),
   }
 }
 
@@ -100,19 +197,99 @@ function listSubmitted() {
     .filter((item): item is { exercise: Exercise; submitted: SubmittedDetails } => Boolean(item))
 }
 
+function toDateKey(value?: string | null) {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+function matchesQueueItem(
+  item: ApprovalQueueItem,
+  params: {
+    exerciseCode?: string | null
+    toolkitName?: string | null
+    pl3Name?: string | null
+    submittedFrom?: string | null
+    submittedTo?: string | null
+    completedFrom?: string | null
+    completedTo?: string | null
+    decision?: string | null
+  },
+) {
+  const code = params.exerciseCode?.trim().toLowerCase()
+  if (code && !item.exerciseCode.toLowerCase().includes(code)) return false
+  if (params.toolkitName && item.toolkitName !== params.toolkitName) return false
+  if (params.pl3Name && item.pl3Name !== params.pl3Name) return false
+  const submitted = toDateKey(item.submittedAt)
+  if (params.submittedFrom && submitted < params.submittedFrom) return false
+  if (params.submittedTo && submitted > params.submittedTo) return false
+  const completed = toDateKey(item.myCompletedAt)
+  if (params.completedFrom && (!completed || completed < params.completedFrom)) return false
+  if (params.completedTo && (!completed || completed > params.completedTo)) return false
+  if (params.decision && item.myDecision !== params.decision) return false
+  return true
+}
+
+function queueMetrics(items: ApprovalQueueItem[]) {
+  return {
+    awaitingMe: items.length,
+    overdue: items.filter((item) => (item.agingDays ?? 0) >= 5).length,
+    dueWithin2Days: items.filter((item) => {
+      const days = item.agingDays ?? 0
+      return days >= 3 && days < 5
+    }).length,
+    highRisk: items.filter((item) => (item.agingDays ?? 0) >= 5).length,
+  }
+}
+
+function uniqueNames(items: ApprovalQueueItem[], key: 'toolkitName' | 'pl3Name') {
+  return [
+    ...new Set(items.map((item) => item[key]).filter((name): name is string => Boolean(name))),
+  ].sort()
+}
+
 export const approvalHandlers = [
   http.get('*/api/v1/approvals/queue', ({ request }) => {
     const url = new URL(request.url)
-    const archived = url.searchParams.get('archived') === 'true'
-    const statuses = archived ? ARCHIVED_STATUSES : OPEN_STATUSES
-    const items = listSubmitted()
-      .filter((item) => statuses.has(item.submitted.submissionStatus))
-      .sort(
-        (a, b) =>
-          new Date(b.submitted.submittedAt).getTime() - new Date(a.submitted.submittedAt).getTime(),
-      )
+    const completed = url.searchParams.get('completed') === 'true'
+    const awaiting = listSubmitted()
+      .filter((item) => OPEN_STATUSES.has(item.submitted.submissionStatus))
       .map((item) => toQueueItem(item.exercise, item.submitted))
-    return HttpResponse.json(items)
+    const source = completed
+      ? listSubmitted()
+          .map((item) => {
+            const row = toQueueItem(item.exercise, item.submitted)
+            const mine = roleDecision(item.submitted)
+            const current = awaitingRole(item.submitted.submissionStatus)
+            return { row, include: Boolean(row.myDecision) && (!current || current !== mine?.actorRoleCode) }
+          })
+          .filter((item) => item.include)
+          .map((item) => item.row)
+          .sort(
+            (a, b) =>
+              new Date(b.myCompletedAt ?? 0).getTime() - new Date(a.myCompletedAt ?? 0).getTime(),
+          )
+      : awaiting
+    const items = source.filter((item) =>
+      matchesQueueItem(item, {
+        exerciseCode: url.searchParams.get('exerciseCode'),
+        toolkitName: url.searchParams.get('toolkitName'),
+        pl3Name: url.searchParams.get('pl3Name'),
+        submittedFrom: url.searchParams.get('submittedFrom'),
+        submittedTo: url.searchParams.get('submittedTo'),
+        completedFrom: url.searchParams.get('completedFrom'),
+        completedTo: url.searchParams.get('completedTo'),
+        decision: url.searchParams.get('decision'),
+      }),
+    )
+    if (!completed) {
+      items.sort((a, b) => (b.agingDays ?? 0) - (a.agingDays ?? 0))
+    }
+    return HttpResponse.json({
+      items,
+      metrics: queueMetrics(awaiting),
+      toolkitNames: uniqueNames(source, 'toolkitName'),
+      pl3Names: uniqueNames(source, 'pl3Name'),
+    })
   }),
 
   http.get('*/api/v1/approvals/:submissionId', ({ params }) => {
@@ -144,6 +321,7 @@ export const approvalHandlers = [
       actionType: 'APPROVE',
       actorUserId: crypto.randomUUID(),
       actorRoleCode: role,
+      actorDisplayName: 'Approver',
       comments: body.comments ?? null,
       actionAt: now,
       requestId,
@@ -185,6 +363,7 @@ export const approvalHandlers = [
       actionType: 'RETURN',
       actorUserId: crypto.randomUUID(),
       actorRoleCode: role,
+      actorDisplayName: 'Approver',
       comments: body.comments,
       actionAt: now,
       requestId,
@@ -192,8 +371,13 @@ export const approvalHandlers = [
     ctx.submitted.submissionStatus = 'RETURNED'
     ctx.submitted.workflowStatusLabel = 'RETURNED'
     ctx.submitted.packageStatus = 'RETURNED'
-    ctx.exercise.workflowStatus = 'IN_PROGRESS'
-    ctx.exercise.officialScenarioId = null
+    ctx.exercise.workflowStatus = 'RETURNED'
+    const official = ctx.shell.scenarios.find((item) => item.id === ctx.submitted.scenarioId)
+      ?? ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+    if (official) {
+      official.status = 'DRAFT'
+      official.officialAt = null
+    }
     syncFlags(ctx.exercise)
     return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
   }),

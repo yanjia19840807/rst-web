@@ -72,7 +72,7 @@ const colCount = () => 11 + (props.showAgent ? 1 : 0)
           <TableCell>{{ formatDuration(session.netDurationSeconds) }}</TableCell>
           <TableCell>{{ cycleTime(session) }}</TableCell>
           <TableCell>{{ session.reference || '—' }}</TableCell>
-          <TableCell>{{ session.processedVolume ?? '—' }}</TableCell>
+          <TableCell>{{ session.processedVolume == null ? '—' : Number(session.processedVolume).toFixed(2) }}</TableCell>
           <TableCell class="max-w-52 truncate">{{ session.remarks || '—' }}</TableCell>
           <TableCell class="text-right">
             <div class="flex items-center justify-end gap-3">

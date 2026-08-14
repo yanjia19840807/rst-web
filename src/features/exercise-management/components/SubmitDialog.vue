@@ -65,7 +65,7 @@ watch(open, async (value) => {
   }
 })
 
-async function confirm() {
+async function submitNow() {
   if (remarksRequired.value && !remarks.value.trim()) {
     toast.warning('Remarks are required when severe validation checks fail.')
     return
@@ -104,7 +104,8 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Submit For Validation</DialogTitle>
         <DialogDescription>
-          System checks run before lock. Failed severe checks require remarks.
+          This will lock the official package and send the exercise to Manager Review.
+          You cannot edit it until it is returned or withdrawn. Failed severe checks require remarks.
         </DialogDescription>
       </DialogHeader>
 
@@ -186,7 +187,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="submitting" @click="open = false">Cancel</Button>
-        <Button :disabled="loading || submitting" @click="confirm">
+        <Button :disabled="loading || submitting" @click="submitNow">
           {{ submitting ? 'Submitting…' : 'Confirm Submit' }}
         </Button>
       </DialogFooter>

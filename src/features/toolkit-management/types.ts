@@ -1,7 +1,7 @@
 export interface ToolkitSubtask {
   id: string
   name: string
-  description: string
+  description: string | null
   displayOrder: number
   deletedAt: string | null
 }
@@ -20,7 +20,7 @@ export interface SharedKpiCandidate extends SharedKpiKey {
 export interface SupervisorToolkit {
   id: string
   name: string
-  description: string
+  description: string | null
   supervisorPositionId: string
   center: string
   domain: string
@@ -59,4 +59,14 @@ export interface ToolkitEditorPayload {
   subtasks: ToolkitSubtask[]
   sharedKpiSelections: SharedKpiKey[]
   version?: number
+}
+
+export interface ToolkitListQuery {
+  name?: string
+  pl3Name?: string
+}
+
+export interface ToolkitListView {
+  items: SupervisorToolkit[]
+  pl3Names: string[]
 }

@@ -157,16 +157,11 @@ async function save() {
 <template>
   <Dialog :open="open" @update:open="onOpenChange">
     <DialogContent
-      class="flex flex-col gap-0 overflow-hidden p-0"
-      :class="
-        isManualTms
-          ? 'max-h-[88vh] w-full sm:max-w-2xl'
-          : 'h-[92vh] w-[min(1180px,94vw)] max-w-[94vw] sm:max-w-[94vw]'
-      "
+      class="flex h-[96vh] w-[min(1440px,98vw)] max-w-[98vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[98vw]"
+      :close-on-outside="false"
     >
       <DialogHeader
-        class="mx-0 mt-0 shrink-0 rounded-none"
-        :class="isManualTms ? 'px-6 py-4' : 'px-5 py-4'"
+        class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4"
       >
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>
@@ -243,8 +238,7 @@ async function save() {
       </div>
 
       <DialogFooter
-        class="mx-0 mt-0 mb-0 shrink-0 rounded-none sm:justify-end"
-        :class="isManualTms ? 'px-6 py-4' : 'px-5 py-3'"
+        class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3 sm:justify-end"
       >
         <Button type="button" variant="outline" :disabled="busy" @click="onOpenChange(false)">
           {{ readOnly || closeOnly ? 'Close' : 'Cancel' }}

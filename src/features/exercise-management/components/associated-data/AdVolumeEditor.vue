@@ -4,7 +4,7 @@ import { toast } from 'vue-sonner'
 
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { NumberFieldControl } from '@/components/ui/number-field'
 import {
   Table,
   TableBody,
@@ -60,7 +60,7 @@ const dayDrafts = ref<DailyVolumeRequest[]>([])
 const slotDrafts = ref<SlotVolumeRequest[]>([])
 
 const editingIndex = ref<number | null>(null)
-const editValue = ref('')
+const editValue = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 watch(
@@ -161,13 +161,13 @@ async function persistSlot() {
 function startEdit(index: number, current: string | number | null | undefined) {
   if (props.readOnly) return
   editingIndex.value = index
-  editValue.value = current == null ? '' : String(current)
+  editValue.value = numOrNull(current)
 }
 
 async function confirmEdit() {
   if (editingIndex.value == null) return
   const idx = editingIndex.value
-  const n = numOrNull(editValue.value)
+  const n = editValue.value
   if (n != null && n < 0) {
     toast.error('Volume must be non-negative.')
     return
@@ -316,8 +316,8 @@ async function onImportFile(event: Event) {
           <TableRow v-for="{ row, index } in pagedMonthly" :key="`${row.month}-${index}`">
             <TableCell>{{ row.month }}</TableCell>
             <TableCell>
-              <Input v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
-              <span v-else>{{ formatNumber(row.actualVolume) }}</span>
+              <NumberFieldControl v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
+              <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <div class="flex gap-3">
@@ -374,8 +374,8 @@ async function onImportFile(event: Event) {
             <TableCell>{{ row.volumeDate }}</TableCell>
             <TableCell>{{ dayName(row.volumeDate) }}</TableCell>
             <TableCell>
-              <Input v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
-              <span v-else>{{ formatNumber(row.actualVolume) }}</span>
+              <NumberFieldControl v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
+              <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <div class="flex gap-3">
@@ -432,8 +432,8 @@ async function onImportFile(event: Event) {
             <TableCell>{{ row.slotStartAt.slice(0, 10) }}</TableCell>
             <TableCell>{{ formatSlotTime(row.slotStartAt, row.slotEndAt) }}</TableCell>
             <TableCell>
-              <Input v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
-              <span v-else>{{ formatNumber(row.actualVolume) }}</span>
+              <NumberFieldControl v-if="editingIndex === index" v-model="editValue" class="max-w-36" />
+              <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <div class="flex gap-3">

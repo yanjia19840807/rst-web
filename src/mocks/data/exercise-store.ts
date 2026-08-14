@@ -109,27 +109,17 @@ export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
   })
 }
 
-export function createExerciseShell(deliveryHc = 0): ExerciseShell {
+export function createExerciseShell(): ExerciseShell {
   return {
     teamSetup: {
       ...emptyTeamSetup(),
-      deliveryHc,
-      workingHoursPerDay: 8,
       slaType: 'BUSINESS_HOURS',
       slaTargetRatio: 0.9,
       slaTurnaroundMinutes: 480,
-      weekendCode: 'SAT_SUN',
+      slaStartTime: '09:00:00',
+      slaEndTime: '17:00:00',
     },
-    shifts: [
-      {
-        id: crypto.randomUUID(),
-        shiftNo: 1,
-        startTime: '09:00:00',
-        durationMinutes: 540,
-        headcount: deliveryHc || 1,
-        worksOnWeekend: false,
-      },
-    ],
+    shifts: [],
     support: [],
     calendar: {
       weekendCode: 'SAT_SUN',
@@ -178,8 +168,7 @@ export const exerciseShells = new Map<string, ExerciseShell>()
 export function ensureShell(exercise: Exercise): ExerciseShell {
   let shell = exerciseShells.get(exercise.id)
   if (!shell) {
-    const deliveryHc = exercise.snapshot.sharedKpis.reduce((sum, item) => sum + item.deliveryHc, 0)
-    shell = createExerciseShell(deliveryHc)
+    shell = createExerciseShell()
     seedTrainVolumes(exercise, shell)
     exerciseShells.set(exercise.id, shell)
   }
@@ -204,36 +193,41 @@ function workingHoursFromSlaClock(start: string | null | undefined, end: string 
   return Math.round((seconds / 3600) * 1_000_000) / 1_000_000
 }
 
-export function recomputeTeamSetup(
-  setup: TeamSetup,
-  cycleTimeSeconds?: number | null,
-): TeamSetup {
+/** GET-shaped Team Setup: inputs plus metrics computed from Calendar / Shared KPI / Cycle Time. */
+export function teamSetupView(exercise: Exercise, shell: ExerciseShell): TeamSetup {
+  const setup = shell.teamSetup
   const a = Number(setup.agentsLt6m ?? 0)
   const b = Number(setup.agents6To24m ?? 0)
   const c = Number(setup.agents24To48m ?? 0)
   const d = Number(setup.agentsGt48m ?? 0)
   const total = a + b + c + d
-  const workingDays = setup.workingDaysPerYear ?? Math.max(0, 260)
+  const workingDays = shell.calendar.workingDaysPerYear ?? null
   const hours = workingHoursFromSlaClock(setup.slaStartTime, setup.slaEndTime)
   const availability = setup.availabilityRatio
-  const cycleTime = cycleTimeSeconds != null ? Number(cycleTimeSeconds) : null
+  const cycleTime = shell.cycleTime?.medianSeconds != null ? Number(shell.cycleTime.medianSeconds) : null
+  const maxCapacity =
+    workingDays != null
+      ? workingDays - Number(setup.paidLeaveDays ?? 0) - Number(setup.otherLeaveDays ?? 0)
+      : null
+  const capacityRatio =
+    workingDays != null && workingDays > 0 && maxCapacity != null
+      ? Math.round((maxCapacity / workingDays) * 1e8) / 1e8
+      : null
   const dailyCapacity =
     hours != null && availability != null && cycleTime != null && cycleTime > 0
       ? Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
       : null
+  const deliveryHc = exercise.snapshot.sharedKpis.reduce((sum, item) => sum + Number(item.deliveryHc), 0)
   return {
     ...setup,
+    deliveryHc,
+    weekendCode: shell.calendar.weekendCode ?? null,
     workingHoursPerDay: hours,
+    capacityRatio,
     totalAgents: total || null,
-    averageTenureYears: total
-      ? (a * 0.25 + b * 1.25 + c * 3 + d * 5) / total
-      : null,
-    workingDaysPerYear: workingDays || null,
-    maxCapacityDays:
-      workingDays != null
-        ? workingDays - Number(setup.paidLeaveDays ?? 0) - Number(setup.otherLeaveDays ?? 0)
-        : null,
+    averageTenureYears: total ? (a * 0.25 + b * 1.25 + c * 3 + d * 5) / total : null,
+    workingDaysPerYear: workingDays,
+    maxCapacityDays: maxCapacity,
     dailyCapacityPerAgent: dailyCapacity,
-    version: setup.version + 1,
   }
 }

@@ -2,12 +2,12 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-import ApprovalReview from '@/features/approval/components/ApprovalReview.vue'
+import SubmittedDetails from '@/features/exercise-management/components/SubmittedDetails.vue'
 
 const route = useRoute()
 const submissionId = computed(() => String(route.params.submissionId))
 </script>
 
 <template>
-  <ApprovalReview :submission-id="submissionId" />
+  <SubmittedDetails mode="approver" :submission-id="submissionId" />
 </template>

@@ -1,4 +1,5 @@
 import type { SupervisorToolkit, ToolkitSubtask } from '@/features/toolkit-management/types'
+import type { ApprovalWorkspaceView } from '@/features/approval/types'
 
 export type WorkflowStatus =
   | 'IN_PROGRESS'
@@ -45,6 +46,16 @@ export interface Exercise {
   canEdit: boolean
   version: number
   createdAt: string
+  currentStep?: number | null
+  requiredRole?: string | null
+  currentReviewer?: string | null
+  lastDecisionComment?: string | null
+  deliveryHc?: number | string | null
+  rightSizingHc?: number | string | null
+  productionSupport?: number | string | null
+  capacityCreation?: number | string | null
+  agingDays?: number | null
+  archivedAt?: string | null
   snapshot: {
     toolkit: Pick<
       SupervisorToolkit,
@@ -63,6 +74,30 @@ export interface Exercise {
     sharedKpis: ExerciseKpiLine[]
     timesheetSyncDate: string
   }
+}
+
+export interface ExerciseListQuery {
+  tab?: 'IN_PROGRESS' | 'ARCHIVED'
+  exerciseCode?: string
+  toolkitName?: string
+  pl3Name?: string
+  workflowStatus?: string
+  reviewStage?: string
+  handler?: string
+  officialScenario?: string
+  createdFrom?: string
+  createdTo?: string
+  submittedFrom?: string
+  submittedTo?: string
+  archivedFrom?: string
+  archivedTo?: string
+}
+
+export interface ExerciseListView {
+  items: Exercise[]
+  toolkitNames: string[]
+  pl3Names: string[]
+  reviewerNames: string[]
 }
 
 export interface CreateExerciseInput {
@@ -125,6 +160,10 @@ export interface TeamSetup {
 
 export type TeamSetupRequest = Omit<
   TeamSetup,
+  | 'deliveryHc'
+  | 'workingHoursPerDay'
+  | 'weekendCode'
+  | 'capacityRatio'
   | 'totalAgents'
   | 'averageTenureYears'
   | 'workingDaysPerYear'
@@ -343,6 +382,7 @@ export interface Scenario {
   officialAt: string | null
   version: number
   assumptions: Assumption[]
+  shifts: Shift[]
 }
 
 export interface CreateScenarioRequest {
@@ -540,6 +580,8 @@ export interface WorkflowStepView {
   stepNo: number
   requiredRoleCode: string
   assigneeUserId: string | null
+  assigneePositionId?: string | null
+  assigneeDisplayName?: string | null
   routingStatus: string
 }
 
@@ -548,6 +590,7 @@ export interface WorkflowActionView {
   actionType: string
   actorUserId?: string | null
   actorRoleCode?: string | null
+  actorDisplayName?: string | null
   comments?: string | null
   actionAt?: string | null
   requestId: string | null
@@ -567,10 +610,13 @@ export interface SubmittedDetails {
   submissionCode: string
   submissionStatus: string
   currentStep: number | null
+  requiredRole?: string | null
   remarks: string | null
   scopes: SubmissionScope[]
   workflowInstanceId: string
   workflowStatusLabel: string
   steps: WorkflowStepView[]
   actions: WorkflowActionView[]
+  canDecide?: boolean
+  workspace?: ApprovalWorkspaceView
 }

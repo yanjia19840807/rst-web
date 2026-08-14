@@ -2,6 +2,7 @@
 import { computed, reactive, watch } from 'vue'
 
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
+import DetailTable from '@/components/DetailTable.vue'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import {
   Table,
@@ -45,13 +46,8 @@ const form = reactive({
   skeletonRatio: null as number | null,
 })
 
-/**
- * API-only fields kept for round-trip (present in data model / backend calc,
- * but not shown in the prototype Team Setup screen).
- */
+/** Persisted input not shown in the prototype Team Setup screen. */
 const hidden = reactive({
-  deliveryHc: null as number | null,
-  capacityRatio: null as number | null,
   slaWeekendEnabled: null as boolean | null,
 })
 
@@ -79,8 +75,6 @@ watch(
       skeletonRatio: t.skeletonRatio ?? null,
     })
     Object.assign(hidden, {
-      deliveryHc: t.deliveryHc ?? null,
-      capacityRatio: t.capacityRatio ?? null,
       slaWeekendEnabled: t.slaWeekendEnabled ?? null,
     })
   },
@@ -94,7 +88,7 @@ const draftTotalAgents = computed(() =>
   ),
 )
 
-/** Live preview; formula matches backend ExerciseTeamSetup.recalculateDerived. */
+/** Live preview; formula matches backend ExerciseTeamSetup.averageTenureYears. */
 const draftAverageTenureYears = computed(() => {
   const total = draftTotalAgents.value
   if (total <= 0) return null
@@ -119,7 +113,7 @@ function percentToRatio(percent: number | null): number | null {
 
 function formatPercent(ratio: number | null): string {
   const percent = ratioToPercent(ratio)
-  return percent == null ? '—' : `${formatNumber(percent, 1)}%`
+  return percent == null ? '—' : `${formatNumber(percent, 2)}%`
 }
 
 function percentModel(
@@ -190,20 +184,76 @@ const draftDailyCapacityPerAgent = computed(() => {
   return Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
 })
 
+function slaTypeLabel(value: string | null | undefined) {
+  if (value === 'BUSINESS_HOURS') return 'Working Hours'
+  if (value === 'CALENDAR_HOURS') return 'Calendar Hours'
+  return value || '—'
+}
+
+const headcountRows = computed(() => [
+  { label: 'Agents <6 months', value: form.agentsLt6m },
+  { label: 'Agents 6–24 months', value: form.agents6To24m },
+  { label: 'Agents 24–48 months', value: form.agents24To48m },
+  { label: 'Agents >48 months', value: form.agentsGt48m },
+  { label: 'Total agents', value: draftTotalAgents.value || '—' },
+  {
+    label: 'Average tenure',
+    value:
+      draftAverageTenureYears.value != null
+        ? `${formatNumber(draftAverageTenureYears.value, 2)} years`
+        : '—',
+  },
+])
+
+const slaRows = computed(() => [
+  { label: 'SLA turntime', value: formatNumber(form.slaTurnaroundMinutes, 2) },
+  { label: 'SLA target (%)', value: formatPercent(form.slaTargetRatio) },
+  { label: 'SLA type', value: slaTypeLabel(form.slaType) },
+  { label: 'Weekend code', value: form.weekendCode || '—' },
+  { label: 'SLA clock start', value: form.slaStartTime || '—' },
+  { label: 'SLA clock end', value: form.slaEndTime || '—' },
+  { label: 'Availability ratio (%)', value: formatPercent(form.availabilityRatio) },
+  { label: 'Skeleton coverage (%)', value: formatPercent(form.skeletonRatio) },
+  {
+    label: 'Working hours / day',
+    value:
+      draftWorkingHoursPerDay.value != null
+        ? formatNumber(draftWorkingHoursPerDay.value, 2)
+        : '—',
+  },
+])
+
+const capacityRows = computed(() => [
+  { label: 'Paid leave / year', value: formatNumber(form.paidLeaveDays, 2) },
+  { label: 'Other leave / year', value: formatNumber(form.otherLeaveDays, 2) },
+  { label: 'Max daily overtime', value: formatNumber(form.maxOvertimeMinutes, 2) },
+  { label: 'Weekend shift FTE', value: formatNumber(form.weekendShiftHc, 2) },
+  { label: 'Automation ratio (%)', value: formatPercent(form.automationRatio) },
+  { label: 'Working days / year', value: formatNumber(workingDaysPerYear.value, 2) },
+  { label: 'Max capacity days', value: formatNumber(draftMaxCapacityDays.value, 2) },
+  {
+    label: 'Production support FTE',
+    value: props.supportFte != null ? formatNumber(props.supportFte, 2) : '—',
+  },
+  {
+    label: 'Daily capacity / agent',
+    value:
+      draftDailyCapacityPerAgent.value != null
+        ? `${formatNumber(draftDailyCapacityPerAgent.value, 2)} transactions`
+        : '—',
+  },
+])
+
 function toRequest(): TeamSetupRequest {
   return {
     agentsLt6m: form.agentsLt6m,
     agents6To24m: form.agents6To24m,
     agents24To48m: form.agents24To48m,
     agentsGt48m: form.agentsGt48m,
-    deliveryHc: hidden.deliveryHc,
-    workingHoursPerDay: draftWorkingHoursPerDay.value,
     paidLeaveDays: form.paidLeaveDays,
     otherLeaveDays: form.otherLeaveDays,
-    weekendCode: form.weekendCode || null,
     availabilityRatio: form.availabilityRatio,
     automationRatio: form.automationRatio,
-    capacityRatio: draftCapacityRatio.value ?? hidden.capacityRatio ?? 1,
     maxOvertimeMinutes: form.maxOvertimeMinutes,
     slaType: form.slaType || null,
     slaTargetRatio: form.slaTargetRatio,
@@ -224,7 +274,7 @@ defineExpose({ toRequest })
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <AdMetric
         label="Cycle time"
-        :value="cycleTimeSeconds != null ? `${cycleTimeSeconds}s` : '—'"
+        :value="cycleTimeSeconds != null ? `${formatNumber(cycleTimeSeconds, 2)}s` : '—'"
         hint="TMS-fed, override available"
       />
       <AdMetric
@@ -234,17 +284,32 @@ defineExpose({ toRequest })
       />
       <AdMetric
         label="Daily capacity / agent"
-        :value="formatNumber(draftDailyCapacityPerAgent)"
+        :value="formatNumber(draftDailyCapacityPerAgent, 2)"
         hint="Calculated from baseline inputs"
       />
       <AdMetric
         label="Working days"
-        :value="formatNumber(workingDaysPerYear)"
+        :value="formatNumber(workingDaysPerYear, 2)"
         hint="Calendar and holiday adjusted"
       />
     </div>
 
-    <div class="grid gap-4 lg:grid-cols-2">
+    <div v-if="readOnly" class="grid gap-4 lg:grid-cols-2">
+      <section class="rounded-lg border bg-card p-4">
+        <h3 class="mb-3 text-sm font-bold">Basic Info And Headcount</h3>
+        <DetailTable :rows="headcountRows" />
+      </section>
+      <section class="rounded-lg border bg-card p-4">
+        <h3 class="mb-3 text-sm font-bold">SLA And Working Hours</h3>
+        <DetailTable :rows="slaRows" />
+      </section>
+      <section class="rounded-lg border bg-card p-4 lg:col-span-2">
+        <h3 class="mb-3 text-sm font-bold">Capacity Inputs</h3>
+        <DetailTable :rows="capacityRows" />
+      </section>
+    </div>
+
+    <div v-else class="grid gap-4 lg:grid-cols-2">
       <section class="rounded-lg border bg-card p-4">
         <h3 class="mb-3 text-sm font-bold">Basic Info And Headcount</h3>
         <div class="grid gap-3 sm:grid-cols-2">
@@ -254,7 +319,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.agentsLt6m"
               :min="0"
-              :step="1"
+              :decimals="0"
             />
             <ReadOnlyField v-else :value="form.agentsLt6m" />
           </label>
@@ -264,7 +329,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.agents6To24m"
               :min="0"
-              :step="1"
+              :decimals="0"
             />
             <ReadOnlyField v-else :value="form.agents6To24m" />
           </label>
@@ -274,7 +339,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.agents24To48m"
               :min="0"
-              :step="1"
+              :decimals="0"
             />
             <ReadOnlyField v-else :value="form.agents24To48m" />
           </label>
@@ -284,7 +349,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.agentsGt48m"
               :min="0"
-              :step="1"
+              :decimals="0"
             />
             <ReadOnlyField v-else :value="form.agentsGt48m" />
           </label>
@@ -307,7 +372,7 @@ defineExpose({ toRequest })
                 <TableCell>
                   {{
                     draftAverageTenureYears != null
-                      ? `${formatNumber(draftAverageTenureYears, 1)} years`
+                      ? `${formatNumber(draftAverageTenureYears, 2)} years`
                       : '—'
                   }}
                 </TableCell>
@@ -326,9 +391,8 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.slaTurnaroundMinutes"
               :min="0"
-              :step="1"
             />
-            <ReadOnlyField v-else :value="form.slaTurnaroundMinutes" />
+            <ReadOnlyField v-else :value="formatNumber(form.slaTurnaroundMinutes, 2)" />
           </label>
           <label class="grid gap-1 text-sm"
             >SLA target (%)
@@ -337,7 +401,6 @@ defineExpose({ toRequest })
               v-model="slaTargetPercent"
               :min="0"
               :max="100"
-              :step="1"
             />
             <ReadOnlyField v-else :value="formatPercent(form.slaTargetRatio)" />
           </label>
@@ -383,7 +446,6 @@ defineExpose({ toRequest })
               v-model="availabilityPercent"
               :min="0"
               :max="100"
-              :step="1"
             />
             <ReadOnlyField v-else :value="formatPercent(form.availabilityRatio)" />
           </label>
@@ -394,7 +456,6 @@ defineExpose({ toRequest })
               v-model="skeletonPercent"
               :min="0"
               :max="100"
-              :step="1"
             />
             <ReadOnlyField v-else :value="formatPercent(form.skeletonRatio)" />
           </label>
@@ -413,7 +474,7 @@ defineExpose({ toRequest })
                 <TableCell>
                   {{
                     draftWorkingHoursPerDay != null
-                      ? formatNumber(draftWorkingHoursPerDay, 1)
+                      ? formatNumber(draftWorkingHoursPerDay, 2)
                       : '—'
                   }}
                 </TableCell>
@@ -432,9 +493,8 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.paidLeaveDays"
               :min="0"
-              :step="1"
             />
-            <ReadOnlyField v-else :value="form.paidLeaveDays" />
+            <ReadOnlyField v-else :value="formatNumber(form.paidLeaveDays, 2)" />
           </label>
           <label class="grid gap-1 text-sm"
             >Other leave / year
@@ -442,9 +502,8 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.otherLeaveDays"
               :min="0"
-              :step="1"
             />
-            <ReadOnlyField v-else :value="form.otherLeaveDays" />
+            <ReadOnlyField v-else :value="formatNumber(form.otherLeaveDays, 2)" />
           </label>
           <label class="grid gap-1 text-sm"
             >Max daily overtime
@@ -452,9 +511,8 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.maxOvertimeMinutes"
               :min="0"
-              :step="1"
             />
-            <ReadOnlyField v-else :value="form.maxOvertimeMinutes" />
+            <ReadOnlyField v-else :value="formatNumber(form.maxOvertimeMinutes, 2)" />
           </label>
           <label class="grid gap-1 text-sm"
             >Weekend shift FTE
@@ -462,9 +520,8 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="form.weekendShiftHc"
               :min="0"
-              :step="0.1"
             />
-            <ReadOnlyField v-else :value="form.weekendShiftHc" />
+            <ReadOnlyField v-else :value="formatNumber(form.weekendShiftHc, 2)" />
           </label>
           <label class="grid gap-1 text-sm"
             >Automation ratio (%)
@@ -473,7 +530,6 @@ defineExpose({ toRequest })
               v-model="automationPercent"
               :min="0"
               :max="100"
-              :step="1"
             />
             <ReadOnlyField v-else :value="formatPercent(form.automationRatio)" />
           </label>
@@ -489,11 +545,11 @@ defineExpose({ toRequest })
             <TableBody>
               <TableRow>
                 <TableCell>Working days / year</TableCell>
-                <TableCell>{{ formatNumber(workingDaysPerYear) }}</TableCell>
+                <TableCell>{{ formatNumber(workingDaysPerYear, 2) }}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Max capacity days</TableCell>
-                <TableCell>{{ formatNumber(draftMaxCapacityDays) }}</TableCell>
+                <TableCell>{{ formatNumber(draftMaxCapacityDays, 2) }}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Production support FTE</TableCell>
@@ -506,7 +562,7 @@ defineExpose({ toRequest })
                 <TableCell>
                   {{
                     draftDailyCapacityPerAgent != null
-                      ? `${formatNumber(draftDailyCapacityPerAgent)} transactions`
+                      ? `${formatNumber(draftDailyCapacityPerAgent, 2)} transactions`
                       : '—'
                   }}
                 </TableCell>

@@ -129,7 +129,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/supervisor/ExerciseManagementPage.vue'),
     meta: {
       title: 'Exercises',
-      subtitle: 'In Progress, review and archived sizing exercises',
+      subtitle: 'Active and archived sizing exercises',
       roles: ['supervisor'],
     },
   },
@@ -144,12 +144,32 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/supervisor/exercises/:id/snapshot',
+    name: 'supervisor-exercise-snapshot',
+    component: () => import('@/pages/supervisor/ExerciseDetailPage.vue'),
+    meta: {
+      title: 'Exercise Snapshot',
+      subtitle: 'Submission snapshot · read-only',
+      roles: ['supervisor'],
+    },
+  },
+  {
     path: '/supervisor/exercises/:id/scenarios/:scenarioId',
     name: 'supervisor-scenario-form',
     component: () => import('@/pages/supervisor/ScenarioFormPage.vue'),
     meta: {
       title: 'Scenario Form',
       subtitle: 'Assumptions, forecast and simulation stubs',
+      roles: ['supervisor'],
+    },
+  },
+  {
+    path: '/supervisor/exercises/:id/snapshot/scenarios/:scenarioId',
+    name: 'supervisor-scenario-snapshot',
+    component: () => import('@/pages/supervisor/ScenarioFormPage.vue'),
+    meta: {
+      title: 'Scenario Snapshot',
+      subtitle: 'Read-only scenario assumptions and simulation',
       roles: ['supervisor'],
     },
   },
@@ -173,7 +193,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/approver/ApprovalQueuePage.vue'),
     meta: {
       title: 'Approval Queue',
-      subtitle: 'Awaiting Review and archived submissions',
+      subtitle: 'Awaiting Review and completed tasks',
       roles: ['approver'],
     },
   },

@@ -241,7 +241,13 @@ function onToolkitChange(event: Event) {
           </div>
           <div class="rounded-lg border p-4">
             <p class="text-xs text-muted-foreground">Total volume</p>
-            <p class="mt-2 text-3xl font-bold">{{ summaryQuery.data.value?.totalVolume ?? '—' }}</p>
+            <p class="mt-2 text-3xl font-bold">
+              {{
+                summaryQuery.data.value?.totalVolume == null
+                  ? '—'
+                  : Number(summaryQuery.data.value.totalVolume).toFixed(2)
+              }}
+            </p>
             <p class="mt-1 text-xs text-muted-foreground">Across all sessions</p>
           </div>
           <div class="rounded-lg border p-4">

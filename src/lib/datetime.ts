@@ -27,6 +27,16 @@ export function formatDate(value?: string | Date | null): string {
 }
 
 /**
+ * Formats a datetime for display as `yyyy-MM-dd HH:mm`.
+ */
+export function formatDateTime(value?: string | Date | null): string {
+  if (value == null || value === '') return '—'
+  const d = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(d.getTime())) return '—'
+  return `${fromParts(d.getFullYear(), d.getMonth() + 1, d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+/**
  * Formats a month for display as `yyyy-MM`.
  * Accepts `yyyy-MM`, `yyyy-MM-dd`, datetime strings, or Date.
  */

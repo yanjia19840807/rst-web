@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -23,7 +22,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:source': [value: MedianSourceMode]
-  edit: []
 }>()
 
 const sourceLabel = computed(() =>
@@ -40,7 +38,7 @@ const supportFiles = computed<CycleTimeBaselineFile[]>(() =>
 
 const manualMedianLabel = computed(() => {
   if (!isManualBaseline.value || props.cycleTime == null) return '—'
-  return `${props.cycleTime.medianSeconds}s`
+  return `${props.cycleTime.medianSeconds != null ? Number(props.cycleTime.medianSeconds).toFixed(2) : '—'}s`
 })
 
 const manualReasonLabel = computed(() => {
@@ -54,7 +52,7 @@ const systemMetrics = computed(() => {
   return [
     {
       metric: 'Median cycle time',
-      value: isSystem && ct ? `${ct.medianSeconds}s` : '—',
+      value: isSystem && ct ? `${Number(ct.medianSeconds).toFixed(2)}s` : '—',
       description: 'Used for simulation',
     },
     {
@@ -164,14 +162,9 @@ function fileHref(file: CycleTimeBaselineFile) {
       </label>
     </div>
 
-    <!-- Shared TMS Metrics header + Edit -->
+    <!-- Shared TMS Metrics header -->
     <div class="space-y-4">
-      <div class="flex items-center justify-between gap-2">
-        <h3 class="text-base font-bold">TMS Metrics</h3>
-        <Button size="sm" variant="outline" @click="emit('edit')">
-          {{ readOnly ? 'View' : 'Edit' }}
-        </Button>
-      </div>
+      <h3 class="text-base font-bold">TMS Metrics</h3>
 
       <!-- Manual read-only content -->
       <template v-if="source === 'manual'">

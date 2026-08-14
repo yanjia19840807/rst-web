@@ -1,5 +1,7 @@
 import { delay, http, HttpResponse } from 'msw'
 
+import { buildApprovalWorkspace } from '../approvalWorkspace'
+
 import type {
   CalendarRequest,
   CreateExerciseInput,
@@ -30,7 +32,7 @@ import {
   supportFte,
 } from '@/features/exercise-management/components/associated-data/supportOptions'
 
-import { ensureShell, exerciseShells, recomputeTeamSetup, seedTrainVolumes } from '../data/exercise-store'
+import { ensureShell, exerciseShells, seedTrainVolumes, teamSetupView } from '../data/exercise-store'
 import { holidayTemplateStore } from '../data/holiday-templates'
 import {
   activeTimesheetSyncDate,
@@ -104,20 +106,101 @@ function requireExercise(id: string | readonly string[] | undefined) {
   return { exercise, shell: ensureShell(exercise) }
 }
 
+function derivedSupport(
+  ctx: { exercise: Exercise; shell: ReturnType<typeof ensureShell> },
+  item: {
+    frequencyCode: string
+    volume: number
+    workloadPerUnitMinutes: number
+  },
+) {
+  const setup = teamSetupView(ctx.exercise, ctx.shell)
+  const multiplier = annualMultiplier(item.frequencyCode, setup.workingDaysPerYear)
+  const hours = hoursPerYear(Number(item.volume), Number(item.workloadPerUnitMinutes), multiplier)
+  return {
+    annualMultiplier: multiplier,
+    workloadPerYearHours: hours,
+    supportFte: supportFte(hours, fteAnnualHours(setup)),
+    calculationVersion: null as string | null,
+  }
+}
+
 function editable(exercise: Exercise) {
   return exercise.canEdit && (exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED')
 }
 
 function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
-  exercise.officialScenarioId =
-    shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
+  const liveOfficial = shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
+  exercise.officialScenarioId = liveOfficial ?? shell.submitted?.scenarioId ?? exercise.officialScenarioId
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
-  exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
+  exercise.canSubmit = Boolean(liveOfficial) && exercise.canEdit
+  const ready = shell.submitted?.steps.find((step) => step.routingStatus === 'READY')
+  if (exercise.workflowStatus === 'UNDER_REVIEW' && shell.submitted) {
+    exercise.currentStep = shell.submitted.currentStep
+    exercise.requiredRole = shell.submitted.requiredRole ?? ready?.requiredRoleCode ?? null
+    exercise.currentReviewer = ready?.assigneeDisplayName ?? null
+    exercise.lastDecisionComment = null
+  } else if (exercise.workflowStatus === 'RETURNED' && shell.submitted) {
+    const returned = [...shell.submitted.actions]
+      .reverse()
+      .find((action) => action.actionType === 'RETURN')
+    exercise.currentStep = returned?.stepNo ?? null
+    exercise.requiredRole = returned?.actorRoleCode ?? null
+    exercise.currentReviewer = returned?.actorDisplayName ?? null
+    exercise.lastDecisionComment = returned?.comments ?? null
+  } else {
+    exercise.currentStep = null
+    exercise.requiredRole = null
+    exercise.currentReviewer = null
+    exercise.lastDecisionComment = null
+  }
 }
 
 const OPEN_LIKE_STATUSES = new Set(['AWAITING_MANAGER', 'AWAITING_CDH', 'AWAITING_LTH'])
+
+function toDateKey(value?: string | null) {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+function uniqueSorted(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((name): name is string => Boolean(name)))].sort()
+}
+
+function matchesExerciseList(exercise: Exercise, params: URLSearchParams) {
+  const code = params.get('exerciseCode')?.trim().toLowerCase()
+  if (code && !exercise.exerciseCode.toLowerCase().includes(code)) return false
+  const toolkitName = params.get('toolkitName')
+  if (toolkitName && exercise.snapshot.toolkit.name !== toolkitName) return false
+  const pl3Name = params.get('pl3Name')
+  if (pl3Name && exercise.snapshot.toolkit.pl3Name !== pl3Name) return false
+  const workflowStatus = params.get('workflowStatus')
+  if (workflowStatus && exercise.workflowStatus !== workflowStatus) return false
+  const reviewStage = params.get('reviewStage')
+  if (reviewStage && exercise.requiredRole !== reviewStage) return false
+  const handler = params.get('handler')
+  if (handler && exercise.currentReviewer !== handler) return false
+  const officialScenario = params.get('officialScenario')
+  if (officialScenario === 'ASSIGNED' && !exercise.officialScenarioId) return false
+  if (officialScenario === 'UNASSIGNED' && exercise.officialScenarioId) return false
+  const created = toDateKey(exercise.createdAt)
+  const createdFrom = params.get('createdFrom')
+  const createdTo = params.get('createdTo')
+  if (createdFrom && created < createdFrom) return false
+  if (createdTo && created > createdTo) return false
+  const submitted = toDateKey(exercise.submittedAt)
+  const submittedFrom = params.get('submittedFrom')
+  const submittedTo = params.get('submittedTo')
+  if (submittedFrom && (!submitted || submitted < submittedFrom)) return false
+  if (submittedTo && (!submitted || submitted > submittedTo)) return false
+  const archivedFrom = params.get('archivedFrom')
+  const archivedTo = params.get('archivedTo')
+  if (archivedFrom && (!submitted || submitted < archivedFrom)) return false
+  if (archivedTo && (!submitted || submitted > archivedTo)) return false
+  return true
+}
 
 export const supervisorHandlers = [
   http.get('*/api/v1/timesheet/toolkit-hierarchy', () => HttpResponse.json(hierarchy)),
@@ -136,9 +219,19 @@ export const supervisorHandlers = [
     })
   }),
 
-  http.get('*/api/v1/supervisor/toolkits', async () => {
+  http.get('*/api/v1/supervisor/toolkits', async ({ request }) => {
     await delay(80)
-    return HttpResponse.json(supervisorToolkits.filter((item) => !item.deletedAt))
+    const url = new URL(request.url)
+    const name = (url.searchParams.get('name') ?? '').trim().toLowerCase()
+    const pl3Name = (url.searchParams.get('pl3Name') ?? '').trim()
+    const source = supervisorToolkits.filter((item) => !item.deletedAt)
+    const pl3Names = [...new Set(source.map((item) => item.pl3Name).filter(Boolean))].sort()
+    const items = source.filter((item) => {
+      const matchesName = !name || item.name.toLowerCase().includes(name)
+      const matchesPl3 = !pl3Name || item.pl3Name === pl3Name
+      return matchesName && matchesPl3
+    })
+    return HttpResponse.json({ items, pl3Names })
   }),
 
   http.get('*/api/v1/supervisor/toolkits/:id', ({ params }) => {
@@ -204,9 +297,21 @@ export const supervisorHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises', () => {
+  http.get('*/api/v1/supervisor/exercises', ({ request }) => {
     exercises.forEach(syncFlags)
-    return HttpResponse.json(exercises)
+    const params = new URL(request.url).searchParams
+    const tab = params.get('tab') || 'IN_PROGRESS'
+    const tabStatuses = tab === 'ARCHIVED'
+      ? new Set(['VALIDATED', 'ARCHIVED'])
+      : new Set(['IN_PROGRESS', 'RETURNED', 'UNDER_REVIEW'])
+    const source = exercises.filter((item) => tabStatuses.has(item.workflowStatus))
+    const items = source.filter((item) => matchesExerciseList(item, params))
+    return HttpResponse.json({
+      items,
+      toolkitNames: uniqueSorted(source.map((item) => item.snapshot.toolkit.name)),
+      pl3Names: uniqueSorted(source.map((item) => item.snapshot.toolkit.pl3Name)),
+      reviewerNames: uniqueSorted(source.map((item) => item.currentReviewer)),
+    })
   }),
 
   http.post('*/api/v1/supervisor/exercises', async ({ request }) => {
@@ -316,7 +421,7 @@ export const supervisorHandlers = [
   http.get('*/api/v1/supervisor/exercises/:id/team-setup', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
-    return HttpResponse.json(ctx.shell.teamSetup)
+    return HttpResponse.json(teamSetupView(ctx.exercise, ctx.shell))
   }),
 
   http.put('*/api/v1/supervisor/exercises/:id/team-setup', async ({ params, request }) => {
@@ -324,11 +429,12 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as TeamSetupRequest
-    ctx.shell.teamSetup = recomputeTeamSetup(
-      { ...ctx.shell.teamSetup, ...body },
-      ctx.shell.cycleTime?.medianSeconds,
-    )
-    return HttpResponse.json(ctx.shell.teamSetup)
+    ctx.shell.teamSetup = {
+      ...ctx.shell.teamSetup,
+      ...body,
+      version: ctx.shell.teamSetup.version + 1,
+    }
+    return HttpResponse.json(teamSetupView(ctx.exercise, ctx.shell))
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id/shifts', ({ params }) => {
@@ -356,7 +462,7 @@ export const supervisorHandlers = [
   http.get('*/api/v1/supervisor/exercises/:id/production-support', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
-    return HttpResponse.json(ctx.shell.support)
+    return HttpResponse.json(ctx.shell.support.map((item) => ({ ...item, ...derivedSupport(ctx, item) })))
   }),
 
   http.post('*/api/v1/supervisor/exercises/:id/production-support', async ({ params, request }) => {
@@ -364,14 +470,6 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as SupportItemRequest
-    const setup = ctx.shell.teamSetup
-    const multiplier = annualMultiplier(body.frequencyCode, setup.workingDaysPerYear)
-    const hours = hoursPerYear(
-      Number(body.volume),
-      Number(body.workloadPerUnitMinutes),
-      multiplier,
-    )
-    const fte = supportFte(hours, fteAnnualHours(setup))
     const item = {
       id: crypto.randomUUID(),
       lineageId: crypto.randomUUID(),
@@ -381,11 +479,8 @@ export const supervisorHandlers = [
       volume: body.volume,
       unitOfMeasure: body.unitOfMeasure,
       workloadPerUnitMinutes: body.workloadPerUnitMinutes,
-      annualMultiplier: multiplier,
-      workloadPerYearHours: hours,
-      supportFte: fte,
       comments: body.comments ?? null,
-      calculationVersion: 'v1.2',
+      ...derivedSupport(ctx, body),
     }
     ctx.shell.support.push(item)
     return HttpResponse.json(item, { status: 201 })
@@ -401,14 +496,6 @@ export const supervisorHandlers = [
       const current = ctx.shell.support[index]
       if (!current) return problem(404, 'The support item was not found.')
       const body = (await request.json()) as SupportItemRequest
-      const setup = ctx.shell.teamSetup
-      const multiplier = annualMultiplier(body.frequencyCode, setup.workingDaysPerYear)
-      const hours = hoursPerYear(
-        Number(body.volume),
-        Number(body.workloadPerUnitMinutes),
-        multiplier,
-      )
-      const fte = supportFte(hours, fteAnnualHours(setup))
       const updated = {
         ...current,
         category: body.category,
@@ -417,11 +504,8 @@ export const supervisorHandlers = [
         volume: body.volume,
         unitOfMeasure: body.unitOfMeasure,
         workloadPerUnitMinutes: body.workloadPerUnitMinutes,
-        annualMultiplier: multiplier,
         comments: body.comments ?? null,
-        workloadPerYearHours: hours,
-        supportFte: fte,
-        calculationVersion: 'v1.2',
+        ...derivedSupport(ctx, body),
       }
       ctx.shell.support[index] = updated
       return HttpResponse.json(updated)
@@ -523,14 +607,6 @@ export const supervisorHandlers = [
       publishedTemplateVersion: null,
       templateUpdateMessage: null,
       holidays,
-    }
-    if (ctx.shell.teamSetup) {
-      ctx.shell.teamSetup = {
-        ...ctx.shell.teamSetup,
-        weekendCode: weekend,
-        workingDaysPerYear: ctx.shell.calendar.workingDaysPerYear ?? null,
-        version: ctx.shell.teamSetup.version + 1,
-      }
     }
     return HttpResponse.json({ calendar: ctx.shell.calendar, notices })
   }),
@@ -756,7 +832,6 @@ export const supervisorHandlers = [
       calculatedAt: new Date().toISOString(),
       files,
     }
-    ctx.shell.teamSetup = recomputeTeamSetup(ctx.shell.teamSetup, body.medianSeconds)
     return HttpResponse.json(ctx.shell.cycleTime, { status: 201 })
   }),
 
@@ -803,6 +878,7 @@ export const supervisorHandlers = [
         booleanValue: item.booleanValue ?? null,
         unit: item.unit ?? null,
       })),
+      shifts: [],
     }
     ctx.shell.scenarios.push(scenario)
     return HttpResponse.json(scenario, { status: 201 })
@@ -882,7 +958,7 @@ export const supervisorHandlers = [
           slot?: unknown | null
         } | null
       }
-      if (!body.shifts?.length) return problem(422, 'Shifts are required when saving a scenario.')
+      if (!Array.isArray(body.shifts)) return problem(422, 'Shifts are required when saving a scenario.')
       const updated = {
         ...current,
         name: body.name,
@@ -899,16 +975,16 @@ export const supervisorHandlers = [
                 booleanValue: item.booleanValue ?? null,
                 unit: item.unit ?? null,
               })),
+        shifts: body.shifts.map((row) => ({
+          id: crypto.randomUUID(),
+          shiftNo: row.shiftNo,
+          startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
+          durationMinutes: row.durationMinutes,
+          headcount: row.headcount,
+          worksOnWeekend: row.worksOnWeekend,
+        })),
       }
       ctx.shell.scenarios[index] = updated
-      ctx.shell.shifts = body.shifts.map((row) => ({
-        id: crypto.randomUUID(),
-        shiftNo: row.shiftNo,
-        startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
-        durationMinutes: row.durationMinutes,
-        headcount: row.headcount,
-        worksOnWeekend: row.worksOnWeekend,
-      }))
 
       const shell = ctx.shell as {
         latestForecastByScenario?: Record<string, Record<string, unknown>>
@@ -1004,8 +1080,13 @@ export const supervisorHandlers = [
     target.status = 'OFFICIAL'
     target.officialAt = new Date().toISOString()
     target.version += 1
-    ctx.shell.officialPackageId = crypto.randomUUID()
-    ctx.shell.packageVersion += 1
+    const reopenable = ctx.shell.submitted
+      && (ctx.shell.submitted.submissionStatus === 'RETURNED'
+        || ctx.shell.submitted.submissionStatus === 'ARCHIVED')
+    if (!reopenable) {
+      ctx.shell.officialPackageId = crypto.randomUUID()
+      ctx.shell.packageVersion += 1
+    }
     syncFlags(ctx.exercise)
     return HttpResponse.json(target)
   }),
@@ -1294,7 +1375,7 @@ export const supervisorHandlers = [
         return `${yy}-${String(month).padStart(2, '0')}`
       })
       const rsHc =
-        scenario.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')?.numericValue ?? 8.6
+        scenario.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')?.numericValue ?? 0
       ;(ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
         .latestMonthlySizingByScenario = {
         ...((ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
@@ -1593,17 +1674,68 @@ export const supervisorHandlers = [
     if (!ctx.exercise.canSubmit) {
       return problem(409, 'Exercise must have an Official Scenario and be editable to submit.')
     }
-    if (ctx.shell.submitted) return HttpResponse.json(ctx.shell.submitted, { status: 201 })
+    if (ctx.exercise.workflowStatus === 'UNDER_REVIEW' && ctx.shell.submitted) {
+      return HttpResponse.json(ctx.shell.submitted, { status: 201 })
+    }
     const body = ((await request.json().catch(() => ({}))) ?? {}) as SubmitRequest
     const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
     if (!hasKpis && !body.remarks?.trim()) {
       return problem(422, 'SEVERE validation failures require remarks before Submit.')
     }
     const official = ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+    const previous = ctx.shell.submitted
+    const reopenable = previous
+      && (previous.submissionStatus === 'RETURNED' || previous.submissionStatus === 'ARCHIVED')
+    if (reopenable && !official) {
+      return problem(409, 'Save Official after Return before Submit.')
+    }
     const now = new Date().toISOString()
     const packageId = ctx.shell.officialPackageId ?? crypto.randomUUID()
     ctx.shell.officialPackageId = packageId
     ctx.shell.packageVersion = ctx.shell.packageVersion || 1
+    if (reopenable && previous) {
+      previous.actions.push({
+        stepNo: 0,
+        actionType: 'SUBMIT',
+        actorUserId: crypto.randomUUID(),
+        actorRoleCode: 'SUPERVISOR',
+        comments: body.remarks ?? null,
+        actionAt: now,
+        requestId: body.requestId ?? request.headers.get('Idempotency-Key') ?? crypto.randomUUID(),
+      })
+      for (const step of previous.steps) {
+        if (step.stepNo === 1) {
+          step.routingStatus = 'READY'
+        } else if (step.routingStatus === 'READY' || step.routingStatus === 'PENDING') {
+          step.routingStatus = 'INVALIDATED'
+        }
+      }
+      if (!previous.steps.some((step) => step.stepNo === 1)) {
+        previous.steps.push({
+          stepNo: 1,
+          requiredRoleCode: 'MANAGER',
+          assigneeUserId: crypto.randomUUID(),
+          assigneeDisplayName: 'Grace Li',
+          routingStatus: 'READY',
+        })
+      }
+      previous.workflowStatus = 'UNDER_REVIEW'
+      previous.submittedAt = now
+      previous.officialPackageId = packageId
+      previous.packageVersion = ctx.shell.packageVersion
+      previous.packageStatus = 'LOCKED'
+      previous.scenarioId = official?.id ?? previous.scenarioId
+      previous.scenarioName = official?.name ?? previous.scenarioName
+      previous.submissionStatus = 'AWAITING_MANAGER'
+      previous.currentStep = 1
+      previous.requiredRole = 'MANAGER'
+      previous.remarks = body.remarks ?? null
+      previous.workflowStatusLabel = 'ACTIVE'
+      ctx.exercise.workflowStatus = 'UNDER_REVIEW'
+      ctx.exercise.submittedAt = now
+      syncFlags(ctx.exercise)
+      return HttpResponse.json(previous, { status: 201 })
+    }
     const details = {
       exerciseId: ctx.exercise.id,
       exerciseCode: ctx.exercise.exerciseCode,
@@ -1618,6 +1750,7 @@ export const supervisorHandlers = [
       submissionCode: `SUB-${ctx.exercise.exerciseCode}`,
       submissionStatus: 'AWAITING_MANAGER',
       currentStep: 1,
+      requiredRole: 'MANAGER',
       remarks: body.remarks ?? null,
       scopes: ctx.exercise.snapshot.sharedKpis.map((kpi) => ({
         scopeLevel: 'PL3',
@@ -1635,6 +1768,7 @@ export const supervisorHandlers = [
           stepNo: 1,
           requiredRoleCode: 'MANAGER',
           assigneeUserId: crypto.randomUUID(),
+          assigneeDisplayName: 'Grace Li',
           routingStatus: 'READY',
         },
       ],
@@ -1661,7 +1795,10 @@ export const supervisorHandlers = [
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!ctx.shell.submitted) return problem(404, 'No submission exists for this Exercise.')
-    return HttpResponse.json(ctx.shell.submitted)
+    return HttpResponse.json({
+      ...ctx.shell.submitted,
+      workspace: buildApprovalWorkspace(ctx.shell.submitted, { inProgress: false }),
+    })
   }),
 
   http.post('*/api/v1/supervisor/exercises/:id/withdraw', ({ params }) => {
@@ -1675,7 +1812,7 @@ export const supervisorHandlers = [
     }
     const now = new Date().toISOString()
     const step = ctx.shell.submitted.steps.find((item) => item.routingStatus === 'READY')
-    if (step) step.routingStatus = 'ACTED'
+    if (step) step.routingStatus = 'INVALIDATED'
     ctx.shell.submitted.actions.push({
       stepNo: step?.stepNo ?? ctx.shell.submitted.currentStep ?? 1,
       actionType: 'WITHDRAW',
@@ -1690,8 +1827,16 @@ export const supervisorHandlers = [
     ctx.shell.submitted.packageStatus = 'RETURNED'
     ctx.shell.submitted.workflowStatus = 'IN_PROGRESS'
     ctx.exercise.workflowStatus = 'IN_PROGRESS'
-    ctx.exercise.officialScenarioId = null
+    const official = ctx.shell.scenarios.find((item) => item.id === ctx.shell.submitted.scenarioId)
+      ?? ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+    if (official) {
+      official.status = 'DRAFT'
+      official.officialAt = null
+    }
     syncFlags(ctx.exercise)
-    return HttpResponse.json(ctx.shell.submitted)
+    return HttpResponse.json({
+      ...ctx.shell.submitted,
+      workspace: buildApprovalWorkspace(ctx.shell.submitted, { inProgress: false }),
+    })
   }),
 ]

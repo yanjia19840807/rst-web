@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
+import { watchDebounced } from '@vueuse/core'
 
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
@@ -17,59 +18,66 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { toolkitApi } from '../api'
-import type { SupervisorToolkit } from '../types'
+import { useSupervisorToolkitsQuery } from '../api/queries'
+import type { SupervisorToolkit, ToolkitListQuery } from '../types'
 
 const router = useRouter()
-const toolkits = ref<SupervisorToolkit[]>([])
-const loading = ref(true)
 const nameFilter = ref('')
+const appliedName = ref('')
 const pl3Filter = ref('All PL3')
 const page = ref(1)
 const pageSize = ref(10)
 
+const listQuery = computed<ToolkitListQuery>(() => ({
+  name: appliedName.value.trim() || undefined,
+  pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+}))
+
+const toolkitsQuery = useSupervisorToolkitsQuery(listQuery)
+const toolkits = computed(() => toolkitsQuery.data.value?.items ?? [])
+const pl3Options = computed(() => [
+  'All PL3',
+  ...(toolkitsQuery.data.value?.pl3Names ?? []),
+])
+const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.data.value)
+
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-const pl3Options = computed(() => {
-  const names = new Set(toolkits.value.map((item) => item.pl3Name).filter(Boolean))
-  return ['All PL3', ...Array.from(names).sort()]
-})
-
-const filteredRows = computed(() => {
-  const query = nameFilter.value.trim().toLowerCase()
-  return toolkits.value.filter((toolkit) => {
-    const matchesName = !query || toolkit.name.toLowerCase().includes(query)
-    const matchesPl3 =
-      pl3Filter.value === 'All PL3' || toolkit.pl3Name === pl3Filter.value
-    return matchesName && matchesPl3
-  })
-})
-
 const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value) || 1)),
+  Math.min(page.value, Math.max(1, Math.ceil(toolkits.value.length / pageSize.value) || 1)),
 )
 
 const pagedRows = computed(() => {
   const start = (safePage.value - 1) * pageSize.value
-  return filteredRows.value.slice(start, start + pageSize.value)
+  return toolkits.value.slice(start, start + pageSize.value)
 })
 
-watch([nameFilter, pl3Filter], () => {
+watch(pl3Filter, () => {
   page.value = 1
 })
 
-async function load() {
-  loading.value = true
-  try {
-    toolkits.value = await toolkitApi.list()
+watchDebounced(
+  nameFilter,
+  (value) => {
+    appliedName.value = value
     page.value = 1
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load toolkits.')
-  } finally {
-    loading.value = false
-  }
-}
+  },
+  { debounce: 400 },
+)
+
+watch(
+  () => toolkitsQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        toolkitsQuery.error.value instanceof Error
+          ? toolkitsQuery.error.value.message
+          : 'Could not load toolkits.',
+      )
+    }
+  },
+)
 
 function createExercise(toolkit: SupervisorToolkit) {
   void router.push({
@@ -77,8 +85,6 @@ function createExercise(toolkit: SupervisorToolkit) {
     query: { create: '1', toolkitId: toolkit.id },
   })
 }
-
-onMounted(load)
 </script>
 
 <template>
@@ -182,7 +188,7 @@ onMounted(load)
         </div>
 
         <TablePager
-          :total="filteredRows.length"
+          :total="toolkits.length"
           :page="safePage"
           :page-size="pageSize"
           label="toolkits"
@@ -198,3 +204,4 @@ onMounted(load)
     </Card>
   </div>
 </template>
+

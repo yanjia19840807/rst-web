@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -93,19 +93,19 @@ const volumeSummary = computed(() => {
     {
       granularity: 'Month',
       period: sizing.monthTrain,
-      volume: monthly.value.length ? formatNumber(monthVolume) : '—',
+      volume: monthly.value.length ? formatNumber(monthVolume, 2) : '—',
       rows: `${monthly.value.length || monthlyTrainMonths(props.sizingMonth).length} train months`,
     },
     {
       granularity: 'Daily',
       period: sizing.dailyTrain,
-      volume: daily.value.length ? formatNumber(dayVolume) : '—',
+      volume: daily.value.length ? formatNumber(dayVolume, 2) : '—',
       rows: `${daily.value.length || dailyTrainDates(props.sizingMonth).length} train days`,
     },
     {
       granularity: 'Slot',
       period: deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks),
-      volume: slot.value.length ? formatNumber(slotVolume) : '—',
+      volume: slot.value.length ? formatNumber(slotVolume, 2) : '—',
       rows: `${slot.value.length} train slots`,
     },
   ]
@@ -202,7 +202,7 @@ defineExpose({
 
 <template>
   <Card>
-    <CardHeader class="gap-3">
+    <CardHeader class="items-center">
       <div>
         <CardTitle class="text-base">Associated Data</CardTitle>
         <p class="mt-1 text-xs text-muted-foreground">
@@ -210,33 +210,34 @@ defineExpose({
           Toolkit.
         </p>
       </div>
-      <div class="flex gap-1 border-b">
-        <button
-          v-for="tab in tabs"
-          :key="tab"
-          type="button"
-          class="border-b-2 px-3.5 py-2 text-sm transition-colors"
-          :class="
-            activeTab === tab
-              ? 'border-primary font-semibold text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          "
-          @click="activeTab = tab"
-        >
-          {{ AD_TAB_LABELS[tab] }}
-        </button>
-      </div>
+      <CardAction>
+        <Button size="sm" :disabled="loading" @click="openEditor(activeTab)">
+          {{ readOnly ? 'View' : 'Edit' }}
+        </Button>
+      </CardAction>
     </CardHeader>
+
+    <div class="flex gap-1 border-b px-4">
+      <button
+        v-for="tab in tabs"
+        :key="tab"
+        type="button"
+        class="border-b-2 px-3.5 py-2 text-sm transition-colors"
+        :class="
+          activeTab === tab
+            ? 'border-primary font-semibold text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+        "
+        @click="activeTab = tab"
+      >
+        {{ AD_TAB_LABELS[tab] }}
+      </button>
+    </div>
 
     <CardContent>
       <p v-if="loading" class="py-6 text-center text-sm text-muted-foreground">Loading…</p>
 
       <template v-else-if="activeTab === 'team'">
-        <div class="mb-2.5 flex justify-end">
-          <Button size="sm" variant="outline" @click="openEditor('team')">
-            {{ readOnly ? 'View' : 'Edit' }}
-          </Button>
-        </div>
         <div class="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
@@ -249,14 +250,14 @@ defineExpose({
             <TableBody>
               <TableRow>
                 <TableCell>Daily capacity / agent</TableCell>
-                <TableCell>{{ formatNumber(teamSetup?.dailyCapacityPerAgent) }}</TableCell>
+                <TableCell>{{ formatNumber(teamSetup?.dailyCapacityPerAgent, 2) }}</TableCell>
                 <TableCell class="text-muted-foreground">
                   Calculated from baseline inputs
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>Working days</TableCell>
-                <TableCell>{{ formatNumber(teamSetup?.workingDaysPerYear) }}</TableCell>
+                <TableCell>{{ formatNumber(teamSetup?.workingDaysPerYear, 2) }}</TableCell>
                 <TableCell class="text-muted-foreground">
                   Calendar and holiday adjusted
                 </TableCell>
@@ -271,16 +272,10 @@ defineExpose({
           v-model:source="medianSource"
           :cycle-time="cycleTime"
           :read-only="readOnly"
-          @edit="openEditor('tms')"
         />
       </template>
 
       <template v-else-if="activeTab === 'support'">
-        <div class="mb-2.5 flex justify-end">
-          <Button size="sm" variant="outline" @click="openEditor('support')">
-            {{ readOnly ? 'View' : 'Edit' }}
-          </Button>
-        </div>
         <div class="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
@@ -302,7 +297,7 @@ defineExpose({
                 <TableCell>Annual support hours</TableCell>
                 <TableCell>
                   {{
-                    supportAnnualHours != null ? formatNumber(supportAnnualHours, 1) : '—'
+                    supportAnnualHours != null ? formatNumber(supportAnnualHours, 2) : '—'
                   }}
                 </TableCell>
                 <TableCell class="text-muted-foreground">Sum of Hours / year</TableCell>
@@ -327,17 +322,9 @@ defineExpose({
             Apply published template
           </Button>
         </div>
-        <div class="mb-2.5 flex justify-end gap-2">
-          <Button
-            v-if="!readOnly"
-            size="sm"
-            variant="outline"
-            @click="reapplyTemplate"
-          >
+        <div v-if="!readOnly" class="mb-2.5 flex justify-end">
+          <Button size="sm" variant="outline" @click="reapplyTemplate">
             Re-apply template
-          </Button>
-          <Button size="sm" variant="outline" @click="openEditor('calendar')">
-            {{ readOnly ? 'View' : 'Edit' }}
           </Button>
         </div>
         <table class="w-full border-collapse text-sm">
@@ -352,7 +339,7 @@ defineExpose({
             </tr>
             <tr class="border-b">
               <td class="py-2 text-muted-foreground">Working days / year</td>
-              <td class="py-2">{{ formatNumber(calendar?.workingDaysPerYear) }}</td>
+              <td class="py-2">{{ formatNumber(calendar?.workingDaysPerYear, 2) }}</td>
             </tr>
             <tr class="border-b">
               <td class="py-2 text-muted-foreground">Holiday days</td>
@@ -363,11 +350,6 @@ defineExpose({
       </template>
 
       <template v-else>
-        <div class="mb-2.5 flex justify-end">
-          <Button size="sm" variant="outline" @click="openEditor('volume')">
-            {{ readOnly ? 'View' : 'Edit' }}
-          </Button>
-        </div>
         <div class="overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>

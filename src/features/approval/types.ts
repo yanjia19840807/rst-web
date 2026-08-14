@@ -1,14 +1,56 @@
 export interface ApprovalQueueItem {
   submissionId: string
+  exerciseId: string
   exerciseCode: string
-  packageVersion: number
-  currentStep: number | null
-  requiredRole: string
-  status: string
-  submittedAt: string
-  toolkitName?: string | null
+  center?: string | null
+  domain?: string | null
   pl3Name?: string | null
+  toolkitName?: string | null
+  supervisor?: string | null
+  deliveryHc?: number | string | null
+  rightSizingHc?: number | string | null
+  productionSupport?: number | string | null
+  capacityCreation?: number | string | null
+  previousStep?: string | null
+  previousActor?: string | null
+  previousStepAt?: string | null
+  agingDays?: number | null
+  createdAt?: string | null
+  submittedAt: string
   archivedAt?: string | null
+  finalStatus?: string | null
+  reviewDurationDays?: number | null
+  status: string
+  myDecision?: string | null
+  myCompletedAt?: string | null
+  completedStep?: string | null
+}
+
+export interface ApprovalQueueMetrics {
+  awaitingMe: number
+  overdue: number
+  dueWithin2Days: number
+  highRisk: number
+}
+
+export interface ApprovalQueueView {
+  items: ApprovalQueueItem[]
+  metrics: ApprovalQueueMetrics
+  toolkitNames: string[]
+  pl3Names: string[]
+}
+
+export interface ApprovalQueueQuery {
+  status?: string
+  completed?: boolean
+  exerciseCode?: string
+  toolkitName?: string
+  pl3Name?: string
+  submittedFrom?: string
+  submittedTo?: string
+  completedFrom?: string
+  completedTo?: string
+  decision?: string
 }
 
 export interface ScopeView {
@@ -25,6 +67,8 @@ export interface StepView {
   stepNo: number
   requiredRoleCode: string
   assigneeUserId: string | null
+  assigneePositionId?: string | null
+  assigneeDisplayName?: string | null
   routingStatus: string
 }
 
@@ -33,9 +77,43 @@ export interface ActionView {
   actionType: string
   actorUserId: string | null
   actorRoleCode: string | null
+  actorDisplayName?: string | null
   comments: string | null
   actionAt: string
   requestId: string | null
+}
+
+export interface ApprovalStatusBar {
+  state: 'IN_PROGRESS' | 'NOW' | 'ARCHIVED' | 'RETURNED' | 'WITHDRAWN' | string
+  label: string
+  step?: string | null
+  reviewer?: string | null
+}
+
+export interface ApprovalCurrentHop {
+  step?: string | null
+  reviewer?: string | null
+}
+
+export interface ApprovalHistoryRow {
+  actionId: string
+  stepNo: number
+  step: string
+  role: string
+  actor?: string | null
+  decision: string
+  comments?: string | null
+  completedAt: string
+  mine?: boolean
+}
+
+export interface ApprovalWorkspaceView {
+  mode: 'IN_PROGRESS' | 'COMPLETED'
+  statusBar: ApprovalStatusBar
+  currentHop?: ApprovalCurrentHop | null
+  nextStep?: string | null
+  nextReviewer?: string | null
+  history: ApprovalHistoryRow[]
 }
 
 export interface ApprovalDetailView {
@@ -59,6 +137,8 @@ export interface ApprovalDetailView {
   workflowStatusLabel: string
   steps: StepView[]
   actions: ActionView[]
+  canDecide?: boolean
+  workspace: ApprovalWorkspaceView
 }
 
 export interface ApproveRequest {

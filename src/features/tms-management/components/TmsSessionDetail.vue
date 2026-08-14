@@ -59,7 +59,7 @@ const rows = computed(() => {
     { label: 'End', value: formatDate(item.endedAt) },
     { label: 'Duration', value: formatDuration(item.netDurationSeconds) },
     { label: 'Cycle Time', value: cycleTimeLabel() },
-    { label: 'Volume', value: item.processedVolume ?? '—' },
+    { label: 'Volume', value: item.processedVolume == null ? '—' : Number(item.processedVolume).toFixed(2) },
     { label: 'Reference', value: item.reference || '—' },
     { label: 'Remarks', value: item.remarks || '—' },
   )

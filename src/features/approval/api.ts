@@ -2,21 +2,35 @@ import { apiRequest } from '@/api/client'
 
 import type {
   ApprovalDetailView,
-  ApprovalQueueItem,
+  ApprovalQueueQuery,
+  ApprovalQueueView,
   ApproveRequest,
   ReturnRequest,
 } from './types'
 
 const base = '/api/v1/approvals'
 
+function queueQuery(params?: ApprovalQueueQuery) {
+  const search = new URLSearchParams()
+  if (!params) return ''
+  if (params.status) search.set('status', params.status)
+  if (params.completed != null) search.set('completed', String(params.completed))
+  const exerciseCode = params.exerciseCode?.trim()
+  if (exerciseCode) search.set('exerciseCode', exerciseCode)
+  if (params.toolkitName) search.set('toolkitName', params.toolkitName)
+  if (params.pl3Name) search.set('pl3Name', params.pl3Name)
+  if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
+  if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+  if (params.completedFrom) search.set('completedFrom', params.completedFrom)
+  if (params.completedTo) search.set('completedTo', params.completedTo)
+  if (params.decision) search.set('decision', params.decision)
+  const query = search.toString()
+  return query ? `?${query}` : ''
+}
+
 export const approvalApi = {
-  queue: (params?: { status?: string; archived?: boolean }) => {
-    const search = new URLSearchParams()
-    if (params?.status) search.set('status', params.status)
-    if (params?.archived != null) search.set('archived', String(params.archived))
-    const query = search.toString()
-    return apiRequest<ApprovalQueueItem[]>(`${base}/queue${query ? `?${query}` : ''}`)
-  },
+  queue: (params?: ApprovalQueueQuery) =>
+    apiRequest<ApprovalQueueView>(`${base}/queue${queueQuery(params)}`),
   detail: (submissionId: string) =>
     apiRequest<ApprovalDetailView>(`${base}/${submissionId}`),
   approve: (submissionId: string, body: ApproveRequest = {}) =>

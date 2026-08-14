@@ -36,7 +36,10 @@ export function useToolkitsQuery() {
 export function useSupervisorToolkitsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: tmsQueryKeys.supervisorToolkits(),
-    queryFn: () => apiRequest<Toolkit[]>('/api/v1/supervisor/toolkits'),
+    queryFn: async () => {
+      const view = await apiRequest<{ items: Toolkit[] }>('/api/v1/supervisor/toolkits')
+      return view.items
+    },
     enabled: computed(() => toValue(enabled)),
   })
 }

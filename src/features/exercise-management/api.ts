@@ -1,7 +1,5 @@
 import { ApiError, apiRequest } from '@/api/client'
 
-import type { SupervisorToolkit } from '@/features/toolkit-management/types'
-
 import type {
   CalendarRequest,
   CalendarView,
@@ -15,6 +13,8 @@ import type {
   DailyVolume,
   DailyVolumeRequest,
   Exercise,
+  ExerciseListQuery,
+  ExerciseListView,
   ExerciseTmsSession,
   PatchExerciseTmsSessionResult,
   ManualBaselineRequest,
@@ -83,9 +83,31 @@ async function uploadVolumeExcel<T>(exerciseId: string, suffix: string, file: Fi
   return response.json() as Promise<T>
 }
 
+function exerciseListQuery(params?: ExerciseListQuery) {
+  const search = new URLSearchParams()
+  if (!params) return ''
+  if (params.tab) search.set('tab', params.tab)
+  const exerciseCode = params.exerciseCode?.trim()
+  if (exerciseCode) search.set('exerciseCode', exerciseCode)
+  if (params.toolkitName) search.set('toolkitName', params.toolkitName)
+  if (params.pl3Name) search.set('pl3Name', params.pl3Name)
+  if (params.workflowStatus) search.set('workflowStatus', params.workflowStatus)
+  if (params.reviewStage) search.set('reviewStage', params.reviewStage)
+  if (params.handler) search.set('handler', params.handler)
+  if (params.officialScenario) search.set('officialScenario', params.officialScenario)
+  if (params.createdFrom) search.set('createdFrom', params.createdFrom)
+  if (params.createdTo) search.set('createdTo', params.createdTo)
+  if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
+  if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+  if (params.archivedFrom) search.set('archivedFrom', params.archivedFrom)
+  if (params.archivedTo) search.set('archivedTo', params.archivedTo)
+  const query = search.toString()
+  return query ? `?${query}` : ''
+}
+
 export const exerciseApi = {
-  list: () => apiRequest<Exercise[]>(base),
-  toolkits: () => apiRequest<SupervisorToolkit[]>('/api/v1/supervisor/toolkits'),
+  list: (params?: ExerciseListQuery) =>
+    apiRequest<ExerciseListView>(`${base}${exerciseListQuery(params)}`),
   create: (input: CreateExerciseInput) =>
     apiRequest<CreateExerciseResult>(base, {
       method: 'POST',

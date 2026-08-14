@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { NumberFieldControl } from '@/components/ui/number-field'
 import { Label } from '@/components/ui/label'
 import {
   Table,
@@ -26,7 +26,7 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-const draftMedian = ref('')
+const draftMedian = ref<number | null>(null)
 const draftReason = ref('')
 const draftFiles = ref<CycleTimeBaselineFile[]>([])
 const uploading = ref(false)
@@ -35,7 +35,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 watch(
   () => [props.medianSeconds, props.reason, props.files] as const,
   ([median, reason, files]) => {
-    draftMedian.value = median?.trim() || ''
+    draftMedian.value = median?.trim() ? Number(median) : null
     draftReason.value = reason?.trim() || ''
     draftFiles.value = [...(files ?? [])]
   },
@@ -102,15 +102,11 @@ defineExpose({ toRequest })
     <div class="grid gap-4">
       <div class="grid gap-1.5">
         <Label for="manual-median-seconds">Manual median cycle time (seconds)</Label>
-        <Input
+        <NumberFieldControl
           id="manual-median-seconds"
-          :model-value="draftMedian"
-          type="number"
-          min="1"
-          step="1"
-          placeholder="e.g. 155"
+          v-model="draftMedian"
+          :min="0"
           :disabled="readOnly"
-          @update:model-value="draftMedian = String($event)"
         />
       </div>
 
