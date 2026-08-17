@@ -1,5 +1,5 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 
 import { apiRequest } from '@/api/client'
 
@@ -37,7 +37,9 @@ export function useSupervisorToolkitsQuery(enabled: MaybeRefOrGetter<boolean> = 
   return useQuery({
     queryKey: tmsQueryKeys.supervisorToolkits(),
     queryFn: async () => {
-      const view = await apiRequest<{ items: Toolkit[] }>('/api/v1/supervisor/toolkits')
+      const view = await apiRequest<{ items: Toolkit[] }>(
+        '/api/v1/supervisor/toolkits?page=1&pageSize=100',
+      )
       return view.items
     },
     enabled: computed(() => toValue(enabled)),
@@ -88,6 +90,7 @@ export function useTmsSessionDetailQuery(
 export function useTmsSessionsQuery(
   filters: MaybeRefOrGetter<SessionFilters & { status: 'paused' | 'completed' }>,
   mode: MaybeRefOrGetter<TmsListMode> = 'agent',
+  enabled: MaybeRefOrGetter<boolean> = true,
 ) {
   const resolvedFilters = computed(() => toValue(filters))
   const resolvedMode = computed(() => toValue(mode))
@@ -114,9 +117,12 @@ export function useTmsSessionsQuery(
         page: String(page),
         pageSize: String(pageSize),
       })
-      if (sessionNo) params.set('sessionNo', sessionNo)
-      if (reference) params.set('reference', reference)
-      if (query) params.set('query', query)
+      const sessionNoValue = sessionNo?.trim()
+      const referenceValue = reference?.trim()
+      const queryValue = query?.trim()
+      if (sessionNoValue) params.set('sessionNo', sessionNoValue)
+      if (referenceValue) params.set('reference', referenceValue)
+      if (queryValue) params.set('query', queryValue)
       if (dateFrom) params.set('dateFrom', dateFrom)
       if (dateTo) params.set('dateTo', dateTo)
       if (agentCcgid) params.set('agentCcgid', agentCcgid)
@@ -128,5 +134,7 @@ export function useTmsSessionsQuery(
           : `/api/v1/tms/sessions?${params}`
       return apiRequest<PageResult<TmsSession>>(path)
     },
+    enabled: computed(() => toValue(enabled)),
+    placeholderData: keepPreviousData,
   })
 }

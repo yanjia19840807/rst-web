@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table'
 
 import { exerciseApi } from '../../api'
+import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { triggerDownload } from '../../downloadBlob'
 import {
   dailyTrainDates,
@@ -51,6 +52,14 @@ const emit = defineEmits<{
   'update:slot': [value: SlotVolume[]]
 }>()
 
+const {
+  putMonthlyVolumes,
+  putDailyVolumes,
+  putSlotVolumes,
+  importMonthlyVolumes,
+  importDailyVolumes,
+  importSlotVolumes,
+} = useExerciseAssociatedDataMutations()
 const tab = ref<VolumeTab>('monthly')
 const page = ref(1)
 const pageSize = ref(10)
@@ -145,17 +154,26 @@ function formatSlotTime(start: string, end: string) {
 }
 
 async function persistMonthly() {
-  const saved = await exerciseApi.putMonthlyVolumes(props.exerciseId, monthDrafts.value)
+  const saved = await putMonthlyVolumes.mutateAsync({
+    exerciseId: props.exerciseId,
+    body: monthDrafts.value,
+  })
   emit('update:monthly', saved)
 }
 
 async function persistDaily() {
-  const saved = await exerciseApi.putDailyVolumes(props.exerciseId, dayDrafts.value)
+  const saved = await putDailyVolumes.mutateAsync({
+    exerciseId: props.exerciseId,
+    body: dayDrafts.value,
+  })
   emit('update:daily', saved)
 }
 
 async function persistSlot() {
-  const saved = await exerciseApi.putSlotVolumes(props.exerciseId, slotDrafts.value)
+  const saved = await putSlotVolumes.mutateAsync({
+    exerciseId: props.exerciseId,
+    body: slotDrafts.value,
+  })
   emit('update:slot', saved)
 }
 
@@ -237,13 +255,22 @@ async function onImportFile(event: Event) {
   busy.value = true
   try {
     if (tab.value === 'monthly') {
-      const saved = await exerciseApi.importMonthlyVolumes(props.exerciseId, file)
+      const saved = await importMonthlyVolumes.mutateAsync({
+        exerciseId: props.exerciseId,
+        file,
+      })
       emit('update:monthly', saved)
     } else if (tab.value === 'daily') {
-      const saved = await exerciseApi.importDailyVolumes(props.exerciseId, file)
+      const saved = await importDailyVolumes.mutateAsync({
+        exerciseId: props.exerciseId,
+        file,
+      })
       emit('update:daily', saved)
     } else {
-      const saved = await exerciseApi.importSlotVolumes(props.exerciseId, file)
+      const saved = await importSlotVolumes.mutateAsync({
+        exerciseId: props.exerciseId,
+        file,
+      })
       emit('update:slot', saved)
     }
     toast.success('Excel imported.')

@@ -88,7 +88,7 @@ const toolkitDetailRows = computed(() => {
   ]
 })
 
-const sessionReadOnly = computed(() => Boolean(currentSession.value))
+const sessionReadOnly = computed(() => currentSession.value?.status === 'running')
 
 const busy = computed(
   () =>
@@ -102,13 +102,14 @@ const busy = computed(
 watch(
   currentQuery.data,
   (session) => {
-    sessionStore.setCurrentSession(session ?? null)
-    if (!session) return
-    setFieldValue('toolkitId', session.toolkitId)
-    setFieldValue('subtaskId', session.subtaskId ?? '')
-    setFieldValue('processedVolume', session.processedVolume ?? '')
-    setFieldValue('reference', session.reference)
-    setFieldValue('remarks', session.remarks)
+    const running = session?.status === 'running' ? session : null
+    sessionStore.setCurrentSession(running)
+    if (!running) return
+    setFieldValue('toolkitId', running.toolkitId)
+    setFieldValue('subtaskId', running.subtaskId ?? '')
+    setFieldValue('processedVolume', running.processedVolume ?? '')
+    setFieldValue('reference', running.reference)
+    setFieldValue('remarks', running.remarks)
   },
   { immediate: true },
 )
@@ -156,10 +157,12 @@ const startSession = handleSubmit(async (values) => {
 
 async function pauseSession() {
   if (!currentSession.value) return
+  const pausedToolkitId = currentSession.value.toolkitId
   try {
-    const session = await mutations.pause.mutateAsync(currentSession.value.id)
-    sessionStore.setCurrentSession(session)
-    toast.success('Session paused. Resume it from Timer or manage paused sessions from the list.')
+    await mutations.pause.mutateAsync(currentSession.value.id)
+    sessionStore.setCurrentSession(null)
+    resetSessionForm(pausedToolkitId)
+    toast.success('Session paused. Start a new session, or resume it from Paused Sessions.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not pause the session.')
   }
@@ -287,7 +290,7 @@ function onToolkitChange(event: Event) {
 
     <PausedSessionsDialog
       v-model:open="pausedDialogOpen"
-      :has-running-session="Boolean(currentSession)"
+      :has-running-session="currentSession?.status === 'running'"
     />
   </div>
 </template>

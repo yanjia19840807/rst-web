@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ListLoading from '@/components/ListLoading.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -12,47 +13,60 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { governanceApi } from '../api'
-import type { DashboardResponse } from '../types'
+import { useDashboardQuery } from '../api/queries'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 
-const loading = ref(true)
-const data = ref<DashboardResponse | null>(null)
-const selectedGbs = ref('GBS China')
+const selectedGbs = ref('')
 const comparisonView = ref('Completion by domain')
 
-const centerOptions = computed(() => Object.keys(data.value?.domainsByCenter ?? {}))
-const domainRows = computed(() => data.value?.domainsByCenter[selectedGbs.value] ?? [])
+const dashboardQuery = useDashboardQuery()
+const data = computed(() => dashboardQuery.data.value)
+const loading = computed(() => dashboardQuery.isPending.value && !dashboardQuery.data.value)
+const centerOptions = computed(() => data.value?.centers.map((row) => row.center) ?? [])
+const domainRows = computed(() => {
+  if (!data.value || !selectedGbs.value) return []
+  return data.value.domainsByCenter[selectedGbs.value] ?? []
+})
 const chartBars = computed(() =>
   (data.value?.centers ?? []).map((c) => ({
     label: c.center.replace('GBS ', ''),
-    height: Math.max(28, Math.round((Number.parseFloat(c.completionPct) / 100) * 100)),
+    height: Math.max(28, Math.round((Number.parseFloat(c.completionPct) / 100) * 100) || 28),
     onTrack: c.onTrack,
   })),
 )
 
-async function load() {
-  loading.value = true
-  try {
-    data.value = await governanceApi.dashboard()
-    const centers = Object.keys(data.value.domainsByCenter)
-    if (centers.length && !centers.includes(selectedGbs.value)) {
+watch(
+  centerOptions,
+  (centers) => {
+    if (!centers.length) {
+      selectedGbs.value = ''
+      return
+    }
+    if (!centers.includes(selectedGbs.value)) {
       selectedGbs.value = centers[0]!
     }
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load dashboard.')
-  } finally {
-    loading.value = false
-  }
-}
+  },
+  { immediate: true },
+)
 
-onMounted(load)
+watch(
+  () => dashboardQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        dashboardQuery.error.value instanceof Error
+          ? dashboardQuery.error.value.message
+          : 'Could not load dashboard.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
   <div class="space-y-4">
-    <div v-if="loading" class="text-sm text-muted-foreground">Loading dashboard…</div>
+    <ListLoading v-if="loading" class="h-48" />
 
     <template v-else-if="data">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -133,6 +147,11 @@ onMounted(load)
                     <TableCell>{{ row.completed6To12Months }}</TableCell>
                     <TableCell>{{ row.completedOver1Year }}</TableCell>
                   </TableRow>
+                  <TableRow v-if="!data.centers.length">
+                    <TableCell colspan="8" class="h-24 text-center text-muted-foreground">
+                      No ACTIVE Timesheet obligations found.
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -161,7 +180,6 @@ onMounted(load)
                   class="h-9 w-full rounded-md border border-input bg-card px-2.5 text-sm text-foreground"
                 >
                   <option>Completion by domain</option>
-                  <option>Aging by domain</option>
                 </select>
               </FilterField>
             </div>
@@ -186,7 +204,11 @@ onMounted(load)
                   </TableRow>
                   <TableRow v-if="!domainRows.length">
                     <TableCell colspan="5" class="h-20 text-center text-muted-foreground">
-                      No domain rows for {{ selectedGbs }}.
+                      {{
+                        selectedGbs
+                          ? `No domain rows for ${selectedGbs}.`
+                          : 'No ACTIVE Timesheet obligations found.'
+                      }}
                     </TableCell>
                   </TableRow>
                 </TableBody>

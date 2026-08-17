@@ -44,44 +44,85 @@ export type RepositoryRow = {
   pl3: string
   toolkit: string
   kpi: string
-  deliveryHc: string
-  rsHc: string
-  support: string
-  capacityCreation: string
-  capacityPct: string
-  volumeYoY: string
+  deliveryHc: number | string | null
+  rsHc: number | string | null
+  support: number | string | null
+  capacityCreation: number | string | null
+  capacityPct: number | string | null
+  volumeYoY: string | null
   submittedDate: string
+}
+
+export type RepositoryListQuery = {
+  exerciseCode?: string
+  center?: string
+  domain?: string
+  pl3Name?: string
+  toolkitName?: string
+  submittedFrom?: string
+  submittedTo?: string
+  page?: number
+  pageSize?: number
+}
+
+export type RepositoryListView = {
+  items: RepositoryRow[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  centers: string[]
+  domains: string[]
+  pl3Names: string[]
+  toolkitNames: string[]
 }
 
 export type SupportCategorySummary = {
   category: string
-  supportFte: string
+  supportFte: number | string | null
   pctOfSupport: string
   topActivity: string
 }
 
 export type SupportRow = {
   exerciseNo: string
-  gbsSite: string
+  center: string
   domain: string
   pl3: string
   toolkit: string
   standardCategory: string
   activity: string
   frequency: string
-  volume: string
+  volume: number | string | null
   uom: string
-  fte: string
+  fte: number | string | null
   comments: string
   submittedDate: string
 }
 
+export type SupportRepositoryQuery = {
+  center?: string
+  category?: string
+  toolkitName?: string
+  submittedFrom?: string
+  submittedTo?: string
+  page?: number
+  pageSize?: number
+}
+
 export type SupportRepositoryResponse = {
-  totalSupportFte: string
+  totalSupportFte: number | string | null
   topCategory: string
-  topCategoryFte: string
+  topCategoryFte: number | string | null
   categorySummaries: SupportCategorySummary[]
-  rows: SupportRow[]
+  items: SupportRow[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  centers: string[]
+  categories: string[]
+  toolkitNames: string[]
 }
 
 export type ValidationWorkflowRow = {
@@ -92,29 +133,86 @@ export type ValidationWorkflowRow = {
   toolkit: string
   currentStep: string
   currentOwner: string
-  agingDays: number
-  capacityCreation: string
-  capacityPct: string
-  volumeYoY: string
+  agingDays: number | null
+  capacityCreation: number | string | null
+  capacityPct: number | string | null
+  volumeYoY: string | null
   submittedDate: string
+}
+
+export type ValidationWorkflowQuery = {
+  exerciseCode?: string
+  center?: string
+  domain?: string
+  pl3Name?: string
+  toolkitName?: string
+  agingMinDays?: number
+  submittedFrom?: string
+  submittedTo?: string
+  page?: number
+  pageSize?: number
+}
+
+export type ValidationWorkflowView = {
+  items: ValidationWorkflowRow[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  centers: string[]
+  domains: string[]
+  pl3Names: string[]
+  toolkitNames: string[]
 }
 
 export type BenchmarkRow = {
   gbs: string
   sharedKpiLine: string
   domain: string
+  pl1?: string
+  pl2?: string
   pl3: string
-  cycleTime: string
-  dailyCapacityPerAgent: string
-  productionSupportRatio: string
-  capacityCreation: string
+  pl3Code: string
+  cycleTimeSeconds: number | string | null
+  dailyCapacityPerAgent: number | string | null
+  productionSupportRatioPct: number | string | null
+  capacityCreation: number | string | null
+  deliveryHc?: number | string | null
+  productionSupport?: number | string | null
+  submittedDate?: string
 }
 
-export type BenchmarkingResponse = {
+export type BenchmarkPl3Option = {
+  code: string
+  name: string
+}
+
+export type BenchmarkingQuery = {
+  center?: string
+  domain?: string
+  pl1?: string
+  pl2?: string
+  pl3Code?: string
+  submittedFrom?: string
+  submittedTo?: string
+  page?: number
+  pageSize?: number
+}
+
+export type BenchmarkingView = {
   selectedPl3: string
-  bestDailyCapacity: string
+  bestDailyCapacity: number | string | null
   bestDailyCapacityHint: string
-  medianCycleTime: string
-  productionSupportRatio: string
-  rows: BenchmarkRow[]
+  medianCycleTimeSeconds: number | string | null
+  productionSupportRatioPct: number | string | null
+  items: BenchmarkRow[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  centers: string[]
+  domains: string[]
+  pl1Names: string[]
+  pl2Names: string[]
+  pl3Options: BenchmarkPl3Option[]
 }

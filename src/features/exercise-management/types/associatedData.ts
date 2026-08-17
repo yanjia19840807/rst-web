@@ -94,14 +94,12 @@ export interface Holiday {
   holidayDate: string
   holidayName: string
   holidayType: string
-  workingDayOverride: boolean | null
 }
 
 export interface HolidayRequest {
   holidayDate: string
   holidayName: string
   holidayType: string
-  workingDayOverride?: boolean | null
 }
 
 export interface CalendarView {
@@ -211,6 +209,20 @@ export interface ExerciseTmsSession {
 export interface PatchExerciseTmsSessionResult {
   session: ExerciseTmsSession
   baseline: CycleTimeBaseline | null
+}
+
+export interface CycleTimeChartPoint {
+  date: string
+  dailyMedianSeconds: number
+  rollingMedianSeconds: number
+  outlier: boolean
+}
+
+export interface CycleTimeChartView {
+  points: CycleTimeChartPoint[]
+  upperControlLimitSeconds: number | null
+  lowerControlLimitSeconds: number | null
+  sampleCount: number
 }
 
 export interface PageResult<T> {

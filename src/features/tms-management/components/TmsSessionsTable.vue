@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListLoading from '@/components/ListLoading.vue'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -103,8 +104,8 @@ const colCount = () => 11 + (props.showAgent ? 1 : 0)
           </TableCell>
         </TableRow>
         <TableRow v-if="pending">
-          <TableCell :colspan="colCount()" class="h-24 text-center text-muted-foreground">
-            Loading sessions…
+          <TableCell :colspan="colCount()" class="p-0">
+            <ListLoading />
           </TableCell>
         </TableRow>
       </TableBody>

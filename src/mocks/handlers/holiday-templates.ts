@@ -6,6 +6,7 @@ import type {
 } from '@/features/holiday-templates/types'
 
 import { holidayTemplateStore } from '../data/holiday-templates'
+import { pageOf, pageParams } from '../page'
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ detail, title: detail }, { status })
@@ -18,10 +19,11 @@ export const holidayTemplateHandlers = [
     const year = url.searchParams.get('year')
     const status = url.searchParams.get('status')
     let rows = holidayTemplateStore.list()
-    if (center) rows = rows.filter((r) => r.center.toLowerCase().includes(center))
+    if (center) rows = rows.filter((r) => r.center.toLowerCase() === center)
     if (year) rows = rows.filter((r) => String(r.year) === year)
     if (status) rows = rows.filter((r) => r.status === status)
-    return HttpResponse.json(rows)
+    const paged = pageOf(rows, pageParams(url).page, pageParams(url).pageSize)
+    return HttpResponse.json(paged)
   }),
 
   http.get('*/api/v1/holiday-templates/by-center', ({ request }) => {
@@ -31,8 +33,8 @@ export const holidayTemplateHandlers = [
     const match = holidayTemplateStore
       .list()
       .map((s) => holidayTemplateStore.get(s.id)!)
-      .find((t) => t.center === center && t.year === year && t.status === 'PUBLISHED')
-    if (!match) return problem(404, 'No published holiday template for this Center and year.')
+      .find((t) => t.center === center && t.year === year)
+    if (!match) return problem(404, 'No holiday template for this Center and year.')
     return HttpResponse.json(match)
   }),
 
@@ -59,17 +61,16 @@ export const holidayTemplateHandlers = [
       center: body.center,
       year: body.year,
       defaultWeekendCode: body.defaultWeekendCode || 'SAT_SUN',
-      status: 'DRAFT',
-      version: 0,
+      status: 'PUBLISHED',
+      version: 1,
       sourceNote: body.sourceNote ?? null,
-      publishedAt: null,
+      publishedAt: now,
       updatedAt: now,
       workingDaysPerYear: 261,
       holidays: (body.holidays ?? []).map((h) => ({
         id: crypto.randomUUID(),
         holidayDate: h.holidayDate,
         holidayName: h.holidayName,
-        workingDayOverride: h.workingDayOverride ?? null,
       })),
     })
     return HttpResponse.json(created, { status: 201 })
@@ -79,35 +80,23 @@ export const holidayTemplateHandlers = [
     const existing = holidayTemplateStore.get(String(params.id))
     if (!existing) return problem(404, 'Holiday template was not found.')
     const body = (await request.json()) as HolidayTemplateUpdateRequest
+    const now = new Date().toISOString()
     const updated = holidayTemplateStore.upsert({
       ...existing,
       defaultWeekendCode: body.defaultWeekendCode || existing.defaultWeekendCode,
       sourceNote: body.sourceNote !== undefined ? body.sourceNote : existing.sourceNote,
-      status: 'DRAFT',
-      updatedAt: new Date().toISOString(),
+      status: 'PUBLISHED',
+      version: existing.version + 1,
+      publishedAt: now,
+      updatedAt: now,
       holidays:
         body.holidays?.map((h) => ({
           id: crypto.randomUUID(),
           holidayDate: h.holidayDate,
           holidayName: h.holidayName,
-          workingDayOverride: h.workingDayOverride ?? null,
         })) ?? existing.holidays,
     })
     return HttpResponse.json(updated)
-  }),
-
-  http.post('*/api/v1/holiday-templates/:id/publish', ({ params }) => {
-    const existing = holidayTemplateStore.get(String(params.id))
-    if (!existing) return problem(404, 'Holiday template was not found.')
-    if (!existing.holidays.length) return problem(422, 'Publish requires at least one holiday line.')
-    const published = holidayTemplateStore.upsert({
-      ...existing,
-      status: 'PUBLISHED',
-      version: existing.version + 1,
-      publishedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    })
-    return HttpResponse.json(published)
   }),
 
   http.delete('*/api/v1/holiday-templates/:id', ({ params }) => {
@@ -124,9 +113,14 @@ export const holidayTemplateHandlers = [
     })
   }),
 
-  http.post('*/api/v1/holiday-templates/:id/import', ({ params }) => {
-    const existing = holidayTemplateStore.get(String(params.id))
-    if (!existing) return problem(404, 'Holiday template was not found.')
-    return HttpResponse.json(existing)
+  http.post('*/api/v1/holiday-templates/parse', async ({ request }) => {
+    const url = new URL(request.url)
+    const year = Number(url.searchParams.get('year'))
+    if (!Number.isFinite(year) || year < 2000) {
+      return problem(422, 'year must be between 2000 and 2100.')
+    }
+    return HttpResponse.json([
+      { holidayDate: `${year}-01-01`, holidayName: "New Year's Day" },
+    ])
   }),
 ]

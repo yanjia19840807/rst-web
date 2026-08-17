@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -16,36 +17,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { governanceApi } from '../api'
-import type { SupportRepositoryResponse } from '../types'
+import { useSupportRepositoryQuery } from '../api/queries'
+import type { SupportRepositoryQuery } from '../types'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
-import TablePager from '@/components/TablePager.vue'
 
-const GBS_OPTIONS = ['All', 'GBS China', 'GBS India', 'GBS Philippines']
-const CATEGORY_OPTIONS = [
-  'All',
-  'Communication',
-  'Operational Support',
-  'Quality Control',
-  'Reporting',
-  'Small Process',
-  'Training',
-  'Tool Support',
-  'Project Support',
-  'Performance Monitoring',
-]
-const TOOLKIT_OPTIONS = [
-  'All',
-  'Bank Rec Manual Check',
-  'Bank Rec Auto Exception',
-  'AP Classification Desk',
-  'Booking Amendment Desk',
-  'Blank Forms Desk',
-]
-
-const loading = ref(true)
-const data = ref<SupportRepositoryResponse | null>(null)
 const gbsFilter = ref('All')
 const categoryFilter = ref('All')
 const toolkitFilter = ref('All')
@@ -60,44 +36,43 @@ const pageSize = ref(10)
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-const filteredRows = computed(() => {
-  const rows = data.value?.rows ?? []
-  return rows.filter((row) => {
-    const gbsOk = gbsFilter.value === 'All' || row.gbsSite === gbsFilter.value
-    const categoryOk =
-      categoryFilter.value === 'All' || row.standardCategory === categoryFilter.value
-    const toolkitOk = toolkitFilter.value === 'All' || row.toolkit === toolkitFilter.value
-    const fromOk = !submittedFrom.value || row.submittedDate >= submittedFrom.value
-    const toOk = !submittedTo.value || row.submittedDate <= submittedTo.value
-    return gbsOk && categoryOk && toolkitOk && fromOk && toOk
-  })
-})
+const listQuery = computed<SupportRepositoryQuery>(() => ({
+  center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
+  category: categoryFilter.value === 'All' ? undefined : categoryFilter.value,
+  toolkitName: toolkitFilter.value === 'All' ? undefined : toolkitFilter.value,
+  submittedFrom: submittedFrom.value || undefined,
+  submittedTo: submittedTo.value || undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
 
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value) || 1)),
-)
-const visibleRows = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return filteredRows.value.slice(start, start + pageSize.value)
-})
+const supportQuery = useSupportRepositoryQuery(listQuery)
+const data = computed(() => supportQuery.data.value)
+const rows = computed(() => data.value?.items ?? [])
+const total = computed(() => data.value?.total ?? 0)
+const categorySummaries = computed(() => data.value?.categorySummaries ?? [])
+const gbsOptions = computed(() => ['All', ...(data.value?.centers ?? [])])
+const categoryOptions = computed(() => ['All', ...(data.value?.categories ?? [])])
+const toolkitOptions = computed(() => ['All', ...(data.value?.toolkitNames ?? [])])
+const loading = computed(() => supportQuery.isPending.value && !supportQuery.data.value)
+
+function formatHc(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return n.toFixed(2)
+}
+
+function formatVolume(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return Number.isInteger(n) ? String(n) : n.toFixed(2)
+}
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
-const hasActiveFilters = computed(
-  () =>
-    gbsFilter.value !== 'All' ||
-    categoryFilter.value !== 'All' ||
-    toolkitFilter.value !== 'All' ||
-    Boolean(submittedFrom.value || submittedTo.value),
-)
 
-function clearFilters() {
-  gbsFilter.value = 'All'
-  categoryFilter.value = 'All'
-  toolkitFilter.value = 'All'
-  submittedFrom.value = ''
-  submittedTo.value = ''
-  draftSubmittedFrom.value = ''
-  draftSubmittedTo.value = ''
+function resetPage() {
   page.value = 1
 }
 
@@ -112,7 +87,7 @@ function toggleMoreFilters() {
 function applyAdvancedFilters() {
   submittedFrom.value = draftSubmittedFrom.value
   submittedTo.value = draftSubmittedTo.value
-  page.value = 1
+  resetPage()
   moreFiltersOpen.value = false
 }
 
@@ -120,18 +95,37 @@ function exportSupport() {
   toast.success('Export prepared (prototype)')
 }
 
-async function load() {
-  loading.value = true
-  try {
-    data.value = await governanceApi.supportRepository()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load support repository.')
-  } finally {
-    loading.value = false
-  }
-}
+watch(
+  [gbsFilter, categoryFilter, toolkitFilter, submittedFrom, submittedTo],
+  () => {
+    resetPage()
+  },
+)
 
-onMounted(load)
+watch(
+  () => ({
+    totalPages: supportQuery.data.value?.totalPages,
+    fetching: supportQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watch(
+  () => supportQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        supportQuery.error.value instanceof Error
+          ? supportQuery.error.value.message
+          : 'Could not load support repository.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
@@ -140,53 +134,31 @@ onMounted(load)
       <Button @click="exportSupport">Export Support Repository</Button>
     </PageActions>
 
-    <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
-      <div class="flex flex-wrap items-end gap-2.5">
-        <FilterField label="GBS Center">
-          <select
-            v-model="gbsFilter"
-            :class="[selectClass, 'w-[180px]']"
-            @change="page = 1"
-          >
-            <option v-for="option in GBS_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <FilterField label="Standard Category">
-          <select
-            v-model="categoryFilter"
-            :class="[selectClass, 'w-[200px]']"
-            @change="page = 1"
-          >
-            <option v-for="option in CATEGORY_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <FilterField label="Toolkit">
-          <select
-            v-model="toolkitFilter"
-            :class="[selectClass, 'w-[210px]']"
-            @change="page = 1"
-          >
-            <option v-for="option in TOOLKIT_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <Button variant="outline" @click="toggleMoreFilters">
-          More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-        </Button>
-      </div>
-      <button
-        v-if="hasActiveFilters"
-        type="button"
-        class="shrink-0 text-sm font-semibold text-primary"
-        @click="clearFilters"
-      >
-        Clear All
-      </button>
+    <div class="mb-3 flex flex-wrap items-end gap-2.5">
+      <FilterField label="GBS Center">
+        <select v-model="gbsFilter" :class="[selectClass, 'w-[180px]']">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <FilterField label="Standard Category">
+        <select v-model="categoryFilter" :class="[selectClass, 'w-[200px]']">
+          <option v-for="option in categoryOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <FilterField label="Toolkit">
+        <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']">
+          <option v-for="option in toolkitOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <Button variant="outline" @click="toggleMoreFilters">
+        More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
+      </Button>
     </div>
 
     <div
@@ -228,12 +200,7 @@ onMounted(load)
         v-if="submittedFrom"
         type="button"
         class="rounded-full border bg-card px-2.5 py-1 text-xs"
-        @click="
-          () => {
-            submittedFrom = ''
-            page = 1
-          }
-        "
+        @click="submittedFrom = ''"
       >
         Submitted after: {{ submittedFrom }} ×
       </button>
@@ -241,26 +208,21 @@ onMounted(load)
         v-if="submittedTo"
         type="button"
         class="rounded-full border bg-card px-2.5 py-1 text-xs"
-        @click="
-          () => {
-            submittedTo = ''
-            page = 1
-          }
-        "
+        @click="submittedTo = ''"
       >
         Submitted before: {{ submittedTo }} ×
       </button>
     </div>
 
-    <div v-if="loading" class="text-sm text-muted-foreground">Loading support repository…</div>
+    <ListLoading v-if="loading" class="h-48" />
 
     <template v-else-if="data">
       <div class="grid gap-3 sm:grid-cols-2">
-        <MetricCard label="Total support FTE" :value="data.totalSupportFte" />
+        <MetricCard label="Total support FTE" :value="formatHc(data.totalSupportFte)" />
         <MetricCard
           label="Top category"
-          :value="data.topCategory"
-          :hint="data.topCategoryFte"
+          :value="data.topCategory || '—'"
+          :hint="data.topCategoryFte == null || data.topCategoryFte === '' ? undefined : `${formatHc(data.topCategoryFte)} FTE`"
         />
       </div>
 
@@ -280,14 +242,16 @@ onMounted(load)
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow
-                  v-for="row in data.categorySummaries"
-                  :key="row.category"
-                >
+                <TableRow v-for="row in categorySummaries" :key="row.category">
                   <TableCell>{{ row.category }}</TableCell>
-                  <TableCell>{{ row.supportFte }}</TableCell>
-                  <TableCell>{{ row.pctOfSupport }}</TableCell>
-                  <TableCell>{{ row.topActivity }}</TableCell>
+                  <TableCell>{{ formatHc(row.supportFte) }}</TableCell>
+                  <TableCell>{{ row.pctOfSupport || '—' }}</TableCell>
+                  <TableCell>{{ row.topActivity || '—' }}</TableCell>
+                </TableRow>
+                <TableRow v-if="!categorySummaries.length">
+                  <TableCell colspan="4" class="h-24 text-center text-muted-foreground">
+                    No support categories found.
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -305,7 +269,7 @@ onMounted(load)
               <TableHeader>
                 <TableRow>
                   <TableHead>Exercise NO</TableHead>
-                  <TableHead>GBS Site</TableHead>
+                  <TableHead>GBS Center</TableHead>
                   <TableHead>Domain</TableHead>
                   <TableHead>PL3</TableHead>
                   <TableHead>Toolkit</TableHead>
@@ -319,21 +283,21 @@ onMounted(load)
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="(row, index) in visibleRows" :key="`${row.exerciseNo}-${index}`">
+                <TableRow v-for="(row, index) in rows" :key="`${row.exerciseNo}-${row.activity}-${index}`">
                   <TableCell>{{ row.exerciseNo }}</TableCell>
-                  <TableCell>{{ row.gbsSite }}</TableCell>
+                  <TableCell>{{ row.center }}</TableCell>
                   <TableCell>{{ row.domain }}</TableCell>
                   <TableCell>{{ row.pl3 }}</TableCell>
                   <TableCell>{{ row.toolkit }}</TableCell>
                   <TableCell>{{ row.standardCategory }}</TableCell>
                   <TableCell>{{ row.activity }}</TableCell>
                   <TableCell>{{ row.frequency }}</TableCell>
-                  <TableCell>{{ row.volume }}</TableCell>
+                  <TableCell>{{ formatVolume(row.volume) }}</TableCell>
                   <TableCell>{{ row.uom }}</TableCell>
-                  <TableCell>{{ row.fte }}</TableCell>
-                  <TableCell>{{ row.comments }}</TableCell>
+                  <TableCell>{{ formatHc(row.fte) }}</TableCell>
+                  <TableCell>{{ row.comments || '—' }}</TableCell>
                 </TableRow>
-                <TableRow v-if="!visibleRows.length">
+                <TableRow v-if="!rows.length">
                   <TableCell colspan="12" class="h-24 text-center text-muted-foreground">
                     No support rows found.
                   </TableCell>
@@ -342,8 +306,8 @@ onMounted(load)
             </Table>
           </div>
           <TablePager
-            :total="filteredRows.length"
-            :page="safePage"
+            :total="total"
+            :page="page"
             :page-size="pageSize"
             label="support rows"
             @update:page="page = $event"

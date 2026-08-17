@@ -139,7 +139,6 @@ function toRequest(): CalendarRequest {
         holidayDate: row.holidayDate,
         holidayName: row.holidayName,
         holidayType: row.source === 'Auto' ? 'BASELINE' : 'CUSTOM',
-        workingDayOverride: null,
       })),
   }
 }

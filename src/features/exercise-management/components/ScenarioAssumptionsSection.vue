@@ -26,6 +26,7 @@ export type ShiftDraft = {
 }
 
 defineProps<{
+  exerciseId: string
   readOnly: boolean
   busy: boolean
   rightSizingHc: number
@@ -88,9 +89,10 @@ function formatShiftTime(value?: string | null) {
 
       <SizingSimulationCharts
         v-if="sizingCompleted"
+        :exercise-id="exerciseId"
         :monthly="latestMonthlySizing"
         :daily="latestDailySizing"
-        :sla-target-ratio="teamSetup?.slaTargetRatio ?? null"
+        :team-setup="teamSetup"
       />
       <div
         v-else
@@ -268,7 +270,7 @@ function formatShiftTime(value?: string | null) {
             </div>
           </div>
         </div>
-        <SlotSimulationCharts :chart="latestSlotSimulation.chart" />
+        <SlotSimulationCharts :simulation="latestSlotSimulation" />
       </section>
     </section>
   </div>

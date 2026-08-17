@@ -53,9 +53,7 @@ export const tmsHandlers = [
 
   http.get('*/api/v1/tms/sessions/current', async () => {
     await delay(80)
-    return HttpResponse.json(
-      sessions.find((session) => session.status === 'running' || session.status === 'paused') ?? null,
-    )
+    return HttpResponse.json(sessions.find((session) => session.status === 'running') ?? null)
   }),
 
   http.get('*/api/v1/tms/sessions', async ({ request }) => {
@@ -89,8 +87,8 @@ export const tmsHandlers = [
 
   http.post('*/api/v1/tms/sessions', async ({ request }) => {
     await delay(180)
-    if (sessions.some((session) => session.status === 'running' || session.status === 'paused')) {
-      return problem(409, 'Resume/end or discard the active session before starting another.')
+    if (sessions.some((session) => session.status === 'running')) {
+      return problem(409, 'Pause or end the running session before starting another.')
     }
 
     const input = (await request.json()) as StartSessionInput
@@ -148,14 +146,8 @@ export const tmsHandlers = [
 
   http.post('*/api/v1/tms/sessions/:id/resume', async ({ params }) => {
     await delay(140)
-    if (
-      sessions.some(
-        (candidate) =>
-          candidate.id !== params.id &&
-          (candidate.status === 'running' || candidate.status === 'paused'),
-      )
-    ) {
-      return problem(409, 'Resolve the active session before resuming another.')
+    if (sessions.some((candidate) => candidate.id !== params.id && candidate.status === 'running')) {
+      return problem(409, 'Pause or end the running session before resuming another.')
     }
     const session = sessions.find((item) => item.id === params.id)
     if (!session || session.status !== 'paused') {

@@ -3,7 +3,9 @@ import { ApiError, apiRequest } from '@/api/client'
 import type {
   HolidayTemplateCreateRequest,
   HolidayTemplateDetail,
-  HolidayTemplateSummary,
+  HolidayTemplateLine,
+  HolidayTemplateListQuery,
+  HolidayTemplateListView,
   HolidayTemplateUpdateRequest,
 } from './types'
 
@@ -28,14 +30,29 @@ async function downloadBlob(path: string, fallbackName: string) {
   URL.revokeObjectURL(url)
 }
 
+async function uploadExcel<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { detail?: string } | null
+    throw new ApiError(body?.detail || 'Import failed.', response.status)
+  }
+  return response.json() as Promise<T>
+}
+
 export const holidayTemplateApi = {
-  list: (params?: { center?: string; year?: number; status?: string }) => {
+  list: (params?: HolidayTemplateListQuery) => {
     const query = new URLSearchParams()
     if (params?.center) query.set('center', params.center)
     if (params?.year != null) query.set('year', String(params.year))
     if (params?.status) query.set('status', params.status)
-    const suffix = query.toString() ? `?${query}` : ''
-    return apiRequest<HolidayTemplateSummary[]>(`${BASE}${suffix}`)
+    query.set('page', String(params?.page ?? 1))
+    query.set('pageSize', String(params?.pageSize ?? 10))
+    return apiRequest<HolidayTemplateListView>(`${BASE}?${query.toString()}`)
   },
   get: (id: string) => apiRequest<HolidayTemplateDetail>(`${BASE}/${id}`),
   byCenter: (center: string, year: number) =>
@@ -52,22 +69,8 @@ export const holidayTemplateApi = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
-  publish: (id: string) =>
-    apiRequest<HolidayTemplateDetail>(`${BASE}/${id}/publish`, { method: 'POST' }),
   remove: (id: string) => apiRequest<void>(`${BASE}/${id}`, { method: 'DELETE' }),
   exportBlank: () => downloadBlob(`${BASE}/export-blank`, 'holiday-template-blank.xlsx'),
   export: (id: string) => downloadBlob(`${BASE}/${id}/export`, 'holiday-template.xlsx'),
-  importExcel: async (id: string, file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    const response = await fetch(`${API_BASE_URL}${BASE}/${id}/import`, {
-      method: 'POST',
-      body: form,
-    })
-    if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as { detail?: string } | null
-      throw new ApiError(body?.detail || 'Import failed.', response.status)
-    }
-    return response.json() as Promise<HolidayTemplateDetail>
-  },
+  parseExcel: (year: number, file: File) => uploadExcel<HolidayTemplateLine[]>(`${BASE}/parse?year=${year}`, file),
 }

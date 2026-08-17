@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
@@ -15,18 +15,25 @@ import { formatMonth } from '@/lib/datetime'
 
 import { exerciseApi } from '../api'
 import { useScenarioMutations } from '../api/mutations'
+import {
+  useCycleTimeActiveQuery,
+  useExerciseQuery,
+  useLatestDailySimulationQuery,
+  useLatestForecastQuery,
+  useLatestMonthlySizingQuery,
+  useLatestSlotSimulationQuery,
+  useScenarioQuery,
+  useSupportQuery,
+  useTeamSetupQuery,
+} from '../api/queries'
 import { deriveSlotPeriodLabel } from '../periodWindows'
 import { scenarioMetadataSchema } from '../schemas/scenario'
 import type {
-  CycleTimeBaseline,
-  DailySizingView,
-  Exercise,
   ForecastBundle,
   MonthlySizingView,
+  DailySizingView,
   Scenario,
   SlotSimulationView,
-  SupportItem,
-  TeamSetup,
 } from '../types'
 import ScenarioAssumptionsSection, { type ShiftDraft } from './ScenarioAssumptionsSection.vue'
 import ScenarioResultsPanel from './ScenarioResultsPanel.vue'
@@ -42,16 +49,36 @@ const route = useRoute()
 const router = useRouter()
 const { commitScenario, deleteScenario } = useScenarioMutations()
 const snapshotMode = computed(() => route.name === 'supervisor-scenario-snapshot')
-const loading = ref(true)
 const busy = ref(false)
 const deleteOpen = ref(false)
 const deletePending = computed(() => deleteScenario.isPending.value)
 const toolkitInfoOpen = ref(false)
-const exercise = ref<Exercise | null>(null)
-const scenario = ref<Scenario | null>(null)
-const teamSetup = ref<TeamSetup | null>(null)
-const support = ref<SupportItem[]>([])
-const cycleTime = ref<CycleTimeBaseline | null>(null)
+const hydratedKey = ref('')
+
+const exerciseQuery = useExerciseQuery(() => props.exerciseId)
+const scenarioQuery = useScenarioQuery(() => props.exerciseId, () => props.scenarioId)
+const teamSetupQuery = useTeamSetupQuery(() => props.exerciseId)
+const supportQuery = useSupportQuery(() => props.exerciseId)
+const cycleTimeQuery = useCycleTimeActiveQuery(() => props.exerciseId)
+const monthlyQuery = useLatestMonthlySizingQuery(() => props.exerciseId, () => props.scenarioId)
+const dailyQuery = useLatestDailySimulationQuery(() => props.exerciseId, () => props.scenarioId)
+const monthlyForecastQuery = useLatestForecastQuery(
+  () => props.exerciseId,
+  () => props.scenarioId,
+  'MONTHLY',
+)
+const dailyForecastQuery = useLatestForecastQuery(
+  () => props.exerciseId,
+  () => props.scenarioId,
+  'DAILY',
+)
+const slotQuery = useLatestSlotSimulationQuery(() => props.exerciseId, () => props.scenarioId)
+
+const exercise = computed(() => exerciseQuery.data.value ?? null)
+const scenario = computed(() => scenarioQuery.data.value ?? null)
+const teamSetup = computed(() => teamSetupQuery.data.value ?? null)
+const support = computed(() => supportQuery.data.value ?? [])
+const cycleTime = computed(() => cycleTimeQuery.data.value ?? null)
 
 const sizingCompleted = ref(false)
 const slotCompleted = ref(false)
@@ -248,62 +275,10 @@ watch(
       latestSlotSimulation.value = null
     }
   },
+  { flush: 'sync' },
 )
 
-async function load() {
-  loading.value = true
-  try {
-    ;[exercise.value, scenario.value] = await Promise.all([
-      exerciseApi.detail(props.exerciseId),
-      exerciseApi.getScenario(props.exerciseId, props.scenarioId),
-    ])
-    form.name = scenario.value.name
-    form.description = scenario.value.description ?? ''
-    const rs = scenario.value.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')
-    form.rightSizingHc = rs?.numericValue != null ? Number(rs.numericValue) : 0
-
-    const [ts, sp] = await Promise.all([
-      exerciseApi.getTeamSetup(props.exerciseId).catch(() => null),
-      exerciseApi.listSupport(props.exerciseId).catch(() => [] as SupportItem[]),
-    ])
-    teamSetup.value = ts
-    support.value = sp
-    try {
-      cycleTime.value = await exerciseApi.getActiveCycleTime(props.exerciseId)
-    } catch {
-      cycleTime.value = null
-    }
-
-    const savedShifts = scenario.value.shifts ?? []
-    shiftRows.value = savedShifts.length
-      ? savedShifts.map((s) => ({
-          shiftNo: s.shiftNo,
-          startTime: s.startTime.length === 5 ? `${s.startTime}:00` : s.startTime,
-          durationMinutes: s.durationMinutes,
-          headcount: Number(s.headcount),
-          worksOnWeekend: s.worksOnWeekend,
-        }))
-      : [
-          {
-            shiftNo: 1,
-            startTime: '',
-            durationMinutes: null,
-            headcount: null,
-            worksOnWeekend: false,
-          },
-        ]
-
-    // Reload only previously committed (Save) simulation outputs.
-    await loadSimulationResults()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load scenario.')
-    goBack()
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadSimulationResults() {
+async function loadSimulationResultsFromQueries() {
   sizingCompleted.value = false
   slotCompleted.value = false
   latestForecastBundle.value = null
@@ -311,12 +286,10 @@ async function loadSimulationResults() {
   latestDailySizing.value = null
   latestSlotSimulation.value = null
 
-  const [monthlySizing, dailySizing, monthlyForecast, dailyForecast] = await Promise.all([
-    exerciseApi.getLatestMonthlySizing(props.exerciseId, props.scenarioId).catch(() => null),
-    exerciseApi.getLatestDailySimulation(props.exerciseId, props.scenarioId).catch(() => null),
-    exerciseApi.getLatestForecast(props.exerciseId, props.scenarioId, 'MONTHLY').catch(() => null),
-    exerciseApi.getLatestForecast(props.exerciseId, props.scenarioId, 'DAILY').catch(() => null),
-  ])
+  const monthlySizing = monthlyQuery.data.value ?? null
+  const dailySizing = dailyQuery.data.value ?? null
+  const monthlyForecast = monthlyForecastQuery.data.value ?? null
+  const dailyForecast = dailyForecastQuery.data.value ?? null
 
   latestMonthlySizing.value = monthlySizing
   latestDailySizing.value = dailySizing
@@ -332,12 +305,84 @@ async function loadSimulationResults() {
 
   if (!hasSizing) return
 
-  const slot = await exerciseApi
-    .getLatestSlotSimulation(props.exerciseId, props.scenarioId)
-    .catch(() => null)
+  const slot = slotQuery.data.value ?? null
   latestSlotSimulation.value = slot
   slotCompleted.value = slot != null && (slot.rows?.length ?? 0) > 0
 }
+
+function applyScenarioToForm(value: Scenario) {
+  form.name = value.name
+  form.description = value.description ?? ''
+  const rs = value.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')
+  form.rightSizingHc = rs?.numericValue != null ? Number(rs.numericValue) : 0
+
+  const savedShifts = value.shifts ?? []
+  shiftRows.value = savedShifts.length
+    ? savedShifts.map((s) => ({
+        shiftNo: s.shiftNo,
+        startTime: s.startTime.length === 5 ? `${s.startTime}:00` : s.startTime,
+        durationMinutes: s.durationMinutes,
+        headcount: Number(s.headcount),
+        worksOnWeekend: s.worksOnWeekend,
+      }))
+    : [
+        {
+          shiftNo: 1,
+          startTime: '',
+          durationMinutes: null,
+          headcount: null,
+          worksOnWeekend: false,
+        },
+      ]
+}
+
+const queriesReady = computed(() => {
+  if (!exercise.value || !scenario.value) return false
+  return (
+    !teamSetupQuery.isPending.value &&
+    !supportQuery.isPending.value &&
+    !cycleTimeQuery.isPending.value &&
+    !monthlyQuery.isPending.value &&
+    !dailyQuery.isPending.value &&
+    !monthlyForecastQuery.isPending.value &&
+    !dailyForecastQuery.isPending.value &&
+    !slotQuery.isPending.value
+  )
+})
+
+const currentKey = computed(() => `${props.exerciseId}:${props.scenarioId}`)
+const loading = computed(() => hydratedKey.value !== currentKey.value)
+
+watch(currentKey, () => {
+  hydratedKey.value = ''
+  sizingCompleted.value = false
+  slotCompleted.value = false
+  latestForecastBundle.value = null
+  latestMonthlySizing.value = null
+  latestDailySizing.value = null
+  latestSlotSimulation.value = null
+})
+
+watch(
+  [queriesReady, currentKey],
+  ([ready, key]) => {
+    if (!ready || !scenario.value || hydratedKey.value === key) return
+    applyScenarioToForm(scenario.value)
+    loadSimulationResultsFromQueries()
+    hydratedKey.value = key
+  },
+  { immediate: true },
+)
+
+watch(
+  () => exerciseQuery.isError.value || scenarioQuery.isError.value,
+  (isError) => {
+    if (!isError) return
+    const error = exerciseQuery.error.value || scenarioQuery.error.value
+    toast.error(error instanceof Error ? error.message : 'Could not load scenario.')
+    goBack()
+  },
+)
 
 function isBlankShift(row: ShiftDraft) {
   return !row.startTime?.trim() && row.durationMinutes == null && row.headcount == null
@@ -406,7 +451,7 @@ async function save() {
       latestForecastBundle.value != null &&
       latestMonthlySizing.value != null &&
       latestDailySizing.value != null
-    scenario.value = await commitScenario.mutateAsync({
+    await commitScenario.mutateAsync({
       exerciseId: props.exerciseId,
       scenarioId: props.scenarioId,
       body: {
@@ -545,8 +590,6 @@ const scenarioInfoRows = computed(() => {
   }
   return rows
 })
-
-onMounted(load)
 </script>
 
 <template>
@@ -624,6 +667,7 @@ onMounted(load)
 
     <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
       <ScenarioAssumptionsSection
+        :exercise-id="exerciseId"
         :read-only="readOnly"
         :busy="busy"
         :right-sizing-hc="form.rightSizingHc"

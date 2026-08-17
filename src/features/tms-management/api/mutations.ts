@@ -22,7 +22,10 @@ export function useTmsSessionMutations() {
   const pause = useMutation({
     mutationFn: (id: string) =>
       apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/pause`, { method: 'POST' }),
-    onSuccess: refreshTmsData,
+    onSuccess: () => {
+      queryClient.setQueryData(tmsQueryKeys.current(), null)
+      refreshTmsData()
+    },
   })
 
   const resume = useMutation({

@@ -23,10 +23,9 @@ export const toolkitApi = {
     const name = query?.name?.trim()
     if (name) params.set('name', name)
     if (query?.pl3Name) params.set('pl3Name', query.pl3Name)
-    const search = params.toString()
-    return apiRequest<ToolkitListView>(
-      search ? `${supervisorToolkits}?${search}` : supervisorToolkits,
-    )
+    params.set('page', String(query?.page ?? 1))
+    params.set('pageSize', String(query?.pageSize ?? 10))
+    return apiRequest<ToolkitListView>(`${supervisorToolkits}?${params.toString()}`)
   },
   get: (id: string) => apiRequest<SupervisorToolkit>(`${supervisorToolkits}/${id}`),
   hierarchy: () => apiRequest<HierarchyOption[]>('/api/v1/timesheet/toolkit-hierarchy'),

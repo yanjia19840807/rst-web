@@ -18,25 +18,26 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatDate, formatDateTime, formatMonth } from '@/lib/datetime'
-import { approvalApi } from '@/features/approval/api'
+import { useApprovalMutations } from '@/features/approval/api/mutations'
+import { useApprovalDetailQuery } from '@/features/approval/api/queries'
 import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
 import ApprovalInProgressPanel from '@/features/approval/components/ApprovalInProgressPanel.vue'
 import { historyFromActions } from '@/features/approval/historyFromActions'
 import type { ApprovalDetailView } from '@/features/approval/types'
 
-import { exerciseApi } from '../api'
+import {
+  useCycleTimeActiveQuery,
+  useExerciseQuery,
+  useLatestDailySimulationQuery,
+  useLatestMonthlySizingQuery,
+  useLatestSlotSimulationQuery,
+  useScenarioQuery,
+  useSubmittedDetailsQuery,
+  useSupportQuery,
+  useTeamSetupQuery,
+} from '../api/queries'
 import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
-import type {
-  CycleTimeBaseline,
-  DailySizingView,
-  Exercise,
-  MonthlySizingView,
-  Scenario,
-  SlotSimulationView,
-  SubmittedDetails,
-  SupportItem,
-  TeamSetup,
-} from '../types'
+import type { SubmittedDetails } from '../types'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
@@ -52,24 +53,120 @@ const props = withDefaults(
 )
 
 const isApprover = computed(() => props.mode === 'approver')
-const resolvedExerciseId = computed(() => exercise.value?.id ?? props.exerciseId ?? '')
 
 const router = useRouter()
-const loading = ref(true)
-const pending = ref(false)
 const pageTab = ref<'exercise' | 'approval'>('exercise')
 const simulationTab = ref<'sizing' | 'slot'>('sizing')
 const toolkitInfoOpen = ref(false)
-const details = ref<SubmittedDetails | null>(null)
-const exercise = ref<Exercise | null>(null)
-const scenario = ref<Scenario | null>(null)
-const teamSetup = ref<TeamSetup | null>(null)
-const support = ref<SupportItem[]>([])
-const cycleTime = ref<CycleTimeBaseline | null>(null)
-const latestMonthlySizing = ref<MonthlySizingView | null>(null)
-const latestDailySizing = ref<DailySizingView | null>(null)
-const latestSlotSimulation = ref<SlotSimulationView | null>(null)
 const comments = ref('')
+const redirected = ref(false)
+
+const { approve, returnToSupervisor } = useApprovalMutations()
+const approvalQuery = useApprovalDetailQuery(
+  () => props.submissionId,
+  isApprover,
+)
+const submittedQuery = useSubmittedDetailsQuery(
+  () => props.exerciseId,
+  () => !isApprover.value,
+)
+
+function toSubmittedDetails(detail: ApprovalDetailView): SubmittedDetails {
+  return {
+    exerciseId: detail.exerciseId,
+    exerciseCode: detail.exerciseCode,
+    workflowStatus: detail.workflowStatus,
+    submittedAt: detail.submittedAt,
+    scenarioId: detail.scenarioId,
+    scenarioName: detail.scenarioName,
+    submissionId: detail.submissionId,
+    submissionCode: detail.submissionCode,
+    submissionStatus: detail.submissionStatus,
+    currentStep: detail.currentStep,
+    requiredRole: detail.requiredRole,
+    remarks: detail.remarks,
+    scopes: detail.scopes,
+    workflowInstanceId: detail.workflowInstanceId,
+    workflowStatusLabel: detail.workflowStatusLabel,
+    steps: detail.steps,
+    actions: detail.actions,
+    canDecide: detail.canDecide,
+    workspace: detail.workspace,
+  }
+}
+
+const details = computed(() => {
+  if (isApprover.value) {
+    const approval = approvalQuery.data.value
+    return approval ? toSubmittedDetails(approval) : null
+  }
+  return submittedQuery.data.value ?? null
+})
+
+const resolvedExerciseId = computed(
+  () => details.value?.exerciseId || props.exerciseId || '',
+)
+const exerciseQuery = useExerciseQuery(resolvedExerciseId)
+const exercise = computed(() => exerciseQuery.data.value ?? null)
+const scenarioId = computed(
+  () => details.value?.scenarioId || exercise.value?.officialScenarioId || undefined,
+)
+const scenarioQuery = useScenarioQuery(resolvedExerciseId, scenarioId, { optional: true })
+const teamSetupQuery = useTeamSetupQuery(resolvedExerciseId)
+const supportQuery = useSupportQuery(resolvedExerciseId)
+const cycleTimeQuery = useCycleTimeActiveQuery(resolvedExerciseId)
+const monthlyQuery = useLatestMonthlySizingQuery(resolvedExerciseId, scenarioId)
+const dailyQuery = useLatestDailySimulationQuery(resolvedExerciseId, scenarioId)
+const slotQuery = useLatestSlotSimulationQuery(resolvedExerciseId, scenarioId)
+
+const scenario = computed(() => scenarioQuery.data.value ?? null)
+const teamSetup = computed(() => teamSetupQuery.data.value ?? null)
+const support = computed(() => supportQuery.data.value ?? [])
+const cycleTime = computed(() => cycleTimeQuery.data.value ?? null)
+const latestMonthlySizing = computed(() => monthlyQuery.data.value ?? null)
+const latestDailySizing = computed(() => dailyQuery.data.value ?? null)
+const latestSlotSimulation = computed(() => slotQuery.data.value ?? null)
+const pending = computed(
+  () => approve.isPending.value || returnToSupervisor.isPending.value,
+)
+
+const primaryPending = computed(() =>
+  isApprover.value
+    ? approvalQuery.isPending.value && !approvalQuery.data.value
+    : submittedQuery.isPending.value && !submittedQuery.data.value,
+)
+const loading = computed(
+  () =>
+    primaryPending.value ||
+    (Boolean(resolvedExerciseId.value) &&
+      exerciseQuery.isPending.value &&
+      !exerciseQuery.data.value),
+)
+
+function redirectAway(message: string) {
+  if (redirected.value) return
+  redirected.value = true
+  toast.error(message)
+  void router.push({
+    name: isApprover.value ? 'approver-queue' : 'supervisor-exercise-detail',
+    params: isApprover.value ? undefined : { id: props.exerciseId },
+  })
+}
+
+watch(
+  () =>
+    isApprover.value
+      ? approvalQuery.isError.value
+      : submittedQuery.isError.value ||
+        (Boolean(props.exerciseId) && exerciseQuery.isError.value),
+  (isError) => {
+    if (!isError) return
+    const error = isApprover.value
+      ? approvalQuery.error.value
+      : submittedQuery.error.value || exerciseQuery.error.value
+    redirectAway(error instanceof Error ? error.message : 'Could not load submitted details.')
+  },
+)
 
 const workspace = computed(() => {
   const raw = details.value?.workspace
@@ -236,117 +333,37 @@ const resultRows = computed(() => [
   { key: 'capacityCreation', label: 'Capacity Creation', value: formatSigned(capacityCreation.value) },
 ])
 
-async function loadOfficialScenario(exerciseId: string, scenarioId: string) {
-  scenario.value = await exerciseApi.getScenario(exerciseId, scenarioId).catch(() => null)
-  const [ts, sp, monthly, daily, slot] = await Promise.all([
-    exerciseApi.getTeamSetup(exerciseId).catch(() => null),
-    exerciseApi.listSupport(exerciseId).catch(() => [] as SupportItem[]),
-    exerciseApi.getLatestMonthlySizing(exerciseId, scenarioId).catch(() => null),
-    exerciseApi.getLatestDailySimulation(exerciseId, scenarioId).catch(() => null),
-    exerciseApi.getLatestSlotSimulation(exerciseId, scenarioId).catch(() => null),
-  ])
-  teamSetup.value = ts
-  support.value = sp
-  latestMonthlySizing.value = monthly
-  latestDailySizing.value = daily
-  latestSlotSimulation.value = slot
-  try {
-    cycleTime.value = await exerciseApi.getActiveCycleTime(exerciseId)
-  } catch {
-    cycleTime.value = null
-  }
-}
-
-function applyApprovalDetail(detail: ApprovalDetailView) {
-  details.value = {
-    exerciseId: detail.exerciseId,
-    exerciseCode: detail.exerciseCode,
-    workflowStatus: detail.workflowStatus,
-    submittedAt: detail.submittedAt,
-    scenarioId: detail.scenarioId,
-    scenarioName: detail.scenarioName,
-    submissionId: detail.submissionId,
-    submissionCode: detail.submissionCode,
-    submissionStatus: detail.submissionStatus,
-    currentStep: detail.currentStep,
-    requiredRole: detail.requiredRole,
-    remarks: detail.remarks,
-    scopes: detail.scopes,
-    workflowInstanceId: detail.workflowInstanceId,
-    workflowStatusLabel: detail.workflowStatusLabel,
-    steps: detail.steps,
-    actions: detail.actions,
-    canDecide: detail.canDecide,
-    workspace: detail.workspace,
-  }
-}
-
-async function load() {
-  loading.value = true
-  try {
-    if (isApprover.value) {
-      if (!props.submissionId) throw new Error('Missing submission id.')
-      const approval = await approvalApi.detail(props.submissionId)
-      applyApprovalDetail(approval)
-      exercise.value = await exerciseApi.detail(approval.exerciseId)
-    } else {
-      if (!props.exerciseId) throw new Error('Missing exercise id.')
-      ;[details.value, exercise.value] = await Promise.all([
-        exerciseApi.submittedDetails(props.exerciseId),
-        exerciseApi.detail(props.exerciseId),
-      ])
-    }
-    const scenarioId = details.value?.scenarioId || exercise.value?.officialScenarioId
-    const exerciseId = exercise.value?.id
-    if (scenarioId && exerciseId) {
-      await loadOfficialScenario(exerciseId, scenarioId)
-    }
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load submitted details.')
-    void router.push({
-      name: isApprover.value ? 'approver-queue' : 'supervisor-exercise-detail',
-      params: isApprover.value ? undefined : { id: props.exerciseId },
-    })
-  } finally {
-    loading.value = false
-  }
-}
-
 async function onApprove() {
   if (!props.submissionId || pending.value) return
-  pending.value = true
   try {
-    applyApprovalDetail(
-      await approvalApi.approve(props.submissionId, {
+    await approve.mutateAsync({
+      submissionId: props.submissionId,
+      body: {
         comments: comments.value.trim() || null,
         requestId: crypto.randomUUID(),
-      }),
-    )
+      },
+    })
     toast.success('Submission approved.')
     comments.value = ''
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Approve failed.')
-  } finally {
-    pending.value = false
   }
 }
 
 async function onReturn(reason: string) {
   if (!props.submissionId || pending.value) return
-  pending.value = true
   try {
-    applyApprovalDetail(
-      await approvalApi.returnToSupervisor(props.submissionId, {
+    await returnToSupervisor.mutateAsync({
+      submissionId: props.submissionId,
+      body: {
         comments: reason,
         requestId: crypto.randomUUID(),
-      }),
-    )
+      },
+    })
     comments.value = ''
     toast.success('Returned to supervisor.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Return failed.')
-  } finally {
-    pending.value = false
   }
 }
 
@@ -400,14 +417,6 @@ function downloadSummary() {
   link.click()
   URL.revokeObjectURL(url)
 }
-
-watch(
-  () => [props.exerciseId, props.submissionId, props.mode] as const,
-  () => {
-    void load()
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
@@ -604,9 +613,10 @@ watch(
 
             <SizingSimulationCharts
               v-if="simulationTab === 'sizing' && hasSizing"
+              :exercise-id="resolvedExerciseId"
               :monthly="latestMonthlySizing"
               :daily="latestDailySizing"
-              :sla-target-ratio="teamSetup?.slaTargetRatio ?? null"
+              :team-setup="teamSetup"
             />
             <div
               v-else-if="simulationTab === 'sizing'"
@@ -658,7 +668,7 @@ watch(
                   </div>
                 </div>
               </div>
-              <SlotSimulationCharts :chart="latestSlotSimulation.chart" />
+              <SlotSimulationCharts :simulation="latestSlotSimulation" />
             </template>
             <div
               v-else

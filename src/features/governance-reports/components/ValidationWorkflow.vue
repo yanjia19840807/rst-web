@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
+import { watchDebounced } from '@vueuse/core'
 
+import ListLoading from '@/components/ListLoading.vue'
+import TablePager from '@/components/TablePager.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,38 +19,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { governanceApi } from '../api'
-import type { ValidationWorkflowRow } from '../types'
+import { useValidationWorkflowQuery } from '../api/queries'
+import type { ValidationWorkflowQuery } from '../types'
 import CapacityCell from './CapacityCell.vue'
 import FilterField from './FilterField.vue'
-import TablePager from '@/components/TablePager.vue'
 
-const GBS_OPTIONS = ['All', 'GBS China', 'GBS Philippines', 'GBS Portugal', 'GBS India']
-const DOMAIN_OPTIONS = ['All', 'FINANCE', 'CUSTOMER CARE']
-const PL3_OPTIONS = [
-  'All',
-  'BANK RECONCILIATION',
-  'BOOKING AMENDMENTS',
-  'BLANK FORMS',
-  'AP CLASSIFICATION',
-]
-const TOOLKIT_OPTIONS = [
-  'All',
-  'Bank Rec Manual Check',
-  'Bank Rec Auto Exception',
-  'AP Classification Desk',
-  'Booking Amendment Desk',
-  'Blank Forms Desk',
-]
-
-const loading = ref(true)
-const rows = ref<ValidationWorkflowRow[]>([])
 const exerciseFilter = ref('')
+const appliedExerciseCode = ref('')
 const gbsFilter = ref('All')
 const domainFilter = ref('All')
 const pl3Filter = ref('All')
 const toolkitFilter = ref('All')
-const agingMaxDays = ref('')
+const agingMinDays = ref('')
+const appliedAgingMinDays = ref<number | undefined>(undefined)
 const submittedFrom = ref('')
 const submittedTo = ref('')
 const draftSubmittedFrom = ref('')
@@ -59,58 +43,46 @@ const pageSize = ref(10)
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-const filteredRows = computed(() =>
-  rows.value.filter((row) => {
-    const exerciseOk = row.exerciseNo
-      .toLowerCase()
-      .includes(exerciseFilter.value.trim().toLowerCase())
-    const gbsOk = gbsFilter.value === 'All' || row.gbs === gbsFilter.value
-    const domainOk = domainFilter.value === 'All' || row.domain === domainFilter.value
-    const pl3Ok = pl3Filter.value === 'All' || row.pl3 === pl3Filter.value
-    const toolkitOk = toolkitFilter.value === 'All' || row.toolkit === toolkitFilter.value
-    const agingOk =
-      !agingMaxDays.value || row.agingDays <= Number.parseInt(agingMaxDays.value, 10)
-    const fromOk = !submittedFrom.value || row.submittedDate >= submittedFrom.value
-    const toOk = !submittedTo.value || row.submittedDate <= submittedTo.value
-    return exerciseOk && gbsOk && domainOk && pl3Ok && toolkitOk && agingOk && fromOk && toOk
-  }),
-)
+const listQuery = computed<ValidationWorkflowQuery>(() => ({
+  exerciseCode: appliedExerciseCode.value || undefined,
+  center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
+  domain: domainFilter.value === 'All' ? undefined : domainFilter.value,
+  pl3Name: pl3Filter.value === 'All' ? undefined : pl3Filter.value,
+  toolkitName: toolkitFilter.value === 'All' ? undefined : toolkitFilter.value,
+  agingMinDays: appliedAgingMinDays.value,
+  submittedFrom: submittedFrom.value || undefined,
+  submittedTo: submittedTo.value || undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
 
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value) || 1)),
-)
-const visibleRows = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return filteredRows.value.slice(start, start + pageSize.value)
-})
+const workflowQuery = useValidationWorkflowQuery(listQuery)
+const rows = computed(() => workflowQuery.data.value?.items ?? [])
+const total = computed(() => workflowQuery.data.value?.total ?? 0)
+const gbsOptions = computed(() => ['All', ...(workflowQuery.data.value?.centers ?? [])])
+const domainOptions = computed(() => ['All', ...(workflowQuery.data.value?.domains ?? [])])
+const pl3Options = computed(() => ['All', ...(workflowQuery.data.value?.pl3Names ?? [])])
+const toolkitOptions = computed(() => ['All', ...(workflowQuery.data.value?.toolkitNames ?? [])])
+const loading = computed(() => workflowQuery.isPending.value && !workflowQuery.data.value)
 
-const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
-const hasActiveFilters = computed(
-  () =>
-    Boolean(exerciseFilter.value) ||
-    gbsFilter.value !== 'All' ||
-    domainFilter.value !== 'All' ||
-    pl3Filter.value !== 'All' ||
-    toolkitFilter.value !== 'All' ||
-    Boolean(agingMaxDays.value) ||
-    Boolean(submittedFrom.value || submittedTo.value),
-)
+function formatPct(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(String(value).replace(/[%+]/g, ''))
+  if (!Number.isFinite(n)) return '—'
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
+}
+
+function displayOrDash(value: string | null | undefined) {
+  return value && value.trim() ? value : '—'
+}
 
 function agingVariant(days: number): 'secondary' | 'destructive' {
   return days >= 14 ? 'destructive' : 'secondary'
 }
 
-function clearFilters() {
-  exerciseFilter.value = ''
-  gbsFilter.value = 'All'
-  domainFilter.value = 'All'
-  pl3Filter.value = 'All'
-  toolkitFilter.value = 'All'
-  agingMaxDays.value = ''
-  submittedFrom.value = ''
-  submittedTo.value = ''
-  draftSubmittedFrom.value = ''
-  draftSubmittedTo.value = ''
+const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
+
+function resetPage() {
   page.value = 1
 }
 
@@ -125,88 +97,112 @@ function toggleMoreFilters() {
 function applyAdvancedFilters() {
   submittedFrom.value = draftSubmittedFrom.value
   submittedTo.value = draftSubmittedTo.value
-  page.value = 1
+  resetPage()
   moreFiltersOpen.value = false
 }
 
-async function load() {
-  loading.value = true
-  try {
-    rows.value = await governanceApi.validationWorkflow()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load validation workflow.')
-  } finally {
-    loading.value = false
-  }
-}
+watch(
+  [gbsFilter, domainFilter, pl3Filter, toolkitFilter, submittedFrom, submittedTo],
+  () => {
+    resetPage()
+  },
+)
 
-onMounted(load)
+watch(
+  () => ({
+    totalPages: workflowQuery.data.value?.totalPages,
+    fetching: workflowQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watchDebounced(
+  exerciseFilter,
+  (value) => {
+    appliedExerciseCode.value = value
+    resetPage()
+  },
+  { debounce: 400 },
+)
+
+watchDebounced(
+  agingMinDays,
+  (value) => {
+    const n = Number.parseInt(String(value).trim(), 10)
+    appliedAgingMinDays.value = Number.isFinite(n) && n >= 0 ? n : undefined
+    resetPage()
+  },
+  { debounce: 400 },
+)
+
+watch(
+  () => workflowQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        workflowQuery.error.value instanceof Error
+          ? workflowQuery.error.value.message
+          : 'Could not load validation workflow.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
   <div>
-    <div class="mb-3 flex justify-end">
-      <Badge variant="secondary">Reminder handled outside the tool</Badge>
-    </div>
-
     <Card>
       <CardHeader>
-        <div class="flex items-center justify-between gap-3">
-          <CardTitle class="text-base">RST Stuck In Validation</CardTitle>
-          <button
-            v-if="hasActiveFilters"
-            type="button"
-            class="shrink-0 text-sm font-semibold text-primary"
-            @click="clearFilters"
-          >
-            Clear All
-          </button>
-        </div>
+        <CardTitle class="text-base">RST Stuck In Validation</CardTitle>
       </CardHeader>
       <CardContent class="space-y-3">
         <div class="flex flex-wrap items-end gap-2.5">
           <FilterField label="Exercise No">
             <Input
-              v-model="exerciseFilter" class="w-[180px]"
+              v-model="exerciseFilter"
+              class="w-[180px]"
               placeholder="Search exercise no"
-              @update:model-value="page = 1"
             />
           </FilterField>
           <FilterField label="GBS Center">
-            <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']" @change="page = 1">
-              <option v-for="option in GBS_OPTIONS" :key="option" :value="option">
+            <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']">
+              <option v-for="option in gbsOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
           <FilterField label="Domain">
-            <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']" @change="page = 1">
-              <option v-for="option in DOMAIN_OPTIONS" :key="option" :value="option">
+            <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']">
+              <option v-for="option in domainOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
           <FilterField label="PL3">
-            <select v-model="pl3Filter" :class="[selectClass, 'w-[200px]']" @change="page = 1">
-              <option v-for="option in PL3_OPTIONS" :key="option" :value="option">
+            <select v-model="pl3Filter" :class="[selectClass, 'w-[200px]']">
+              <option v-for="option in pl3Options" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
           <FilterField label="Toolkit">
-            <select v-model="toolkitFilter" :class="[selectClass, 'w-[200px]']" @change="page = 1">
-              <option v-for="option in TOOLKIT_OPTIONS" :key="option" :value="option">
+            <select v-model="toolkitFilter" :class="[selectClass, 'w-[200px]']">
+              <option v-for="option in toolkitOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
-          <FilterField label="Aging (max days)">
+          <FilterField label="Aging (min days)">
             <Input
-              v-model="agingMaxDays"
+              v-model="agingMinDays"
               type="number"
-              min="0" class="w-[110px]"
+              min="0"
+              class="w-[110px]"
               placeholder="e.g. 14"
-              @update:model-value="page = 1"
             />
           </FilterField>
           <Button variant="outline" @click="toggleMoreFilters">
@@ -253,12 +249,7 @@ onMounted(load)
             v-if="submittedFrom"
             type="button"
             class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="
-              () => {
-                submittedFrom = ''
-                page = 1
-              }
-            "
+            @click="submittedFrom = ''"
           >
             Submitted after: {{ submittedFrom }} ×
           </button>
@@ -266,12 +257,7 @@ onMounted(load)
             v-if="submittedTo"
             type="button"
             class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="
-              () => {
-                submittedTo = ''
-                page = 1
-              }
-            "
+            @click="submittedTo = ''"
           >
             Submitted before: {{ submittedTo }} ×
           </button>
@@ -296,29 +282,35 @@ onMounted(load)
             </TableHeader>
             <TableBody>
               <TableRow v-if="loading">
-                <TableCell colspan="11" class="h-24 text-center text-muted-foreground">
-                  Loading validation workflow…
+                <TableCell colspan="11" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
               <template v-else>
-                <TableRow v-for="row in visibleRows" :key="row.exerciseNo">
+                <TableRow v-for="row in rows" :key="row.exerciseNo">
                   <TableCell>{{ row.exerciseNo }}</TableCell>
-                  <TableCell>{{ row.gbs }}</TableCell>
-                  <TableCell>{{ row.domain }}</TableCell>
-                  <TableCell>{{ row.pl3 }}</TableCell>
-                  <TableCell>{{ row.toolkit }}</TableCell>
-                  <TableCell>{{ row.currentStep }}</TableCell>
-                  <TableCell>{{ row.currentOwner }}</TableCell>
+                  <TableCell>{{ displayOrDash(row.gbs) }}</TableCell>
+                  <TableCell>{{ displayOrDash(row.domain) }}</TableCell>
+                  <TableCell>{{ displayOrDash(row.pl3) }}</TableCell>
+                  <TableCell>{{ displayOrDash(row.toolkit) }}</TableCell>
+                  <TableCell>{{ displayOrDash(row.currentStep) }}</TableCell>
+                  <TableCell>{{ displayOrDash(row.currentOwner) }}</TableCell>
                   <TableCell>
-                    <Badge :variant="agingVariant(row.agingDays)">{{ row.agingDays }} days</Badge>
+                    <Badge
+                      v-if="row.agingDays != null"
+                      :variant="agingVariant(row.agingDays)"
+                    >
+                      {{ row.agingDays }} days
+                    </Badge>
+                    <span v-else>—</span>
                   </TableCell>
                   <TableCell>
                     <CapacityCell :value="row.capacityCreation" />
                   </TableCell>
-                  <TableCell>{{ row.capacityPct }}</TableCell>
-                  <TableCell>{{ row.volumeYoY }}</TableCell>
+                  <TableCell>{{ formatPct(row.capacityPct) }}</TableCell>
+                  <TableCell>{{ row.volumeYoY || '—' }}</TableCell>
                 </TableRow>
-                <TableRow v-if="!visibleRows.length">
+                <TableRow v-if="!rows.length">
                   <TableCell colspan="11" class="h-24 text-center text-muted-foreground">
                     No stuck exercises found.
                   </TableCell>
@@ -329,8 +321,8 @@ onMounted(load)
         </div>
 
         <TablePager
-          :total="filteredRows.length"
-          :page="safePage"
+          :total="total"
+          :page="page"
           :page-size="pageSize"
           label="stuck exercises"
           @update:page="page = $event"

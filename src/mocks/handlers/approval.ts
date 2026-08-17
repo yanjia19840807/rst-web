@@ -11,6 +11,7 @@ import type { Exercise, SubmittedDetails } from '@/features/exercise-management/
 import { exercises } from '../data/supervisor'
 import { ensureShell, exerciseShells } from '../data/exercise-store'
 import { buildApprovalWorkspace } from '../approvalWorkspace'
+import { pageOf, pageParams } from '../page'
 
 /** Submission is open for review. Query status=AWAITING is accepted as an alias for OPEN. */
 function isOpenStatus(status: string) {
@@ -285,8 +286,9 @@ export const approvalHandlers = [
     if (!completed) {
       items.sort((a, b) => (b.agingDays ?? 0) - (a.agingDays ?? 0))
     }
+    const paged = pageOf(items, pageParams(url).page, pageParams(url).pageSize)
     return HttpResponse.json({
-      items,
+      ...paged,
       metrics: queueMetrics(awaiting),
       toolkitNames: uniqueNames(source, 'toolkitName'),
       pl3Names: uniqueNames(source, 'pl3Name'),

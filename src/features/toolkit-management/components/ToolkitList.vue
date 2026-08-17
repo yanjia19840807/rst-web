@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
@@ -31,10 +32,13 @@ const pageSize = ref(10)
 const listQuery = computed<ToolkitListQuery>(() => ({
   name: appliedName.value.trim() || undefined,
   pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+  page: page.value,
+  pageSize: pageSize.value,
 }))
 
 const toolkitsQuery = useSupervisorToolkitsQuery(listQuery)
 const toolkits = computed(() => toolkitsQuery.data.value?.items ?? [])
+const total = computed(() => toolkitsQuery.data.value?.total ?? 0)
 const pl3Options = computed(() => [
   'All PL3',
   ...(toolkitsQuery.data.value?.pl3Names ?? []),
@@ -43,15 +47,6 @@ const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.d
 
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
-
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(toolkits.value.length / pageSize.value) || 1)),
-)
-
-const pagedRows = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return toolkits.value.slice(start, start + pageSize.value)
-})
 
 watch(pl3Filter, () => {
   page.value = 1
@@ -64,6 +59,18 @@ watchDebounced(
     page.value = 1
   },
   { debounce: 400 },
+)
+
+watch(
+  () => ({
+    totalPages: toolkitsQuery.data.value?.totalPages,
+    fetching: toolkitsQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
 )
 
 watch(
@@ -132,7 +139,7 @@ function createExercise(toolkit: SupervisorToolkit) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="toolkit in pagedRows" :key="toolkit.id">
+              <TableRow v-for="toolkit in toolkits" :key="toolkit.id">
                 <TableCell>{{ toolkit.name }}</TableCell>
                 <TableCell>{{ toolkit.center }}</TableCell>
                 <TableCell>{{ toolkit.domain }}</TableCell>
@@ -173,14 +180,14 @@ function createExercise(toolkit: SupervisorToolkit) {
                   </div>
                 </TableCell>
               </TableRow>
-              <TableRow v-if="!loading && !pagedRows.length">
+              <TableRow v-if="!loading && !toolkits.length">
                 <TableCell colspan="8" class="h-24 text-center text-muted-foreground">
                   No Toolkit is currently available.
                 </TableCell>
               </TableRow>
               <TableRow v-if="loading">
-                <TableCell colspan="8" class="h-24 text-center text-muted-foreground">
-                  Loading toolkits…
+                <TableCell colspan="8" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -188,8 +195,8 @@ function createExercise(toolkit: SupervisorToolkit) {
         </div>
 
         <TablePager
-          :total="toolkits.length"
-          :page="safePage"
+          :total="total"
+          :page="page"
           :page-size="pageSize"
           label="toolkits"
           @update:page="page = $event"

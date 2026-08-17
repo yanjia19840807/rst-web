@@ -10,6 +10,7 @@ import type {
   UpdateExercisePeriodsResult,
   CycleTimeBaseline,
   CycleTimeBaselineFile,
+  CycleTimeChartView,
   DailyVolume,
   DailyVolumeRequest,
   Exercise,
@@ -84,24 +85,26 @@ async function uploadVolumeExcel<T>(exerciseId: string, suffix: string, file: Fi
 
 function exerciseListQuery(params?: ExerciseListQuery) {
   const search = new URLSearchParams()
-  if (!params) return ''
-  if (params.tab) search.set('tab', params.tab)
-  const exerciseCode = params.exerciseCode?.trim()
-  if (exerciseCode) search.set('exerciseCode', exerciseCode)
-  if (params.toolkitName) search.set('toolkitName', params.toolkitName)
-  if (params.pl3Name) search.set('pl3Name', params.pl3Name)
-  if (params.workflowStatus) search.set('workflowStatus', params.workflowStatus)
-  if (params.reviewStage) search.set('reviewStage', params.reviewStage)
-  if (params.handler) search.set('handler', params.handler)
-  if (params.officialScenario) search.set('officialScenario', params.officialScenario)
-  if (params.createdFrom) search.set('createdFrom', params.createdFrom)
-  if (params.createdTo) search.set('createdTo', params.createdTo)
-  if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
-  if (params.submittedTo) search.set('submittedTo', params.submittedTo)
-  if (params.archivedFrom) search.set('archivedFrom', params.archivedFrom)
-  if (params.archivedTo) search.set('archivedTo', params.archivedTo)
-  const query = search.toString()
-  return query ? `?${query}` : ''
+  if (params) {
+    if (params.tab) search.set('tab', params.tab)
+    const exerciseCode = params.exerciseCode?.trim()
+    if (exerciseCode) search.set('exerciseCode', exerciseCode)
+    if (params.toolkitName) search.set('toolkitName', params.toolkitName)
+    if (params.pl3Name) search.set('pl3Name', params.pl3Name)
+    if (params.workflowStatus) search.set('workflowStatus', params.workflowStatus)
+    if (params.reviewStage) search.set('reviewStage', params.reviewStage)
+    if (params.handler) search.set('handler', params.handler)
+    if (params.officialScenario) search.set('officialScenario', params.officialScenario)
+    if (params.createdFrom) search.set('createdFrom', params.createdFrom)
+    if (params.createdTo) search.set('createdTo', params.createdTo)
+    if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
+    if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+    if (params.archivedFrom) search.set('archivedFrom', params.archivedFrom)
+    if (params.archivedTo) search.set('archivedTo', params.archivedTo)
+  }
+  search.set('page', String(params?.page ?? 1))
+  search.set('pageSize', String(params?.pageSize ?? 10))
+  return `?${search.toString()}`
 }
 
 export const exerciseApi = {
@@ -256,6 +259,8 @@ export const exerciseApi = {
       `${exercisePath(exerciseId, '/cycle-time/sessions')}?${params}`,
     )
   },
+  getCycleTimeChart: (exerciseId: string) =>
+    apiRequest<CycleTimeChartView>(exercisePath(exerciseId, '/cycle-time/chart')),
   patchExerciseTmsSession: (
     exerciseId: string,
     sessionNo: string,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListLoading from '@/components/ListLoading.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -198,8 +199,8 @@ const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
           </TableCell>
         </TableRow>
         <TableRow v-if="loading">
-          <TableCell :colspan="colspan()" class="h-24 text-center text-muted-foreground">
-            Loading exercises…
+          <TableCell :colspan="colspan()" class="p-0">
+            <ListLoading />
           </TableCell>
         </TableRow>
       </TableBody>

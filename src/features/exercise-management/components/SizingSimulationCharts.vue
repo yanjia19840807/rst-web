@@ -17,7 +17,17 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
-import type { DailySizingView, MonthlySizingView } from '../types'
+import { useDailyVolumesQuery, useMonthlyVolumesQuery } from '../api/queries'
+import {
+  backlogAgingDays,
+  dayKey,
+  monthKey,
+  monthlyOtFte,
+  monthlySlaPercents,
+  n,
+  slaGoalDays,
+} from '../sizingChartMath'
+import type { DailySizingView, MonthlySizingView, TeamSetup } from '../types'
 
 use([
   CanvasRenderer,
@@ -37,204 +47,370 @@ type ChartOption = ComposeOption<
 >
 
 const props = defineProps<{
+  exerciseId?: string
   monthly: MonthlySizingView | null
   daily: DailySizingView | null
-  slaTargetRatio: number | null
+  teamSetup: TeamSetup | null
 }>()
 
-const primary = 'hsl(var(--primary))'
-const destructive = 'hsl(var(--destructive))'
-const mutedBar = 'hsl(var(--muted-foreground) / 0.35)'
-const foreground = 'hsl(var(--foreground))'
-const okGreen = 'hsl(142 60% 40%)'
-const border = 'hsl(var(--border))'
+const monthlyVolumesQuery = useMonthlyVolumesQuery(() => props.exerciseId)
+const dailyVolumesQuery = useDailyVolumesQuery(() => props.exerciseId)
 
-function num(value: number | string | null | undefined): number {
-  const n = Number(value)
-  return Number.isFinite(n) ? n : 0
+function themeColor(cssVar: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim()
+  return value || fallback
 }
 
-const hasMonthly = computed(() => (props.monthly?.rows?.length ?? 0) > 0)
-const hasDaily = computed(() => (props.daily?.rows?.length ?? 0) > 0)
+const palette = computed(() => ({
+  volume: themeColor('--chart-1', '#071d49'),
+  forecast: themeColor('--chart-3', '#79a6d2'),
+  overtime: themeColor('--chart-5', '#4e7d69'),
+  overcapacity: themeColor('--chart-4', '#da291c'),
+  maxOt: themeColor('--chart-2', '#315f9b'),
+  minHc: themeColor('--chart-2', '#315f9b'),
+  axis: themeColor('--foreground', '#14233a'),
+  border: themeColor('--border', '#d4dde9'),
+}))
+
+const hasMonthly = computed(
+  () =>
+    (props.monthly?.rows?.length ?? 0) > 0 || (monthlyVolumesQuery.data.value?.length ?? 0) > 0,
+)
+const hasDailySimulation = computed(() => (props.daily?.rows?.length ?? 0) > 0)
+const hasDaily = computed(
+  () => hasDailySimulation.value || (dailyVolumesQuery.data.value?.length ?? 0) > 0,
+)
 
 const monthlyOption = computed<ChartOption>(() => {
-  const rows = [...(props.monthly?.rows ?? [])].sort((a, b) => a.month.localeCompare(b.month))
-  const categories = rows.map((row) => row.month)
-  const volumes = rows.map((row) => num(row.manualVolume))
-  const rsHc = rows.map((row) => num(row.rightSizingHc))
-  const gaps = rows.map((row) =>
-    Math.max(0, num(row.nominalHcWithoutOt) - num(row.rightSizingHc)),
+  const colors = palette.value
+  const setup = props.teamSetup
+  const sizingByMonth = new Map(
+    (props.monthly?.rows ?? []).map((row) => [monthKey(row.month), row]),
   )
-  const barColors = rows.map((row) =>
-    num(row.nominalHcWithOt) > num(row.rightSizingHc) ? destructive : primary,
+  const actualByMonth = new Map(
+    (monthlyVolumesQuery.data.value ?? []).map((row) => [
+      monthKey(row.month),
+      row.actualVolume == null ? null : n(row.actualVolume),
+    ]),
   )
-  const rsLine = rsHc[0] ?? 0
+  const months = [...new Set([...actualByMonth.keys(), ...sizingByMonth.keys()])].sort()
+
+  const overcapacity: (number | null)[] = []
+  const maxOvertime: (number | null)[] = []
+  const weekdaysOt: (number | null)[] = []
+  const maxHc: (number | null)[] = []
+  const rsHc: (number | null)[] = []
+  const minHc: (number | null)[] = []
+  const volume: (number | null)[] = []
+  const forecast: (number | null)[] = []
+
+  for (const month of months) {
+    const actual = actualByMonth.get(month)
+    const row = sizingByMonth.get(month)
+    volume.push(actual ?? (row ? n(row.forecastVolume) : null))
+    forecast.push(actual == null && row ? n(row.forecastVolume) : null)
+    if (!row || !setup) {
+      overcapacity.push(null)
+      maxOvertime.push(null)
+      weekdaysOt.push(null)
+      maxHc.push(null)
+      rsHc.push(null)
+      minHc.push(null)
+      continue
+    }
+    const ot = monthlyOtFte({
+      manualVolume: n(row.manualVolume),
+      workdays: n(row.workdays),
+      weekendDays: n(row.weekendDays),
+      cycleTimeSeconds: n(row.cycleTimeSeconds),
+      rightSizingHc: n(row.rightSizingHc),
+      workingHoursPerDay: n(setup.workingHoursPerDay),
+      availabilityRatio: n(setup.availabilityRatio),
+      capacityRatio: n(setup.capacityRatio),
+      maxOvertimeMinutes: n(setup.maxOvertimeMinutes),
+      weekendShiftHc: n(setup.weekendShiftHc),
+    })
+    overcapacity.push(ot.overcapacity)
+    maxOvertime.push(ot.maxOvertime)
+    weekdaysOt.push(ot.weekdaysOvertime)
+    maxHc.push(n(row.nominalHcWithoutOt))
+    rsHc.push(n(row.rightSizingHc))
+    minHc.push(n(row.nominalHcWithOt))
+  }
+
+  const fteBar = (
+    name: string,
+    data: (number | null)[],
+    color: string,
+  ): BarSeriesOption => ({
+    name,
+    type: 'bar',
+    yAxisIndex: 0,
+    data,
+    itemStyle: { color, borderRadius: [3, 3, 0, 0] },
+    barMaxWidth: 18,
+  })
+
+  const fteLine = (
+    name: string,
+    data: (number | null)[],
+    color: string,
+    dashed = false,
+  ): LineSeriesOption => ({
+    name,
+    type: 'line',
+    yAxisIndex: 0,
+    data,
+    symbol: 'none',
+    lineStyle: { width: 2, color, type: dashed ? 'dashed' : 'solid' },
+    itemStyle: { color },
+  })
 
   return {
-    color: [primary, foreground],
     tooltip: { trigger: 'axis' },
-    legend: {
-      data: ['Overcapacity / Weekday OT', 'Volume', 'Right Sizing HC'],
-      bottom: 0,
-      textStyle: { fontSize: 11 },
-    },
-    grid: { left: 48, right: 48, top: 24, bottom: 48 },
+    legend: { show: false },
+    grid: { left: 48, right: 52, top: 28, bottom: 16 },
     xAxis: {
       type: 'category',
-      data: categories,
-      axisLine: { lineStyle: { color: border } },
-      axisLabel: { color: foreground, fontSize: 11 },
+      data: months,
+      axisLine: { lineStyle: { color: colors.border } },
+      axisLabel: { color: colors.axis, fontSize: 11 },
     },
     yAxis: [
       {
         type: 'value',
-        name: 'Volume',
-        splitLine: { lineStyle: { color: border } },
-        axisLabel: { color: foreground, fontSize: 11 },
+        name: 'FTE',
+        splitLine: { lineStyle: { color: colors.border } },
+        axisLabel: { color: colors.axis, fontSize: 11 },
       },
       {
         type: 'value',
-        name: 'HC',
+        name: 'Volume',
         splitLine: { show: false },
-        axisLabel: { color: foreground, fontSize: 11 },
+        axisLabel: { color: colors.axis, fontSize: 11 },
       },
     ],
     series: [
-      {
-        name: 'Overcapacity / Weekday OT',
-        type: 'bar',
-        yAxisIndex: 1,
-        data: gaps.map((value, index) => ({
-          value,
-          itemStyle: { color: barColors[index], borderRadius: [4, 4, 0, 0] },
-        })),
-        barMaxWidth: 28,
-      },
+      fteBar('Overcapacity', overcapacity, colors.overcapacity),
+      fteBar('Max Overtime', maxOvertime, colors.maxOt),
+      fteBar('Weekdays Overtime', weekdaysOt, colors.overtime),
+      fteLine('Max HC (No OT)', maxHc, colors.axis),
+      fteLine('Right Size HC', rsHc, colors.overtime),
+      fteLine('Min HC (Full OT)', minHc, colors.minHc, true),
       {
         name: 'Volume',
         type: 'line',
-        yAxisIndex: 0,
-        data: volumes,
+        yAxisIndex: 1,
+        data: volume,
         symbol: 'circle',
         symbolSize: 7,
-        lineStyle: { width: 3, color: foreground },
-        itemStyle: { color: foreground },
+        lineStyle: { width: 3, color: colors.volume },
+        itemStyle: { color: colors.volume },
       },
       {
-        name: 'Right Sizing HC',
+        name: 'Volume Forecasted',
         type: 'line',
         yAxisIndex: 1,
-        data: categories.map(() => rsLine),
-        symbol: 'none',
-        lineStyle: { type: 'dashed', width: 2, color: foreground },
-        itemStyle: { color: foreground },
+        data: forecast,
+        symbol: 'circle',
+        symbolSize: 7,
+        lineStyle: { width: 2, color: colors.forecast },
+        itemStyle: { color: colors.forecast },
       },
     ],
   }
 })
 
 const dailyOption = computed<ChartOption>(() => {
-  const rows = [...(props.daily?.rows ?? [])].sort((a, b) =>
+  const colors = palette.value
+  const simRows = [...(props.daily?.rows ?? [])].sort((a, b) =>
     a.resultDate.localeCompare(b.resultDate),
   )
-  const categories = rows.map((row) => row.resultDate.slice(8))
-  const volumes = rows.map((row) => num(row.forecastVolume))
-  const backlog = rows.map((row) => num(row.backlogEnd))
+  const agingRows = simRows.map((row) => ({
+    holiday: Boolean(row.holiday),
+    workingDay: Boolean(row.workingDay),
+    backlogStart: n(row.backlogStart),
+    backlogEnd: n(row.backlogEnd),
+    standardCapacity: n(row.standardCapacity),
+    overtimeCapacity: n(row.overtimeCapacity),
+    manualVolume: n(row.manualVolume),
+    month: monthKey(row.resultDate),
+  }))
+  const aging = backlogAgingDays(agingRows)
+  const goal = slaGoalDays(
+    props.teamSetup?.slaTurnaroundMinutes,
+    props.teamSetup?.workingHoursPerDay,
+  )
+  const agingByDate = new Map(simRows.map((row, index) => [dayKey(row.resultDate), aging[index] ?? 0]))
+  const forecastByDate = new Map(
+    simRows.map((row) => [dayKey(row.resultDate), n(row.forecastVolume)]),
+  )
+  const actualByDate = new Map(
+    (dailyVolumesQuery.data.value ?? []).map((row) => [
+      dayKey(row.volumeDate),
+      row.actualVolume == null ? null : n(row.actualVolume),
+    ]),
+  )
+  const dates = [...new Set([...actualByDate.keys(), ...forecastByDate.keys()])].sort()
+
+  const actual: (number | null)[] = []
+  const forecast: (number | null)[] = []
+  const backlogOk: (number | null)[] = []
+  const backlogKo: (number | null)[] = []
+  const slaLine: (number | null)[] = []
+
+  for (const date of dates) {
+    const actualVolume = actualByDate.get(date)
+    const forecastVolume = forecastByDate.get(date)
+    const hasActual = actualVolume != null
+    actual.push(hasActual ? actualVolume : null)
+    forecast.push(!hasActual && forecastVolume != null ? forecastVolume : null)
+    const days = agingByDate.get(date)
+    if (days == null || goal == null) {
+      backlogOk.push(null)
+      backlogKo.push(null)
+      slaLine.push(null)
+      continue
+    }
+    slaLine.push(goal)
+    if (days > goal) {
+      backlogOk.push(null)
+      backlogKo.push(days)
+    } else {
+      backlogOk.push(days)
+      backlogKo.push(null)
+    }
+  }
 
   return {
     tooltip: { trigger: 'axis' },
-    legend: {
-      data: ['Forecast', 'Backlog'],
-      bottom: 0,
-      textStyle: { fontSize: 11 },
-    },
-    grid: { left: 48, right: 24, top: 24, bottom: 48 },
+    legend: { show: false },
+    grid: { left: 52, right: 52, top: 28, bottom: 16 },
     xAxis: {
       type: 'category',
-      data: categories,
-      axisLine: { lineStyle: { color: border } },
-      axisLabel: { color: foreground, fontSize: 10, interval: 0 },
+      data: dates.map((date) => date.slice(5)),
+      axisLine: { lineStyle: { color: colors.border } },
+      axisLabel: { color: colors.axis, fontSize: 10 },
     },
-    yAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: border } },
-      axisLabel: { color: foreground, fontSize: 11 },
-    },
+    yAxis: [
+      {
+        type: 'value',
+        name: 'Backlog aging in days',
+        splitLine: { lineStyle: { color: colors.border } },
+        axisLabel: { color: colors.axis, fontSize: 11 },
+      },
+      {
+        type: 'value',
+        name: 'Volume',
+        splitLine: { show: false },
+        axisLabel: { color: colors.axis, fontSize: 11 },
+      },
+    ],
     series: [
       {
-        name: 'Forecast',
+        name: 'Volume',
         type: 'bar',
-        data: volumes.map((value, index) => ({
-          value,
-          itemStyle: {
-            color: rows[index]?.workingDay ? foreground : mutedBar,
-            borderRadius: [4, 4, 0, 0],
-            opacity: rows[index]?.workingDay ? 0.85 : 0.45,
-          },
-        })),
+        yAxisIndex: 1,
+        data: actual,
+        itemStyle: { color: colors.volume, borderRadius: [4, 4, 0, 0] },
         barMaxWidth: 16,
       },
       {
-        name: 'Backlog',
+        name: 'Volume Forecasted',
+        type: 'bar',
+        yAxisIndex: 1,
+        data: forecast,
+        itemStyle: { color: colors.forecast, borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 16,
+        barGap: '-100%',
+      },
+      {
+        name: 'SLA Turntime',
         type: 'line',
-        data: backlog.map((value) => ({
-          value,
-          itemStyle: { color: value === 0 ? okGreen : destructive },
-        })),
+        yAxisIndex: 0,
+        data: slaLine,
+        symbol: 'none',
+        lineStyle: { width: 2, type: 'dashed', color: colors.axis },
+        itemStyle: { color: colors.axis },
+      },
+      {
+        name: 'Backlog OK',
+        type: 'line',
+        yAxisIndex: 0,
+        data: backlogOk,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { width: 3, color: okGreen },
+        connectNulls: false,
+        lineStyle: { width: 3, color: colors.overtime },
+        itemStyle: { color: colors.overtime },
+      },
+      {
+        name: 'Backlog KO',
+        type: 'line',
+        yAxisIndex: 0,
+        data: backlogKo,
+        symbol: 'circle',
+        symbolSize: 8,
+        connectNulls: false,
+        lineStyle: { width: 3, color: colors.overcapacity },
+        itemStyle: { color: colors.overcapacity },
       },
     ],
   }
 })
 
 const slaOption = computed<ChartOption>(() => {
-  const rows = props.daily?.rows ?? []
-  const byMonth = new Map<string, { ok: number; total: number }>()
-  for (const row of rows) {
-    if (!row.workingDay) continue
-    const month = row.resultDate.slice(0, 7)
-    const bucket = byMonth.get(month) ?? { ok: 0, total: 0 }
-    bucket.total += 1
-    if (num(row.backlogEnd) === 0) bucket.ok += 1
-    byMonth.set(month, bucket)
-  }
-  const months = [...byMonth.keys()].sort()
-  const slaPct = months.map((month) => {
-    const bucket = byMonth.get(month)!
-    return bucket.total === 0 ? 0 : (bucket.ok / bucket.total) * 100
-  })
+  const colors = palette.value
+  const simRows = [...(props.daily?.rows ?? [])].sort((a, b) =>
+    a.resultDate.localeCompare(b.resultDate),
+  )
+  const agingRows = simRows.map((row) => ({
+    holiday: Boolean(row.holiday),
+    workingDay: Boolean(row.workingDay),
+    backlogStart: n(row.backlogStart),
+    backlogEnd: n(row.backlogEnd),
+    standardCapacity: n(row.standardCapacity),
+    overtimeCapacity: n(row.overtimeCapacity),
+    manualVolume: n(row.manualVolume),
+    month: monthKey(row.resultDate),
+  }))
+  const aging = backlogAgingDays(agingRows)
+  const goalDays = slaGoalDays(
+    props.teamSetup?.slaTurnaroundMinutes,
+    props.teamSetup?.workingHoursPerDay,
+  )
+  const monthly = goalDays == null ? [] : monthlySlaPercents(agingRows, aging, goalDays)
+  const months = monthly.map((row) => row.month)
+  const slaPct = monthly.map((row) => row.slaPct)
   const goal =
-    props.slaTargetRatio == null ? null : Math.round(num(props.slaTargetRatio) * 1000) / 10
+    props.teamSetup?.slaTargetRatio == null
+      ? null
+      : Math.round(n(props.teamSetup.slaTargetRatio) * 1000) / 10
 
   return {
     tooltip: {
       trigger: 'axis',
       valueFormatter: (value) => `${Number(value).toFixed(1)}%`,
     },
-    legend: {
-      data: goal == null ? ['SLA%'] : ['SLA%', 'SLA Goal'],
-      bottom: 0,
-      textStyle: { fontSize: 11 },
-    },
-    grid: { left: 48, right: 24, top: 24, bottom: 48 },
+    legend: { show: false },
+    grid: { left: 48, right: 24, top: 24, bottom: 16 },
     xAxis: {
       type: 'category',
       data: months,
-      axisLine: { lineStyle: { color: border } },
-      axisLabel: { color: foreground, fontSize: 11 },
+      axisLine: { lineStyle: { color: colors.border } },
+      axisLabel: { color: colors.axis, fontSize: 11 },
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 100,
       axisLabel: {
-        color: foreground,
+        color: colors.axis,
         fontSize: 11,
         formatter: '{value}%',
       },
-      splitLine: { lineStyle: { color: border } },
+      splitLine: { lineStyle: { color: colors.border } },
     },
     series: [
       {
@@ -243,12 +419,12 @@ const slaOption = computed<ChartOption>(() => {
         data: slaPct,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { width: 3, color: foreground },
-        itemStyle: { color: foreground },
+        lineStyle: { width: 3, color: colors.volume },
+        itemStyle: { color: colors.volume },
         label: {
           show: true,
           formatter: (params) => `${Number(params.value).toFixed(0)}%`,
-          color: foreground,
+          color: colors.axis,
           fontSize: 11,
         },
       },
@@ -256,12 +432,12 @@ const slaOption = computed<ChartOption>(() => {
         ? []
         : [
             {
-              name: 'SLA Goal',
+              name: 'SLAGoal',
               type: 'line' as const,
               data: months.map(() => goal),
               symbol: 'none',
-              lineStyle: { type: 'dashed' as const, width: 2, color: foreground },
-              itemStyle: { color: foreground },
+              lineStyle: { type: 'dashed' as const, width: 2, color: colors.axis },
+              itemStyle: { color: colors.axis },
             },
           ]),
     ],
@@ -294,18 +470,38 @@ const slaOption = computed<ChartOption>(() => {
             Overcapacity
           </span>
           <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-primary" />
-            Weekday overtime
+            <span class="inline-block h-2 w-4 rounded-sm bg-chart-2" />
+            Max Overtime
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-2 w-4 rounded-sm bg-chart-5" />
+            Weekdays Overtime
           </span>
           <span class="inline-flex items-center gap-1.5">
             <span class="inline-block h-0.5 w-4 bg-foreground" />
+            Max HC (No OT)
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 bg-chart-5" />
+            Right Size HC
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 border-t border-dashed border-chart-2" />
+            Min HC (Full OT)
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 bg-chart-1" />
             Volume
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 bg-chart-3" />
+            Volume Forecasted
           </span>
         </div>
       </div>
 
       <div class="border-t pt-5">
-        <h4 class="mb-2.5 text-sm font-bold">Daily Volume vs Backlog Aging</h4>
+        <h4 class="mb-2.5 text-sm font-bold">Daily Volume vs Backlog Aging - Full Period</h4>
         <div
           v-if="hasDaily"
           class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
@@ -320,19 +516,23 @@ const slaOption = computed<ChartOption>(() => {
         </div>
         <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
           <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-foreground" />
-            Forecast (working day)
+            <span class="inline-block h-2 w-4 rounded-sm bg-chart-1" />
+            Volume
           </span>
           <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-muted-foreground/40" />
-            Non-working day
+            <span class="inline-block h-2 w-4 rounded-sm bg-chart-3" />
+            Volume Forecasted
           </span>
           <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-[hsl(142_60%_40%)]" />
+            <span class="inline-block h-0.5 w-4 border-t border-dashed border-foreground" />
+            SLA Turntime
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 bg-chart-5" />
             Backlog OK
           </span>
           <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-2 rounded-full bg-destructive" />
+            <span class="inline-block size-2 rounded-full bg-destructive" />
             Backlog KO
           </span>
         </div>
@@ -341,7 +541,7 @@ const slaOption = computed<ChartOption>(() => {
       <div class="border-t pt-5">
         <h4 class="mb-2.5 text-sm font-bold">Monthly SLA% vs Goal</h4>
         <div
-          v-if="hasDaily"
+          v-if="hasDailySimulation"
           class="h-44 overflow-hidden rounded-lg border bg-card px-1 pt-2"
         >
           <VChart class="h-full w-full" :option="slaOption" autoresize />
@@ -352,9 +552,16 @@ const slaOption = computed<ChartOption>(() => {
         >
           No daily simulation data for SLA%.
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">
-          SLA% is backlog-clearance on working days (proxy until daily SLA aging is implemented).
-        </p>
+        <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 border-t border-dashed border-foreground" />
+            SLAGoal
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-0.5 w-4 bg-chart-1" />
+            SLA%
+          </span>
+        </div>
       </div>
     </div>
   </section>

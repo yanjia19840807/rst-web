@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-import { exerciseApi } from '../../api'
+import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import type {
   CalendarView,
   CycleTimeBaseline,
@@ -61,6 +61,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const { putTeamSetup, putCalendar, createManualCycleTime } = useExerciseAssociatedDataMutations()
 const busy = ref(false)
 const teamEditor = ref<InstanceType<typeof AdTeamSetupEditor> | null>(null)
 const calendarEditor = ref<InstanceType<typeof AdCalendarEditor> | null>(null)
@@ -121,28 +122,24 @@ async function save() {
         toast.error('Team Setup form is not ready. Close and open Edit again.')
         return
       }
-      const saved = await exerciseApi.putTeamSetup(props.exerciseId, body)
+      const saved = await putTeamSetup.mutateAsync({ exerciseId: props.exerciseId, body })
       emit('update:teamSetup', saved)
-      emit('update:support', await exerciseApi.listSupport(props.exerciseId))
     } else if (props.editor === 'calendar') {
       const body = calendarEditor.value?.toRequest()
       if (!body) {
         toast.error('Calendar form is not ready. Close and open Edit again.')
         return
       }
-      const saved = await exerciseApi.putCalendar(props.exerciseId, body)
+      const saved = await putCalendar.mutateAsync({ exerciseId: props.exerciseId, body })
       emit('update:calendar', saved)
-      emit('update:support', await exerciseApi.listSupport(props.exerciseId))
     } else if (isManualTms.value) {
       const body = manualEditor.value?.toRequest()
       if (!body) return
-      const saved = await exerciseApi.createManualCycleTime(props.exerciseId, body)
+      const saved = await createManualCycleTime.mutateAsync({
+        exerciseId: props.exerciseId,
+        body,
+      })
       emit('update:cycleTime', saved)
-      try {
-        emit('update:teamSetup', await exerciseApi.getTeamSetup(props.exerciseId))
-      } catch {
-        // Team Setup may be absent; baseline save still applies.
-      }
     }
     toast.success(`${title.value} saved.`)
     onOpenChange(false)

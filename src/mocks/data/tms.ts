@@ -2,9 +2,9 @@ import type { Toolkit, TmsSession } from '@/features/tms-management/types'
 
 import { supervisorToolkits } from './supervisor'
 
-// Bump when the active-session invariant or session shape changes so stale browser
-// mock storage cannot resurrect multiple paused sessions.
-const storageKey = 'rst-web:tms-sessions:v2'
+// Bump when the running-session invariant or session shape changes so stale browser
+// mock storage cannot resurrect multiple running sessions.
+const storageKey = 'rst-web:tms-sessions:v3'
 
 export function getAgentToolkits(): Toolkit[] {
   // Mock ACTIVE Timesheet says the current Agent belongs to POS-SUP-001 + PL3-BANK-REC.
@@ -158,15 +158,15 @@ export function readSessions(): TmsSession[] {
         processedVolume: row.processedVolume ?? row.volume ?? 0,
         netDurationSeconds: row.netDurationSeconds ?? row.accumulatedSeconds ?? 0,
       }))
-      let activeSeen = false
+      let runningSeen = false
       return normalized.map((row) => {
-        if (row.status !== 'running' && row.status !== 'paused') return row
-        if (!activeSeen) {
-          activeSeen = true
+        if (row.status !== 'running') return row
+        if (!runningSeen) {
+          runningSeen = true
           return row
         }
-        // Repair legacy mock storage that predates the one-active-session invariant.
-        return { ...row, status: 'discarded' as const }
+        // Repair legacy mock storage that predates the one-running-session invariant.
+        return { ...row, status: 'paused' as const }
       })
     }
   } catch {

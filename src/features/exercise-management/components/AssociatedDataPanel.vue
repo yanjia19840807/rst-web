@@ -180,6 +180,7 @@ defineExpose({
         <AdTmsSummary
           v-model:source="medianSource"
           :cycle-time="cycleTime"
+          :exercise-id="exerciseId"
           :read-only="readOnly"
         />
       </template>
@@ -228,7 +229,7 @@ defineExpose({
             }}
           </p>
           <Button size="sm" class="mt-2" variant="outline" @click="reapplyTemplate">
-            Apply published template
+            Apply template
           </Button>
         </div>
         <div v-if="!readOnly" class="mb-2.5 flex justify-end">

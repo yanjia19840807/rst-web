@@ -75,7 +75,8 @@ The first implemented vertical slice follows the Agent workflow from `rst-protot
 - `/agent/sessions` lists completed sessions with keyword/date filters and server-style pagination.
 - `src/features/tms-management` owns the form schema, timer state, Query/Mutation hooks, and UI.
 - `src/mocks/handlers/tms.ts` implements the temporary REST contract. Mock state is persisted in
-  browser local storage so a refresh restores the current and paused sessions.
+  browser local storage so a refresh restores the running session and any paused sessions. An Agent
+  may keep several paused sessions and start a new one; only one session can be running at a time.
 
 MSW is enabled only in Vite development mode. Unit tests use the same handlers through the Node
 server adapter, while production builds always call `VITE_API_BASE_URL`.

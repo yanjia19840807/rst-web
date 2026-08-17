@@ -64,9 +64,15 @@ export interface ToolkitEditorPayload {
 export interface ToolkitListQuery {
   name?: string
   pl3Name?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface ToolkitListView {
   items: SupervisorToolkit[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
   pl3Names: string[]
 }

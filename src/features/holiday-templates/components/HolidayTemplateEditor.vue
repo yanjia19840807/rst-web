@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
@@ -26,63 +26,98 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { YearPicker } from '@/components/ui/year-picker'
+import AdMetric from '@/features/exercise-management/components/associated-data/AdMetric.vue'
 
 import { holidayTemplateApi } from '../api'
+import { useHolidayTemplateMutations } from '../api/mutations'
+import { useHolidayTemplateQuery } from '../api/queries'
 import { GBS_CENTERS } from '../centers'
-import type { HolidayTemplateLine } from '../types'
+import type { HolidayTemplateDetail, HolidayTemplateLine } from '../types'
 import { computeNetworkDays } from '../workingDays'
 
 const route = useRoute()
 const router = useRouter()
+const { create, update, parseExcel } = useHolidayTemplateMutations()
 const isNew = computed(() => route.name === 'supervisor-holiday-template-new')
-const templateId = computed(() => (isNew.value ? null : String(route.params.id)))
+const templateId = computed(() => (isNew.value ? undefined : String(route.params.id)))
 
-const loading = ref(!isNew.value)
+const templateQuery = useHolidayTemplateQuery(templateId)
+const hydratedId = ref<string | null>(null)
 const saving = ref(false)
 const form = reactive({
   center: GBS_CENTERS[0] as string,
   year: new Date().getFullYear() as number | null,
   defaultWeekendCode: 'SAT_SUN',
   sourceNote: '',
-  status: 'DRAFT',
 })
 const holidays = ref<HolidayTemplateLine[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 
+const loading = computed(
+  () => !isNew.value && templateQuery.isPending.value && !templateQuery.data.value,
+)
+
 const controlClass =
   'flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm'
+
+const filledHolidays = computed(() =>
+  holidays.value.filter((h) => h.holidayDate && h.holidayName?.trim()),
+)
 
 /** Live NETWORKDAYS from weekend + holiday lines (same rules as backend). */
 const liveWorkingDays = computed(() => {
   if (form.year == null) return null
-  const dates = holidays.value
-    .filter((h) => h.holidayDate && h.holidayName?.trim())
-    .map((h) => h.holidayDate)
-  return computeNetworkDays(form.year, form.defaultWeekendCode, dates)
+  return computeNetworkDays(
+    form.year,
+    form.defaultWeekendCode,
+    filledHolidays.value.map((h) => h.holidayDate),
+  )
 })
 
-async function load() {
-  if (!templateId.value) return
-  loading.value = true
-  try {
-    const detail = await holidayTemplateApi.get(templateId.value)
-    form.center = detail.center
-    form.year = detail.year
-    form.defaultWeekendCode = detail.defaultWeekendCode
-    form.sourceNote = detail.sourceNote ?? ''
-    form.status = detail.status
-    holidays.value = detail.holidays.map((h) => ({
-      id: h.id,
-      holidayDate: h.holidayDate,
-      holidayName: h.holidayName,
-    }))
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load template.')
-    void router.push({ name: 'supervisor-holiday-templates' })
-  } finally {
-    loading.value = false
-  }
+const workingDaysLabel = computed(() =>
+  liveWorkingDays.value == null ? '—' : String(liveWorkingDays.value),
+)
+
+function applyDetail(detail: HolidayTemplateDetail) {
+  form.center = detail.center
+  form.year = detail.year
+  form.defaultWeekendCode = detail.defaultWeekendCode
+  form.sourceNote = detail.sourceNote ?? ''
+  holidays.value = detail.holidays.map((h) => ({
+    id: h.id,
+    holidayDate: h.holidayDate,
+    holidayName: h.holidayName,
+  }))
 }
+
+watch(templateId, (id) => {
+  if (hydratedId.value && hydratedId.value !== id) {
+    hydratedId.value = null
+  }
+})
+
+watch(
+  () => templateQuery.data.value,
+  (detail) => {
+    if (!detail || hydratedId.value === detail.id) return
+    applyDetail(detail)
+    hydratedId.value = detail.id
+  },
+  { immediate: true },
+)
+
+watch(
+  () => templateQuery.isError.value,
+  (isError) => {
+    if (!isError || isNew.value) return
+    toast.error(
+      templateQuery.error.value instanceof Error
+        ? templateQuery.error.value.message
+        : 'Could not load template.',
+    )
+    void router.push({ name: 'supervisor-holiday-templates' })
+  },
+)
 
 function addRow() {
   const year = form.year ?? new Date().getFullYear()
@@ -99,7 +134,7 @@ function removeRow(index: number) {
   holidays.value = holidays.value.filter((_, i) => i !== index)
 }
 
-async function save(publishAfter = false) {
+async function save() {
   if (!form.center) {
     toast.warning('Please select a Center.')
     return
@@ -116,9 +151,9 @@ async function save(publishAfter = false) {
         holidayDate: h.holidayDate,
         holidayName: h.holidayName.trim(),
       }))
-    let detail
+    let detail: HolidayTemplateDetail
     if (isNew.value) {
-      detail = await holidayTemplateApi.create({
+      detail = await create.mutateAsync({
         center: form.center,
         year: form.year,
         defaultWeekendCode: form.defaultWeekendCode || null,
@@ -126,28 +161,24 @@ async function save(publishAfter = false) {
         holidays: payloadHolidays,
       })
       toast.success('Template created.')
+      applyDetail(detail)
+      hydratedId.value = detail.id
       await router.replace({
         name: 'supervisor-holiday-template-edit',
         params: { id: detail.id },
       })
     } else {
-      detail = await holidayTemplateApi.update(templateId.value!, {
-        defaultWeekendCode: form.defaultWeekendCode || null,
-        sourceNote: form.sourceNote || null,
-        holidays: payloadHolidays,
+      detail = await update.mutateAsync({
+        id: templateId.value!,
+        body: {
+          defaultWeekendCode: form.defaultWeekendCode || null,
+          sourceNote: form.sourceNote || null,
+          holidays: payloadHolidays,
+        },
       })
+      applyDetail(detail)
       toast.success('Template saved.')
     }
-    if (publishAfter) {
-      detail = await holidayTemplateApi.publish(detail.id)
-      toast.success('Template published.')
-    }
-    form.status = detail.status
-    holidays.value = detail.holidays.map((h) => ({
-      id: h.id,
-      holidayDate: h.holidayDate,
-      holidayName: h.holidayName,
-    }))
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Save failed.')
   } finally {
@@ -164,27 +195,36 @@ async function exportExcel() {
   }
 }
 
+async function downloadBlank() {
+  try {
+    await holidayTemplateApi.exportBlank()
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Download failed.')
+  }
+}
+
 async function onImport(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file || !templateId.value) return
+  if (!file) return
+  if (form.year == null) {
+    toast.warning('Please select a Year.')
+    input.value = ''
+    return
+  }
   try {
-    const detail = await holidayTemplateApi.importExcel(templateId.value, file)
-    holidays.value = detail.holidays.map((h) => ({
-      id: h.id,
+    const lines = await parseExcel.mutateAsync({ year: form.year, file })
+    holidays.value = lines.map((h) => ({
       holidayDate: h.holidayDate,
       holidayName: h.holidayName,
     }))
-    form.status = detail.status
-    toast.success('Excel imported into draft.')
+    toast.success('Excel imported.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Import failed.')
   } finally {
     input.value = ''
   }
 }
-
-onMounted(load)
 </script>
 
 <template>
@@ -199,27 +239,9 @@ onMounted(load)
           ← Back to Holiday Templates
         </Button>
       </template>
-      <Button
-        v-if="!isNew"
-        variant="outline"
-        :disabled="saving"
-        @click="exportExcel"
-      >
-        Export Excel
+      <Button :disabled="saving || loading" @click="save">
+        {{ saving ? 'Saving…' : 'Save' }}
       </Button>
-      <Button
-        v-if="!isNew"
-        variant="outline"
-        :disabled="saving"
-        @click="fileInput?.click()"
-      >
-        Import Excel
-      </Button>
-      <input ref="fileInput" type="file" accept=".xlsx,.xls" class="hidden" @change="onImport" />
-      <Button variant="outline" :disabled="saving || loading" @click="save(false)">
-        {{ saving ? 'Saving…' : 'Save draft' }}
-      </Button>
-      <Button :disabled="saving || loading" @click="save(true)">Save &amp; Publish</Button>
     </PageActions>
 
     <Card v-if="loading">
@@ -227,66 +249,100 @@ onMounted(load)
     </Card>
 
     <div v-else class="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Template header</CardTitle>
-        </CardHeader>
-        <CardContent class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div class="grid gap-1.5">
-            <Label>Center</Label>
-            <Select v-if="isNew" v-model="form.center">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="Select center" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="center in GBS_CENTERS" :key="center" :value="center">
-                  {{ center }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <ReadOnlyField v-else :value="form.center" />
-          </div>
-          <div class="grid gap-1.5">
-            <Label>Year</Label>
-            <YearPicker
-              v-if="isNew"
-              v-model="form.year"
-              aria-label="Template year"
-              placeholder="Select year"
-            />
-            <ReadOnlyField v-else :value="form.year" />
-          </div>
-          <div class="grid gap-1.5">
-            <Label>Status</Label>
-            <ReadOnlyField :value="form.status" />
-          </div>
-          <div class="grid gap-1.5">
-            <Label>Weekend code</Label>
-            <select v-model="form.defaultWeekendCode" :class="controlClass">
-              <option value="SAT_SUN">SAT_SUN</option>
-              <option value="SUN_ONLY">SUN_ONLY</option>
-              <option value="FRI_SAT">FRI_SAT</option>
-              <option value="NONE">NONE</option>
-            </select>
-          </div>
-          <div class="grid gap-1.5">
-            <Label>Source note</Label>
-            <Input v-model="form.sourceNote" />
-          </div>
-          <div class="grid gap-1.5">
-            <Label>Working days / year</Label>
-            <ReadOnlyField :value="liveWorkingDays" />
-            <p class="text-xs text-muted-foreground">
-              Recalculates from Weekend code and Holiday lines.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div class="grid items-start gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Template header</CardTitle>
+          </CardHeader>
+          <CardContent class="grid gap-4">
+            <div class="grid gap-1.5">
+              <Label>Center</Label>
+              <Select v-if="isNew" v-model="form.center">
+                <SelectTrigger class="w-full">
+                  <SelectValue placeholder="Select center" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="center in GBS_CENTERS" :key="center" :value="center">
+                    {{ center }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <ReadOnlyField v-else :value="form.center" />
+            </div>
+            <div class="grid gap-1.5">
+              <Label>Year</Label>
+              <YearPicker
+                v-if="isNew"
+                v-model="form.year"
+                aria-label="Template year"
+                placeholder="Select year"
+              />
+              <ReadOnlyField v-else :value="form.year" />
+            </div>
+            <div class="grid gap-1.5">
+              <Label>Weekend code</Label>
+              <select v-model="form.defaultWeekendCode" :class="controlClass">
+                <option value="SAT_SUN">SAT_SUN</option>
+                <option value="SUN_ONLY">SUN_ONLY</option>
+                <option value="FRI_SAT">FRI_SAT</option>
+                <option value="NONE">NONE</option>
+              </select>
+            </div>
+            <div class="grid gap-1.5">
+              <Label>Source note</Label>
+              <Input v-model="form.sourceNote" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <AdMetric
+            label="Working days / year"
+            :value="workingDaysLabel"
+            hint="NETWORKDAYS from weekend + holidays"
+          />
+          <AdMetric
+            label="Holidays"
+            :value="String(filledHolidays.length)"
+            hint="Named holiday lines in this template"
+          />
+        </div>
+      </div>
 
       <Card>
-        <CardHeader class="flex flex-row items-center justify-between gap-2">
+        <CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle>Holiday lines</CardTitle>
-          <Button size="sm" variant="outline" @click="addRow">Add row</Button>
+          <div class="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="saving"
+              @click="downloadBlank"
+            >
+              Download Excel template
+            </Button>
+            <Button
+              v-if="!isNew"
+              size="sm"
+              variant="outline"
+              :disabled="saving"
+              @click="exportExcel"
+            >
+              Export Excel
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="saving"
+              @click="fileInput?.click()"
+            >
+              Import Excel
+            </Button>
+            <input ref="fileInput" type="file" accept=".xlsx,.xls" class="hidden" @change="onImport" />
+            <Button size="sm" variant="outline" :disabled="saving" @click="addRow">
+              Add row
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div class="overflow-x-auto rounded-lg border">

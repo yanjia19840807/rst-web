@@ -22,6 +22,7 @@ describe('App', () => {
     await router.isReady()
 
     const wrapper = mount(App, {
+      attachTo: document.body,
       global: {
         plugins: [createPinia(), router, [VueQueryPlugin, { queryClient }]],
         // This test covers shell routing metadata, not feature-level API loading.
@@ -37,8 +38,13 @@ describe('App', () => {
     expect(wrapper.get('nav[aria-label="Application"]').text()).toContain('Exercises')
     expect(wrapper.get('nav[aria-label="Application"]').text()).not.toContain('Approval Queue')
     expect(wrapper.text()).toContain('YANG Brenda')
-    expect(wrapper.text()).toContain('S00628182')
     expect(wrapper.text()).toContain('Supervisor')
+
+    await wrapper.get('button[aria-label="Open account menu"]').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('S00628182')
+    expect(document.body.textContent).toContain('s00628182@dev.local')
+    expect(document.body.textContent).toContain('Sign out')
 
     wrapper.unmount()
     queryClient.clear()

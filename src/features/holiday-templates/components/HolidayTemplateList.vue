@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
@@ -25,73 +27,92 @@ import {
 import { YearPicker } from '@/components/ui/year-picker'
 import { formatDate } from '@/lib/datetime'
 
-import { holidayTemplateApi } from '../api'
+import { useHolidayTemplateMutations } from '../api/mutations'
+import { useHolidayTemplatesQuery } from '../api/queries'
 import { GBS_CENTERS } from '../centers'
-import type { HolidayTemplateSummary } from '../types'
+import type { HolidayTemplateListQuery, HolidayTemplateSummary } from '../types'
 
 const ALL_CENTERS = '__all__'
 
 const router = useRouter()
-const rows = ref<HolidayTemplateSummary[]>([])
-const loading = ref(true)
 const centerFilter = ref(ALL_CENTERS)
 const yearFilter = ref<number | null>(null)
-const statusFilter = ref('All')
 const page = ref(1)
 const pageSize = ref(10)
 
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
+const listQuery = computed<HolidayTemplateListQuery>(() => ({
+  center: centerFilter.value === ALL_CENTERS ? undefined : centerFilter.value,
+  year: yearFilter.value ?? undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
 
-const filtered = computed(() => {
-  return rows.value.filter((row) => {
-    const matchCenter =
-      centerFilter.value === ALL_CENTERS || row.center === centerFilter.value
-    const matchYear = yearFilter.value == null || row.year === yearFilter.value
-    const matchStatus = statusFilter.value === 'All' || row.status === statusFilter.value
-    return matchCenter && matchYear && matchStatus
-  })
-})
+const templatesQuery = useHolidayTemplatesQuery(listQuery)
+const { remove } = useHolidayTemplateMutations()
+const rows = computed(() => templatesQuery.data.value?.items ?? [])
+const total = computed(() => templatesQuery.data.value?.total ?? 0)
+const loading = computed(() => templatesQuery.isPending.value && !templatesQuery.data.value)
+const deleteOpen = ref(false)
+const deleteTarget = ref<HolidayTemplateSummary | null>(null)
 
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(filtered.value.length / pageSize.value) || 1)),
-)
-
-const paged = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return filtered.value.slice(start, start + pageSize.value)
-})
-
-watch([centerFilter, yearFilter, statusFilter], () => {
+watch([centerFilter, yearFilter], () => {
   page.value = 1
 })
 
-async function load() {
-  loading.value = true
-  try {
-    rows.value = await holidayTemplateApi.list()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load holiday templates.')
-  } finally {
-    loading.value = false
-  }
+watch(
+  () => ({
+    totalPages: templatesQuery.data.value?.totalPages,
+    fetching: templatesQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watch(
+  () => templatesQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        templatesQuery.error.value instanceof Error
+          ? templatesQuery.error.value.message
+          : 'Could not load holiday templates.',
+      )
+    }
+  },
+)
+
+function openEdit(id: string) {
+  void router.push({
+    name: 'supervisor-holiday-template-edit',
+    params: { id },
+  })
 }
 
-async function downloadBlank() {
-  try {
-    await holidayTemplateApi.exportBlank()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Download failed.')
-  }
+function openDelete(row: HolidayTemplateSummary) {
+  deleteTarget.value = row
+  deleteOpen.value = true
 }
 
-onMounted(load)
+async function confirmDelete() {
+  const target = deleteTarget.value
+  if (!target) return
+  try {
+    await remove.mutateAsync(target.id)
+    deleteOpen.value = false
+    deleteTarget.value = null
+    toast.success('Holiday template deleted.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not delete the template.')
+  }
+}
 </script>
 
 <template>
   <div>
     <PageActions>
-      <Button variant="outline" @click="downloadBlank">Download Excel template</Button>
       <Button @click="router.push({ name: 'supervisor-holiday-template-new' })">Add Template</Button>
     </PageActions>
 
@@ -134,14 +155,6 @@ onMounted(load)
               </Button>
             </div>
           </label>
-          <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Status
-            <select v-model="statusFilter" :class="selectClass">
-              <option>All</option>
-              <option value="DRAFT">DRAFT</option>
-              <option value="PUBLISHED">PUBLISHED</option>
-            </select>
-          </label>
         </div>
 
         <div class="overflow-x-auto rounded-lg border">
@@ -151,17 +164,15 @@ onMounted(load)
                 <TableHead>Center</TableHead>
                 <TableHead>Year</TableHead>
                 <TableHead>Holidays</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Updated</TableHead>
                 <TableHead class="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="row in paged" :key="row.id">
+              <TableRow v-for="row in rows" :key="row.id">
                 <TableCell>{{ row.center }}</TableCell>
                 <TableCell>{{ row.year }}</TableCell>
                 <TableCell>{{ row.holidayCount }}</TableCell>
-                <TableCell>{{ row.status }}</TableCell>
                 <TableCell>{{ formatDate(row.updatedAt) }}</TableCell>
                 <TableCell>
                   <div class="flex justify-end gap-3">
@@ -169,26 +180,30 @@ onMounted(load)
                       size="sm"
                       variant="link"
                       class="h-auto px-0 font-semibold"
-                      @click="
-                        router.push({
-                          name: 'supervisor-holiday-template-edit',
-                          params: { id: row.id },
-                        })
-                      "
+                      @click="openEdit(row.id)"
                     >
-                      Open
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="link-destructive"
+                      class="h-auto px-0 font-semibold"
+                      :disabled="remove.isPending.value && deleteTarget?.id === row.id"
+                      @click="openDelete(row)"
+                    >
+                      Delete
                     </Button>
                   </div>
                 </TableCell>
               </TableRow>
-              <TableRow v-if="!loading && !paged.length">
-                <TableCell colspan="6" class="h-24 text-center text-muted-foreground">
+              <TableRow v-if="!loading && !rows.length">
+                <TableCell colspan="5" class="h-24 text-center text-muted-foreground">
                   No holiday templates yet.
                 </TableCell>
               </TableRow>
               <TableRow v-if="loading">
-                <TableCell colspan="6" class="h-24 text-center text-muted-foreground">
-                  Loading templates…
+                <TableCell colspan="5" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -197,13 +212,35 @@ onMounted(load)
 
         <TablePager
           label="templates"
-          :page="safePage"
+          :page="page"
           :page-size="pageSize"
-          :total="filtered.length"
+          :total="total"
           @update:page="page = $event"
-          @update:page-size="pageSize = $event"
+          @update:page-size="
+            (size) => {
+              pageSize = size
+              page = 1
+            }
+          "
         />
       </CardContent>
     </Card>
+
+    <ConfirmDialog
+      v-model:open="deleteOpen"
+      title="Delete Holiday Template"
+      warning="This action cannot be undone. Exercises that already applied this template keep their copied holidays."
+      :rows="
+        deleteTarget
+          ? [
+              { label: 'Center', value: deleteTarget.center, strong: true },
+              { label: 'Year', value: String(deleteTarget.year) },
+            ]
+          : []
+      "
+      confirm-label="Delete"
+      :pending="remove.isPending.value"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

@@ -42,6 +42,7 @@ import {
   supervisorPositionId,
   supervisorToolkits,
 } from '../data/supervisor'
+import { pageOf, pageParams } from '../page'
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Supervisor request failed', status, detail }, { status })
@@ -233,7 +234,8 @@ export const supervisorHandlers = [
       const matchesPl3 = !pl3Name || item.pl3Name === pl3Name
       return matchesName && matchesPl3
     })
-    return HttpResponse.json({ items, pl3Names })
+    const paged = pageOf(items, pageParams(url).page, pageParams(url).pageSize)
+    return HttpResponse.json({ ...paged, pl3Names })
   }),
 
   http.get('*/api/v1/supervisor/toolkits/:id', ({ params }) => {
@@ -308,8 +310,9 @@ export const supervisorHandlers = [
       : new Set(['IN_PROGRESS', 'RETURNED', 'UNDER_REVIEW'])
     const source = exercises.filter((item) => tabStatuses.has(item.workflowStatus))
     const items = source.filter((item) => matchesExerciseList(item, params))
+    const paged = pageOf(items, Number(params.get('page') ?? 1), Number(params.get('pageSize') ?? 10))
     return HttpResponse.json({
-      items,
+      ...paged,
       toolkitNames: uniqueSorted(source.map((item) => item.snapshot.toolkit.name)),
       pl3Names: uniqueSorted(source.map((item) => item.snapshot.toolkit.pl3Name)),
       reviewerNames: uniqueSorted(source.map((item) => item.currentReviewer)),
@@ -540,7 +543,6 @@ export const supervisorHandlers = [
       holidayDate: holiday.holidayDate,
       holidayName: holiday.holidayName,
       holidayType: holiday.holidayType,
-      workingDayOverride: holiday.workingDayOverride ?? null,
     }))
     const year = ctx.shell.calendar.baselineYear ?? Number(ctx.exercise.sizingMonth.slice(0, 4))
     const weekend = body.weekendCode ?? ctx.shell.calendar.weekendCode ?? 'SAT_SUN'
@@ -570,34 +572,32 @@ export const supervisorHandlers = [
       .list()
       .map((s) => holidayTemplateStore.get(s.id)!)
       .filter(Boolean)
-    const published =
-      allTemplates.find((t) => t.center === center && t.year === year && t.status === 'PUBLISHED') ??
-      allTemplates.find((t) => t.center === center && t.year === year && t.version > 0)
+    const match =
+      allTemplates.find((t) => t.center === center && t.year === year && (t.holidays?.length ?? 0) > 0)
     const notices: string[] = []
-    if (!published) {
+    if (!match) {
       notices.push(
-        `No published holiday template for Center ${center} / ${year}. Create and Publish a template for that year, then Re-apply.`,
+        `No holiday template for Center ${center} / ${year}. Create a template for that year, then Re-apply.`,
       )
     }
     const customs = ctx.shell.calendar.holidays.filter(
       (h) => h.holidayType?.toUpperCase() === 'CUSTOM',
     )
-    const baseline = (published?.holidays ?? []).map((h) => ({
+    const baseline = (match?.holidays ?? []).map((h) => ({
       id: crypto.randomUUID(),
       holidayDate: h.holidayDate,
       holidayName: h.holidayName,
       holidayType: 'BASELINE',
-      workingDayOverride: null as boolean | null,
     }))
     const holidays = [...baseline, ...customs]
-    const weekend = published?.defaultWeekendCode ?? ctx.shell.calendar.weekendCode ?? 'SAT_SUN'
+    const weekend = match?.defaultWeekendCode ?? ctx.shell.calendar.weekendCode ?? 'SAT_SUN'
     ctx.shell.calendar = {
       ...ctx.shell.calendar,
       weekendCode: weekend,
-      baselineSource: published ? 'CENTER_TEMPLATE' : 'NO_TEMPLATE',
-      baselineVersion: published ? String(published.version) : null,
-      sourceTemplateId: published?.id ?? null,
-      sourceTemplateVersion: published?.version ?? null,
+      baselineSource: match ? 'CENTER_TEMPLATE' : 'NO_TEMPLATE',
+      baselineVersion: match ? String(match.version) : null,
+      sourceTemplateId: match?.id ?? null,
+      sourceTemplateVersion: match?.version ?? null,
       baselineYear: year,
       workingDaysPerYear: computeNetworkDays(
         year,
@@ -753,6 +753,17 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.slotVolumes)
+  }),
+
+  http.get('*/api/v1/supervisor/exercises/:id/cycle-time/chart', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    return HttpResponse.json({
+      points: [],
+      upperControlLimitSeconds: null,
+      lowerControlLimitSeconds: null,
+      sampleCount: 0,
+    })
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id/cycle-time/active', ({ params }) => {

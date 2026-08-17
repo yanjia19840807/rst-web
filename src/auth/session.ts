@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 
 import { apiRequest } from '@/api/client'
 
+import { homePathForRoles } from '@/navigation/home'
+
 import {
   isAppRole,
   permissionsForRoles,
@@ -26,6 +28,7 @@ export const useSessionStore = defineStore('session', () => {
   const user = ref<CurrentUser | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const signedOut = ref(false)
   let loadPromise: Promise<void> | null = null
 
   const displayName = computed(() => user.value?.displayName ?? '')
@@ -39,6 +42,7 @@ export const useSessionStore = defineStore('session', () => {
   const rolesLabel = computed(() =>
     roles.value.map((role) => ROLE_LABELS[role]).join(' · '),
   )
+  const homePath = computed(() => homePathForRoles(roles.value))
 
   const contextLabel = computed(() => {
     if (!displayName.value) return ''
@@ -48,12 +52,14 @@ export const useSessionStore = defineStore('session', () => {
   })
 
   async function load() {
+    if (signedOut.value) return
     if (loadPromise) return loadPromise
     loading.value = true
     error.value = null
     loadPromise = apiRequest<CurrentUser>('/api/v1/me')
       .then((me) => {
         user.value = me
+        signedOut.value = false
       })
       .catch((err: unknown) => {
         user.value = null
@@ -63,6 +69,30 @@ export const useSessionStore = defineStore('session', () => {
         loading.value = false
       })
     return loadPromise
+  }
+
+  function azureLogoutUrl() {
+    const tenant = String(import.meta.env.VITE_AZURE_TENANT_ID ?? '').trim()
+    if (!tenant || typeof window === 'undefined') return null
+    const redirect = encodeURIComponent(`${window.location.origin}/`)
+    return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/logout?post_logout_redirect_uri=${redirect}`
+  }
+
+  async function signOut() {
+    user.value = null
+    error.value = null
+    loadPromise = null
+    signedOut.value = true
+    const logoutUrl = azureLogoutUrl()
+    if (logoutUrl) {
+      window.location.assign(logoutUrl)
+    }
+  }
+
+  async function signIn() {
+    signedOut.value = false
+    loadPromise = null
+    await load()
   }
 
   function hasPermission(permission: Permission) {
@@ -77,14 +107,18 @@ export const useSessionStore = defineStore('session', () => {
     user,
     loading,
     error,
+    signedOut,
     displayName,
     ccgid,
     email,
     roles,
     permissions,
     rolesLabel,
+    homePath,
     contextLabel,
     load,
+    signOut,
+    signIn,
     hasPermission,
     hasAnyPermission,
   }

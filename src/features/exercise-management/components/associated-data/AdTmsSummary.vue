@@ -13,10 +13,12 @@ import {
 import type { CycleTimeBaseline, CycleTimeBaselineFile } from '../../types'
 import type { MedianSourceMode } from './adTypes'
 import { formatNumber } from './adTypes'
+import CycleTimeControlChart from './CycleTimeControlChart.vue'
 
 const props = defineProps<{
   source: MedianSourceMode
   cycleTime: CycleTimeBaseline | null
+  exerciseId?: string
   readOnly?: boolean
 }>()
 
@@ -58,7 +60,7 @@ const systemMetrics = computed(() => {
     {
       metric: 'Accepted records',
       value: isSystem && ct?.sampleCount != null ? formatNumber(ct.sampleCount) : '—',
-      description: 'After outlier exclusion',
+      description: 'Median sample count',
     },
   ]
 })
@@ -217,7 +219,7 @@ function fileHref(file: CycleTimeBaselineFile) {
         </p>
       </template>
 
-      <!-- System metrics + chart -->
+      <!-- System metrics -->
       <template v-else>
         <div class="overflow-x-auto rounded-lg border">
           <Table>
@@ -237,66 +239,9 @@ function fileHref(file: CycleTimeBaselineFile) {
             </TableBody>
           </Table>
         </div>
-
-        <div>
-          <h3 class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
-          <div
-            class="relative h-44 overflow-hidden rounded-lg border bg-card"
-            aria-hidden="true"
-          >
-            <svg class="absolute inset-3" viewBox="0 0 600 156" preserveAspectRatio="none">
-              <line
-                x1="0"
-                y1="30"
-                x2="600"
-                y2="30"
-                stroke="hsl(var(--destructive))"
-                stroke-dasharray="5 5"
-                stroke-width="2"
-              />
-              <line
-                x1="0"
-                y1="78"
-                x2="600"
-                y2="78"
-                stroke="hsl(var(--primary))"
-                stroke-width="2"
-              />
-              <line
-                x1="0"
-                y1="126"
-                x2="600"
-                y2="126"
-                stroke="hsl(var(--destructive))"
-                stroke-dasharray="5 5"
-                stroke-width="2"
-              />
-              <polyline
-                points="0,82 55,74 110,78 165,70 220,86 275,76 330,72 385,96 440,64 495,80 550,75 600,77"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-              />
-              <circle cx="385" cy="96" r="5" fill="#d97706" />
-              <circle cx="440" cy="64" r="5" fill="#d97706" />
-            </svg>
-          </div>
-          <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
-            <span class="inline-flex items-center gap-1.5">
-              <span class="inline-block h-2 w-4 rounded-sm bg-foreground" />
-              Daily median
-            </span>
-            <span class="inline-flex items-center gap-1.5">
-              <span class="inline-block h-2 w-4 rounded-sm bg-primary" />
-              Rolling median
-            </span>
-            <span class="inline-flex items-center gap-1.5">
-              <span class="inline-block h-2 w-4 rounded-sm bg-destructive" />
-              Control limit
-            </span>
-          </div>
-        </div>
       </template>
+
+      <CycleTimeControlChart v-if="exerciseId" :exercise-id="exerciseId" />
     </div>
   </div>
 </template>

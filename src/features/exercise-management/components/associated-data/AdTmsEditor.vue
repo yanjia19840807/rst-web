@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,7 +14,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { exerciseApi } from '../../api'
+import { useExerciseAssociatedDataMutations } from '../../api/mutations'
+import { useExerciseTmsSessionsQuery } from '../../api/queries'
 import type { CycleTimeBaseline, ExerciseTmsSession, TeamSetup } from '../../types'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
@@ -29,12 +31,9 @@ const emit = defineEmits<{
   'update:teamSetup': [value: TeamSetup]
 }>()
 
-const sessions = ref<ExerciseTmsSession[]>([])
-const loading = ref(false)
-const loadError = ref<string | null>(null)
+const { patchTmsSession } = useExerciseAssociatedDataMutations()
 const page = ref(1)
 const pageSize = ref(10)
-const total = ref(0)
 const busySessionNo = ref<string | null>(null)
 const localCycleTime = ref<CycleTimeBaseline | null>(props.cycleTime)
 
@@ -44,6 +43,21 @@ watch(
     localCycleTime.value = value
   },
 )
+
+const sessionsQuery = useExerciseTmsSessionsQuery(
+  () => props.exerciseId,
+  page,
+  pageSize,
+)
+const sessions = computed(() => sessionsQuery.data.value?.items ?? [])
+const total = computed(() => sessionsQuery.data.value?.total ?? 0)
+const loading = computed(() => sessionsQuery.isPending.value && !sessionsQuery.data.value)
+const loadError = computed(() => {
+  if (!sessionsQuery.isError.value) return null
+  return sessionsQuery.error.value instanceof Error
+    ? sessionsQuery.error.value.message
+    : 'Could not load TMS sessions.'
+})
 
 const medianLabel = computed(() =>
   localCycleTime.value ? `${Number(localCycleTime.value.medianSeconds).toFixed(2)}s` : '—',
@@ -62,47 +76,19 @@ function formatZScore(value: number | null | undefined) {
   return value.toFixed(2)
 }
 
-async function loadSessions() {
-  if (!props.exerciseId) return
-  loading.value = true
-  loadError.value = null
-  try {
-    const result = await exerciseApi.listExerciseTmsSessions(
-      props.exerciseId,
-      page.value,
-      pageSize.value,
-    )
-    sessions.value = result.items
-    total.value = result.total
-    page.value = result.page
-  } catch (error) {
-    sessions.value = []
-    total.value = 0
-    loadError.value = error instanceof Error ? error.message : 'Could not load TMS sessions.'
-  } finally {
-    loading.value = false
-  }
-}
-
 async function toggleIncluded(row: ExerciseTmsSession) {
   if (props.readOnly || busySessionNo.value) return
   busySessionNo.value = row.sessionNo
   try {
-    const result = await exerciseApi.patchExerciseTmsSession(
-      props.exerciseId,
-      row.sessionNo,
-      !row.included,
-    )
+    const result = await patchTmsSession.mutateAsync({
+      exerciseId: props.exerciseId,
+      sessionNo: row.sessionNo,
+      included: !row.included,
+    })
     if (result.baseline) {
       localCycleTime.value = result.baseline
       emit('update:cycleTime', result.baseline)
     }
-    try {
-      emit('update:teamSetup', await exerciseApi.getTeamSetup(props.exerciseId))
-    } catch {
-      // Team Setup may be absent; cycle-time update still applies.
-    }
-    await loadSessions()
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not update session inclusion.')
   } finally {
@@ -118,11 +104,15 @@ watch(
 )
 
 watch(
-  [() => props.exerciseId, page, pageSize],
-  () => {
-    void loadSessions()
+  () => ({
+    totalPages: sessionsQuery.data.value?.totalPages,
+    fetching: sessionsQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
   },
-  { immediate: true },
 )
 </script>
 
@@ -132,7 +122,7 @@ watch(
       <AdMetric
         label="Sessions"
         :value="sessionTotalLabel"
-        hint="Included samples used for the median"
+        hint="Included samples for the SYSTEM median. Same Reference is summed when Combined Subtasks Time is Yes."
       />
       <AdMetric
         label="Median cycle time"
@@ -159,11 +149,8 @@ watch(
           </TableHeader>
           <TableBody>
             <TableRow v-if="loading">
-              <TableCell
-                :colspan="readOnly ? 6 : 7"
-                class="h-24 text-center text-sm text-muted-foreground"
-              >
-                Loading sessions…
+              <TableCell :colspan="readOnly ? 6 : 7" class="p-0">
+                <ListLoading />
               </TableCell>
             </TableRow>
             <TableRow v-else-if="loadError">

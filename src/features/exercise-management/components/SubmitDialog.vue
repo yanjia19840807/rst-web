@@ -23,9 +23,9 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 
-import { exerciseApi } from '../api'
 import { useExerciseMutations } from '../api/mutations'
-import type { SubmitPreview, SubmittedDetails } from '../types'
+import { useSubmitPreviewQuery } from '../api/queries'
+import type { SubmittedDetails } from '../types'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -38,9 +38,13 @@ const emit = defineEmits<{
 }>()
 
 const { submit } = useExerciseMutations()
-const loading = ref(false)
-const preview = ref<SubmitPreview | null>(null)
 const remarks = ref('')
+const previewQuery = useSubmitPreviewQuery(
+  () => props.exerciseId,
+  open,
+)
+const preview = computed(() => previewQuery.data.value ?? null)
+const loading = computed(() => previewQuery.isPending.value && !previewQuery.data.value)
 
 const remarksRequired = computed(() => preview.value?.remarksRequired ?? false)
 const submitting = computed(() => submit.isPending.value)
@@ -50,22 +54,24 @@ const findingLabel: Record<string, string> = {
   SHARED_KPI_PRESENT: 'Shared KPI lines present',
 }
 
-watch(open, async (value) => {
+watch(open, (value) => {
   if (!value) {
-    preview.value = null
     remarks.value = ''
-    return
-  }
-  loading.value = true
-  try {
-    preview.value = await exerciseApi.submitPreview(props.exerciseId)
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Submit preview failed.')
-    open.value = false
-  } finally {
-    loading.value = false
   }
 })
+
+watch(
+  [open, () => previewQuery.isError.value, () => previewQuery.isFetching.value],
+  ([isOpen, isError, isFetching]) => {
+    if (!isOpen || !isError || isFetching) return
+    toast.error(
+      previewQuery.error.value instanceof Error
+        ? previewQuery.error.value.message
+        : 'Submit preview failed.',
+    )
+    open.value = false
+  },
+)
 
 async function submitNow() {
   if (remarksRequired.value && !remarks.value.trim()) {

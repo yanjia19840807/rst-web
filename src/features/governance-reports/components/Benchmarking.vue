@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -16,32 +17,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { governanceApi } from '../api'
-import type { BenchmarkingResponse } from '../types'
+import { useBenchmarkingQuery } from '../api/queries'
+import type { BenchmarkingQuery } from '../types'
 import CapacityCell from './CapacityCell.vue'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 
-const GBS_OPTIONS = ['All', 'GBS China', 'GBS India', 'GBS Philippines', 'GBS Portugal']
-const DOMAIN_OPTIONS = ['All', 'FINANCE', 'CUSTOMER CARE']
-const PL1_OPTIONS = ['All', 'Record to report', 'Procure to pay', 'Booking', 'Documentation']
-const PL2_OPTIONS = [
-  'All',
-  'Bank Reconciliation',
-  'Accounts Payable Classification',
-  'Booking',
-  'HO Documentation',
-]
-const PL3_OPTIONS = [
-  'All',
-  'BANK RECONCILIATION',
-  'AP CLASSIFICATION',
-  'BOOKING AMENDMENTS',
-  'BLANK FORMS',
-]
-
-const loading = ref(true)
-const data = ref<BenchmarkingResponse | null>(null)
 const gbsFilter = ref('All')
 const domainFilter = ref('All')
 const pl1Filter = ref('All')
@@ -52,41 +33,62 @@ const submittedTo = ref('')
 const draftSubmittedFrom = ref('')
 const draftSubmittedTo = ref('')
 const moreFiltersOpen = ref(false)
+const page = ref(1)
+const pageSize = ref(10)
 
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-const filteredRows = computed(() => {
-  const rows = data.value?.rows ?? []
-  return rows.filter((row) => {
-    const gbsOk = gbsFilter.value === 'All' || row.gbs === gbsFilter.value
-    const domainOk = domainFilter.value === 'All' || row.domain === domainFilter.value
-    const pl3Ok = pl3Filter.value === 'All' || row.pl3 === pl3Filter.value
-    return gbsOk && domainOk && pl3Ok
-  })
-})
+const listQuery = computed<BenchmarkingQuery>(() => ({
+  center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
+  domain: domainFilter.value === 'All' ? undefined : domainFilter.value,
+  pl1: pl1Filter.value === 'All' ? undefined : pl1Filter.value,
+  pl2: pl2Filter.value === 'All' ? undefined : pl2Filter.value,
+  pl3Code: pl3Filter.value === 'All' ? undefined : pl3Filter.value,
+  submittedFrom: submittedFrom.value || undefined,
+  submittedTo: submittedTo.value || undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
+
+const benchmarkingQuery = useBenchmarkingQuery(listQuery)
+const data = computed(() => benchmarkingQuery.data.value)
+const rows = computed(() => data.value?.items ?? [])
+const total = computed(() => data.value?.total ?? 0)
+const gbsOptions = computed(() => ['All', ...(data.value?.centers ?? [])])
+const domainOptions = computed(() => ['All', ...(data.value?.domains ?? [])])
+const pl1Options = computed(() => ['All', ...(data.value?.pl1Names ?? [])])
+const pl2Options = computed(() => ['All', ...(data.value?.pl2Names ?? [])])
+const pl3Options = computed(() => data.value?.pl3Options ?? [])
+const loading = computed(() => benchmarkingQuery.isPending.value && !benchmarkingQuery.data.value)
+const pl3Selected = computed(() => pl3Filter.value !== 'All')
+
+function formatSeconds(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  const rounded = Math.round(n * 10) / 10
+  return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`
+}
+
+function formatCapacity(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return Number.isInteger(n) ? String(n) : n.toFixed(1)
+}
+
+function formatPct(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return `${n.toFixed(1)}%`
+}
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
-const hasActiveFilters = computed(
-  () =>
-    gbsFilter.value !== 'All' ||
-    domainFilter.value !== 'All' ||
-    pl1Filter.value !== 'All' ||
-    pl2Filter.value !== 'All' ||
-    pl3Filter.value !== 'All' ||
-    Boolean(submittedFrom.value || submittedTo.value),
-)
 
-function clearFilters() {
-  gbsFilter.value = 'All'
-  domainFilter.value = 'All'
-  pl1Filter.value = 'All'
-  pl2Filter.value = 'All'
-  pl3Filter.value = 'All'
-  submittedFrom.value = ''
-  submittedTo.value = ''
-  draftSubmittedFrom.value = ''
-  draftSubmittedTo.value = ''
+function resetPage() {
+  page.value = 1
 }
 
 function toggleMoreFilters() {
@@ -100,6 +102,7 @@ function toggleMoreFilters() {
 function applyAdvancedFilters() {
   submittedFrom.value = draftSubmittedFrom.value
   submittedTo.value = draftSubmittedTo.value
+  resetPage()
   moreFiltersOpen.value = false
 }
 
@@ -107,18 +110,37 @@ function exportBenchmark() {
   toast.success('Export prepared (prototype)')
 }
 
-async function load() {
-  loading.value = true
-  try {
-    data.value = await governanceApi.benchmarking()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load benchmarking.')
-  } finally {
-    loading.value = false
-  }
-}
+watch(
+  [gbsFilter, domainFilter, pl1Filter, pl2Filter, pl3Filter, submittedFrom, submittedTo],
+  () => {
+    resetPage()
+  },
+)
 
-onMounted(load)
+watch(
+  () => ({
+    totalPages: benchmarkingQuery.data.value?.totalPages,
+    fetching: benchmarkingQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watch(
+  () => benchmarkingQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        benchmarkingQuery.error.value instanceof Error
+          ? benchmarkingQuery.error.value.message
+          : 'Could not load benchmarking.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
@@ -127,55 +149,46 @@ onMounted(load)
       <Button @click="exportBenchmark">Export Benchmark</Button>
     </PageActions>
 
-    <div class="flex flex-wrap items-end justify-between gap-3">
-      <div class="flex flex-wrap items-end gap-2.5">
-        <FilterField label="GBS Center">
-          <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']">
-            <option v-for="option in GBS_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <FilterField label="Domain">
-          <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']">
-            <option v-for="option in DOMAIN_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <FilterField label="PL1">
-          <select v-model="pl1Filter" :class="[selectClass, 'w-[170px]']">
-            <option v-for="option in PL1_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <FilterField label="PL2">
-          <select v-model="pl2Filter" :class="[selectClass, 'w-[210px]']">
-            <option v-for="option in PL2_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <FilterField label="PL3">
-          <select v-model="pl3Filter" :class="[selectClass, 'w-[200px]']">
-            <option v-for="option in PL3_OPTIONS" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </FilterField>
-        <Button variant="outline" @click="toggleMoreFilters">
-          More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-        </Button>
-      </div>
-      <button
-        v-if="hasActiveFilters"
-        type="button"
-        class="shrink-0 text-sm font-semibold text-primary"
-        @click="clearFilters"
-      >
-        Clear All
-      </button>
+    <div class="flex flex-wrap items-end gap-2.5">
+      <FilterField label="GBS Center">
+        <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <FilterField label="Domain">
+        <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']">
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <FilterField label="PL1">
+        <select v-model="pl1Filter" :class="[selectClass, 'w-[170px]']">
+          <option v-for="option in pl1Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <FilterField label="PL2">
+        <select v-model="pl2Filter" :class="[selectClass, 'w-[210px]']">
+          <option v-for="option in pl2Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+      </FilterField>
+      <FilterField label="PL3">
+        <select v-model="pl3Filter" :class="[selectClass, 'w-[220px]']">
+          <option value="All">All</option>
+          <option v-for="option in pl3Options" :key="option.code" :value="option.code">
+            {{ option.name }}
+          </option>
+        </select>
+      </FilterField>
+      <Button variant="outline" @click="toggleMoreFilters">
+        More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
+      </Button>
     </div>
 
     <div
@@ -231,29 +244,29 @@ onMounted(load)
       </button>
     </div>
 
-    <div v-if="loading" class="text-sm text-muted-foreground">Loading benchmarking…</div>
+    <ListLoading v-if="loading" class="h-48" />
 
     <template v-else-if="data">
       <div class="grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Selected PL3"
-          :value="data.selectedPl3"
+          :value="data.selectedPl3 || '—'"
           hint="Like-for-like benchmark"
           value-class="text-base"
         />
         <MetricCard
           label="Best daily capacity / agent"
-          :value="data.bestDailyCapacity"
-          :hint="data.bestDailyCapacityHint"
+          :value="formatCapacity(data.bestDailyCapacity)"
+          :hint="data.bestDailyCapacityHint || undefined"
         />
         <MetricCard
           label="Median cycle time"
-          :value="data.medianCycleTime"
+          :value="formatSeconds(data.medianCycleTimeSeconds)"
           hint="Same PL3 median"
         />
         <MetricCard
           label="Production support ratio"
-          :value="data.productionSupportRatio"
+          :value="formatPct(data.productionSupportRatioPct)"
           hint="Support FTE / Delivery HC"
         />
       </div>
@@ -262,7 +275,7 @@ onMounted(load)
         <CardHeader class="pb-3">
           <CardTitle class="text-base">Same-PL3 Productivity Benchmark</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent class="space-y-3">
           <div class="overflow-x-auto rounded-lg border">
             <Table class="min-w-[1100px]">
               <TableHeader>
@@ -279,28 +292,45 @@ onMounted(load)
               </TableHeader>
               <TableBody>
                 <TableRow
-                  v-for="(row, index) in filteredRows"
-                  :key="`${row.gbs}-${row.sharedKpiLine}-${index}`"
+                  v-for="(row, index) in rows"
+                  :key="`${row.pl3Code}-${row.gbs}-${row.sharedKpiLine}-${index}`"
                 >
                   <TableCell>{{ row.gbs }}</TableCell>
                   <TableCell>{{ row.sharedKpiLine }}</TableCell>
                   <TableCell>{{ row.domain }}</TableCell>
                   <TableCell>{{ row.pl3 }}</TableCell>
-                  <TableCell>{{ row.cycleTime }}</TableCell>
-                  <TableCell>{{ row.dailyCapacityPerAgent }}</TableCell>
-                  <TableCell>{{ row.productionSupportRatio }}</TableCell>
+                  <TableCell>{{ formatSeconds(row.cycleTimeSeconds) }}</TableCell>
+                  <TableCell>{{ formatCapacity(row.dailyCapacityPerAgent) }}</TableCell>
+                  <TableCell>{{ formatPct(row.productionSupportRatioPct) }}</TableCell>
                   <TableCell>
                     <CapacityCell :value="row.capacityCreation" />
                   </TableCell>
                 </TableRow>
-                <TableRow v-if="!filteredRows.length">
+                <TableRow v-if="!rows.length">
                   <TableCell colspan="8" class="h-24 text-center text-muted-foreground">
-                    No benchmark rows found.
+                    {{
+                      pl3Selected
+                        ? 'No benchmark rows found.'
+                        : 'Select a PL3 to compare like-for-like work.'
+                    }}
                   </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </div>
+          <TablePager
+            :total="total"
+            :page="page"
+            :page-size="pageSize"
+            label="benchmark rows"
+            @update:page="page = $event"
+            @update:page-size="
+              (size) => {
+                pageSize = size
+                page = 1
+              }
+            "
+          />
         </CardContent>
       </Card>
     </template>

@@ -1,5 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 
+import { approvalQueryKeys } from '@/features/approval/api/queries'
+import { governanceQueryKeys } from '@/features/governance-reports/api/queries'
+
 import { exerciseApi } from '../api'
 import type {
   CalendarRequest,
@@ -78,6 +81,11 @@ export function useExerciseMutations() {
       void queryClient.invalidateQueries({
         queryKey: exerciseQueryKeys.submittedDetails(variables.id),
       })
+      void queryClient.invalidateQueries({
+        queryKey: exerciseQueryKeys.submitPreview(variables.id),
+      })
+      void queryClient.invalidateQueries({ queryKey: approvalQueryKeys.all })
+      void queryClient.invalidateQueries({ queryKey: governanceQueryKeys.all })
       void refreshExercises()
     },
   })
@@ -89,6 +97,8 @@ export function useExerciseMutations() {
       void queryClient.invalidateQueries({
         queryKey: exerciseQueryKeys.submittedDetails(id),
       })
+      void queryClient.invalidateQueries({ queryKey: approvalQueryKeys.all })
+      void queryClient.invalidateQueries({ queryKey: governanceQueryKeys.all })
       void refreshExercises()
     },
   })
@@ -111,6 +121,12 @@ function invalidateExerciseAssociatedData(
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.volumesSlot(exerciseId) })
   void queryClient.invalidateQueries({
     queryKey: exerciseQueryKeys.cycleTimeActive(exerciseId),
+  })
+  void queryClient.invalidateQueries({
+    queryKey: exerciseQueryKeys.cycleTimeChart(exerciseId),
+  })
+  void queryClient.invalidateQueries({
+    queryKey: [...exerciseQueryKeys.all, 'tmsSessions', exerciseId],
   })
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.detail(exerciseId) })
 }
@@ -190,6 +206,48 @@ export function useExerciseAssociatedDataMutations() {
     onSuccess: (_data, { exerciseId }) => invalidateExerciseAssociatedData(queryClient, exerciseId),
   })
 
+  const patchTmsSession = useMutation({
+    mutationFn: ({
+      exerciseId,
+      sessionNo,
+      included,
+    }: {
+      exerciseId: string
+      sessionNo: string
+      included: boolean
+    }) => exerciseApi.patchExerciseTmsSession(exerciseId, sessionNo, included),
+    onSuccess: (result, { exerciseId }) => {
+      if (result.baseline) {
+        queryClient.setQueryData(exerciseQueryKeys.cycleTimeActive(exerciseId), result.baseline)
+      }
+      void queryClient.invalidateQueries({
+        queryKey: [...exerciseQueryKeys.all, 'tmsSessions', exerciseId],
+      })
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.cycleTimeChart(exerciseId) })
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.teamSetup(exerciseId) })
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.cycleTimeActive(exerciseId) })
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.detail(exerciseId) })
+    },
+  })
+
+  const importMonthlyVolumes = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.importMonthlyVolumes(exerciseId, file),
+    onSuccess: (_data, { exerciseId }) => invalidateExerciseAssociatedData(queryClient, exerciseId),
+  })
+
+  const importDailyVolumes = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.importDailyVolumes(exerciseId, file),
+    onSuccess: (_data, { exerciseId }) => invalidateExerciseAssociatedData(queryClient, exerciseId),
+  })
+
+  const importSlotVolumes = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.importSlotVolumes(exerciseId, file),
+    onSuccess: (_data, { exerciseId }) => invalidateExerciseAssociatedData(queryClient, exerciseId),
+  })
+
   return {
     putTeamSetup,
     putShifts,
@@ -202,6 +260,10 @@ export function useExerciseAssociatedDataMutations() {
     putDailyVolumes,
     putSlotVolumes,
     createManualCycleTime,
+    patchTmsSession,
+    importMonthlyVolumes,
+    importDailyVolumes,
+    importSlotVolumes,
   }
 }
 
@@ -211,7 +273,13 @@ export function useScenarioMutations() {
   const invalidateScenarios = (exerciseId: string) => {
     void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.scenarios(exerciseId) })
     void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.detail(exerciseId) })
-    void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.all })
+    void queryClient.invalidateQueries({ queryKey: [...exerciseQueryKeys.all, 'list'] })
+    void queryClient.invalidateQueries({
+      queryKey: [...exerciseQueryKeys.all, 'scenario', exerciseId],
+    })
+    void queryClient.invalidateQueries({
+      queryKey: [...exerciseQueryKeys.all, 'sim', exerciseId],
+    })
   }
 
   const createScenario = useMutation({
@@ -222,7 +290,10 @@ export function useScenarioMutations() {
       exerciseId: string
       body: CreateScenarioRequest
     }) => exerciseApi.createScenario(exerciseId, body),
-    onSuccess: (_data, { exerciseId }) => invalidateScenarios(exerciseId),
+    onSuccess: (scenario, { exerciseId }) => {
+      queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenario.id), scenario)
+      invalidateScenarios(exerciseId)
+    },
   })
 
   const updateScenario = useMutation({
@@ -235,7 +306,10 @@ export function useScenarioMutations() {
       scenarioId: string
       body: UpdateScenarioRequest
     }) => exerciseApi.updateScenario(exerciseId, scenarioId, body),
-    onSuccess: (_data, { exerciseId }) => invalidateScenarios(exerciseId),
+    onSuccess: (scenario, { exerciseId, scenarioId }) => {
+      queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenarioId), scenario)
+      invalidateScenarios(exerciseId)
+    },
   })
 
   const commitScenario = useMutation({
@@ -248,19 +322,33 @@ export function useScenarioMutations() {
       scenarioId: string
       body: CommitScenarioRequest
     }) => exerciseApi.commitScenario(exerciseId, scenarioId, body),
-    onSuccess: (_data, { exerciseId }) => invalidateScenarios(exerciseId),
+    onSuccess: (scenario, { exerciseId, scenarioId }) => {
+      queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenarioId), scenario)
+      invalidateScenarios(exerciseId)
+    },
   })
 
   const deleteScenario = useMutation({
     mutationFn: ({ exerciseId, scenarioId }: { exerciseId: string; scenarioId: string }) =>
       exerciseApi.deleteScenario(exerciseId, scenarioId),
-    onSuccess: (_data, { exerciseId }) => invalidateScenarios(exerciseId),
+    onSuccess: (_data, { exerciseId, scenarioId }) => {
+      queryClient.removeQueries({
+        queryKey: exerciseQueryKeys.scenario(exerciseId, scenarioId),
+      })
+      queryClient.removeQueries({
+        queryKey: [...exerciseQueryKeys.all, 'sim', exerciseId, scenarioId],
+      })
+      invalidateScenarios(exerciseId)
+    },
   })
 
   const markOfficial = useMutation({
     mutationFn: ({ exerciseId, scenarioId }: { exerciseId: string; scenarioId: string }) =>
       exerciseApi.markOfficial(exerciseId, scenarioId),
-    onSuccess: (_data, { exerciseId }) => invalidateScenarios(exerciseId),
+    onSuccess: (scenario, { exerciseId, scenarioId }) => {
+      queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenarioId), scenario)
+      invalidateScenarios(exerciseId)
+    },
   })
 
   return {

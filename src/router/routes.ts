@@ -3,7 +3,8 @@ import type { RouteRecordRaw } from 'vue-router'
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: { name: 'agent-session' },
+    name: 'home',
+    component: { render: () => null },
   },
   {
     path: '/agent',
@@ -119,7 +120,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/supervisor/HolidayTemplateFormPage.vue'),
     meta: {
       title: 'Edit Holiday Template',
-      subtitle: 'Maintain holidays, import Excel, and publish',
+      subtitle: 'Maintain holidays and import Excel',
       roles: ['lth'],
     },
   },
@@ -280,6 +281,7 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: { name: 'agent-session' },
+    name: 'not-found',
+    component: { render: () => null },
   },
 ]

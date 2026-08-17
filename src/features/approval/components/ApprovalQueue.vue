@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
+import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,28 +24,21 @@ import {
 import AdMetric from '@/features/exercise-management/components/associated-data/AdMetric.vue'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { exerciseApi } from '@/features/exercise-management/api'
+import { exerciseQueryKeys } from '@/features/exercise-management/api/queries'
 import type { Exercise } from '@/features/exercise-management/types'
 import { formatDateTime } from '@/lib/datetime'
 
-import { approvalApi } from '../api'
-import type { ApprovalQueueItem, ApprovalQueueMetrics } from '../types'
+import { useApprovalQueueQuery } from '../api/queries'
+import type { ApprovalQueueItem, ApprovalQueueQuery } from '../types'
 
 type TabKey = 'Awaiting Review' | 'Completed Task'
 
 const router = useRouter()
-const items = ref<ApprovalQueueItem[]>([])
-const loading = ref(true)
+const queryClient = useQueryClient()
 const activeTab = ref<TabKey>('Awaiting Review')
-const metrics = ref<ApprovalQueueMetrics>({
-  awaitingMe: 0,
-  overdue: 0,
-  dueWithin2Days: 0,
-  highRisk: 0,
-})
-const toolkitNames = ref<string[]>([])
-const pl3Names = ref<string[]>([])
 
 const exerciseFilter = ref('')
+const appliedExerciseCode = ref('')
 const pl3Filter = ref('All PL3')
 const toolkitFilter = ref('All toolkits')
 const submittedFrom = ref('')
@@ -105,18 +100,46 @@ function decisionTone(decision?: string | null) {
   return 'muted' as const
 }
 
+const listQuery = computed<ApprovalQueueQuery>(() => {
+  const completed = activeTab.value === 'Completed Task'
+  return {
+    status: 'AWAITING',
+    completed,
+    exerciseCode: appliedExerciseCode.value,
+    toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
+    pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+    submittedFrom: completed ? undefined : submittedFrom.value || undefined,
+    submittedTo: completed ? undefined : submittedTo.value || undefined,
+    completedFrom: completed ? completedFrom.value || undefined : undefined,
+    completedTo: completed ? completedTo.value || undefined : undefined,
+    decision:
+      !completed || decisionFilter.value === 'All decisions'
+        ? undefined
+        : decisionFilter.value,
+    page: page.value,
+    pageSize: pageSize.value,
+  }
+})
+
+const queueQuery = useApprovalQueueQuery(listQuery)
+const items = computed(() => queueQuery.data.value?.items ?? [])
+const total = computed(() => queueQuery.data.value?.total ?? 0)
+const metrics = computed(
+  () =>
+    queueQuery.data.value?.metrics ?? {
+      awaitingMe: 0,
+      overdue: 0,
+      dueWithin2Days: 0,
+      highRisk: 0,
+    },
+)
+const toolkitNames = computed(() => queueQuery.data.value?.toolkitNames ?? [])
+const pl3Names = computed(() => queueQuery.data.value?.pl3Names ?? [])
+const loading = computed(() => queueQuery.isPending.value && !queueQuery.data.value)
+
 const pl3Options = computed(() => ['All PL3', ...pl3Names.value])
 
 const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
-
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(items.value.length / pageSize.value) || 1)),
-)
-
-const pagedRows = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return items.value.slice(start, start + pageSize.value)
-})
 
 const advancedFilterCount = computed(() =>
   activeTab.value === 'Awaiting Review'
@@ -163,36 +186,6 @@ function applyAdvancedFilters() {
   moreFiltersOpen.value = false
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const completed = activeTab.value === 'Completed Task'
-    const view = await approvalApi.queue({
-      status: 'AWAITING',
-      completed,
-      exerciseCode: exerciseFilter.value,
-      toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
-      pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
-      submittedFrom: completed ? undefined : submittedFrom.value || undefined,
-      submittedTo: completed ? undefined : submittedTo.value || undefined,
-      completedFrom: completed ? completedFrom.value || undefined : undefined,
-      completedTo: completed ? completedTo.value || undefined : undefined,
-      decision:
-        !completed || decisionFilter.value === 'All decisions'
-          ? undefined
-          : decisionFilter.value,
-    })
-    items.value = view.items
-    metrics.value = view.metrics
-    toolkitNames.value = view.toolkitNames
-    pl3Names.value = view.pl3Names
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load approval queue.')
-  } finally {
-    loading.value = false
-  }
-}
-
 function openReview(item: ApprovalQueueItem) {
   void router.push({
     name: 'approver-review',
@@ -203,7 +196,10 @@ function openReview(item: ApprovalQueueItem) {
 async function openToolkit(item: ApprovalQueueItem) {
   if (!item.exerciseId) return
   try {
-    const exercise = await exerciseApi.detail(item.exerciseId)
+    const exercise = await queryClient.fetchQuery({
+      queryKey: exerciseQueryKeys.detail(item.exerciseId),
+      queryFn: () => exerciseApi.detail(item.exerciseId),
+    })
     toolkitSnapshot.value = exercise.snapshot
     toolkitInfoOpen.value = true
   } catch (error) {
@@ -214,6 +210,7 @@ async function openToolkit(item: ApprovalQueueItem) {
 function onTabChange(tab: TabKey) {
   activeTab.value = tab
   exerciseFilter.value = ''
+  appliedExerciseCode.value = ''
   toolkitFilter.value = 'All toolkits'
   pl3Filter.value = 'All PL3'
   submittedFrom.value = ''
@@ -231,7 +228,6 @@ function onTabChange(tab: TabKey) {
 
 watch(
   [
-    activeTab,
     toolkitFilter,
     pl3Filter,
     decisionFilter,
@@ -242,18 +238,41 @@ watch(
   ],
   () => {
     resetPage()
-    void load()
   },
-  { immediate: true },
 )
 
 watchDebounced(
   exerciseFilter,
-  () => {
+  (value) => {
+    appliedExerciseCode.value = value
     resetPage()
-    void load()
   },
   { debounce: 400 },
+)
+
+watch(
+  () => ({
+    totalPages: queueQuery.data.value?.totalPages,
+    fetching: queueQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watch(
+  () => queueQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        queueQuery.error.value instanceof Error
+          ? queueQuery.error.value.message
+          : 'Could not load approval queue.',
+      )
+    }
+  },
 )
 </script>
 
@@ -439,7 +458,7 @@ watchDebounced(
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="item in pagedRows" :key="item.submissionId">
+              <TableRow v-for="item in items" :key="item.submissionId">
                 <TableCell class="font-semibold">{{ item.exerciseCode }}</TableCell>
                 <TableCell>{{ item.center || '—' }}</TableCell>
                 <TableCell>{{ item.domain || '—' }}</TableCell>
@@ -493,14 +512,14 @@ watchDebounced(
                   </Button>
                 </TableCell>
               </TableRow>
-              <TableRow v-if="!loading && !pagedRows.length">
+              <TableRow v-if="!loading && !items.length">
                 <TableCell colspan="16" class="h-24 text-center text-muted-foreground">
                   No submitted records found.
                 </TableCell>
               </TableRow>
               <TableRow v-if="loading">
-                <TableCell colspan="16" class="h-24 text-center text-muted-foreground">
-                  Loading approval queue…
+                <TableCell colspan="16" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -527,7 +546,7 @@ watchDebounced(
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="item in pagedRows" :key="item.submissionId">
+              <TableRow v-for="item in items" :key="item.submissionId">
                 <TableCell class="font-semibold">{{ item.exerciseCode }}</TableCell>
                 <TableCell>{{ item.center || '—' }}</TableCell>
                 <TableCell>{{ item.domain || '—' }}</TableCell>
@@ -579,14 +598,14 @@ watchDebounced(
                   </Button>
                 </TableCell>
               </TableRow>
-              <TableRow v-if="!loading && !pagedRows.length">
+              <TableRow v-if="!loading && !items.length">
                 <TableCell colspan="15" class="h-24 text-center text-muted-foreground">
                   No completed tasks found.
                 </TableCell>
               </TableRow>
               <TableRow v-if="loading">
-                <TableCell colspan="15" class="h-24 text-center text-muted-foreground">
-                  Loading approval queue…
+                <TableCell colspan="15" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -594,8 +613,8 @@ watchDebounced(
         </div>
 
         <TablePager
-          :total="items.length"
-          :page="safePage"
+          :total="total"
+          :page="page"
           :page-size="pageSize"
           :label="activeTab === 'Awaiting Review' ? 'submitted records' : 'completed tasks'"
           @update:page="page = $event"

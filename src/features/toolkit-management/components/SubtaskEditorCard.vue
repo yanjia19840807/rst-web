@@ -106,7 +106,8 @@ function confirmAdd() {
           </label>
         </div>
         <p class="text-xs text-muted-foreground">
-          Yes combines all subtasks into one TMS duration.
+          Yes: sessions that share a Reference are summed before the SYSTEM median.
+          No: each session is an independent median sample.
         </p>
       </div>
 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
+import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,12 +23,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { formatDateTime } from '@/lib/datetime'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionsQuery } from '../api/queries'
-import { formatDate } from '@/lib/datetime'
+import type { SessionFilters } from '../types'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   hasRunningSession: boolean
 }>()
@@ -35,22 +38,67 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const filters = reactive({
-  status: 'paused' as const,
-  query: '',
-  page: 1,
-  pageSize: 10,
-})
-const queryFilters = computed(() => ({ ...filters }))
-const pausedQuery = useTmsSessionsQuery(queryFilters)
+const queryInput = ref('')
+const appliedQuery = ref('')
+const page = ref(1)
+const pageSize = ref(10)
+
+const listQuery = computed<SessionFilters & { status: 'paused' }>(() => ({
+  status: 'paused',
+  query: appliedQuery.value || undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
+
+const pausedQuery = useTmsSessionsQuery(listQuery, 'agent', () => props.open)
 const { resume, discard } = useTmsSessionMutations()
 const deleteTargetId = ref('')
 const deleteOpen = ref(false)
 
+const items = computed(() => pausedQuery.data.value?.items ?? [])
+const total = computed(() => pausedQuery.data.value?.total ?? 0)
+const loading = computed(() => pausedQuery.isPending.value && !pausedQuery.data.value)
+
+watchDebounced(
+  queryInput,
+  (value) => {
+    appliedQuery.value = value
+    page.value = 1
+  },
+  { debounce: 400 },
+)
+
 watch(
-  () => filters.query,
-  () => {
-    filters.page = 1
+  () => props.open,
+  (open) => {
+    if (open) return
+    queryInput.value = ''
+    appliedQuery.value = ''
+    page.value = 1
+  },
+)
+
+watch(
+  () => ({
+    totalPages: pausedQuery.data.value?.totalPages,
+    fetching: pausedQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watch(
+  () => pausedQuery.isError.value,
+  (isError) => {
+    if (!isError || !props.open) return
+    toast.error(
+      pausedQuery.error.value instanceof Error
+        ? pausedQuery.error.value.message
+        : 'Could not load paused sessions.',
+    )
   },
 )
 
@@ -88,17 +136,18 @@ async function confirmDelete() {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Paused Sessions</DialogTitle>
         <DialogDescription>
-          {{ pausedQuery.data.value?.total ?? 0 }} session{{
-            (pausedQuery.data.value?.total ?? 0) === 1 ? '' : 's'
-          }}
+          {{ total }} session{{ total === 1 ? '' : 's' }}
           currently paused
+          <template v-if="hasRunningSession">
+            · Pause or end the running session to resume one of these.
+          </template>
         </DialogDescription>
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <div class="rounded-lg border bg-card p-4">
           <div class="grid gap-4">
-            <Input v-model="filters.query" placeholder="Session No / Reference" />
+            <Input v-model="queryInput" placeholder="Session No / Reference" />
 
             <div class="overflow-x-auto rounded-lg border">
               <Table class="min-w-[680px]">
@@ -111,12 +160,9 @@ async function confirmDelete() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow
-                    v-for="session in pausedQuery.data.value?.items ?? []"
-                    :key="session.id"
-                  >
+                  <TableRow v-for="session in items" :key="session.id">
                     <TableCell class="font-mono text-xs">{{ session.id }}</TableCell>
-                    <TableCell>{{ formatDate(session.pausedAt) }}</TableCell>
+                    <TableCell>{{ formatDateTime(session.pausedAt) }}</TableCell>
                     <TableCell>{{ session.reference || '—' }}</TableCell>
                     <TableCell>
                       <div class="flex justify-end gap-3">
@@ -141,9 +187,12 @@ async function confirmDelete() {
                       </div>
                     </TableCell>
                   </TableRow>
-                  <TableRow
-                    v-if="!pausedQuery.isPending.value && !pausedQuery.data.value?.items.length"
-                  >
+                  <TableRow v-if="loading">
+                    <TableCell colspan="4" class="p-0">
+                      <ListLoading />
+                    </TableCell>
+                  </TableRow>
+                  <TableRow v-else-if="!items.length">
                     <TableCell colspan="4" class="h-20 text-center text-muted-foreground">
                       No paused sessions found.
                     </TableCell>
@@ -153,15 +202,15 @@ async function confirmDelete() {
             </div>
 
             <TablePager
-              :total="pausedQuery.data.value?.total ?? 0"
-              :page="filters.page"
-              :page-size="filters.pageSize"
+              :total="total"
+              :page="page"
+              :page-size="pageSize"
               label="sessions"
-              @update:page="filters.page = $event"
+              @update:page="page = $event"
               @update:page-size="
                 (size) => {
-                  filters.pageSize = size
-                  filters.page = 1
+                  pageSize = size
+                  page = 1
                 }
               "
             />

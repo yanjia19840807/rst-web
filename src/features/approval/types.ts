@@ -35,6 +35,10 @@ export interface ApprovalQueueMetrics {
 
 export interface ApprovalQueueView {
   items: ApprovalQueueItem[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
   metrics: ApprovalQueueMetrics
   toolkitNames: string[]
   pl3Names: string[]
@@ -51,6 +55,8 @@ export interface ApprovalQueueQuery {
   completedFrom?: string
   completedTo?: string
   decision?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface ScopeView {

@@ -7,7 +7,14 @@ import type { ToolkitListQuery } from '../types'
 export const toolkitQueryKeys = {
   all: ['toolkit'] as const,
   list: (query: ToolkitListQuery = {}) =>
-    [...toolkitQueryKeys.all, 'list', query.name ?? '', query.pl3Name ?? ''] as const,
+    [
+      ...toolkitQueryKeys.all,
+      'list',
+      query.name ?? '',
+      query.pl3Name ?? '',
+      query.page ?? 1,
+      query.pageSize ?? 10,
+    ] as const,
   detail: (id: string) => [...toolkitQueryKeys.all, 'detail', id] as const,
   hierarchy: () => [...toolkitQueryKeys.all, 'hierarchy'] as const,
   candidates: (pl3Code: string, supervisorPositionId: string, countries: string[]) =>

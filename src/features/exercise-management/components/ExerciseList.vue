@@ -111,12 +111,15 @@ const listQuery = computed<ExerciseListQuery>(() => {
     submittedTo: inProgress ? submittedTo.value || undefined : undefined,
     archivedFrom: inProgress ? undefined : archivedFrom.value || undefined,
     archivedTo: inProgress ? undefined : archivedTo.value || undefined,
+    page: page.value,
+    pageSize: pageSize.value,
   }
 })
 
 const exercisesQuery = useExercisesQuery(listQuery)
-const toolkitsQuery = useSupervisorToolkitsQuery()
+const toolkitsQuery = useSupervisorToolkitsQuery({ page: 1, pageSize: 100 })
 const exercises = computed(() => exercisesQuery.data.value?.items ?? [])
+const total = computed(() => exercisesQuery.data.value?.total ?? 0)
 const toolkits = computed<SupervisorToolkit[]>(() => toolkitsQuery.data.value?.items ?? [])
 const toolkitNames = computed(() => exercisesQuery.data.value?.toolkitNames ?? [])
 const pl3Names = computed(() => exercisesQuery.data.value?.pl3Names ?? [])
@@ -129,15 +132,6 @@ const withdrawPending = computed(() => withdraw.isPending.value)
 const pl3Options = computed(() => ['All PL3', ...pl3Names.value])
 const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
 const reviewerOptions = computed(() => ['All reviewers', ...reviewerNames.value])
-
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(exercises.value.length / pageSize.value) || 1)),
-)
-
-const pagedRows = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return exercises.value.slice(start, start + pageSize.value)
-})
 
 function resetPage() {
   page.value = 1
@@ -328,6 +322,18 @@ watchDebounced(
 )
 
 watch(
+  () => ({
+    totalPages: exercisesQuery.data.value?.totalPages,
+    fetching: exercisesQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
+
+watch(
   () => exercisesQuery.isError.value,
   (isError) => {
     if (isError) {
@@ -421,15 +427,15 @@ watch(
 
         <ExerciseListTable
           :active-tab="activeTab"
-          :rows="pagedRows"
+          :rows="exercises"
           :loading="loading"
           @open="openExercise"
           @withdraw="askWithdraw"
         />
 
         <TablePager
-          :total="exercises.length"
-          :page="safePage"
+          :total="total"
+          :page="page"
           :page-size="pageSize"
           label="exercises"
           @update:page="page = $event"

@@ -12,20 +12,22 @@ const base = '/api/v1/approvals'
 
 function queueQuery(params?: ApprovalQueueQuery) {
   const search = new URLSearchParams()
-  if (!params) return ''
-  if (params.status) search.set('status', params.status)
-  if (params.completed != null) search.set('completed', String(params.completed))
-  const exerciseCode = params.exerciseCode?.trim()
-  if (exerciseCode) search.set('exerciseCode', exerciseCode)
-  if (params.toolkitName) search.set('toolkitName', params.toolkitName)
-  if (params.pl3Name) search.set('pl3Name', params.pl3Name)
-  if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
-  if (params.submittedTo) search.set('submittedTo', params.submittedTo)
-  if (params.completedFrom) search.set('completedFrom', params.completedFrom)
-  if (params.completedTo) search.set('completedTo', params.completedTo)
-  if (params.decision) search.set('decision', params.decision)
-  const query = search.toString()
-  return query ? `?${query}` : ''
+  if (params) {
+    if (params.status) search.set('status', params.status)
+    if (params.completed != null) search.set('completed', String(params.completed))
+    const exerciseCode = params.exerciseCode?.trim()
+    if (exerciseCode) search.set('exerciseCode', exerciseCode)
+    if (params.toolkitName) search.set('toolkitName', params.toolkitName)
+    if (params.pl3Name) search.set('pl3Name', params.pl3Name)
+    if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
+    if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+    if (params.completedFrom) search.set('completedFrom', params.completedFrom)
+    if (params.completedTo) search.set('completedTo', params.completedTo)
+    if (params.decision) search.set('decision', params.decision)
+  }
+  search.set('page', String(params?.page ?? 1))
+  search.set('pageSize', String(params?.pageSize ?? 10))
+  return `?${search.toString()}`
 }
 
 export const approvalApi = {

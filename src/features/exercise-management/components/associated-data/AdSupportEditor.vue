@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { exerciseApi } from '../../api'
+import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import type { SupportItem, SupportItemRequest, TeamSetup } from '../../types'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
@@ -43,6 +43,7 @@ const emit = defineEmits<{
 const controlClass =
   'flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm'
 
+const { createSupport, updateSupport, deleteSupport } = useExerciseAssociatedDataMutations()
 const adding = ref(false)
 const editingId = ref<string | null>(null)
 const busy = ref(false)
@@ -144,7 +145,7 @@ async function confirmAdd() {
   if (!body) return
   busy.value = true
   try {
-    const created = await exerciseApi.createSupport(props.exerciseId, body)
+    const created = await createSupport.mutateAsync({ exerciseId: props.exerciseId, body })
     emit('update:items', [...props.items, created])
     adding.value = false
     toast.success('Workload added.')
@@ -172,7 +173,11 @@ async function confirmEdit() {
   const itemId = editingId.value
   busy.value = true
   try {
-    const updated = await exerciseApi.updateSupport(props.exerciseId, itemId, body)
+    const updated = await updateSupport.mutateAsync({
+      exerciseId: props.exerciseId,
+      itemId,
+      body,
+    })
     emit(
       'update:items',
       props.items.map((item) => (item.id === itemId ? updated : item)),
@@ -190,7 +195,7 @@ async function removeItem(itemId: string) {
   if (formLocked.value) return
   busy.value = true
   try {
-    await exerciseApi.deleteSupport(props.exerciseId, itemId)
+    await deleteSupport.mutateAsync({ exerciseId: props.exerciseId, itemId })
     emit(
       'update:items',
       props.items.filter((item) => item.id !== itemId),

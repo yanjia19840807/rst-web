@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import { useSessionStore } from '@/auth/session'
 import { isMenuItemActive, menuItems } from '@/navigation/menu'
+import UserMenu from './UserMenu.vue'
 
 const route = useRoute()
 const session = useSessionStore()
@@ -37,7 +38,7 @@ const copyrightYear = new Date().getFullYear()
 
     <aside class="bg-sidebar text-sidebar-foreground lg:min-h-screen">
       <div class="flex h-16 items-center border-b border-sidebar-border px-5">
-        <RouterLink to="/" class="flex items-center gap-3 font-semibold">
+        <RouterLink :to="session.homePath" class="flex items-center gap-3 font-semibold">
           <span
             class="relative grid size-9 place-items-center rounded-md bg-white text-sm text-brand-navy after:absolute after:right-0 after:bottom-0 after:left-0 after:h-1 after:rounded-b-md after:bg-brand-red"
             aria-hidden="true"
@@ -71,18 +72,7 @@ const copyrightYear = new Date().getFullYear()
             <h1 class="text-lg font-semibold">{{ title }}</h1>
             <p class="text-sm text-muted-foreground">{{ subtitle }}</p>
           </div>
-          <div class="min-w-0 text-right">
-            <div class="truncate text-sm font-semibold text-foreground">
-              {{ session.loading ? 'Loading…' : session.displayName || '—' }}
-            </div>
-            <div class="truncate text-xs text-muted-foreground" :title="session.rolesLabel">
-              <template v-if="session.ccgid">
-                {{ session.ccgid }}
-                <template v-if="session.rolesLabel"> · {{ session.rolesLabel }}</template>
-              </template>
-              <template v-else-if="!session.loading">—</template>
-            </div>
-          </div>
+          <UserMenu />
         </div>
       </header>
 
@@ -90,7 +80,7 @@ const copyrightYear = new Date().getFullYear()
         <slot />
       </main>
 
-      <footer class="border-t px-4 py-3 text-center text-xs text-muted-foreground sm:px-6">
+      <footer class="border-t bg-card px-4 py-3 text-center text-xs text-muted-foreground sm:px-6">
         © {{ copyrightYear }} CMA CGM Group
       </footer>
     </div>

@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
+import { watchDebounced } from '@vueuse/core'
 
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -16,43 +19,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import { governanceApi } from '../api'
-import type { RepositoryRow } from '../types'
+import { useRepositoryQuery } from '../api/queries'
+import type { RepositoryListQuery } from '../types'
 import CapacityCell from './CapacityCell.vue'
 import FilterField from './FilterField.vue'
-import TablePager from '@/components/TablePager.vue'
 
-const GBS_OPTIONS = [
-  'All',
-  'GBS India',
-  'GBS China',
-  'GBS Philippines',
-  'GBS Costa Rica',
-  'GBS Lebanon',
-  'GBS Estonia',
-  'GBS Portugal',
-]
-const DOMAIN_OPTIONS = ['All', 'CUSTOMER CARE', 'FINANCE']
-const PL3_OPTIONS = [
-  'All',
-  'BLANK FORMS',
-  'BOOKING AMENDMENTS',
-  'AP CLASSIFICATION',
-  'BANK RECONCILIATION',
-  'EXPORT DOC - STANDARD SCOPE',
-]
-const TOOLKIT_OPTIONS = [
-  'All',
-  'Bank Rec Manual Check',
-  'Bank Rec Auto Exception',
-  'AP Classification Desk',
-  'Booking Amendment Desk',
-  'Blank Forms Desk',
-]
-
-const loading = ref(true)
-const rows = ref<RepositoryRow[]>([])
 const exerciseFilter = ref('')
+const appliedExerciseCode = ref('')
 const gbsFilter = ref('All')
 const domainFilter = ref('All')
 const pl3Filter = ref('All')
@@ -68,58 +41,45 @@ const pageSize = ref(10)
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-const filteredRows = computed(() =>
-  rows.value.filter((row) => {
-    const exerciseOk = row.exerciseId
-      .toLowerCase()
-      .includes(exerciseFilter.value.trim().toLowerCase())
-    const gbsOk =
-      gbsFilter.value === 'All' ||
-      row.country === gbsFilter.value ||
-      row.country.includes(gbsFilter.value.replace('GBS ', ''))
-    const domainOk = domainFilter.value === 'All' || row.domain === domainFilter.value
-    const pl3Ok = pl3Filter.value === 'All' || row.pl3 === pl3Filter.value
-    const toolkitOk = toolkitFilter.value === 'All' || row.toolkit === toolkitFilter.value
-    const fromOk = !submittedFrom.value || row.submittedDate >= submittedFrom.value
-    const toOk = !submittedTo.value || row.submittedDate <= submittedTo.value
-    return exerciseOk && gbsOk && domainOk && pl3Ok && toolkitOk && fromOk && toOk
-  }),
-)
+const listQuery = computed<RepositoryListQuery>(() => ({
+  exerciseCode: appliedExerciseCode.value || undefined,
+  center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
+  domain: domainFilter.value === 'All' ? undefined : domainFilter.value,
+  pl3Name: pl3Filter.value === 'All' ? undefined : pl3Filter.value,
+  toolkitName: toolkitFilter.value === 'All' ? undefined : toolkitFilter.value,
+  submittedFrom: submittedFrom.value || undefined,
+  submittedTo: submittedTo.value || undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
 
-const safePage = computed(() =>
-  Math.min(page.value, Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value) || 1)),
-)
-const visibleRows = computed(() => {
-  const start = (safePage.value - 1) * pageSize.value
-  return filteredRows.value.slice(start, start + pageSize.value)
-})
+const repositoryQuery = useRepositoryQuery(listQuery)
+const rows = computed(() => repositoryQuery.data.value?.items ?? [])
+const total = computed(() => repositoryQuery.data.value?.total ?? 0)
+const gbsOptions = computed(() => ['All', ...(repositoryQuery.data.value?.centers ?? [])])
+const domainOptions = computed(() => ['All', ...(repositoryQuery.data.value?.domains ?? [])])
+const pl3Options = computed(() => ['All', ...(repositoryQuery.data.value?.pl3Names ?? [])])
+const toolkitOptions = computed(() => ['All', ...(repositoryQuery.data.value?.toolkitNames ?? [])])
+const loading = computed(() => repositoryQuery.isPending.value && !repositoryQuery.data.value)
+
+function formatHc(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return n.toFixed(2)
+}
+
+function formatPct(value: number | string | null | undefined) {
+  if (value == null || value === '') return '—'
+  const n = Number(String(value).replace(/[%+]/g, ''))
+  if (!Number.isFinite(n)) return '—'
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
+}
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
-const hasActiveFilters = computed(
-  () =>
-    Boolean(exerciseFilter.value) ||
-    gbsFilter.value !== 'All' ||
-    domainFilter.value !== 'All' ||
-    pl3Filter.value !== 'All' ||
-    toolkitFilter.value !== 'All' ||
-    Boolean(submittedFrom.value || submittedTo.value),
-)
 
 function resetPage() {
   page.value = 1
-}
-
-function clearFilters() {
-  exerciseFilter.value = ''
-  gbsFilter.value = 'All'
-  domainFilter.value = 'All'
-  pl3Filter.value = 'All'
-  toolkitFilter.value = 'All'
-  submittedFrom.value = ''
-  submittedTo.value = ''
-  draftSubmittedFrom.value = ''
-  draftSubmittedTo.value = ''
-  resetPage()
 }
 
 function toggleMoreFilters() {
@@ -145,18 +105,46 @@ function onToolkitClick(name: string) {
   toast.message(name, { description: 'Toolkit info dialog (prototype)' })
 }
 
-async function load() {
-  loading.value = true
-  try {
-    rows.value = await governanceApi.repository()
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load repository.')
-  } finally {
-    loading.value = false
-  }
-}
+watch(
+  () => ({
+    totalPages: repositoryQuery.data.value?.totalPages,
+    fetching: repositoryQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
+)
 
-onMounted(load)
+watch(
+  [gbsFilter, domainFilter, pl3Filter, toolkitFilter, submittedFrom, submittedTo],
+  () => {
+    resetPage()
+  },
+)
+
+watchDebounced(
+  exerciseFilter,
+  (value) => {
+    appliedExerciseCode.value = value
+    resetPage()
+  },
+  { debounce: 400 },
+)
+
+watch(
+  () => repositoryQuery.isError.value,
+  (isError) => {
+    if (isError) {
+      toast.error(
+        repositoryQuery.error.value instanceof Error
+          ? repositoryQuery.error.value.message
+          : 'Could not load repository.',
+      )
+    }
+  },
+)
 </script>
 
 <template>
@@ -167,54 +155,44 @@ onMounted(load)
 
     <Card>
       <CardHeader>
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-baseline gap-2">
-            <CardTitle class="text-base">Repository Table</CardTitle>
-            <span class="text-xs text-muted-foreground">{{ filteredRows.length }} records</span>
-          </div>
-          <button
-            v-if="hasActiveFilters"
-            type="button"
-            class="text-sm font-semibold text-primary"
-            @click="clearFilters"
-          >
-            Clear All
-          </button>
+        <div class="flex items-baseline gap-2">
+          <CardTitle class="text-base">Repository Table</CardTitle>
+          <span class="text-xs text-muted-foreground">{{ total }} records</span>
         </div>
       </CardHeader>
       <CardContent class="space-y-3">
         <div class="flex flex-wrap items-end gap-2.5">
           <FilterField label="Exercise No">
             <Input
-              v-model="exerciseFilter" class="w-[200px]"
+              v-model="exerciseFilter"
+              class="w-[200px]"
               placeholder="Search exercise no"
-              @update:model-value="resetPage"
             />
           </FilterField>
           <FilterField label="GBS Center">
-            <select v-model="gbsFilter" :class="[selectClass, 'w-[180px]']" @change="resetPage">
-              <option v-for="option in GBS_OPTIONS" :key="option" :value="option">
+            <select v-model="gbsFilter" :class="[selectClass, 'w-[180px]']">
+              <option v-for="option in gbsOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
           <FilterField label="Domain">
-            <select v-model="domainFilter" :class="[selectClass, 'w-[160px]']" @change="resetPage">
-              <option v-for="option in DOMAIN_OPTIONS" :key="option" :value="option">
+            <select v-model="domainFilter" :class="[selectClass, 'w-[160px]']">
+              <option v-for="option in domainOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
           <FilterField label="PL3">
-            <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']" @change="resetPage">
-              <option v-for="option in PL3_OPTIONS" :key="option" :value="option">
+            <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
+              <option v-for="option in pl3Options" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
           </FilterField>
           <FilterField label="Toolkit">
-            <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']" @change="resetPage">
-              <option v-for="option in TOOLKIT_OPTIONS" :key="option" :value="option">
+            <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']">
+              <option v-for="option in toolkitOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </select>
@@ -263,12 +241,7 @@ onMounted(load)
             v-if="submittedFrom"
             type="button"
             class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="
-              () => {
-                submittedFrom = ''
-                resetPage()
-              }
-            "
+            @click="submittedFrom = ''"
           >
             Submitted after: {{ submittedFrom }} ×
           </button>
@@ -276,12 +249,7 @@ onMounted(load)
             v-if="submittedTo"
             type="button"
             class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="
-              () => {
-                submittedTo = ''
-                resetPage()
-              }
-            "
+            @click="submittedTo = ''"
           >
             Submitted before: {{ submittedTo }} ×
           </button>
@@ -311,13 +279,13 @@ onMounted(load)
             </TableHeader>
             <TableBody>
               <TableRow v-if="loading">
-                <TableCell colspan="16" class="h-24 text-center text-muted-foreground">
-                  Loading repository…
+                <TableCell colspan="16" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
               <template v-else>
                 <TableRow
-                  v-for="(row, index) in visibleRows"
+                  v-for="(row, index) in rows"
                   :key="`${row.exerciseId}-${row.site}-${row.toolkit}-${index}`"
                 >
                   <TableCell>{{ row.exerciseId }}</TableCell>
@@ -338,16 +306,16 @@ onMounted(load)
                     </button>
                   </TableCell>
                   <TableCell>{{ row.kpi }}</TableCell>
-                  <TableCell>{{ row.deliveryHc }}</TableCell>
-                  <TableCell>{{ row.rsHc }}</TableCell>
-                  <TableCell>{{ row.support }}</TableCell>
+                  <TableCell>{{ formatHc(row.deliveryHc) }}</TableCell>
+                  <TableCell>{{ formatHc(row.rsHc) }}</TableCell>
+                  <TableCell>{{ formatHc(row.support) }}</TableCell>
                   <TableCell>
                     <CapacityCell :value="row.capacityCreation" />
                   </TableCell>
-                  <TableCell>{{ row.capacityPct }}</TableCell>
-                  <TableCell>{{ row.volumeYoY }}</TableCell>
+                  <TableCell>{{ formatPct(row.capacityPct) }}</TableCell>
+                  <TableCell>{{ row.volumeYoY || '—' }}</TableCell>
                 </TableRow>
-                <TableRow v-if="!visibleRows.length">
+                <TableRow v-if="!rows.length">
                   <TableCell colspan="16" class="h-24 text-center text-muted-foreground">
                     No repository records found.
                   </TableCell>
@@ -358,8 +326,8 @@ onMounted(load)
         </div>
 
         <TablePager
-          :total="filteredRows.length"
-          :page="safePage"
+          :total="total"
+          :page="page"
           :page-size="pageSize"
           label="repository records"
           @update:page="page = $event"

@@ -88,10 +88,16 @@ export interface ExerciseListQuery {
   submittedTo?: string
   archivedFrom?: string
   archivedTo?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface ExerciseListView {
   items: Exercise[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
   toolkitNames: string[]
   pl3Names: string[]
   reviewerNames: string[]
