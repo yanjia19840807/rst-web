@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -420,9 +421,7 @@ function downloadSummary() {
 </script>
 
 <template>
-  <div v-if="loading" class="py-16 text-center text-sm text-muted-foreground">
-    Loading submitted details…
-  </div>
+  <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="details && exercise" class="grid gap-4">
     <PageActions>
       <template #left>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import ListLoading from '@/components/ListLoading.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -144,7 +145,7 @@ defineExpose({
     </div>
 
     <CardContent>
-      <p v-if="loading" class="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+      <ListLoading v-if="loading" />
 
       <template v-else-if="activeTab === 'team'">
         <div class="overflow-x-auto rounded-lg border">

@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
@@ -245,7 +246,9 @@ async function onImport(event: Event) {
     </PageActions>
 
     <Card v-if="loading">
-      <CardContent class="py-8 text-sm text-muted-foreground">Loading…</CardContent>
+      <CardContent>
+        <ListLoading />
+      </CardContent>
     </Card>
 
     <div v-else class="grid gap-4">

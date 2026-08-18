@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -246,9 +247,7 @@ watch(
 </script>
 
 <template>
-  <div v-if="loading" class="py-16 text-center text-sm text-muted-foreground">
-    Loading exercise…
-  </div>
+  <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="exercise" class="grid gap-4">
     <PageActions>
       <template #left>

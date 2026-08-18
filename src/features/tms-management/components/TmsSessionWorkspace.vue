@@ -6,6 +6,7 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { useTmsSessionMutations } from '../api/mutations'
@@ -219,12 +220,9 @@ function onToolkitChange(event: Event) {
         </CardHeader>
         <CardContent>
           <DetailTable v-if="selectedToolkit" :rows="toolkitDetailRows" />
+          <ListLoading v-else-if="toolkitsQuery.isLoading.value" />
           <p v-else class="text-sm text-muted-foreground">
-            {{
-              toolkitsQuery.isLoading.value
-                ? 'Loading toolkit details…'
-                : 'No active Toolkit matches your current ACTIVE Timesheet assignment.'
-            }}
+            No active Toolkit matches your current ACTIVE Timesheet assignment.
           </p>
           <p v-if="errors.toolkitId" class="mt-2 text-xs text-destructive">{{ errors.toolkitId }}</p>
         </CardContent>

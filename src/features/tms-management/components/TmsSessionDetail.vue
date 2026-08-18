@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import DetailTable from '@/components/DetailTable.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -92,9 +93,7 @@ function goBack() {
         <CardTitle class="text-base">TMS Session Detail</CardTitle>
       </CardHeader>
       <CardContent>
-        <p v-if="detailQuery.isPending.value" class="py-6 text-center text-sm text-muted-foreground">
-          Loading…
-        </p>
+        <ListLoading v-if="detailQuery.isPending.value" />
         <p
           v-else-if="detailQuery.isError.value"
           class="py-6 text-center text-sm text-destructive"

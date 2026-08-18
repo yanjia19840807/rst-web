@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -116,9 +117,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
 
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <div v-if="loading" class="rounded-lg border bg-card p-4">
-          <p class="py-6 text-center text-sm text-muted-foreground">
-            Running pre-submit validation…
-          </p>
+          <ListLoading />
         </div>
         <div v-else class="rounded-lg border bg-card p-4">
           <div>

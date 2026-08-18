@@ -18,6 +18,8 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import ListLoading from '@/components/ListLoading.vue'
+
 import { useCycleTimeChartQuery } from '../../api/queries'
 
 use([
@@ -144,12 +146,10 @@ const option = computed<ChartOption>(() => {
 <template>
   <div>
     <h3 class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
-    <div
+    <ListLoading
       v-if="loading"
-      class="flex h-44 items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground"
-    >
-      Loading chart…
-    </div>
+      class="h-44 rounded-lg border bg-card"
+    />
     <div
       v-else-if="loadError"
       class="flex h-44 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-destructive"

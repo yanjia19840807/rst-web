@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -593,9 +594,7 @@ const scenarioInfoRows = computed(() => {
 </script>
 
 <template>
-  <div v-if="loading" class="py-16 text-center text-sm text-muted-foreground">
-    Loading scenario…
-  </div>
+  <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="exercise && scenario" class="grid gap-4">
     <PageActions>
       <template #left>

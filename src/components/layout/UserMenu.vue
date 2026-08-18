@@ -6,6 +6,7 @@ import { queryClient } from '@/api/query-client'
 import { useSessionStore } from '@/auth/session'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Spinner } from '@/components/ui/spinner'
 
 const session = useSessionStore()
 const open = ref(false)
@@ -24,8 +25,8 @@ async function onSignOut() {
 </script>
 
 <template>
-  <div v-if="session.loading && !session.user" class="min-w-0 text-right">
-    <div class="text-sm font-semibold">Loading…</div>
+  <div v-if="session.loading && !session.user" class="flex min-h-10 items-center justify-end">
+    <Spinner class="size-4 text-primary" />
   </div>
 
   <div v-else-if="session.signedOut" class="min-w-0 text-right">
@@ -64,7 +65,7 @@ async function onSignOut() {
         </dl>
       </div>
       <div class="border-t p-2">
-        <Button type="button" variant="outline" class="w-full" @click="onSignOut">
+        <Button type="button" class="w-full" @click="onSignOut">
           Sign out
         </Button>
       </div>
