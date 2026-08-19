@@ -21,6 +21,7 @@ export const teamSetupRequestSchema = z.object({
   slaWeekendEnabled: z.boolean().nullable(),
   weekendShiftHc: nullableNumber,
   skeletonRatio: nullableNumber,
+  weekendCode: z.string().nullable(),
 })
 
 export type TeamSetupFormValues = z.infer<typeof teamSetupRequestSchema>

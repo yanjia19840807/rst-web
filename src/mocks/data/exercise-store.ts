@@ -17,6 +17,8 @@ import {
   monthlyTrainMonths,
   slotTrainKeys,
 } from '@/features/exercise-management/periodWindows'
+import { DEFAULT_WEEKEND_CODE } from '@/features/exercise-management/weekendCodes'
+import { computeNetworkDays } from '@/features/exercise-management/workingDays'
 
 export type ExerciseShell = {
   teamSetup: TeamSetup
@@ -116,17 +118,18 @@ export function createExerciseShell(): ExerciseShell {
       slaTurnaroundMinutes: 480,
       slaStartTime: '09:00:00',
       slaEndTime: '17:00:00',
+      weekendCode: '1',
     },
     shifts: [],
     support: [],
     calendar: {
-      weekendCode: 'SAT_SUN',
-      baselineSource: 'CENTER_TEMPLATE',
-      baselineVersion: '1',
-      sourceTemplateId: '10000000-0000-0000-0000-000000000001',
-      sourceTemplateVersion: 1,
+      weekendCode: null,
+      baselineSource: null,
+      baselineVersion: null,
+      sourceTemplateId: null,
+      sourceTemplateVersion: null,
       baselineYear: 2025,
-      workingDaysPerYear: 243,
+      workingDaysPerYear: null,
       version: 0,
       templateUpdateAvailable: false,
       publishedTemplateVersion: null,
@@ -136,13 +139,13 @@ export function createExerciseShell(): ExerciseShell {
           id: crypto.randomUUID(),
           holidayDate: '2025-01-01',
           holidayName: "New Year's Day",
-          holidayType: 'BASELINE',
+          holidayType: 'HOLIDAY',
         },
         {
           id: crypto.randomUUID(),
           holidayDate: '2025-10-01',
           holidayName: 'National Day',
-          holidayType: 'BASELINE',
+          holidayType: 'HOLIDAY',
         },
       ],
     },
@@ -195,7 +198,11 @@ export function teamSetupView(exercise: Exercise, shell: ExerciseShell): TeamSet
   const c = Number(setup.agents24To48m ?? 0)
   const d = Number(setup.agentsGt48m ?? 0)
   const total = a + b + c + d
-  const workingDays = shell.calendar.workingDaysPerYear ?? null
+  const weekend = setup.weekendCode ?? DEFAULT_WEEKEND_CODE
+  const year = Number(String(exercise.sizingMonth ?? '').slice(0, 4))
+  const workingDays = Number.isFinite(year)
+    ? computeNetworkDays(year, weekend, [])
+    : null
   const hours = workingHoursFromSlaClock(setup.slaStartTime, setup.slaEndTime)
   const availability = setup.availabilityRatio
   const cycleTime = shell.cycleTime?.medianSeconds != null ? Number(shell.cycleTime.medianSeconds) : null
@@ -215,7 +222,7 @@ export function teamSetupView(exercise: Exercise, shell: ExerciseShell): TeamSet
   return {
     ...setup,
     deliveryHc,
-    weekendCode: shell.calendar.weekendCode ?? null,
+    weekendCode: weekend,
     workingHoursPerDay: hours,
     capacityRatio,
     totalAgents: total || null,

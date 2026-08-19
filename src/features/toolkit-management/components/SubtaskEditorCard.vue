@@ -4,7 +4,6 @@ import { computed, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -17,7 +16,6 @@ import {
 import type { ToolkitSubtask } from '../types'
 
 const subtasks = defineModel<ToolkitSubtask[]>('subtasks', { required: true })
-const combineSubtasksTime = defineModel<boolean>('combineSubtasksTime', { required: true })
 
 const editingSubtaskId = ref<string | null>(null)
 const editSubtaskName = ref('')
@@ -81,36 +79,6 @@ function confirmAdd() {
       </div>
     </CardHeader>
     <CardContent class="grid gap-4">
-      <div class="grid gap-1.5">
-        <Label>Combine subtasks time</Label>
-        <div class="flex h-9 items-center gap-4 text-sm">
-          <label class="inline-flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              name="combine-subtasks-time"
-              class="size-3.5 accent-primary"
-              :checked="combineSubtasksTime === false"
-              @change="combineSubtasksTime = false"
-            />
-            No
-          </label>
-          <label class="inline-flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              name="combine-subtasks-time"
-              class="size-3.5 accent-primary"
-              :checked="combineSubtasksTime === true"
-              @change="combineSubtasksTime = true"
-            />
-            Yes
-          </label>
-        </div>
-        <p class="text-xs text-muted-foreground">
-          Yes: sessions that share a Reference are summed before the SYSTEM median.
-          No: each session is an independent median sample.
-        </p>
-      </div>
-
       <div class="grid gap-2">
         <div class="flex justify-end">
           <Button size="sm" variant="outline" @click="beginAdd">+ Add Subtask</Button>

@@ -185,6 +185,7 @@ async function save() {
           :model-value="teamSetup"
           :cycle-time-seconds="cycleTime?.medianSeconds"
           :support-fte="supportFte"
+          :sizing-month="sizingMonth"
           :read-only="readOnly"
         />
         <AdManualMedianEditor

@@ -39,7 +39,7 @@ function supportRepositoryQuery(params?: SupportRepositoryQuery) {
   const search = new URLSearchParams()
   if (params) {
     if (params.center) search.set('center', params.center)
-    if (params.category) search.set('category', params.category)
+    if (params.categoryId) search.set('categoryId', params.categoryId)
     if (params.toolkitName) search.set('toolkitName', params.toolkitName)
     if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
     if (params.submittedTo) search.set('submittedTo', params.submittedTo)

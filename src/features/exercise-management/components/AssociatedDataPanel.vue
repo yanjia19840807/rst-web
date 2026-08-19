@@ -20,6 +20,7 @@ import {
   deriveSlotPeriodLabel,
   monthlyTrainMonths,
 } from '../periodWindows'
+import { normalizeHolidayType } from '../weekendCodes'
 import { AD_TAB_LABELS, formatNumber } from './associated-data/adTypes'
 import AdTmsSummary from './associated-data/AdTmsSummary.vue'
 import AssociatedDataEditorDialog from './associated-data/AssociatedDataEditorDialog.vue'
@@ -48,7 +49,6 @@ const {
   editor,
   medianSource,
   openEditor,
-  reapplyTemplate,
   onCycleTimeUpdated,
   reload,
 } = useAssociatedDataPanel(() => props.exerciseId)
@@ -63,12 +63,15 @@ const supportAnnualHours = computed(() => {
   return support.value.reduce((sum, item) => sum + (Number(item.workloadPerYearHours) || 0), 0)
 })
 
-const templateSourceLabel = computed(() => {
-  const source = calendar.value?.baselineSource
-  const version = calendar.value?.sourceTemplateVersion
-  if (!source) return '—'
-  if (version != null) return `${source} v${version}`
-  return source
+const holidayCounts = computed(() => {
+  const holidays = calendar.value?.holidays ?? []
+  let rest = 0
+  let makeup = 0
+  for (const row of holidays) {
+    if (normalizeHolidayType(row.holidayType) === 'NORMAL') makeup += 1
+    else rest += 1
+  }
+  return { rest, makeup, total: holidays.length }
 })
 
 const volumeSummary = computed(() => {
@@ -219,42 +222,19 @@ defineExpose({
       </template>
 
       <template v-else-if="activeTab === 'calendar'">
-        <div
-          v-if="!readOnly && calendar?.templateUpdateAvailable"
-          class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-        >
-          <p>
-            {{
-              calendar.templateUpdateMessage ||
-              'A newer Center holiday template is available.'
-            }}
-          </p>
-          <Button size="sm" class="mt-2" variant="outline" @click="reapplyTemplate">
-            Apply template
-          </Button>
-        </div>
-        <div v-if="!readOnly" class="mb-2.5 flex justify-end">
-          <Button size="sm" variant="outline" @click="reapplyTemplate">
-            Re-apply template
-          </Button>
-        </div>
         <table class="w-full border-collapse text-sm">
           <tbody>
             <tr class="border-b">
-              <td class="w-[32%] py-2 text-muted-foreground">Template source</td>
-              <td class="py-2">{{ templateSourceLabel }}</td>
+              <td class="w-[32%] py-2 text-muted-foreground">Holiday / Weekend days</td>
+              <td class="py-2">{{ holidayCounts.rest }}</td>
             </tr>
             <tr class="border-b">
-              <td class="py-2 text-muted-foreground">Weekend</td>
-              <td class="py-2">{{ calendar?.weekendCode || '—' }}</td>
+              <td class="py-2 text-muted-foreground">Makeup (Normal) days</td>
+              <td class="py-2">{{ holidayCounts.makeup }}</td>
             </tr>
             <tr class="border-b">
-              <td class="py-2 text-muted-foreground">Working days / year</td>
-              <td class="py-2">{{ formatNumber(calendar?.workingDaysPerYear, 2) }}</td>
-            </tr>
-            <tr class="border-b">
-              <td class="py-2 text-muted-foreground">Holiday days</td>
-              <td class="py-2">{{ calendar?.holidays.length ?? 0 }}</td>
+              <td class="py-2 text-muted-foreground">Listed dates</td>
+              <td class="py-2">{{ holidayCounts.total }}</td>
             </tr>
           </tbody>
         </table>

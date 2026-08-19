@@ -95,36 +95,6 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/supervisor/holiday-templates',
-    name: 'supervisor-holiday-templates',
-    component: () => import('@/pages/supervisor/HolidayTemplateListPage.vue'),
-    meta: {
-      title: 'Holiday Templates',
-      subtitle: 'Center legal holiday baselines by year',
-      roles: ['lth'],
-    },
-  },
-  {
-    path: '/supervisor/holiday-templates/new',
-    name: 'supervisor-holiday-template-new',
-    component: () => import('@/pages/supervisor/HolidayTemplateFormPage.vue'),
-    meta: {
-      title: 'Add Holiday Template',
-      subtitle: 'Create a Center + year legal holiday baseline',
-      roles: ['lth'],
-    },
-  },
-  {
-    path: '/supervisor/holiday-templates/:id',
-    name: 'supervisor-holiday-template-edit',
-    component: () => import('@/pages/supervisor/HolidayTemplateFormPage.vue'),
-    meta: {
-      title: 'Edit Holiday Template',
-      subtitle: 'Maintain holidays and import Excel',
-      roles: ['lth'],
-    },
-  },
-  {
     path: '/supervisor/exercises',
     name: 'supervisor-exercises',
     component: () => import('@/pages/supervisor/ExerciseManagementPage.vue'),

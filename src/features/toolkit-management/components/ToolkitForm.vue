@@ -80,6 +80,7 @@ const {
         v-model:pl2="pl2"
         v-model:supervisor-position-id="supervisorPositionId"
         v-model:selected-countries="selectedCountries"
+        v-model:combine-subtasks-time="combineSubtasksTime"
         :centers="centers"
         :domains="domains"
         :pl1s="pl1s"
@@ -88,10 +89,7 @@ const {
         :countries="countries"
         :errors="errors"
       />
-      <SubtaskEditorCard
-        v-model:subtasks="subtasks"
-        v-model:combine-subtasks-time="combineSubtasksTime"
-      />
+      <SubtaskEditorCard v-model:subtasks="subtasks" />
     </div>
 
     <SharedKpiCard

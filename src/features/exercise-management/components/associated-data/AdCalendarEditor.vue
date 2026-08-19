@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 
-import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
@@ -15,14 +14,18 @@ import {
 } from '@/components/ui/table'
 
 import type { CalendarRequest, CalendarView, Holiday } from '../../types'
-import AdMetric from './AdMetric.vue'
+import {
+  HOLIDAY_TYPE_OPTIONS,
+  type HolidayTypeValue,
+  holidayTypeLabel,
+  normalizeHolidayType,
+} from '../../weekendCodes'
 
 type DraftHoliday = {
   key: string
   holidayDate: string
   holidayName: string
-  holidayType: string
-  source: 'Auto' | 'Custom'
+  holidayType: HolidayTypeValue
 }
 
 const props = defineProps<{
@@ -30,49 +33,30 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-const weekendCode = ref('SAT_SUN')
 const rows = ref<DraftHoliday[]>([])
 const editKey = ref<string | null>(null)
 const draft = reactive({
   holidayDate: '',
   holidayName: '',
+  holidayType: 'HOLIDAY' as HolidayTypeValue,
 })
 
 watch(
   () => props.modelValue,
   (cal) => {
     if (!cal) return
-    weekendCode.value = cal.weekendCode ?? 'SAT_SUN'
     rows.value = cal.holidays.map((h) => toDraft(h))
     editKey.value = null
   },
   { immediate: true },
 )
 
-const templateSource = computed(() => {
-  const source = props.modelValue?.baselineSource
-  const version = props.modelValue?.sourceTemplateVersion
-  if (!source) return '—'
-  if (version != null) return `${source} v${version}`
-  return source
-})
-
-const workingDaysLabel = computed(() => {
-  const days = props.modelValue?.workingDaysPerYear
-  const year = props.modelValue?.baselineYear
-  if (days == null) return '—'
-  return year != null ? `${days} (${year})` : String(days)
-})
-
 function toDraft(h: Holiday): DraftHoliday {
-  const type = h.holidayType.toUpperCase()
-  const isAuto = type === 'BASELINE' || type === 'PUBLIC' || type === 'AUTO'
   return {
     key: h.id,
     holidayDate: h.holidayDate,
     holidayName: h.holidayName,
-    holidayType: isAuto ? 'BASELINE' : 'CUSTOM',
-    source: isAuto ? 'Auto' : 'Custom',
+    holidayType: normalizeHolidayType(h.holidayType),
   }
 }
 
@@ -80,6 +64,7 @@ function startEdit(row: DraftHoliday) {
   editKey.value = row.key
   draft.holidayDate = row.holidayDate
   draft.holidayName = row.holidayName
+  draft.holidayType = row.holidayType
 }
 
 function cancelEdit() {
@@ -97,15 +82,14 @@ function commitEdit() {
           ...row,
           holidayDate: draft.holidayDate,
           holidayName: draft.holidayName,
-          holidayType: 'CUSTOM',
-          source: 'Custom',
+          holidayType: draft.holidayType,
         }
       : row,
   )
   editKey.value = null
 }
 
-function addCustom() {
+function addDay() {
   if (editKey.value) return
   const key = `new-${Date.now()}`
   rows.value = [
@@ -114,13 +98,13 @@ function addCustom() {
       key,
       holidayDate: '',
       holidayName: '',
-      holidayType: 'CUSTOM',
-      source: 'Custom',
+      holidayType: 'HOLIDAY',
     },
   ]
   editKey.value = key
   draft.holidayDate = ''
   draft.holidayName = ''
+  draft.holidayType = 'HOLIDAY'
 }
 
 function removeRow(key: string) {
@@ -130,15 +114,12 @@ function removeRow(key: string) {
 
 function toRequest(): CalendarRequest {
   return {
-    weekendCode: weekendCode.value || null,
-    baselineSource: props.modelValue?.baselineSource ?? null,
-    baselineVersion: props.modelValue?.baselineVersion ?? null,
     holidays: rows.value
-      .filter((row) => row.holidayDate && row.holidayName)
+      .filter((row) => row.holidayDate)
       .map((row) => ({
         holidayDate: row.holidayDate,
         holidayName: row.holidayName,
-        holidayType: row.source === 'Auto' ? 'BASELINE' : 'CUSTOM',
+        holidayType: row.holidayType,
       })),
   }
 }
@@ -148,38 +129,16 @@ defineExpose({ toRequest })
 
 <template>
   <div class="space-y-4">
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <AdMetric
-        label="Template source"
-        :value="templateSource"
-        hint="From Center holiday template"
-      />
-      <AdMetric
-        label="Working days / year"
-        :value="workingDaysLabel"
-        hint="NETWORKDAYS from weekend + holidays (sizing year)"
-      />
-      <label class="grid gap-1 rounded-lg border bg-card p-4 text-sm">
-        Weekend code
-        <select
-          v-if="!readOnly"
-          v-model="weekendCode"
-          class="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
-        >
-          <option value="SAT_SUN">SAT_SUN</option>
-          <option value="SUN_ONLY">SUN_ONLY</option>
-          <option value="FRI_SAT">FRI_SAT</option>
-          <option value="NONE">NONE</option>
-        </select>
-        <ReadOnlyField v-else :value="weekendCode" />
-      </label>
-    </div>
-
     <section class="rounded-lg border bg-card p-4">
       <div class="mb-3 flex items-center justify-between gap-2">
-        <h3 class="text-base font-bold">Holiday List</h3>
-        <Button v-if="!readOnly" size="sm" variant="outline" @click="addCustom">
-          Add Custom Holiday
+        <div>
+          <h3 class="text-base font-bold">Public holidays</h3>
+          <p class="text-xs text-muted-foreground">
+            Holiday and Weekend are rest days. Normal is a makeup working day.
+          </p>
+        </div>
+        <Button v-if="!readOnly" size="sm" variant="outline" @click="addDay">
+          Add day
         </Button>
       </div>
 
@@ -188,8 +147,8 @@ defineExpose({ toRequest })
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Source</TableHead>
               <TableHead v-if="!readOnly">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -210,24 +169,29 @@ defineExpose({ toRequest })
                 <span v-else>{{ row.holidayDate }}</span>
               </TableCell>
               <TableCell>
+                <select
+                  v-if="editKey === row.key"
+                  v-model="draft.holidayType"
+                  class="flex h-9 w-full min-w-[140px] rounded-md border border-input bg-card px-3 text-sm"
+                  aria-label="Day type"
+                >
+                  <option
+                    v-for="option in HOLIDAY_TYPE_OPTIONS"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+                <span v-else>{{ holidayTypeLabel(row.holidayType) }}</span>
+              </TableCell>
+              <TableCell>
                 <Input
                   v-if="editKey === row.key"
                   v-model="draft.holidayName"
                   placeholder="Description"
                 />
                 <span v-else>{{ row.holidayName }}</span>
-              </TableCell>
-              <TableCell>
-                <span
-                  class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium"
-                  :class="
-                    row.source === 'Auto'
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-amber-50 text-amber-700'
-                  "
-                >
-                  {{ row.source }}
-                </span>
               </TableCell>
               <TableCell v-if="!readOnly">
                 <div class="flex gap-3">
@@ -275,7 +239,7 @@ defineExpose({ toRequest })
                 :colspan="readOnly ? 3 : 4"
                 class="h-20 text-center text-sm text-muted-foreground italic"
               >
-                No holidays configured.
+                No holiday dates configured.
               </TableCell>
             </TableRow>
           </TableBody>

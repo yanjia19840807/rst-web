@@ -60,10 +60,13 @@ const {
   importDailyVolumes,
   importSlotVolumes,
 } = useExerciseAssociatedDataMutations()
+type BusyAction = 'template' | 'export' | 'import' | 'save'
+
 const tab = ref<VolumeTab>('monthly')
 const page = ref(1)
 const pageSize = ref(10)
-const busy = ref(false)
+const busyAction = ref<BusyAction | null>(null)
+const busy = computed(() => busyAction.value != null)
 
 const monthDrafts = ref<MonthlyVolumeRequest[]>([])
 const dayDrafts = ref<DailyVolumeRequest[]>([])
@@ -178,9 +181,19 @@ async function persistSlot() {
 }
 
 function startEdit(index: number, current: string | number | null | undefined) {
-  if (props.readOnly) return
+  if (props.readOnly || busy.value) return
   editingIndex.value = index
   editValue.value = numOrNull(current)
+}
+
+async function withBusy<T>(action: BusyAction, run: () => Promise<T>): Promise<T | undefined> {
+  if (busyAction.value) return
+  busyAction.value = action
+  try {
+    return await run()
+  } finally {
+    busyAction.value = null
+  }
 }
 
 async function confirmEdit() {
@@ -191,39 +204,40 @@ async function confirmEdit() {
     toast.error('Volume must be non-negative.')
     return
   }
-  busy.value = true
   try {
-    if (tab.value === 'monthly') {
-      const row = monthDrafts.value[idx]
-      if (row) row.actualVolume = n
-      await persistMonthly()
-    } else if (tab.value === 'daily') {
-      const row = dayDrafts.value[idx]
-      if (row) row.actualVolume = n
-      await persistDaily()
-    } else {
-      const row = slotDrafts.value[idx]
-      if (row) row.actualVolume = Number(n ?? 0)
-      await persistSlot()
-    }
-    editingIndex.value = null
-    toast.success('Volume updated.')
+    await withBusy('save', async () => {
+      if (tab.value === 'monthly') {
+        const row = monthDrafts.value[idx]
+        if (row) row.actualVolume = n
+        await persistMonthly()
+      } else if (tab.value === 'daily') {
+        const row = dayDrafts.value[idx]
+        if (row) row.actualVolume = n
+        await persistDaily()
+      } else {
+        const row = slotDrafts.value[idx]
+        if (row) row.actualVolume = Number(n ?? 0)
+        await persistSlot()
+      }
+      editingIndex.value = null
+      toast.success('Volume updated.')
+    })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Update failed.')
-  } finally {
-    busy.value = false
   }
 }
 
 async function downloadTemplate() {
   try {
-    const result =
-      tab.value === 'monthly'
-        ? await exerciseApi.exportMonthlyVolumeTemplate(props.exerciseId)
-        : tab.value === 'daily'
-          ? await exerciseApi.exportDailyVolumeTemplate(props.exerciseId)
-          : await exerciseApi.exportSlotVolumeTemplate(props.exerciseId)
-    triggerDownload(result.blob, result.filename)
+    await withBusy('template', async () => {
+      const result =
+        tab.value === 'monthly'
+          ? await exerciseApi.exportMonthlyVolumeTemplate(props.exerciseId)
+          : tab.value === 'daily'
+            ? await exerciseApi.exportDailyVolumeTemplate(props.exerciseId)
+            : await exerciseApi.exportSlotVolumeTemplate(props.exerciseId)
+      triggerDownload(result.blob, result.filename)
+    })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Download failed.')
   }
@@ -231,19 +245,22 @@ async function downloadTemplate() {
 
 async function downloadCurrent() {
   try {
-    const result =
-      tab.value === 'monthly'
-        ? await exerciseApi.exportMonthlyVolumes(props.exerciseId)
-        : tab.value === 'daily'
-          ? await exerciseApi.exportDailyVolumes(props.exerciseId)
-          : await exerciseApi.exportSlotVolumes(props.exerciseId)
-    triggerDownload(result.blob, result.filename)
+    await withBusy('export', async () => {
+      const result =
+        tab.value === 'monthly'
+          ? await exerciseApi.exportMonthlyVolumes(props.exerciseId)
+          : tab.value === 'daily'
+            ? await exerciseApi.exportDailyVolumes(props.exerciseId)
+            : await exerciseApi.exportSlotVolumes(props.exerciseId)
+      triggerDownload(result.blob, result.filename)
+    })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Export failed.')
   }
 }
 
 function triggerImport() {
+  if (busy.value) return
   fileInput.value?.click()
 }
 
@@ -252,32 +269,31 @@ async function onImportFile(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file || props.readOnly) return
-  busy.value = true
   try {
-    if (tab.value === 'monthly') {
-      const saved = await importMonthlyVolumes.mutateAsync({
-        exerciseId: props.exerciseId,
-        file,
-      })
-      emit('update:monthly', saved)
-    } else if (tab.value === 'daily') {
-      const saved = await importDailyVolumes.mutateAsync({
-        exerciseId: props.exerciseId,
-        file,
-      })
-      emit('update:daily', saved)
-    } else {
-      const saved = await importSlotVolumes.mutateAsync({
-        exerciseId: props.exerciseId,
-        file,
-      })
-      emit('update:slot', saved)
-    }
-    toast.success('Excel imported.')
+    await withBusy('import', async () => {
+      if (tab.value === 'monthly') {
+        const saved = await importMonthlyVolumes.mutateAsync({
+          exerciseId: props.exerciseId,
+          file,
+        })
+        emit('update:monthly', saved)
+      } else if (tab.value === 'daily') {
+        const saved = await importDailyVolumes.mutateAsync({
+          exerciseId: props.exerciseId,
+          file,
+        })
+        emit('update:daily', saved)
+      } else {
+        const saved = await importSlotVolumes.mutateAsync({
+          exerciseId: props.exerciseId,
+          file,
+        })
+        emit('update:slot', saved)
+      }
+      toast.success('Excel imported.')
+    })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Import failed.')
-  } finally {
-    busy.value = false
   }
 }
 </script>
@@ -294,6 +310,7 @@ async function onImportFile(event: Event) {
         :key="item.id"
         type="button"
         class="border-b-2 px-3.5 py-2 text-sm"
+        :disabled="busy"
         :class="
           tab === item.id
             ? 'border-primary font-semibold text-primary'
@@ -322,13 +339,32 @@ async function onImportFile(event: Event) {
         }}
       </h3>
       <div v-if="!readOnly" class="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" :disabled="busy" @click="downloadTemplate">
-          Download Excel Template
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="busy"
+          :loading="busyAction === 'template'"
+          @click="downloadTemplate"
+        >
+          {{ busyAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
         </Button>
-        <Button size="sm" variant="outline" :disabled="busy" @click="downloadCurrent">
-          Export Current
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="busy"
+          :loading="busyAction === 'export'"
+          @click="downloadCurrent"
+        >
+          {{ busyAction === 'export' ? 'Exporting…' : 'Export Current' }}
         </Button>
-        <Button size="sm" :disabled="busy" @click="triggerImport">Import Excel</Button>
+        <Button
+          size="sm"
+          :disabled="busy"
+          :loading="busyAction === 'import'"
+          @click="triggerImport"
+        >
+          {{ busyAction === 'import' ? 'Importing…' : 'Import Excel' }}
+        </Button>
         <input
           ref="fileInput"
           type="file"
@@ -363,14 +399,16 @@ async function onImportFile(event: Event) {
                     variant="link"
                     class="h-auto px-0 font-semibold"
                     :disabled="busy"
+                    :loading="busyAction === 'save'"
                     @click="confirmEdit"
                   >
-                    Confirm
+                    {{ busyAction === 'save' ? 'Saving…' : 'Confirm' }}
                   </Button>
                   <Button
                     size="sm"
                     variant="link"
                     class="h-auto px-0 font-semibold"
+                    :disabled="busyAction === 'save'"
                     @click="editingIndex = null"
                   >
                     Cancel
@@ -381,6 +419,7 @@ async function onImportFile(event: Event) {
                   size="sm"
                   variant="link"
                   class="h-auto px-0 font-semibold"
+                  :disabled="busy"
                   @click="startEdit(index, row.actualVolume)"
                 >
                   Edit
@@ -421,14 +460,16 @@ async function onImportFile(event: Event) {
                     variant="link"
                     class="h-auto px-0 font-semibold"
                     :disabled="busy"
+                    :loading="busyAction === 'save'"
                     @click="confirmEdit"
                   >
-                    Confirm
+                    {{ busyAction === 'save' ? 'Saving…' : 'Confirm' }}
                   </Button>
                   <Button
                     size="sm"
                     variant="link"
                     class="h-auto px-0 font-semibold"
+                    :disabled="busyAction === 'save'"
                     @click="editingIndex = null"
                   >
                     Cancel
@@ -439,6 +480,7 @@ async function onImportFile(event: Event) {
                   size="sm"
                   variant="link"
                   class="h-auto px-0 font-semibold"
+                  :disabled="busy"
                   @click="startEdit(index, row.actualVolume)"
                 >
                   Edit
@@ -479,14 +521,16 @@ async function onImportFile(event: Event) {
                     variant="link"
                     class="h-auto px-0 font-semibold"
                     :disabled="busy"
+                    :loading="busyAction === 'save'"
                     @click="confirmEdit"
                   >
-                    Confirm
+                    {{ busyAction === 'save' ? 'Saving…' : 'Confirm' }}
                   </Button>
                   <Button
                     size="sm"
                     variant="link"
                     class="h-auto px-0 font-semibold"
+                    :disabled="busyAction === 'save'"
                     @click="editingIndex = null"
                   >
                     Cancel
@@ -497,6 +541,7 @@ async function onImportFile(event: Event) {
                   size="sm"
                   variant="link"
                   class="h-auto px-0 font-semibold"
+                  :disabled="busy"
                   @click="startEdit(index, row.actualVolume)"
                 >
                   Edit

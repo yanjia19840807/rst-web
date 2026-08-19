@@ -4,7 +4,6 @@ export const PERMISSIONS = {
   tmsTeamList: 'tms:team-list',
   toolkitManage: 'toolkit:manage',
   exerciseManage: 'exercise:manage',
-  holidayTemplateManage: 'holiday-template:manage',
   approvalQueue: 'approval:queue',
   governanceRepository: 'governance:repository',
   governanceSupport: 'governance:support',
@@ -35,7 +34,6 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   MANAGER: [PERMISSIONS.approvalQueue],
   CDH: [PERMISSIONS.approvalQueue],
   LTH: [
-    PERMISSIONS.holidayTemplateManage,
     PERMISSIONS.approvalQueue,
     PERMISSIONS.governanceValidationWorkflow,
     ...SHARED_REPORTS,

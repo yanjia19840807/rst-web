@@ -56,7 +56,7 @@ const detailRows = computed(() => {
     { label: 'Process Level 3', value: toolkit.value.pl3Name },
     { label: 'Customer Country', value: countries.value.join(', ') || '—' },
     {
-      label: 'Combine subtasks time',
+      label: 'Combine same-reference session time',
       value: toolkit.value.combineSubtasksTime ? 'Yes' : 'No',
     },
   ]

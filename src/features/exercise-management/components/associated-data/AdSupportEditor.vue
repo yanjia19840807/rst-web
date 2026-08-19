@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,13 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useSupportTaxonomyQuery } from '@/features/support-taxonomy/api/queries'
+import { categoriesForSelect } from '@/features/support-taxonomy/options'
 
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import type { SupportItem, SupportItemRequest, TeamSetup } from '../../types'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
 import {
-  SUPPORT_CATEGORIES,
   SUPPORT_FREQUENCIES,
   SUPPORT_UOMS,
   annualMultiplier,
@@ -44,11 +46,20 @@ const controlClass =
   'flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm'
 
 const { createSupport, updateSupport, deleteSupport } = useExerciseAssociatedDataMutations()
+const taxonomyQuery = useSupportTaxonomyQuery()
 const adding = ref(false)
 const editingId = ref<string | null>(null)
 const busy = ref(false)
+const deleteTarget = ref<SupportItem | null>(null)
+const deleteOpen = computed({
+  get: () => deleteTarget.value != null,
+  set: (open: boolean) => {
+    if (!open) deleteTarget.value = null
+  },
+})
 const draft = reactive({
-  category: SUPPORT_CATEGORIES[0] as string,
+  categoryId: '',
+  categoryName: '',
   activity: '',
   frequencyCode: 'MONTHLY',
   volume: null as number | null,
@@ -56,6 +67,12 @@ const draft = reactive({
   workloadPerUnitMinutes: null as number | null,
   comments: '',
 })
+
+const catalog = computed(() => taxonomyQuery.data.value?.categories ?? [])
+const currentCategory = computed(() =>
+  draft.categoryId ? { id: draft.categoryId, name: draft.categoryName } : null,
+)
+const categoryChoices = computed(() => categoriesForSelect(catalog.value, currentCategory.value))
 
 const totalFte = computed(() => {
   if (!props.items.length) return null
@@ -90,7 +107,8 @@ const draftFte = computed(() =>
 const formLocked = computed(() => adding.value || editingId.value != null)
 
 function resetDraft() {
-  draft.category = SUPPORT_CATEGORIES[0]
+  draft.categoryId = categoryChoices.value[0]?.id ?? ''
+  draft.categoryName = categoryChoices.value[0]?.name ?? ''
   draft.activity = ''
   draft.frequencyCode = 'MONTHLY'
   draft.volume = null
@@ -100,7 +118,8 @@ function resetDraft() {
 }
 
 function fillDraft(item: SupportItem) {
-  draft.category = item.category
+  draft.categoryId = item.categoryId ?? ''
+  draft.categoryName = item.category
   draft.activity = item.activity
   draft.frequencyCode = item.frequencyCode
   draft.volume = item.volume
@@ -109,8 +128,14 @@ function fillDraft(item: SupportItem) {
   draft.comments = item.comments ?? ''
 }
 
+function onCategoryChange() {
+  const match = categoryChoices.value.find((item) => item.id === draft.categoryId)
+  draft.categoryName = match?.name ?? ''
+}
+
 function buildRequest(): SupportItemRequest | null {
-  if (!draft.category.trim() || !draft.activity.trim()) {
+  const activity = draft.activity.trim()
+  if (!draft.categoryId || !activity) {
     toast.warning('Category and Activity are required.')
     return null
   }
@@ -119,8 +144,8 @@ function buildRequest(): SupportItemRequest | null {
     return null
   }
   return {
-    category: draft.category.trim(),
-    activity: draft.activity.trim(),
+    categoryId: draft.categoryId,
+    activity,
     frequencyCode: draft.frequencyCode,
     volume: draft.volume,
     unitOfMeasure: draft.unitOfMeasure,
@@ -191,15 +216,22 @@ async function confirmEdit() {
   }
 }
 
-async function removeItem(itemId: string) {
+function requestDelete(item: SupportItem) {
   if (formLocked.value) return
+  deleteTarget.value = item
+}
+
+async function confirmDelete() {
+  const item = deleteTarget.value
+  if (!item) return
   busy.value = true
   try {
-    await deleteSupport.mutateAsync({ exerciseId: props.exerciseId, itemId })
+    await deleteSupport.mutateAsync({ exerciseId: props.exerciseId, itemId: item.id })
     emit(
       'update:items',
-      props.items.filter((item) => item.id !== itemId),
+      props.items.filter((row) => row.id !== item.id),
     )
+    deleteTarget.value = null
     toast.success('Workload deleted.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Delete failed.')
@@ -266,13 +298,18 @@ function frequencyLabel(code: string) {
             >
               <template v-if="editingId === item.id">
                 <TableCell>
-                  <select v-model="draft.category" :class="controlClass">
+                  <select
+                    v-model="draft.categoryId"
+                    :class="controlClass"
+                    @change="onCategoryChange"
+                  >
+                    <option value="">Select category</option>
                     <option
-                      v-for="category in SUPPORT_CATEGORIES"
-                      :key="category"
-                      :value="category"
+                      v-for="category in categoryChoices"
+                      :key="category.id"
+                      :value="category.id"
                     >
-                      {{ category }}
+                      {{ category.name }}
                     </option>
                   </select>
                 </TableCell>
@@ -374,7 +411,7 @@ function frequencyLabel(code: string) {
                       variant="link-destructive"
                       class="h-auto px-0 font-semibold"
                       :disabled="busy || formLocked"
-                      @click="removeItem(item.id)"
+                      @click="requestDelete(item)"
                     >
                       Delete
                     </Button>
@@ -385,9 +422,18 @@ function frequencyLabel(code: string) {
 
             <TableRow v-if="adding" class="bg-muted/30">
               <TableCell>
-                <select v-model="draft.category" :class="controlClass">
-                  <option v-for="category in SUPPORT_CATEGORIES" :key="category" :value="category">
-                    {{ category }}
+                <select
+                  v-model="draft.categoryId"
+                  :class="controlClass"
+                  @change="onCategoryChange"
+                >
+                  <option value="">Select category</option>
+                  <option
+                    v-for="category in categoryChoices"
+                    :key="category.id"
+                    :value="category.id"
+                  >
+                    {{ category.name }}
                   </option>
                 </select>
               </TableCell>
@@ -465,5 +511,22 @@ function frequencyLabel(code: string) {
         </Table>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="deleteOpen"
+      title="Delete Workload"
+      description="This workload will be removed from Production Support. This cannot be undone."
+      :rows="
+        deleteTarget
+          ? [
+              { label: 'Category', value: deleteTarget.category },
+              { label: 'Activity', value: deleteTarget.activity, strong: true },
+            ]
+          : []
+      "
+      confirm-label="Delete"
+      :pending="busy"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

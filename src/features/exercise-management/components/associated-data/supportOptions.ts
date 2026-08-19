@@ -1,16 +1,3 @@
-/** Aligned with Support Repository Standard Category filter. */
-export const SUPPORT_CATEGORIES = [
-  'Communication',
-  'Operational Support',
-  'Quality Control',
-  'Reporting',
-  'Small Process',
-  'Training',
-  'Tool Support',
-  'Project Support',
-  'Performance Monitoring',
-] as const
-
 export const SUPPORT_FREQUENCIES = [
   { value: 'DAILY', label: 'Daily' },
   { value: 'WEEKLY', label: 'Weekly' },

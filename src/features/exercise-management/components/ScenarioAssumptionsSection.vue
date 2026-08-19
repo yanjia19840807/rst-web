@@ -3,6 +3,7 @@ import DetailTable from '@/components/DetailTable.vue'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { NumberFieldControl } from '@/components/ui/number-field'
+import { Spinner } from '@/components/ui/spinner'
 import {
   Table,
   TableBody,
@@ -29,6 +30,8 @@ defineProps<{
   exerciseId: string
   readOnly: boolean
   busy: boolean
+  runningSizing: boolean
+  runningSlot: boolean
   rightSizingHc: number
   shiftRows: ShiftDraft[]
   sizingCompleted: boolean
@@ -64,8 +67,14 @@ function formatShiftTime(value?: string | null) {
       <div class="mb-3.5 rounded-lg border bg-card p-4">
         <div class="mb-3 flex items-center justify-between gap-2">
           <h4 class="text-sm font-bold">Sizing Inputs</h4>
-          <Button v-if="!readOnly" size="sm" :disabled="busy" @click="emit('runSizing')">
-            Run Simulation
+          <Button
+            v-if="!readOnly"
+            size="sm"
+            :disabled="busy"
+            :loading="runningSizing"
+            @click="emit('runSizing')"
+          >
+            {{ runningSizing ? 'Running…' : 'Run Simulation' }}
           </Button>
         </div>
         <DetailTable
@@ -82,6 +91,7 @@ function formatShiftTime(value?: string | null) {
           <NumberFieldControl
             :model-value="rightSizingHc"
             :min="0"
+            :disabled="busy"
             @update:model-value="emit('update:rightSizingHc', Number($event ?? 0))"
           />
         </label>
@@ -94,6 +104,13 @@ function formatShiftTime(value?: string | null) {
         :daily="latestDailySizing"
         :team-setup="teamSetup"
       />
+      <div
+        v-else-if="runningSizing"
+        class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-3 py-10 text-sm text-muted-foreground"
+      >
+        <Spinner class="size-6 text-primary" />
+        <span>Running sizing…</span>
+      </div>
       <div
         v-else
         class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
@@ -126,20 +143,21 @@ function formatShiftTime(value?: string | null) {
             v-if="!readOnly"
             size="sm"
             :disabled="busy || slotLocked"
+            :loading="runningSlot"
             @click="emit('runSlot')"
           >
-            Run Simulation
+            {{ runningSlot ? 'Running…' : 'Run Simulation' }}
           </Button>
         </div>
 
         <div v-if="!readOnly" class="mb-2.5 flex gap-2">
-          <Button variant="outline" size="sm" :disabled="slotLocked" @click="emit('addShift')">
+          <Button variant="outline" size="sm" :disabled="busy || slotLocked" @click="emit('addShift')">
             Add
           </Button>
           <Button
             variant="outline"
             size="sm"
-            :disabled="slotLocked || shiftRows.length <= 1"
+            :disabled="busy || slotLocked || shiftRows.length <= 1"
             @click="emit('removeShift')"
           >
             Remove
@@ -165,7 +183,7 @@ function formatShiftTime(value?: string | null) {
                     v-else
                     v-model="row.startTime"
                     class="h-8"
-                    :disabled="slotLocked"
+                    :disabled="busy || slotLocked"
                     :aria-label="`Shift ${row.shiftNo} start`"
                     @update:model-value="emit('shiftEdited')"
                   />
@@ -179,7 +197,7 @@ function formatShiftTime(value?: string | null) {
                     v-else
                     v-model="row.durationMinutes"
                     :min="1"
-                    :disabled="slotLocked"
+                    :disabled="busy || slotLocked"
                     @update:model-value="emit('shiftEdited')"
                   />
                 </TableCell>
@@ -192,7 +210,7 @@ function formatShiftTime(value?: string | null) {
                     v-else
                     v-model="row.headcount"
                     :min="0"
-                    :disabled="slotLocked"
+                    :disabled="busy || slotLocked"
                     @update:model-value="emit('shiftEdited')"
                   />
                 </TableCell>
@@ -205,7 +223,7 @@ function formatShiftTime(value?: string | null) {
                     <input
                       v-model="row.worksOnWeekend"
                       type="checkbox"
-                      :disabled="slotLocked"
+                      :disabled="busy || slotLocked"
                       @change="emit('shiftEdited')"
                     />
                     Yes
@@ -272,6 +290,13 @@ function formatShiftTime(value?: string | null) {
         </div>
         <SlotSimulationCharts :simulation="latestSlotSimulation" />
       </section>
+      <div
+        v-else-if="runningSlot"
+        class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-3 py-10 text-sm text-muted-foreground"
+      >
+        <Spinner class="size-6 text-primary" />
+        <span>Running slot simulation…</span>
+      </div>
     </section>
   </div>
 </template>

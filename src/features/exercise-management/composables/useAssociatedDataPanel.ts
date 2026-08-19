@@ -1,9 +1,6 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue'
 import { toast } from 'vue-sonner'
 
-import { showOperationNotices } from '@/composables/useOperationNotices'
-
-import { useExerciseAssociatedDataMutations } from '../api/mutations'
 import {
   useCalendarQuery,
   useCycleTimeActiveQuery,
@@ -39,7 +36,6 @@ function syncRefFromQuery<T>(source: Ref<T | undefined>, target: Ref<T>, fallbac
 
 export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
   const id = computed(() => toValue(exerciseId))
-  const { reapplyHolidayTemplate } = useExerciseAssociatedDataMutations()
 
   const teamSetupQuery = useTeamSetupQuery(id)
   const shiftsQuery = useShiftsQuery(id)
@@ -124,27 +120,6 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
     editorOpen.value = true
   }
 
-  async function reapplyTemplate() {
-    try {
-      const result = await reapplyHolidayTemplate.mutateAsync(id.value)
-      const cal = result.calendar
-      calendar.value = { ...cal, holidays: [...(cal.holidays ?? [])] }
-      await teamSetupQuery.refetch()
-      if (teamSetupQuery.data.value !== undefined) {
-        teamSetup.value = teamSetupQuery.data.value
-      }
-      const count = cal.holidays?.length ?? 0
-      const summary = `Template applied (${count} holiday day${count === 1 ? '' : 's'}). CUSTOM rows kept.`
-      const shown = showOperationNotices({
-        summary,
-        notices: result.notices ?? [],
-      })
-      if (!shown) toast.success(summary)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not re-apply template.')
-    }
-  }
-
   function onCycleTimeUpdated(value: CycleTimeBaseline) {
     cycleTime.value = value
     syncMedianFromBaseline()
@@ -179,7 +154,6 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
     editor,
     medianSource,
     openEditor,
-    reapplyTemplate,
     onCycleTimeUpdated,
     reload,
   }

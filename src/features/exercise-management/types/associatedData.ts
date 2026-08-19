@@ -33,7 +33,6 @@ export type TeamSetupRequest = Omit<
   TeamSetup,
   | 'deliveryHc'
   | 'workingHoursPerDay'
-  | 'weekendCode'
   | 'capacityRatio'
   | 'totalAgents'
   | 'averageTenureYears'
@@ -64,6 +63,7 @@ export interface ShiftRequest {
 export interface SupportItem {
   id: string
   lineageId: string
+  categoryId: string | null
   category: string
   activity: string
   frequencyCode: string
@@ -78,7 +78,7 @@ export interface SupportItem {
 }
 
 export interface SupportItemRequest {
-  category: string
+  categoryId: string
   activity: string
   frequencyCode: string
   volume: number
@@ -118,15 +118,7 @@ export interface CalendarView {
 }
 
 export interface CalendarRequest {
-  weekendCode?: string | null
-  baselineSource?: string | null
-  baselineVersion?: string | null
   holidays?: HolidayRequest[]
-}
-
-export interface ReapplyCalendarResult {
-  calendar: CalendarView
-  notices: string[]
 }
 
 export interface MonthlyVolume {

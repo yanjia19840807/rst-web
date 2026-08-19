@@ -81,7 +81,11 @@ export type SupportCategorySummary = {
   category: string
   supportFte: number | string | null
   pctOfSupport: string
-  topActivity: string
+}
+
+export type SupportTaxonomyOption = {
+  id: string
+  name: string
 }
 
 export type SupportRow = {
@@ -102,7 +106,7 @@ export type SupportRow = {
 
 export type SupportRepositoryQuery = {
   center?: string
-  category?: string
+  categoryId?: string
   toolkitName?: string
   submittedFrom?: string
   submittedTo?: string
@@ -121,7 +125,7 @@ export type SupportRepositoryResponse = {
   total: number
   totalPages: number
   centers: string[]
-  categories: string[]
+  categories: SupportTaxonomyOption[]
   toolkitNames: string[]
 }
 

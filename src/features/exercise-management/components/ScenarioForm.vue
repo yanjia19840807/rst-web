@@ -50,7 +50,10 @@ const route = useRoute()
 const router = useRouter()
 const { commitScenario, deleteScenario } = useScenarioMutations()
 const snapshotMode = computed(() => route.name === 'supervisor-scenario-snapshot')
-const busy = ref(false)
+const saving = ref(false)
+const runningSizing = ref(false)
+const runningSlot = ref(false)
+const busy = computed(() => saving.value || runningSizing.value || runningSlot.value)
 const deleteOpen = ref(false)
 const deletePending = computed(() => deleteScenario.isPending.value)
 const toolkitInfoOpen = ref(false)
@@ -431,7 +434,7 @@ function onShiftEdited() {
 }
 
 async function save() {
-  if (!scenario.value || readOnly.value) return
+  if (!scenario.value || readOnly.value || busy.value) return
   const meta = scenarioMetadataSchema.safeParse({
     name: form.name,
     description: form.description,
@@ -445,7 +448,7 @@ async function save() {
     toast.warning(shiftError)
     return
   }
-  busy.value = true
+  saving.value = true
   try {
     const hasSizingResults =
       sizingCompleted.value &&
@@ -480,7 +483,7 @@ async function save() {
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Save failed.')
   } finally {
-    busy.value = false
+    saving.value = false
   }
 }
 
@@ -491,7 +494,7 @@ async function runSizing() {
     toast.warning('Right Sizing HC must be a positive number.')
     return
   }
-  busy.value = true
+  runningSizing.value = true
   try {
     const preview = await exerciseApi.previewSizing(props.exerciseId, props.scenarioId, hc)
     latestForecastBundle.value = preview.forecast
@@ -507,7 +510,7 @@ async function runSizing() {
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Sizing simulation failed.')
   } finally {
-    busy.value = false
+    runningSizing.value = false
   }
 }
 
@@ -535,7 +538,7 @@ async function runSlot() {
     toast.warning(validationError)
     return
   }
-  busy.value = true
+  runningSlot.value = true
   try {
     latestSlotSimulation.value = await exerciseApi.runSlotSimulation(
       props.exerciseId,
@@ -550,7 +553,7 @@ async function runSlot() {
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Slot simulation failed.')
   } finally {
-    busy.value = false
+    runningSlot.value = false
   }
 }
 
@@ -606,11 +609,11 @@ const scenarioInfoRows = computed(() => {
           {{ snapshotMode ? '← Back to Exercise Snapshot' : '← Back to Exercise' }}
         </Button>
       </template>
-      <Button v-if="!readOnly" variant="destructive" @click="deleteOpen = true">
+      <Button v-if="!readOnly" variant="destructive" :disabled="busy" @click="deleteOpen = true">
         Delete Scenario
       </Button>
-      <Button v-if="!readOnly" :disabled="busy" @click="save">
-        {{ busy ? 'Saving…' : 'Save Scenario' }}
+      <Button v-if="!readOnly" :disabled="busy" :loading="saving" @click="save">
+        {{ saving ? 'Saving…' : 'Save Scenario' }}
       </Button>
     </PageActions>
 
@@ -669,6 +672,8 @@ const scenarioInfoRows = computed(() => {
         :exercise-id="exerciseId"
         :read-only="readOnly"
         :busy="busy"
+        :running-sizing="runningSizing"
+        :running-slot="runningSlot"
         :right-sizing-hc="form.rightSizingHc"
         :shift-rows="shiftRows"
         :sizing-completed="sizingCompleted"

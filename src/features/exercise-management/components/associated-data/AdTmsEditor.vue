@@ -122,7 +122,7 @@ watch(
       <AdMetric
         label="Sessions"
         :value="sessionTotalLabel"
-        hint="Included samples for the SYSTEM median. Same Reference is summed when Combined Subtasks Time is Yes."
+        hint="Included samples for the SYSTEM median. Same Reference is summed when Combine same-reference session time is Yes."
       />
       <AdMetric
         label="Median cycle time"

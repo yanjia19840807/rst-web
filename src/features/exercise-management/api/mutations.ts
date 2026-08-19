@@ -177,11 +177,6 @@ export function useExerciseAssociatedDataMutations() {
     onSuccess: (_data, { exerciseId }) => invalidateExerciseAssociatedData(queryClient, exerciseId),
   })
 
-  const reapplyHolidayTemplate = useMutation({
-    mutationFn: (exerciseId: string) => exerciseApi.reapplyHolidayTemplate(exerciseId),
-    onSuccess: (_data, exerciseId) => invalidateExerciseAssociatedData(queryClient, exerciseId),
-  })
-
   const putMonthlyVolumes = useMutation({
     mutationFn: ({ exerciseId, body }: { exerciseId: string; body: MonthlyVolumeRequest[] }) =>
       exerciseApi.putMonthlyVolumes(exerciseId, body),
@@ -255,7 +250,6 @@ export function useExerciseAssociatedDataMutations() {
     updateSupport,
     deleteSupport,
     putCalendar,
-    reapplyHolidayTemplate,
     putMonthlyVolumes,
     putDailyVolumes,
     putSlotVolumes,

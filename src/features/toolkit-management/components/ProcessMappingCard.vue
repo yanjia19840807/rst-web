@@ -13,6 +13,7 @@ const pl1 = defineModel<string>('pl1', { required: true })
 const pl2 = defineModel<string>('pl2', { required: true })
 const supervisorPositionId = defineModel<string>('supervisorPositionId', { required: true })
 const selectedCountries = defineModel<string[]>('selectedCountries', { required: true })
+const combineSubtasksTime = defineModel<boolean>('combineSubtasksTime', { required: true })
 
 defineProps<{
   centers: string[]
@@ -113,6 +114,35 @@ const controlClass =
           empty-text="Select Process Level 3 to load countries."
           :disabled="!countries.length"
         />
+      </div>
+      <div class="grid gap-1.5">
+        <Label>Combine same-reference session time</Label>
+        <div class="flex h-9 items-center gap-4 text-sm">
+          <label class="inline-flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name="combine-subtasks-time"
+              class="size-3.5 accent-primary"
+              :checked="combineSubtasksTime === false"
+              @change="combineSubtasksTime = false"
+            />
+            No
+          </label>
+          <label class="inline-flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name="combine-subtasks-time"
+              class="size-3.5 accent-primary"
+              :checked="combineSubtasksTime === true"
+              @change="combineSubtasksTime = true"
+            />
+            Yes
+          </label>
+        </div>
+        <p class="text-xs text-muted-foreground">
+          Yes: sessions that share a Reference are summed before the SYSTEM median.
+          No: each session is an independent median sample.
+        </p>
       </div>
     </CardContent>
   </Card>

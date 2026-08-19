@@ -16,6 +16,13 @@ import { TimePicker } from '@/components/ui/time-picker'
 
 import { teamSetupRequestSchema } from '../../schemas/teamSetup'
 import type { TeamSetup, TeamSetupRequest } from '../../types'
+import { computeNetworkDays } from '../../workingDays'
+import {
+  DEFAULT_WEEKEND_CODE,
+  WEEKEND_CODE_OPTIONS,
+  normalizeWeekendCode,
+  weekendCodeLabel,
+} from '../../weekendCodes'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
 
@@ -23,6 +30,7 @@ const props = defineProps<{
   modelValue: TeamSetup | null
   cycleTimeSeconds?: number | null
   supportFte?: number | null
+  sizingMonth?: string | null
   readOnly?: boolean
 }>()
 
@@ -34,7 +42,7 @@ const form = reactive({
   agentsGt48m: null as number | null,
   paidLeaveDays: null as number | null,
   otherLeaveDays: null as number | null,
-  weekendCode: '' as string,
+  weekendCode: DEFAULT_WEEKEND_CODE as string,
   availabilityRatio: null as number | null,
   automationRatio: null as number | null,
   maxOvertimeMinutes: null as number | null,
@@ -63,7 +71,7 @@ watch(
       agentsGt48m: t.agentsGt48m ?? null,
       paidLeaveDays: t.paidLeaveDays ?? null,
       otherLeaveDays: t.otherLeaveDays ?? null,
-      weekendCode: t.weekendCode ?? '',
+      weekendCode: normalizeWeekendCode(t.weekendCode),
       availabilityRatio: t.availabilityRatio ?? null,
       automationRatio: t.automationRatio ?? null,
       maxOvertimeMinutes: t.maxOvertimeMinutes ?? null,
@@ -154,8 +162,14 @@ const draftWorkingHoursPerDay = computed(() => {
   return Math.round((minutes / 60) * 1_000_000) / 1_000_000
 })
 
-/** Calendar NETWORKDAYS — not editable here; still the capacity baseline. */
-const workingDaysPerYear = computed(() => props.modelValue?.workingDaysPerYear ?? null)
+/** NETWORKDAYS from Team Setup weekend code for the sizing year (no holidays). */
+const workingDaysPerYear = computed(() => {
+  const year = Number(String(props.sizingMonth ?? '').slice(0, 4))
+  if (!Number.isFinite(year) || year < 1900) {
+    return props.modelValue?.workingDaysPerYear ?? null
+  }
+  return computeNetworkDays(year, form.weekendCode || DEFAULT_WEEKEND_CODE, [])
+})
 
 /** Live: WorkingDays − paidLeave − otherLeave. Matches backend. */
 const draftMaxCapacityDays = computed(() => {
@@ -210,7 +224,7 @@ const slaRows = computed(() => [
   { label: 'SLA turntime', value: formatNumber(form.slaTurnaroundMinutes, 2) },
   { label: 'SLA target (%)', value: formatPercent(form.slaTargetRatio) },
   { label: 'SLA type', value: slaTypeLabel(form.slaType) },
-  { label: 'Weekend code', value: form.weekendCode || '—' },
+  { label: 'Weekend code', value: weekendCodeLabel(form.weekendCode) },
   { label: 'SLA clock start', value: form.slaStartTime || '—' },
   { label: 'SLA clock end', value: form.slaEndTime || '—' },
   { label: 'Availability ratio (%)', value: formatPercent(form.availabilityRatio) },
@@ -264,6 +278,7 @@ function toRequest(): TeamSetupRequest {
     slaWeekendEnabled: hidden.slaWeekendEnabled,
     weekendShiftHc: form.weekendShiftHc,
     skeletonRatio: form.skeletonRatio,
+    weekendCode: form.weekendCode || DEFAULT_WEEKEND_CODE,
   }
   return teamSetupRequestSchema.parse(payload)
 }
@@ -292,7 +307,7 @@ defineExpose({ toRequest })
       <AdMetric
         label="Working days"
         :value="formatNumber(workingDaysPerYear, 2)"
-        hint="Calendar and holiday adjusted"
+        hint="NETWORKDAYS from weekend code (sizing year)"
       />
     </div>
 
@@ -421,7 +436,20 @@ defineExpose({ toRequest })
           </label>
           <label class="grid gap-1 text-sm">
             Weekend code
-            <ReadOnlyField :value="form.weekendCode || '—'" />
+            <select
+              v-if="!readOnly"
+              v-model="form.weekendCode"
+              class="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
+            >
+              <option
+                v-for="option in WEEKEND_CODE_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+            <ReadOnlyField v-else :value="weekendCodeLabel(form.weekendCode)" />
           </label>
           <label class="grid gap-1 text-sm"
             >SLA clock start

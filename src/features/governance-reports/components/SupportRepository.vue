@@ -38,7 +38,7 @@ const selectClass =
 
 const listQuery = computed<SupportRepositoryQuery>(() => ({
   center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
-  category: categoryFilter.value === 'All' ? undefined : categoryFilter.value,
+  categoryId: categoryFilter.value === 'All' ? undefined : categoryFilter.value,
   toolkitName: toolkitFilter.value === 'All' ? undefined : toolkitFilter.value,
   submittedFrom: submittedFrom.value || undefined,
   submittedTo: submittedTo.value || undefined,
@@ -52,7 +52,7 @@ const rows = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
 const categorySummaries = computed(() => data.value?.categorySummaries ?? [])
 const gbsOptions = computed(() => ['All', ...(data.value?.centers ?? [])])
-const categoryOptions = computed(() => ['All', ...(data.value?.categories ?? [])])
+const categoryOptions = computed(() => data.value?.categories ?? [])
 const toolkitOptions = computed(() => ['All', ...(data.value?.toolkitNames ?? [])])
 const loading = computed(() => supportQuery.isPending.value && !supportQuery.data.value)
 
@@ -144,8 +144,13 @@ watch(
       </FilterField>
       <FilterField label="Standard Category">
         <select v-model="categoryFilter" :class="[selectClass, 'w-[200px]']">
-          <option v-for="option in categoryOptions" :key="option" :value="option">
-            {{ option }}
+          <option value="All">All</option>
+          <option
+            v-for="option in categoryOptions"
+            :key="option.id"
+            :value="option.id"
+          >
+            {{ option.name }}
           </option>
         </select>
       </FilterField>
@@ -238,7 +243,6 @@ watch(
                   <TableHead>Standard Category</TableHead>
                   <TableHead>Support FTE</TableHead>
                   <TableHead>% of support FTE</TableHead>
-                  <TableHead>Top activity example</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,10 +250,9 @@ watch(
                   <TableCell>{{ row.category }}</TableCell>
                   <TableCell>{{ formatHc(row.supportFte) }}</TableCell>
                   <TableCell>{{ row.pctOfSupport || '—' }}</TableCell>
-                  <TableCell>{{ row.topActivity || '—' }}</TableCell>
                 </TableRow>
                 <TableRow v-if="!categorySummaries.length">
-                  <TableCell colspan="4" class="h-24 text-center text-muted-foreground">
+                  <TableCell colspan="3" class="h-24 text-center text-muted-foreground">
                     No support categories found.
                   </TableCell>
                 </TableRow>

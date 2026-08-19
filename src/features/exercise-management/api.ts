@@ -22,7 +22,6 @@ import type {
   PageResult,
   MonthlyVolume,
   MonthlyVolumeRequest,
-  ReapplyCalendarResult,
   Scenario,
   Shift,
   ShiftRequest,
@@ -181,10 +180,6 @@ export const exerciseApi = {
     apiRequest<CalendarView>(exercisePath(exerciseId, '/calendar'), {
       method: 'PUT',
       body: JSON.stringify(body),
-    }),
-  reapplyHolidayTemplate: (exerciseId: string) =>
-    apiRequest<ReapplyCalendarResult>(exercisePath(exerciseId, '/calendar/reapply-template'), {
-      method: 'POST',
     }),
 
   getMonthlyVolumes: (exerciseId: string) =>

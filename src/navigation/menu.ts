@@ -40,12 +40,6 @@ export const menuItems: readonly MenuItem[] = [
     match: ['/supervisor/exercises'],
   },
   {
-    label: 'Holiday Templates',
-    to: '/supervisor/holiday-templates',
-    permission: PERMISSIONS.holidayTemplateManage,
-    match: ['/supervisor/holiday-templates'],
-  },
-  {
     label: 'Approval Queue',
     to: '/approver/queue',
     permission: PERMISSIONS.approvalQueue,
