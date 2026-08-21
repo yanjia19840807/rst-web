@@ -120,6 +120,12 @@ function invalidateExerciseAssociatedData(
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.volumesDaily(exerciseId) })
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.volumesSlot(exerciseId) })
   void queryClient.invalidateQueries({
+    queryKey: exerciseQueryKeys.volumesToolkitSummary(exerciseId),
+  })
+  void queryClient.invalidateQueries({
+    queryKey: exerciseQueryKeys.volumesToolkitPoints(exerciseId),
+  })
+  void queryClient.invalidateQueries({
     queryKey: exerciseQueryKeys.cycleTimeActive(exerciseId),
   })
   void queryClient.invalidateQueries({

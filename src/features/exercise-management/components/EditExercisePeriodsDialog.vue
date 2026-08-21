@@ -19,7 +19,12 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { showOperationNotices } from '@/composables/useOperationNotices'
 
 import { useExerciseMutations } from '../api/mutations'
-import { sizingHintLines, slotHintLines } from '../periodWindows'
+import {
+  SIZING_MONTH_HINT_DESCRIPTION,
+  SLOT_PERIOD_HINT_DESCRIPTION,
+  sizingHintLines,
+  slotHintLines,
+} from '../periodWindows'
 import {
   editExercisePeriodsSchema,
   emptyEditExercisePeriodsForm,
@@ -113,7 +118,14 @@ const save = handleSubmit(async (formValues) => {
           <div
             class="grid grid-cols-[minmax(120px,0.35fr)_1fr] items-center gap-x-3 gap-y-3 text-sm"
           >
-            <Label class="text-muted-foreground self-start pt-2">Sizing Month</Label>
+            <div class="inline-flex items-center gap-1.5">
+              <Label class="text-muted-foreground">Sizing Month</Label>
+              <PeriodDerivedHints
+                title="Sizing Month"
+                :description="SIZING_MONTH_HINT_DESCRIPTION"
+                :lines="sizingHints"
+              />
+            </div>
             <div>
               <MonthPicker
                 v-model="sizingMonth"
@@ -124,10 +136,16 @@ const save = handleSubmit(async (formValues) => {
               <p v-if="errors.sizingMonth" class="mt-1 text-xs text-destructive">
                 {{ errors.sizingMonth }}
               </p>
-              <PeriodDerivedHints :lines="sizingHints" />
             </div>
 
-            <Label class="text-muted-foreground self-start pt-2">Slot Period</Label>
+            <div class="inline-flex items-center gap-1.5 self-start pt-2">
+              <Label class="text-muted-foreground">Slot Period</Label>
+              <PeriodDerivedHints
+                title="Slot Period"
+                :description="SLOT_PERIOD_HINT_DESCRIPTION"
+                :lines="slotHints"
+              />
+            </div>
             <div>
               <div class="flex flex-wrap items-center gap-3">
                 <div class="grid gap-1.5">
@@ -155,7 +173,6 @@ const save = handleSubmit(async (formValues) => {
               >
                 {{ errors.slotStartDate || errors.slotWeeks }}
               </p>
-              <PeriodDerivedHints :lines="slotHints" />
             </div>
 
             <Label class="text-muted-foreground">TMS period</Label>

@@ -140,7 +140,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/supervisor/ScenarioFormPage.vue'),
     meta: {
       title: 'Scenario Snapshot',
-      subtitle: 'Read-only scenario assumptions and simulation',
+      subtitle: 'Read-only scenario and simulation',
       roles: ['supervisor'],
     },
   },

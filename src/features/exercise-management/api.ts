@@ -30,6 +30,7 @@ import type {
   CommitScenarioRequest,
   DailySizingView,
   ForecastBundle,
+  ForecastTrainingBundle,
   ForecastView,
   MonthlySizingView,
   SizingPreviewBundle,
@@ -41,6 +42,8 @@ import type {
   SupportItemRequest,
   TeamSetup,
   TeamSetupRequest,
+  ToolkitVolumePoints,
+  ToolkitVolumeSummary,
   UpdateScenarioRequest,
 } from './types'
 
@@ -182,6 +185,10 @@ export const exerciseApi = {
       body: JSON.stringify(body),
     }),
 
+  getToolkitVolumeSummary: (exerciseId: string) =>
+    apiRequest<ToolkitVolumeSummary>(exercisePath(exerciseId, '/volumes/toolkit-summary')),
+  getToolkitVolumePoints: (exerciseId: string) =>
+    apiRequest<ToolkitVolumePoints>(exercisePath(exerciseId, '/volumes/toolkit-points')),
   getMonthlyVolumes: (exerciseId: string) =>
     apiRequest<MonthlyVolume[]>(exercisePath(exerciseId, '/volumes/monthly')),
   putMonthlyVolumes: (exerciseId: string, body: MonthlyVolumeRequest[]) =>
@@ -313,6 +320,10 @@ export const exerciseApi = {
         exerciseId,
         `/scenarios/${scenarioId}/forecast/latest?level=${encodeURIComponent(level)}`,
       ),
+    ),
+  getForecastTraining: (exerciseId: string, scenarioId: string) =>
+    apiRequest<ForecastTrainingBundle>(
+      exercisePath(exerciseId, `/scenarios/${scenarioId}/forecast/training`),
     ),
   previewSizing: (exerciseId: string, scenarioId: string, rightSizingHc: number) =>
     apiRequest<SizingPreviewBundle>(

@@ -136,8 +136,7 @@ const shiftSetupLabel = computed(() => {
 })
 
 function assumptionHc(scenario: Scenario) {
-  const row = scenario.assumptions.find((item) => item.parameterCode === 'RIGHT_SIZING_HC')
-  return row?.numericValue != null ? Number(row.numericValue) : null
+  return scenario.rightSizingHc != null ? Number(scenario.rightSizingHc) : null
 }
 
 function capacityCreation(scenario: Scenario) {
@@ -184,7 +183,7 @@ async function createScenario() {
         scenarioCode: nextScenarioCode.value,
         name: `${exercise.value.snapshot.toolkit.name} ${nextScenarioCode.value}`,
         description: null,
-        assumptions: [{ parameterCode: 'RIGHT_SIZING_HC', numericValue: 0, unit: 'HC' }],
+        rightSizingHc: 0,
       },
     })
     newScenarioOpen.value = false
@@ -367,8 +366,8 @@ watch(
         <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
           <DialogTitle>Create New Scenario</DialogTitle>
           <DialogDescription>
-            A new scenario will be created with the following identity. You can adjust assumptions
-            on the next page.
+            A new scenario will be created with the following identity. You can set Right Sizing HC
+            and run simulation on the next page.
           </DialogDescription>
         </DialogHeader>
         <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">

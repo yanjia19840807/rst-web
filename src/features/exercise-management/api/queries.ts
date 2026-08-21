@@ -26,6 +26,10 @@ export const exerciseQueryKeys = {
     [...exerciseQueryKeys.all, 'volumes', 'daily', exerciseId] as const,
   volumesSlot: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'volumes', 'slot', exerciseId] as const,
+  volumesToolkitSummary: (exerciseId: string) =>
+    [...exerciseQueryKeys.all, 'volumes', 'toolkit-summary', exerciseId] as const,
+  volumesToolkitPoints: (exerciseId: string) =>
+    [...exerciseQueryKeys.all, 'volumes', 'toolkit-points', exerciseId] as const,
   cycleTimeActive: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'cycleTime', 'active', exerciseId] as const,
   cycleTimeChart: (exerciseId: string) =>
@@ -39,6 +43,8 @@ export const exerciseQueryKeys = {
     level?: ForecastLevel,
   ) =>
     [...exerciseQueryKeys.all, 'sim', exerciseId, scenarioId, kind, level ?? ''] as const,
+  forecastTraining: (exerciseId: string, scenarioId: string) =>
+    [...exerciseQueryKeys.all, 'forecastTraining', exerciseId, scenarioId] as const,
   submitPreview: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'submitPreview', exerciseId] as const,
   submittedDetails: (exerciseId: string) =>
@@ -116,6 +122,24 @@ export function useCalendarQuery(exerciseId: MaybeRefOrGetter<string | undefined
   return useQuery({
     queryKey: computed(() => exerciseQueryKeys.calendar(id.value ?? '')),
     queryFn: () => exerciseApi.getCalendar(id.value!),
+    enabled: computed(() => Boolean(id.value)),
+  })
+}
+
+export function useToolkitVolumeSummaryQuery(exerciseId: MaybeRefOrGetter<string | undefined>) {
+  const id = computed(() => toValue(exerciseId))
+  return useQuery({
+    queryKey: computed(() => exerciseQueryKeys.volumesToolkitSummary(id.value ?? '')),
+    queryFn: () => exerciseApi.getToolkitVolumeSummary(id.value!),
+    enabled: computed(() => Boolean(id.value)),
+  })
+}
+
+export function useToolkitVolumePointsQuery(exerciseId: MaybeRefOrGetter<string | undefined>) {
+  const id = computed(() => toValue(exerciseId))
+  return useQuery({
+    queryKey: computed(() => exerciseQueryKeys.volumesToolkitPoints(id.value ?? '')),
+    queryFn: () => exerciseApi.getToolkitVolumePoints(id.value!),
     enabled: computed(() => Boolean(id.value)),
   })
 }
@@ -290,6 +314,21 @@ export function useLatestForecastQuery(
       exerciseApi
         .getLatestForecast(exId.value!, scId.value!, resolvedLevel.value)
         .catch(() => null),
+    enabled: computed(() => Boolean(exId.value && scId.value)),
+  })
+}
+
+export function useForecastTrainingQuery(
+  exerciseId: MaybeRefOrGetter<string | undefined>,
+  scenarioId: MaybeRefOrGetter<string | undefined>,
+) {
+  const exId = computed(() => toValue(exerciseId))
+  const scId = computed(() => toValue(scenarioId))
+  return useQuery({
+    queryKey: computed(() =>
+      exerciseQueryKeys.forecastTraining(exId.value ?? '', scId.value ?? ''),
+    ),
+    queryFn: () => exerciseApi.getForecastTraining(exId.value!, scId.value!),
     enabled: computed(() => Boolean(exId.value && scId.value)),
   })
 }

@@ -158,7 +158,7 @@ const workingDaysLabel = computed(() => {
 
 const dailyCapacityLabel = computed(() => {
   const cap = teamSetup.value?.dailyCapacityPerAgent
-  return cap != null ? Number(cap).toFixed(2) : '—'
+  return cap != null ? Number(cap).toFixed(0) : '—'
 })
 
 /** Exercise AD / snapshot inputs used by simulation (read-only on this page). */
@@ -317,8 +317,8 @@ async function loadSimulationResultsFromQueries() {
 function applyScenarioToForm(value: Scenario) {
   form.name = value.name
   form.description = value.description ?? ''
-  const rs = value.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')
-  form.rightSizingHc = rs?.numericValue != null ? Number(rs.numericValue) : 0
+  const rs = value.rightSizingHc
+  form.rightSizingHc = rs != null ? Number(rs) : 0
 
   const savedShifts = value.shifts ?? []
   shiftRows.value = savedShifts.length
@@ -461,13 +461,7 @@ async function save() {
       body: {
         name: meta.data.name || scenario.value.scenarioCode,
         description: meta.data.description.trim() || null,
-        assumptions: [
-          {
-            parameterCode: 'RIGHT_SIZING_HC',
-            numericValue: Number(form.rightSizingHc),
-            unit: 'HC',
-          },
-        ],
+        rightSizingHc: Number(form.rightSizingHc),
         shifts: toShiftRequests(),
         results: hasSizingResults
           ? {
@@ -660,7 +654,7 @@ const scenarioInfoRows = computed(() => {
 
         <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
           Sizing Month, Slot Period, TMS period, and Associated Data are maintained on the Exercise
-          ({{ periodHint }}). This scenario only adjusts assumptions and runs simulation.
+          ({{ periodHint }}). This scenario only changes Right Sizing HC, shifts, and simulation.
         </div>
       </CardContent>
     </Card>
@@ -670,6 +664,7 @@ const scenarioInfoRows = computed(() => {
     <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
       <ScenarioAssumptionsSection
         :exercise-id="exerciseId"
+        :sizing-month="exercise.sizingMonth"
         :read-only="readOnly"
         :busy="busy"
         :running-sizing="runningSizing"

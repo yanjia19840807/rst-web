@@ -97,16 +97,16 @@ const draftTotalAgents = computed(() =>
   ),
 )
 
-/** Live preview; formula matches backend ExerciseTeamSetup.averageTenureYears. */
+/** Live preview; Excel Input C10: (3·&lt;6m + 15·6–24m + 36·24–48m + 48·&gt;48m) / 12 / total. */
 const draftAverageTenureYears = computed(() => {
   const total = draftTotalAgents.value
   if (total <= 0) return null
-  const weighted =
-    (form.agentsLt6m ?? 0) * 0.25 +
-    (form.agents6To24m ?? 0) * 1.25 +
-    (form.agents24To48m ?? 0) * 3 +
-    (form.agentsGt48m ?? 0) * 5
-  return weighted / total
+  const weightedMonths =
+    (form.agentsLt6m ?? 0) * 3 +
+    (form.agents6To24m ?? 0) * 15 +
+    (form.agents24To48m ?? 0) * 36 +
+    (form.agentsGt48m ?? 0) * 48
+  return weightedMonths / 12 / total
 })
 
 /** Backend stores 0–1 ratios; UI edits 0–100 percent. */
@@ -152,7 +152,7 @@ function parseClockToMinutes(value: string): number | null {
   return hours * 60 + minutes + seconds / 60
 }
 
-/** Live preview: SLA end − start (overnight wraps +24h). Matches backend. */
+/** Live: SLA end − start (overnight wraps +24h). Matches backend. */
 const draftWorkingHoursPerDay = computed(() => {
   const start = parseClockToMinutes(form.slaStartTime)
   const end = parseClockToMinutes(form.slaEndTime)
@@ -160,6 +160,31 @@ const draftWorkingHoursPerDay = computed(() => {
   let minutes = end - start
   if (minutes <= 0) minutes += 24 * 60
   return Math.round((minutes / 60) * 1_000_000) / 1_000_000
+})
+
+/**
+ * Live Excel C36: WorkingHrPerDay × AvailabilityRatio × 3600 / CycleTime.
+ * Working hours is the SLA clock statistic, not a separate input.
+ */
+const draftDailyCapacityPerAgent = computed(() => {
+  const hours = draftWorkingHoursPerDay.value
+  const availability = form.availabilityRatio
+  const cycleTime = props.cycleTimeSeconds != null ? Number(props.cycleTimeSeconds) : NaN
+  if (hours == null || availability == null || !Number.isFinite(cycleTime) || cycleTime <= 0) {
+    return null
+  }
+  return Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
+})
+
+const dailyCapacityDisplay = computed(() => {
+  if (draftDailyCapacityPerAgent.value != null) {
+    return `${formatNumber(draftDailyCapacityPerAgent.value, 0)} transactions`
+  }
+  const cycleTime = props.cycleTimeSeconds != null ? Number(props.cycleTimeSeconds) : NaN
+  if (!Number.isFinite(cycleTime) || cycleTime <= 0) {
+    return '— (needs Cycle time from TMS)'
+  }
+  return '—'
 })
 
 /** NETWORKDAYS from Team Setup weekend code for the sizing year (no holidays). */
@@ -186,19 +211,6 @@ const draftCapacityRatio = computed(() => {
   return Math.round((maxCapacity / workingDays) * 1e8) / 1e8
 })
 
-/**
- * Live BRD: WorkingHoursPerDay × AvailabilityRatio × 3600 / CycleTime.
- */
-const draftDailyCapacityPerAgent = computed(() => {
-  const hours = draftWorkingHoursPerDay.value
-  const availability = form.availabilityRatio
-  const cycleTime = props.cycleTimeSeconds != null ? Number(props.cycleTimeSeconds) : NaN
-  if (hours == null || availability == null || !Number.isFinite(cycleTime) || cycleTime <= 0) {
-    return null
-  }
-  return Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
-})
-
 function slaTypeLabel(value: string | null | undefined) {
   if (value === 'BUSINESS_HOURS') return 'Working Hours'
   if (value === 'CALENDAR_HOURS') return 'Calendar Hours'
@@ -215,7 +227,7 @@ const headcountRows = computed(() => [
     label: 'Average tenure',
     value:
       draftAverageTenureYears.value != null
-        ? `${formatNumber(draftAverageTenureYears.value, 2)} years`
+        ? `${formatNumber(draftAverageTenureYears.value, 1)} years`
         : '—',
   },
 ])
@@ -252,10 +264,7 @@ const capacityRows = computed(() => [
   },
   {
     label: 'Daily capacity / agent',
-    value:
-      draftDailyCapacityPerAgent.value != null
-        ? `${formatNumber(draftDailyCapacityPerAgent.value, 2)} transactions`
-        : '—',
+    value: dailyCapacityDisplay.value,
   },
 ])
 
@@ -301,8 +310,8 @@ defineExpose({ toRequest })
       />
       <AdMetric
         label="Daily capacity / agent"
-        :value="formatNumber(draftDailyCapacityPerAgent, 2)"
-        hint="Calculated from baseline inputs"
+        :value="dailyCapacityDisplay"
+        hint="Working hours × availability × 3600 / cycle time"
       />
       <AdMetric
         label="Working days"
@@ -389,7 +398,7 @@ defineExpose({ toRequest })
                 <TableCell>
                   {{
                     draftAverageTenureYears != null
-                      ? `${formatNumber(draftAverageTenureYears, 2)} years`
+                      ? `${formatNumber(draftAverageTenureYears, 1)} years`
                       : '—'
                   }}
                 </TableCell>
@@ -590,11 +599,7 @@ defineExpose({ toRequest })
               <TableRow>
                 <TableCell>Daily capacity / agent</TableCell>
                 <TableCell>
-                  {{
-                    draftDailyCapacityPerAgent != null
-                      ? `${formatNumber(draftDailyCapacityPerAgent, 2)} transactions`
-                      : '—'
-                  }}
+                  {{ dailyCapacityDisplay }}
                 </TableCell>
               </TableRow>
             </TableBody>

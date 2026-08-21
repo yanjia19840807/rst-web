@@ -103,18 +103,7 @@ export interface HolidayRequest {
 }
 
 export interface CalendarView {
-  weekendCode: string | null
-  baselineSource: string | null
-  baselineVersion: string | null
-  sourceTemplateId?: string | null
-  sourceTemplateVersion?: number | null
-  baselineYear?: number | null
-  workingDaysPerYear?: number | null
-  version: number
   holidays: Holiday[]
-  templateUpdateAvailable?: boolean
-  publishedTemplateVersion?: number | null
-  templateUpdateMessage?: string | null
 }
 
 export interface CalendarRequest {
@@ -125,6 +114,7 @@ export interface MonthlyVolume {
   id: string
   month: string
   actualVolume: number | null
+  commercialRatio: number | null
   sourceType: string | null
   importBatchId?: string | null
 }
@@ -132,12 +122,14 @@ export interface MonthlyVolume {
 export interface MonthlyVolumeRequest {
   month: string
   actualVolume?: number | null
+  commercialRatio?: number | null
 }
 
 export interface DailyVolume {
   id: string
   volumeDate: string
   actualVolume: number | null
+  dailyAdjustmentRatio: number | null
   sourceType: string | null
   importBatchId?: string | null
 }
@@ -145,6 +137,7 @@ export interface DailyVolume {
 export interface DailyVolumeRequest {
   volumeDate: string
   actualVolume?: number | null
+  dailyAdjustmentRatio?: number | null
 }
 
 export interface SlotVolume {
@@ -229,4 +222,29 @@ export interface ManualBaselineRequest {
   medianSeconds: number
   manualReason: string
   fileArtifactIds: string[]
+}
+
+/** Canonical Toolkit volume coverage (not this Exercise window). */
+export interface ToolkitVolumeSummary {
+  monthlyCount: number
+  monthlyFrom: string | null
+  monthlyTo: string | null
+  dailyCount: number
+  dailyFrom: string | null
+  dailyTo: string | null
+}
+
+export interface ToolkitMonthlyPoint {
+  month: string
+  actualVolume: number
+}
+
+export interface ToolkitDailyPoint {
+  volumeDate: string
+  actualVolume: number
+}
+
+export interface ToolkitVolumePoints {
+  monthly: ToolkitMonthlyPoint[]
+  daily: ToolkitDailyPoint[]
 }

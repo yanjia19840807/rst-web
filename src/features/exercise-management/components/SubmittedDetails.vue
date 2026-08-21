@@ -29,6 +29,7 @@ import type { ApprovalDetailView } from '@/features/approval/types'
 import {
   useCycleTimeActiveQuery,
   useExerciseQuery,
+  useForecastTrainingQuery,
   useLatestDailySimulationQuery,
   useLatestMonthlySizingQuery,
   useLatestSlotSimulationQuery,
@@ -38,7 +39,8 @@ import {
   useTeamSetupQuery,
 } from '../api/queries'
 import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
-import type { SubmittedDetails } from '../types'
+import type { ForecastTrainingObservation, SubmittedDetails } from '../types'
+import { formatNumber } from './associated-data/adTypes'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
@@ -127,6 +129,18 @@ const cycleTime = computed(() => cycleTimeQuery.data.value ?? null)
 const latestMonthlySizing = computed(() => monthlyQuery.data.value ?? null)
 const latestDailySizing = computed(() => dailyQuery.data.value ?? null)
 const latestSlotSimulation = computed(() => slotQuery.data.value ?? null)
+const trainingQuery = useForecastTrainingQuery(resolvedExerciseId, scenarioId)
+const trainingBundle = computed(() => trainingQuery.data.value ?? null)
+const hasTrainingObservations = computed(
+  () =>
+    (trainingBundle.value?.monthly.length ?? 0) > 0 ||
+    (trainingBundle.value?.daily.length ?? 0) > 0,
+)
+
+function trainingPeriodLabel(row: ForecastTrainingObservation) {
+  if (row.grain === 'MONTH') return formatMonth(row.periodStart)
+  return formatDate(row.periodStart)
+}
 const pending = computed(
   () => approve.isPending.value || returnToSupervisor.isPending.value,
 )
@@ -199,8 +213,8 @@ const supportFte = computed(() => {
 const rightSizingHc = computed(() => {
   const fromSizing = latestMonthlySizing.value?.rows[0]?.rightSizingHc
   if (fromSizing != null) return Number(fromSizing)
-  const assumption = scenario.value?.assumptions.find((item) => item.parameterCode === 'RIGHT_SIZING_HC')
-  return assumption?.numericValue != null ? Number(assumption.numericValue) : null
+  const stored = scenario.value?.rightSizingHc
+  return stored != null ? Number(stored) : null
 })
 
 const capacityCreation = computed(() => {
@@ -274,9 +288,9 @@ const packageRows = computed(() => {
     { label: 'Official Scenario', value: submitted.scenarioName ?? submitted.scenarioId },
     { key: 'toolkit', label: 'Toolkit', value: ex.snapshot.toolkit.name },
     { label: 'Sizing Month', value: formatMonth(ex.sizingMonth) },
-    { label: 'Month train', value: windows?.monthTrain },
+    { label: 'Month chart history', value: windows?.monthTrain },
     { label: 'Month forecast', value: windows?.monthForecast },
-    { label: 'Daily train', value: windows?.dailyTrain },
+    { label: 'Daily chart history', value: windows?.dailyTrain },
     { label: 'Daily forecast', value: windows?.dailyForecast },
     {
       label: 'Slot Period',
@@ -577,6 +591,74 @@ function downloadSummary() {
         read-only
       />
 
+      <Card v-if="hasTrainingObservations">
+        <CardHeader>
+          <CardTitle class="text-base">Training data used</CardTitle>
+        </CardHeader>
+        <CardContent class="grid gap-4">
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            Frozen actuals that fed the official scenario forecast when this exercise was approved.
+          </p>
+          <div class="grid gap-4 lg:grid-cols-2">
+            <div class="space-y-2">
+              <h4 class="text-sm font-semibold">Monthly</h4>
+              <div class="max-h-80 overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Actual Volume</TableHead>
+                      <TableHead>Source</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow
+                      v-for="row in trainingBundle?.monthly ?? []"
+                      :key="row.periodStart"
+                    >
+                      <TableCell>{{ trainingPeriodLabel(row) }}</TableCell>
+                      <TableCell>{{ formatNumber(row.actualVolume, 2) }}</TableCell>
+                      <TableCell>{{ row.source }}</TableCell>
+                    </TableRow>
+                    <TableRow v-if="!(trainingBundle?.monthly.length ?? 0)">
+                      <TableCell colspan="3" class="h-16 text-center text-muted-foreground">
+                        No monthly training observations.
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <h4 class="text-sm font-semibold">Daily</h4>
+              <div class="max-h-80 overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Actual Volume</TableHead>
+                      <TableHead>Source</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="row in trainingBundle?.daily ?? []" :key="row.periodStart">
+                      <TableCell>{{ trainingPeriodLabel(row) }}</TableCell>
+                      <TableCell>{{ formatNumber(row.actualVolume, 2) }}</TableCell>
+                      <TableCell>{{ row.source }}</TableCell>
+                    </TableRow>
+                    <TableRow v-if="!(trainingBundle?.daily.length ?? 0)">
+                      <TableCell colspan="3" class="h-16 text-center text-muted-foreground">
+                        No daily training observations.
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
         <Card class="min-w-0">
           <CardHeader>
@@ -613,6 +695,7 @@ function downloadSummary() {
             <SizingSimulationCharts
               v-if="simulationTab === 'sizing' && hasSizing"
               :exercise-id="resolvedExerciseId"
+              :sizing-month="exercise.sizingMonth"
               :monthly="latestMonthlySizing"
               :daily="latestDailySizing"
               :team-setup="teamSetup"

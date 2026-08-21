@@ -18,6 +18,7 @@ import type {
 } from 'echarts/components'
 
 import { useDailyVolumesQuery, useMonthlyVolumesQuery } from '../api/queries'
+import { dailyTrainDates, monthlyTrainMonths } from '../periodWindows'
 import {
   backlogAgingDays,
   dayKey,
@@ -48,6 +49,7 @@ type ChartOption = ComposeOption<
 
 const props = defineProps<{
   exerciseId?: string
+  sizingMonth?: string
   monthly: MonthlySizingView | null
   daily: DailySizingView | null
   teamSetup: TeamSetup | null
@@ -88,11 +90,21 @@ const monthlyOption = computed<ChartOption>(() => {
   const sizingByMonth = new Map(
     (props.monthly?.rows ?? []).map((row) => [monthKey(row.month), row]),
   )
+  const historyMonths = new Set(
+    props.sizingMonth ? monthlyTrainMonths(props.sizingMonth).map((month) => monthKey(month)) : [],
+  )
   const actualByMonth = new Map(
-    (monthlyVolumesQuery.data.value ?? []).map((row) => [
-      monthKey(row.month),
-      row.actualVolume == null ? null : n(row.actualVolume),
-    ]),
+    (monthlyVolumesQuery.data.value ?? [])
+      .filter((row) => {
+        const key = monthKey(row.month)
+        return (
+          historyMonths.size === 0 || historyMonths.has(key) || sizingByMonth.has(key)
+        )
+      })
+      .map((row) => [
+        monthKey(row.month),
+        row.actualVolume == null ? null : n(row.actualVolume),
+      ]),
   )
   const months = [...new Set([...actualByMonth.keys(), ...sizingByMonth.keys()])].sort()
 
@@ -246,11 +258,17 @@ const dailyOption = computed<ChartOption>(() => {
   const forecastByDate = new Map(
     simRows.map((row) => [dayKey(row.resultDate), n(row.forecastVolume)]),
   )
+  const historyDates = new Set(props.sizingMonth ? dailyTrainDates(props.sizingMonth) : [])
   const actualByDate = new Map(
-    (dailyVolumesQuery.data.value ?? []).map((row) => [
-      dayKey(row.volumeDate),
-      row.actualVolume == null ? null : n(row.actualVolume),
-    ]),
+    (dailyVolumesQuery.data.value ?? [])
+      .filter((row) => {
+        const key = dayKey(row.volumeDate)
+        return historyDates.size === 0 || historyDates.has(key) || forecastByDate.has(key)
+      })
+      .map((row) => [
+        dayKey(row.volumeDate),
+        row.actualVolume == null ? null : n(row.actualVolume),
+      ]),
   )
   const dates = [...new Set([...actualByDate.keys(), ...forecastByDate.keys()])].sort()
 

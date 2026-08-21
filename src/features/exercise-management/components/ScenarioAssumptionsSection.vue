@@ -28,6 +28,7 @@ export type ShiftDraft = {
 
 defineProps<{
   exerciseId: string
+  sizingMonth?: string
   readOnly: boolean
   busy: boolean
   runningSizing: boolean
@@ -100,6 +101,7 @@ function formatShiftTime(value?: string | null) {
       <SizingSimulationCharts
         v-if="sizingCompleted"
         :exercise-id="exerciseId"
+        :sizing-month="sizingMonth"
         :monthly="latestMonthlySizing"
         :daily="latestDailySizing"
         :team-setup="teamSetup"

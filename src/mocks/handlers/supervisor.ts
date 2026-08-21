@@ -356,8 +356,7 @@ export const supervisorHandlers = [
         exercise,
         notices: [
           'Associated Data initialized from archived exercise (mock).',
-          'Volume seeded from archived exercise for overlapping training periods.',
-          'Volume Input rows generated for training windows (monthly / daily / per-slot).',
+          'Volume Input pre-filled from Toolkit volume when available.',
           'Working Days / Year computed for sizing year.',
         ],
       },
@@ -550,11 +549,28 @@ export const supervisorHandlers = [
       holidayType: holiday.holidayType,
     }))
     ctx.shell.calendar = {
-      ...ctx.shell.calendar,
-      version: ctx.shell.calendar.version + 1,
       holidays,
     }
     return HttpResponse.json(ctx.shell.calendar)
+  }),
+
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/toolkit-summary', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    return HttpResponse.json({
+      monthlyCount: 0,
+      monthlyFrom: null,
+      monthlyTo: null,
+      dailyCount: 0,
+      dailyFrom: null,
+      dailyTo: null,
+    })
+  }),
+
+  http.get('*/api/v1/supervisor/exercises/:id/volumes/toolkit-points', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    return HttpResponse.json({ monthly: [], daily: [] })
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly', ({ params }) => {
@@ -568,13 +584,17 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as MonthlyVolumeRequest[]
-    ctx.shell.monthlyVolumes = body.map((row) => ({
-      id: crypto.randomUUID(),
-      month: row.month,
-      actualVolume: row.actualVolume ?? null,
-      sourceType: 'MANUAL',
-      importBatchId: null,
-    }))
+    ctx.shell.monthlyVolumes = body
+      .slice()
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((row) => ({
+        id: crypto.randomUUID(),
+        month: row.month,
+        actualVolume: row.actualVolume ?? null,
+        commercialRatio: row.commercialRatio ?? null,
+        sourceType: 'MANUAL',
+        importBatchId: null,
+      }))
     return HttpResponse.json(ctx.shell.monthlyVolumes)
   }),
 
@@ -589,13 +609,17 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as DailyVolumeRequest[]
-    ctx.shell.dailyVolumes = body.map((row) => ({
-      id: crypto.randomUUID(),
-      volumeDate: row.volumeDate,
-      actualVolume: row.actualVolume ?? null,
-      sourceType: 'MANUAL',
-      importBatchId: null,
-    }))
+    ctx.shell.dailyVolumes = body
+      .slice()
+      .sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
+      .map((row) => ({
+        id: crypto.randomUUID(),
+        volumeDate: row.volumeDate,
+        actualVolume: row.actualVolume ?? null,
+        dailyAdjustmentRatio: row.dailyAdjustmentRatio ?? null,
+        sourceType: 'MANUAL',
+        importBatchId: null,
+      }))
     return HttpResponse.json(ctx.shell.dailyVolumes)
   }),
 
@@ -827,14 +851,7 @@ export const supervisorHandlers = [
       status: 'DRAFT',
       officialAt: null,
       version: 0,
-      assumptions: (body.assumptions ?? []).map((item) => ({
-        id: crypto.randomUUID(),
-        parameterCode: item.parameterCode,
-        numericValue: item.numericValue ?? null,
-        textValue: item.textValue ?? null,
-        booleanValue: item.booleanValue ?? null,
-        unit: item.unit ?? null,
-      })),
+      rightSizingHc: body.rightSizingHc ?? 0,
       shifts: [],
     }
     ctx.shell.scenarios.push(scenario)
@@ -864,17 +881,8 @@ export const supervisorHandlers = [
         name: body.name,
         description: body.description ?? null,
         version: current.version + 1,
-        assumptions:
-          body.assumptions === undefined
-            ? current.assumptions
-            : body.assumptions.map((item) => ({
-                id: crypto.randomUUID(),
-                parameterCode: item.parameterCode,
-                numericValue: item.numericValue ?? null,
-                textValue: item.textValue ?? null,
-                booleanValue: item.booleanValue ?? null,
-                unit: item.unit ?? null,
-              })),
+        rightSizingHc:
+          body.rightSizingHc === undefined ? current.rightSizingHc : (body.rightSizingHc ?? 0),
       }
       ctx.shell.scenarios[index] = updated
       return HttpResponse.json(updated)
@@ -894,13 +902,7 @@ export const supervisorHandlers = [
       const body = (await request.json()) as {
         name: string
         description?: string | null
-        assumptions?: Array<{
-          parameterCode: string
-          numericValue?: number | null
-          textValue?: string | null
-          booleanValue?: boolean | null
-          unit?: string | null
-        }>
+        rightSizingHc?: number | null
         shifts: Array<{
           shiftNo: number
           startTime: string
@@ -921,17 +923,8 @@ export const supervisorHandlers = [
         name: body.name,
         description: body.description ?? null,
         version: current.version + 1,
-        assumptions:
-          body.assumptions === undefined
-            ? current.assumptions
-            : body.assumptions.map((item) => ({
-                id: crypto.randomUUID(),
-                parameterCode: item.parameterCode,
-                numericValue: item.numericValue ?? null,
-                textValue: item.textValue ?? null,
-                booleanValue: item.booleanValue ?? null,
-                unit: item.unit ?? null,
-              })),
+        rightSizingHc:
+          body.rightSizingHc === undefined ? current.rightSizingHc : (body.rightSizingHc ?? 0),
         shifts: body.shifts.map((row) => ({
           id: crypto.randomUUID(),
           shiftNo: row.shiftNo,
@@ -1284,6 +1277,39 @@ export const supervisorHandlers = [
     },
   ),
 
+  http.get(
+    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/forecast/training',
+    ({ params }) => {
+      const ctx = requireExercise(params.id)
+      if (!ctx) return problem(404, 'Exercise not found.')
+      const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
+      if (!scenario) return problem(404, 'The Scenario was not found.')
+      if (ctx.exercise.workflowStatus !== 'APPROVED') {
+        return HttpResponse.json({ monthly: [], daily: [] })
+      }
+      return HttpResponse.json({
+        monthly: ctx.shell.monthlyVolumes
+          .filter((row) => row.actualVolume != null)
+          .map((row) => ({
+            grain: 'MONTH',
+            periodStart: `${row.month}-01`,
+            actualVolume: row.actualVolume,
+            source: 'EXERCISE',
+            sourceExerciseId: ctx.exercise.id,
+          })),
+        daily: ctx.shell.dailyVolumes
+          .filter((row) => row.actualVolume != null)
+          .map((row) => ({
+            grain: 'DAY',
+            periodStart: row.volumeDate,
+            actualVolume: row.actualVolume,
+            source: 'EXERCISE',
+            sourceExerciseId: ctx.exercise.id,
+          })),
+      })
+    },
+  ),
+
   http.post(
     '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/monthly',
     ({ params }) => {
@@ -1324,8 +1350,7 @@ export const supervisorHandlers = [
         const month = ((mm - 1) % 12) + 1
         return `${yy}-${String(month).padStart(2, '0')}`
       })
-      const rsHc =
-        scenario.assumptions.find((a) => a.parameterCode === 'RIGHT_SIZING_HC')?.numericValue ?? 0
+      const rsHc = scenario.rightSizingHc ?? 0
       ;(ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })
         .latestMonthlySizingByScenario = {
         ...((ctx.shell as { latestMonthlySizingByScenario?: Record<string, unknown> })

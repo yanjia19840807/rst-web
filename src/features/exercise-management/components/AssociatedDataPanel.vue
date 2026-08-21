@@ -14,12 +14,7 @@ import {
 } from '@/components/ui/table'
 
 import { useAssociatedDataPanel } from '../composables/useAssociatedDataPanel'
-import {
-  dailyTrainDates,
-  deriveSizingWindows,
-  deriveSlotPeriodLabel,
-  monthlyTrainMonths,
-} from '../periodWindows'
+import { deriveSlotPeriodLabel } from '../periodWindows'
 import { normalizeHolidayType } from '../weekendCodes'
 import { AD_TAB_LABELS, formatNumber } from './associated-data/adTypes'
 import AdTmsSummary from './associated-data/AdTmsSummary.vue'
@@ -75,34 +70,41 @@ const holidayCounts = computed(() => {
 })
 
 const volumeSummary = computed(() => {
-  const sizing = deriveSizingWindows(props.sizingMonth)
-  const monthVolume = monthly.value.reduce(
-    (sum, row) => sum + Number(row.actualVolume ?? 0),
-    0,
-  )
-  const dayVolume = daily.value.reduce(
-    (sum, row) => sum + Number(row.actualVolume ?? 0),
-    0,
-  )
+  const months = [...monthly.value].sort((a, b) => a.month.localeCompare(b.month))
+  const days = [...daily.value].sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
+  const monthVolume = months.reduce((sum, row) => sum + Number(row.actualVolume ?? 0), 0)
+  const dayVolume = days.reduce((sum, row) => sum + Number(row.actualVolume ?? 0), 0)
   const slotVolume = slot.value.reduce((sum, row) => sum + Number(row.actualVolume || 0), 0)
+  const monthPeriod =
+    months.length === 0
+      ? '—'
+      : months[0].month === months[months.length - 1].month
+        ? months[0].month
+        : `${months[0].month} – ${months[months.length - 1].month}`
+  const dayPeriod =
+    days.length === 0
+      ? '—'
+      : days[0].volumeDate === days[days.length - 1].volumeDate
+        ? days[0].volumeDate
+        : `${days[0].volumeDate} – ${days[days.length - 1].volumeDate}`
   return [
     {
       granularity: 'Month',
-      period: sizing.monthTrain,
-      volume: monthly.value.length ? formatNumber(monthVolume, 2) : '—',
-      rows: `${monthly.value.length || monthlyTrainMonths(props.sizingMonth).length} train months`,
+      period: monthPeriod,
+      volume: months.length ? formatNumber(monthVolume, 2) : '—',
+      rows: `${months.length} months`,
     },
     {
       granularity: 'Daily',
-      period: sizing.dailyTrain,
-      volume: daily.value.length ? formatNumber(dayVolume, 2) : '—',
-      rows: `${daily.value.length || dailyTrainDates(props.sizingMonth).length} train days`,
+      period: dayPeriod,
+      volume: days.length ? formatNumber(dayVolume, 2) : '—',
+      rows: `${days.length} days`,
     },
     {
       granularity: 'Slot',
       period: deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks),
       volume: slot.value.length ? formatNumber(slotVolume, 2) : '—',
-      rows: `${slot.value.length} train slots`,
+      rows: `${slot.value.length} slots`,
     },
   ]
 })
@@ -119,8 +121,8 @@ defineExpose({
       <div>
         <CardTitle class="text-base">Associated Data</CardTitle>
         <p class="mt-1 text-xs text-muted-foreground">
-          Shared by all scenarios in this exercise. Seeded from the last Approved archive for this
-          Toolkit.
+          Shared by all scenarios in this exercise. Team Setup, Support and Calendar are seeded from
+          the last Approved archive. Volume is pre-filled from Toolkit volume when available.
         </p>
       </div>
       <CardAction>
@@ -163,7 +165,7 @@ defineExpose({
             <TableBody>
               <TableRow>
                 <TableCell>Daily capacity / agent</TableCell>
-                <TableCell>{{ formatNumber(teamSetup?.dailyCapacityPerAgent, 2) }}</TableCell>
+                <TableCell>{{ formatNumber(teamSetup?.dailyCapacityPerAgent, 0) }}</TableCell>
                 <TableCell class="text-muted-foreground">
                   Calculated from baseline inputs
                 </TableCell>

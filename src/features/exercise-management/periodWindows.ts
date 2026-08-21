@@ -59,7 +59,7 @@ export function addDaysIso(iso: string, days: number): string {
   return formatDate(dt)
 }
 
-/** Prototype: Month train / forecast + Daily train / forecast from Sizing Month. */
+/** Chart history + forecast windows derived from Sizing Month. */
 export function deriveSizingWindows(sizingMonth: string): SizingWindows {
   if (!parseYearMonth(sizingMonth)) {
     return {
@@ -86,12 +86,18 @@ export function deriveSlotPeriodLabel(startDate: string, weeks: number): string 
   return `${formatDate(startDate)} – ${formatDate(end)} (${weekLabel})`
 }
 
+export const SIZING_MONTH_HINT_DESCRIPTION =
+  'Volume Input months and dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required. Toolkit values are pre-filled when that period already exists. The ranges below are for charts and forecast only — they are not created as Volume rows.'
+
+export const SLOT_PERIOD_HINT_DESCRIPTION =
+  'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Values are seeded from the latest Approved archive where slots overlap.'
+
 export function sizingHintLines(sizingMonth: string): DerivedHintLine[] {
   const w = deriveSizingWindows(sizingMonth)
   return [
-    { label: 'Month train', note: 'Sizing Month + prior 2 months', value: w.monthTrain },
+    { label: 'Month chart history', note: 'Sizing Month + prior 2 months', value: w.monthTrain },
     { label: 'Month forecast', note: 'next 3 months', value: w.monthForecast },
-    { label: 'Daily train', note: 'all days in Sizing Month', value: w.dailyTrain },
+    { label: 'Daily chart history', note: 'all days in Sizing Month', value: w.dailyTrain },
     { label: 'Daily forecast', note: 'all days in next month', value: w.dailyForecast },
   ]
 }
@@ -103,16 +109,21 @@ export function slotHintLines(startDate: string, weeks: number): DerivedHintLine
       note: 'start date + selected weeks',
       value: deriveSlotPeriodLabel(startDate, weeks),
     },
+    {
+      label: 'Slot grid',
+      note: 'each day in the window',
+      value: '09:00–22:00 / 30 min',
+    },
   ]
 }
 
-/** Volume Input monthly train keys: sizingMonth-2 … sizingMonth. */
+/** Chart history months: sizingMonth-2 … sizingMonth. Not a Volume Input row type. */
 export function monthlyTrainMonths(sizingMonth: string): string[] {
   if (!parseYearMonth(sizingMonth)) return []
   return [-2, -1, 0].map((delta) => shiftYearMonth(sizingMonth, delta))
 }
 
-/** Volume Input daily train keys: all days in sizing month. */
+/** Chart history days: all days in sizing month. Not a Volume Input row type. */
 export function dailyTrainDates(sizingMonth: string): string[] {
   const parsed = parseYearMonth(sizingMonth)
   if (!parsed) return []

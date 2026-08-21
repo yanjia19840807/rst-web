@@ -14,7 +14,6 @@ import type {
 } from '@/features/exercise-management/types'
 import {
   dailyTrainDates,
-  monthlyTrainMonths,
   slotTrainKeys,
 } from '@/features/exercise-management/periodWindows'
 import { DEFAULT_WEEKEND_CODE } from '@/features/exercise-management/weekendCodes'
@@ -66,31 +65,16 @@ const emptyTeamSetup = (): TeamSetup => ({
 })
 
 export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
-  const months = monthlyTrainMonths(exercise.sizingMonth)
-  const monthMap = new Map(shell.monthlyVolumes.map((row) => [row.month, row]))
-  shell.monthlyVolumes = months.map((month) => {
-    const prior = monthMap.get(month)
-    return {
-      id: prior?.id ?? crypto.randomUUID(),
-      month,
-      actualVolume: prior?.actualVolume ?? null,
-      sourceType: prior?.sourceType ?? 'MANUAL',
-      importBatchId: prior?.importBatchId ?? null,
-    }
-  })
+  const cutoffMonth = exercise.sizingMonth
+  shell.monthlyVolumes = shell.monthlyVolumes
+    .filter((row) => !cutoffMonth || row.month <= cutoffMonth)
+    .sort((a, b) => a.month.localeCompare(b.month))
 
   const dates = dailyTrainDates(exercise.sizingMonth)
-  const dayMap = new Map(shell.dailyVolumes.map((row) => [row.volumeDate, row]))
-  shell.dailyVolumes = dates.map((volumeDate) => {
-    const prior = dayMap.get(volumeDate)
-    return {
-      id: prior?.id ?? crypto.randomUUID(),
-      volumeDate,
-      actualVolume: prior?.actualVolume ?? null,
-      sourceType: prior?.sourceType ?? 'MANUAL',
-      importBatchId: prior?.importBatchId ?? null,
-    }
-  })
+  const lastDate = dates[dates.length - 1]
+  shell.dailyVolumes = shell.dailyVolumes
+    .filter((row) => !lastDate || row.volumeDate <= lastDate)
+    .sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
 
   const slots = slotTrainKeys(exercise.slotStartDate, exercise.slotWeeks)
   const slotMap = new Map(
@@ -117,23 +101,12 @@ export function createExerciseShell(): ExerciseShell {
       slaTargetRatio: 0.9,
       slaTurnaroundMinutes: 480,
       slaStartTime: '09:00:00',
-      slaEndTime: '17:00:00',
+      slaEndTime: '18:00:00',
       weekendCode: '1',
     },
     shifts: [],
     support: [],
     calendar: {
-      weekendCode: null,
-      baselineSource: null,
-      baselineVersion: null,
-      sourceTemplateId: null,
-      sourceTemplateVersion: null,
-      baselineYear: 2025,
-      workingDaysPerYear: null,
-      version: 0,
-      templateUpdateAvailable: false,
-      publishedTemplateVersion: null,
-      templateUpdateMessage: null,
       holidays: [
         {
           id: crypto.randomUUID(),
@@ -226,7 +199,7 @@ export function teamSetupView(exercise: Exercise, shell: ExerciseShell): TeamSet
     workingHoursPerDay: hours,
     capacityRatio,
     totalAgents: total || null,
-    averageTenureYears: total ? (a * 0.25 + b * 1.25 + c * 3 + d * 5) / total : null,
+    averageTenureYears: total ? (a * 3 + b * 15 + c * 36 + d * 48) / 12 / total : null,
     workingDaysPerYear: workingDays,
     maxCapacityDays: maxCapacity,
     dailyCapacityPerAgent: dailyCapacity,

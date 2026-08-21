@@ -22,7 +22,12 @@ import { showOperationNotices } from '@/composables/useOperationNotices'
 import { formatDate } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../api/mutations'
-import { sizingHintLines, slotHintLines } from '../periodWindows'
+import {
+  SIZING_MONTH_HINT_DESCRIPTION,
+  SLOT_PERIOD_HINT_DESCRIPTION,
+  sizingHintLines,
+  slotHintLines,
+} from '../periodWindows'
 import {
   createExercisePeriodsSchema,
   emptyCreateExercisePeriodsForm,
@@ -152,7 +157,14 @@ const create = handleSubmit(async (formValues) => {
               </p>
             </div>
 
-            <Label class="text-muted-foreground self-start pt-2">Sizing Month</Label>
+            <div class="inline-flex items-center gap-1.5">
+              <Label class="text-muted-foreground">Sizing Month</Label>
+              <PeriodDerivedHints
+                title="Sizing Month"
+                :description="SIZING_MONTH_HINT_DESCRIPTION"
+                :lines="sizingHints"
+              />
+            </div>
             <div>
               <MonthPicker
                 v-model="sizingMonth"
@@ -163,10 +175,16 @@ const create = handleSubmit(async (formValues) => {
               <p v-if="errors.sizingMonth" class="mt-1 text-xs text-destructive">
                 {{ errors.sizingMonth }}
               </p>
-              <PeriodDerivedHints :lines="sizingHints" />
             </div>
 
-            <Label class="text-muted-foreground self-start pt-2">Slot Period</Label>
+            <div class="inline-flex items-center gap-1.5 self-start pt-2">
+              <Label class="text-muted-foreground">Slot Period</Label>
+              <PeriodDerivedHints
+                title="Slot Period"
+                :description="SLOT_PERIOD_HINT_DESCRIPTION"
+                :lines="slotHints"
+              />
+            </div>
             <div>
               <div class="flex flex-wrap items-center gap-3">
                 <div class="grid gap-1.5">
@@ -195,7 +213,6 @@ const create = handleSubmit(async (formValues) => {
               >
                 {{ errors.slotStartDate || errors.slotWeeks }}
               </p>
-              <PeriodDerivedHints :lines="slotHints" />
             </div>
 
             <Label class="text-muted-foreground">TMS period</Label>
@@ -227,11 +244,10 @@ const create = handleSubmit(async (formValues) => {
           <div
             class="mt-4 rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
           >
-            Associated Data (Team Setup, Support, Calendar, Volume) will be initialized from the
-            latest Approved archive for this Toolkit when training periods overlap. Volume Input
-            rows are auto-generated for training windows only (not forecast). Creating the Exercise
-            freezes the current Toolkit, Subtasks, Shared KPI selections and Delivery HC from the
-            ACTIVE Timesheet.
+            Associated Data (Team Setup, Support, Calendar) will be initialized from the latest
+            Approved archive for this Toolkit when available. Volume Input is pre-filled from
+            Toolkit volume when available. Creating the Exercise freezes the current Toolkit,
+            Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
           </div>
         </div>
       </div>

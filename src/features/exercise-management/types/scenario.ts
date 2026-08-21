@@ -2,32 +2,15 @@ import type { Shift, ShiftRequest } from './associatedData'
 
 export type ScenarioStatus = 'DRAFT' | 'OFFICIAL'
 
-export interface Assumption {
-  id: string
-  parameterCode: string
-  numericValue: number | null
-  textValue: string | null
-  booleanValue: boolean | null
-  unit: string | null
-}
-
-export interface AssumptionRequest {
-  parameterCode: string
-  numericValue?: number | null
-  textValue?: string | null
-  booleanValue?: boolean | null
-  unit?: string | null
-}
-
 export interface Scenario {
   id: string
   scenarioCode: string
   name: string
   description: string | null
   status: ScenarioStatus | string
+  rightSizingHc: number | null
   officialAt: string | null
   version: number
-  assumptions: Assumption[]
   shifts: Shift[]
 }
 
@@ -35,13 +18,13 @@ export interface CreateScenarioRequest {
   scenarioCode: string
   name: string
   description?: string | null
-  assumptions?: AssumptionRequest[]
+  rightSizingHc?: number | null
 }
 
 export interface UpdateScenarioRequest {
   name: string
   description?: string | null
-  assumptions?: AssumptionRequest[]
+  rightSizingHc?: number | null
 }
 
 export interface StubRun {
@@ -71,9 +54,24 @@ export interface ForecastView {
   trainingFrom: string
   trainingTo: string
   featureMetadata: string | null
+  inputHash?: string
   startedAt: string
   completedAt: string | null
   points: ForecastPointView[]
+}
+
+/** Frozen training actual used by the official forecast (written on APPROVED). */
+export interface ForecastTrainingObservation {
+  grain: string
+  periodStart: string
+  actualVolume: number
+  source: string
+  sourceExerciseId: string | null
+}
+
+export interface ForecastTrainingBundle {
+  monthly: ForecastTrainingObservation[]
+  daily: ForecastTrainingObservation[]
 }
 
 export interface ForecastBundle {
@@ -97,7 +95,7 @@ export interface CommitScenarioResults {
 export interface CommitScenarioRequest {
   name: string
   description?: string | null
-  assumptions?: AssumptionRequest[]
+  rightSizingHc?: number | null
   shifts: ShiftRequest[]
   results?: CommitScenarioResults | null
 }

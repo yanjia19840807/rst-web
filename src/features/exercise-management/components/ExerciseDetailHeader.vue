@@ -7,7 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate } from '@/lib/datetime'
 
-import { sizingHintLines, slotHintLines } from '../periodWindows'
+import {
+  SIZING_MONTH_HINT_DESCRIPTION,
+  SLOT_PERIOD_HINT_DESCRIPTION,
+  sizingHintLines,
+  slotHintLines,
+} from '../periodWindows'
 import type { Exercise } from '../types'
 import { exerciseStatusLabel } from '../workflowLabels'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
@@ -73,25 +78,33 @@ const slotPeriodSummary = computed(() => {
           </span>
         </template>
         <template #sizingMonth="{ row }">
-          <div>
-            <div>{{ row.value || '—' }}</div>
-            <PeriodDerivedHints :lines="sizingHints" />
-          </div>
+          <span class="inline-flex items-center gap-1.5">
+            <span>{{ row.value || '—' }}</span>
+            <PeriodDerivedHints
+              title="Sizing Month"
+              :description="SIZING_MONTH_HINT_DESCRIPTION"
+              :lines="sizingHints"
+            />
+          </span>
         </template>
         <template #slotPeriod="{ row }">
-          <div>
-            <div>{{ row.value || '—' }}</div>
-            <PeriodDerivedHints :lines="slotHints" />
-          </div>
+          <span class="inline-flex items-center gap-1.5">
+            <span>{{ row.value || '—' }}</span>
+            <PeriodDerivedHints
+              title="Slot Period"
+              :description="SLOT_PERIOD_HINT_DESCRIPTION"
+              :lines="slotHints"
+            />
+          </span>
         </template>
       </DetailTable>
       <div
         v-if="!locked"
         class="rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
       >
-        Associated Data initialized from the latest Approved archive. Volume Input covers training
-        windows only (not forecast periods); overlapping archive volume is seeded. Edit below —
-        all scenarios in this exercise share this baseline.
+        Associated Data initialized from the latest Approved archive. Volume Input is pre-filled
+        from Toolkit volume when available. Edit below — all scenarios in this exercise share this
+        baseline.
       </div>
     </CardContent>
   </Card>
