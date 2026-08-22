@@ -12,11 +12,11 @@ function invalidateAfterDecision(
   submissionId: string,
   exerciseId?: string,
 ) {
-  void queryClient.invalidateQueries({ queryKey: approvalQueryKeys.all })
+  void queryClient.invalidateQueries({ queryKey: approvalQueryKeys.queues() })
   void queryClient.invalidateQueries({ queryKey: approvalQueryKeys.detail(submissionId) })
-  void queryClient.invalidateQueries({ queryKey: [...exerciseQueryKeys.all, 'list'] })
   void queryClient.invalidateQueries({ queryKey: governanceQueryKeys.all })
   if (exerciseId) {
+    void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.lists() })
     void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.detail(exerciseId) })
     void queryClient.invalidateQueries({
       queryKey: exerciseQueryKeys.submittedDetails(exerciseId),

@@ -24,11 +24,10 @@ function problem(status: number, detail: string) {
 
 function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
-  const liveOfficial = shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
-  exercise.officialScenarioId = liveOfficial ?? shell.submitted?.scenarioId ?? exercise.officialScenarioId
+  exercise.officialScenarioId = exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
-  exercise.canSubmit = Boolean(liveOfficial) && exercise.canEdit
+  exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
 }
 
 function findBySubmission(submissionId: string | readonly string[] | undefined) {
@@ -373,12 +372,6 @@ export const approvalHandlers = [
     ctx.submitted.submissionStatus = 'RETURNED'
     ctx.submitted.workflowStatusLabel = 'RETURNED'
     ctx.exercise.workflowStatus = 'RETURNED'
-    const official = ctx.shell.scenarios.find((item) => item.id === ctx.submitted.scenarioId)
-      ?? ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
-    if (official) {
-      official.status = 'DRAFT'
-      official.officialAt = null
-    }
     syncFlags(ctx.exercise)
     return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
   }),

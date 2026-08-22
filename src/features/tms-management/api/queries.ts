@@ -20,8 +20,10 @@ export const tmsQueryKeys = {
   teamAgents: () => [...tmsQueryKeys.all, 'team-agents'] as const,
   summary: () => [...tmsQueryKeys.all, 'summary'] as const,
   current: () => [...tmsQueryKeys.all, 'current'] as const,
+  sessionPrefix: () => [...tmsQueryKeys.all, 'session'] as const,
   session: (mode: TmsListMode, id: string) =>
     [...tmsQueryKeys.all, 'session', mode, id] as const,
+  sessionsPrefix: () => [...tmsQueryKeys.all, 'sessions'] as const,
   sessions: (mode: TmsListMode, filters: SessionFilters & { status: 'paused' | 'completed' }) =>
     [...tmsQueryKeys.all, 'sessions', mode, filters] as const,
 }

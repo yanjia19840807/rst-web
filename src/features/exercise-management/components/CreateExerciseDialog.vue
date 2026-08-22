@@ -25,8 +25,10 @@ import { useExerciseMutations } from '../api/mutations'
 import {
   SIZING_MONTH_HINT_DESCRIPTION,
   SLOT_PERIOD_HINT_DESCRIPTION,
+  TMS_PERIOD_HINT_DESCRIPTION,
   sizingHintLines,
   slotHintLines,
+  tmsHintLines,
 } from '../periodWindows'
 import {
   createExercisePeriodsSchema,
@@ -70,6 +72,7 @@ const slotHints = computed(() =>
     typeof values.slotWeeks === 'number' ? values.slotWeeks : 0,
   ),
 )
+const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
 const formReady = computed(
   () =>
     Boolean(
@@ -215,7 +218,14 @@ const create = handleSubmit(async (formValues) => {
               </p>
             </div>
 
-            <Label class="text-muted-foreground">TMS period</Label>
+            <div class="inline-flex items-center gap-1.5">
+              <Label class="text-muted-foreground">TMS period</Label>
+              <PeriodDerivedHints
+                title="TMS period"
+                :description="TMS_PERIOD_HINT_DESCRIPTION"
+                :lines="tmsHints"
+              />
+            </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
                 <DatePicker

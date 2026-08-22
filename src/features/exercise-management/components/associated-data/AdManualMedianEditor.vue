@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
 import { ref, watch } from 'vue'
+import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import { Button } from '@/components/ui/button'
@@ -15,8 +17,13 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 
-import { exerciseApi } from '../../api'
-import type { CycleTimeBaselineFile } from '../../types'
+import { useExerciseAssociatedDataMutations } from '../../api/mutations'
+import {
+  emptyManualMedian,
+  manualMedianSchema,
+  type ManualMedianValues,
+} from '../../schemas/manualMedian'
+import type { CycleTimeBaselineFile, ManualBaselineRequest } from '../../types'
 
 const props = defineProps<{
   exerciseId: string
@@ -26,17 +33,28 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-const draftMedian = ref<number | null>(null)
-const draftReason = ref('')
+const { uploadCycleTimeSupportFile } = useExerciseAssociatedDataMutations()
+const { defineField, errors, resetForm, validate, values } = useForm<ManualMedianValues>({
+  validationSchema: toTypedSchema(manualMedianSchema),
+  initialValues: emptyManualMedian(),
+  validateOnMount: false,
+})
+const [medianSeconds] = defineField('medianSeconds')
+const [reason] = defineField('reason')
+
 const draftFiles = ref<CycleTimeBaselineFile[]>([])
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 watch(
   () => [props.medianSeconds, props.reason, props.files] as const,
-  ([median, reason, files]) => {
-    draftMedian.value = median?.trim() ? Number(median) : null
-    draftReason.value = reason?.trim() || ''
+  ([median, reasonValue, files]) => {
+    resetForm({
+      values: {
+        medianSeconds: median?.trim() ? Number(median) : null,
+        reason: reasonValue?.trim() || '',
+      },
+    })
     draftFiles.value = [...(files ?? [])]
   },
   { immediate: true },
@@ -58,7 +76,10 @@ async function onPickFiles(event: Event) {
   uploading.value = true
   try {
     for (const file of picked) {
-      const uploaded = await exerciseApi.uploadCycleTimeSupportFile(props.exerciseId, file)
+      const uploaded = await uploadCycleTimeSupportFile.mutateAsync({
+        exerciseId: props.exerciseId,
+        file,
+      })
       draftFiles.value = [...draftFiles.value, uploaded]
     }
   } catch (error) {
@@ -73,23 +94,12 @@ function removeFile(id: string) {
   draftFiles.value = draftFiles.value.filter((file) => file.id !== id)
 }
 
-/**
- * Builds the MANUAL baseline create payload, or null when validation fails.
- */
-function toRequest(): {
-  medianSeconds: number
-  manualReason: string
-  fileArtifactIds: string[]
-} | null {
-  const seconds = Number(draftMedian.value)
-  const reason = draftReason.value.trim()
-  if (!Number.isFinite(seconds) || seconds <= 0 || !reason) {
-    toast.warning('Median seconds and reason are required.')
-    return null
-  }
+async function toRequest(): Promise<ManualBaselineRequest | null> {
+  const result = await validate()
+  if (!result.valid) return null
   return {
-    medianSeconds: seconds,
-    manualReason: reason,
+    medianSeconds: Number(values.medianSeconds),
+    manualReason: String(values.reason).trim(),
     fileArtifactIds: draftFiles.value.map((file) => file.id),
   }
 }
@@ -101,25 +111,28 @@ defineExpose({ toRequest })
   <section class="rounded-lg border bg-card p-4">
     <div class="grid gap-4">
       <div class="grid gap-1.5">
-        <Label for="manual-median-seconds">Manual median cycle time (seconds)</Label>
+        <Label for="manual-median-seconds">Manual median cycle time (s)</Label>
         <NumberFieldControl
           id="manual-median-seconds"
-          v-model="draftMedian"
+          v-model="medianSeconds"
           :min="0"
           :disabled="readOnly"
+          :invalid="Boolean(errors.medianSeconds)"
         />
+        <p v-if="errors.medianSeconds" class="text-xs text-destructive">{{ errors.medianSeconds }}</p>
       </div>
 
       <div class="grid gap-1.5">
         <Label for="manual-median-reason">Reason for override</Label>
         <Textarea
           id="manual-median-reason"
-          :model-value="draftReason"
+          v-model="reason"
           rows="4"
           placeholder="Explain why the system median is not used for this exercise."
           :disabled="readOnly"
-          @update:model-value="draftReason = String($event)"
+          :aria-invalid="Boolean(errors.reason)"
         />
+        <p v-if="errors.reason" class="text-xs text-destructive">{{ errors.reason }}</p>
       </div>
 
       <div class="space-y-2.5">

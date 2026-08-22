@@ -19,6 +19,7 @@ import type {
 } from 'echarts/components'
 
 import ListLoading from '@/components/ListLoading.vue'
+import { floatingTooltip } from '@/lib/chartTooltip'
 
 import { useCycleTimeChartQuery } from '../../api/queries'
 
@@ -96,10 +97,9 @@ const option = computed<ChartOption>(() => {
 
   return {
     color: [foreground, rolling],
-    tooltip: {
-      trigger: 'axis',
+    tooltip: floatingTooltip({
       valueFormatter: (value) => `${Number(value).toFixed(2)}s`,
-    },
+    }),
     legend: { show: false },
     grid: { left: 52, right: 24, top: 16, bottom: 16 },
     xAxis: {
@@ -160,8 +160,7 @@ const option = computed<ChartOption>(() => {
       v-else-if="!hasPoints"
       class="flex h-44 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-muted-foreground"
     >
-      No included TMS sessions with a valid cycle time. Include sessions with volume to plot the
-      chart.
+      No included TMS sessions with a valid cycle time.
     </div>
     <div
       v-else

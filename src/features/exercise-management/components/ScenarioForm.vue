@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
-import { computed, reactive, ref, watch } from 'vue'
+import { toTypedSchema } from '@vee-validate/zod'
+import { computed, ref, watch } from 'vue'
+import { useForm } from 'vee-validate'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
@@ -14,7 +16,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatMonth } from '@/lib/datetime'
 
-import { exerciseApi } from '../api'
 import { useScenarioMutations } from '../api/mutations'
 import {
   useCycleTimeActiveQuery,
@@ -27,8 +28,18 @@ import {
   useSupportQuery,
   useTeamSetupQuery,
 } from '../api/queries'
+import { FieldUnit, withUnit } from '../fieldUnits'
 import { deriveSlotPeriodLabel } from '../periodWindows'
-import { scenarioMetadataSchema } from '../schemas/scenario'
+import { slotApplicabilityOn } from '../slotChartMath'
+import {
+  emptyScenarioForm,
+  emptyShiftDraft,
+  scenarioFormSchema,
+  scenarioSlotSchema,
+  toShiftRequests,
+  type ScenarioFormValues,
+} from '../schemas/scenario'
+import { actualHeadcount } from '../sizingChartMath'
 import type {
   ForecastBundle,
   MonthlySizingView,
@@ -36,7 +47,8 @@ import type {
   Scenario,
   SlotSimulationView,
 } from '../types'
-import ScenarioAssumptionsSection, { type ShiftDraft } from './ScenarioAssumptionsSection.vue'
+import { formatNumber } from './associated-data/adTypes'
+import ScenarioAssumptionsSection from './ScenarioAssumptionsSection.vue'
 import ScenarioResultsPanel from './ScenarioResultsPanel.vue'
 import type { ScenarioResultRow } from './ScenarioResultsPanel.vue'
 import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
@@ -48,11 +60,11 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
-const { commitScenario, deleteScenario } = useScenarioMutations()
+const { commitScenario, deleteScenario, previewSizing, runSlotSimulation } = useScenarioMutations()
 const snapshotMode = computed(() => route.name === 'supervisor-scenario-snapshot')
-const saving = ref(false)
-const runningSizing = ref(false)
-const runningSlot = ref(false)
+const saving = computed(() => commitScenario.isPending.value)
+const runningSizing = computed(() => previewSizing.isPending.value)
+const runningSlot = computed(() => runSlotSimulation.isPending.value)
 const busy = computed(() => saving.value || runningSizing.value || runningSlot.value)
 const deleteOpen = ref(false)
 const deletePending = computed(() => deleteScenario.isPending.value)
@@ -91,17 +103,26 @@ const latestMonthlySizing = ref<MonthlySizingView | null>(null)
 const latestDailySizing = ref<DailySizingView | null>(null)
 const latestSlotSimulation = ref<SlotSimulationView | null>(null)
 
-const form = reactive({
-  name: '',
-  description: '',
-  rightSizingHc: 0 as number,
+const {
+  defineField,
+  errors,
+  handleSubmit,
+  resetForm,
+  setFieldError,
+  validate,
+  values,
+} = useForm<ScenarioFormValues>({
+  validationSchema: toTypedSchema(scenarioFormSchema),
+  initialValues: emptyScenarioForm(),
+  validateOnMount: false,
 })
 
-const shiftRows = ref<ShiftDraft[]>([])
+const [name] = defineField('name')
+const [description] = defineField('description')
+const [rightSizingHc] = defineField('rightSizingHc')
+const [shiftRows] = defineField('shifts')
 
-const readOnly = computed(
-  () => !exercise.value?.canEdit || scenario.value?.status === 'OFFICIAL',
-)
+const readOnly = computed(() => !exercise.value?.canEdit)
 
 const periodHint = computed(() => {
   if (!exercise.value) return ''
@@ -122,13 +143,43 @@ const deliveryHc = computed(() =>
   ),
 )
 
+const actualSize = computed(() =>
+  actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
+)
+
 const shiftSetupLabel = computed(() => {
-  const n = shiftRows.value.length
-  return n === 1 ? '1 shift' : `${n} shifts`
+  const n = shiftRows.value?.length ?? 0
+  return n > 0 ? String(n) : '—'
 })
 
+function fieldError(path: string) {
+  const bag = errors.value as Record<string, string | undefined>
+  return bag[path] ?? bag[path.replace(/\.(\d+)\./g, '[$1].')]
+}
+
+function firstFormError(bag: Record<string, unknown>): string | undefined {
+  for (const value of Object.values(bag)) {
+    if (typeof value === 'string' && value.trim()) return value
+    if (Array.isArray(value)) {
+      const nested = firstFormError(Object.assign({}, value))
+      if (nested) return nested
+    } else if (value && typeof value === 'object') {
+      const nested = firstFormError(value as Record<string, unknown>)
+      if (nested) return nested
+    }
+  }
+}
+
+const shiftFieldErrors = computed(() =>
+  (shiftRows.value ?? []).map((_, index) => ({
+    startTime: fieldError(`shifts.${index}.startTime`),
+    durationHours: fieldError(`shifts.${index}.durationHours`),
+    headcount: fieldError(`shifts.${index}.headcount`),
+  })),
+)
+
 const medianLabel = computed(() =>
-  cycleTime.value ? `${Number(cycleTime.value.medianSeconds).toFixed(2)}s` : '—',
+  cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',
 )
 
 const medianSourceLabel = computed(() => {
@@ -138,71 +189,102 @@ const medianSourceLabel = computed(() => {
     : 'System-calculated median'
 })
 
-const slaTargetLabel = computed(() => {
-  const ratio = teamSetup.value?.slaTargetRatio
-  if (ratio == null) return '—'
-  return `${(Number(ratio) * 100).toFixed(2)}%`
-})
+function formatRatioPercent(ratio: number | null | undefined) {
+  if (ratio == null || Number.isNaN(Number(ratio))) return '—'
+  return formatNumber(Number(ratio) * 100, 2)
+}
 
-const slaTurntimeLabel = computed(() => {
-  const minutes = teamSetup.value?.slaTurnaroundMinutes
-  if (minutes == null) return '—'
-  const hours = Number(minutes) / 60
-  return `${hours.toFixed(2)} business hours`
-})
-
-const workingDaysLabel = computed(() => {
-  const days = teamSetup.value?.workingDaysPerYear
-  return days != null ? Number(days).toFixed(2) : '—'
-})
-
-const dailyCapacityLabel = computed(() => {
-  const cap = teamSetup.value?.dailyCapacityPerAgent
-  return cap != null ? Number(cap).toFixed(0) : '—'
-})
+function slaTypeLabel(value: string | null | undefined) {
+  if (value === 'BUSINESS_HOURS') return 'Working Hours'
+  if (value === 'CALENDAR_HOURS') return 'Calendar Hours'
+  return value || '—'
+}
 
 /** Exercise AD / snapshot inputs used by simulation (read-only on this page). */
-const baselineInputRows = computed(() => [
-  { label: 'Delivery HC', value: deliveryHc.value.toFixed(2) },
-  { label: 'Median Cycle Time', value: medianLabel.value },
-  { label: 'Median source', value: medianSourceLabel.value },
-  {
-    label: 'Production support',
-    value: supportFte.value != null ? supportFte.value.toFixed(2) : '—',
-  },
-  { label: 'SLA Turntime', value: slaTurntimeLabel.value },
-  { label: 'SLA Target %', value: slaTargetLabel.value },
-  { label: 'Working days / year', value: workingDaysLabel.value },
-  { label: 'Daily capacity / agent', value: dailyCapacityLabel.value },
-])
+const baselineInputRows = computed(() => {
+  const setup = teamSetup.value
+  return [
+    {
+      label:
+        Number(setup?.totalAgents) > 0
+          ? withUnit('Team Setup Total Agents', FieldUnit.hc)
+          : 'Delivery HC',
+      value: formatNumber(actualSize.value, 2),
+    },
+    { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
+    { label: 'Median source', value: medianSourceLabel.value },
+    {
+      label: withUnit('Production support', FieldUnit.fte),
+      value: supportFte.value != null ? formatNumber(supportFte.value, 2) : '—',
+    },
+    { label: 'SLA type', value: slaTypeLabel(setup?.slaType) },
+    {
+      label: withUnit('SLA Turntime', FieldUnit.minutes),
+      value: formatNumber(setup?.slaTurnaroundMinutes, 2),
+    },
+    { label: withUnit('SLA Target', FieldUnit.percent), value: formatRatioPercent(setup?.slaTargetRatio) },
+    {
+      label: withUnit('Working hours / day', FieldUnit.hours),
+      value: formatNumber(setup?.workingHoursPerDay, 2),
+    },
+    {
+      label: withUnit('Availability ratio', FieldUnit.percent),
+      value: formatRatioPercent(setup?.availabilityRatio),
+    },
+    {
+      label: withUnit('Capacity ratio', FieldUnit.percent),
+      value: formatRatioPercent(setup?.capacityRatio),
+    },
+    {
+      label: withUnit('Automation ratio', FieldUnit.percent),
+      value: formatRatioPercent(setup?.automationRatio),
+    },
+    {
+      label: withUnit('Working days / year', FieldUnit.days),
+      value: formatNumber(setup?.workingDaysPerYear, 2),
+    },
+    {
+      label: withUnit('Daily capacity / agent', FieldUnit.transactions),
+      value: formatNumber(setup?.dailyCapacityPerAgent, 0),
+    },
+    {
+      label: withUnit('Max daily overtime', FieldUnit.minutes),
+      value: formatNumber(setup?.maxOvertimeMinutes, 2),
+    },
+    {
+      label: withUnit('Weekend shift', FieldUnit.fte),
+      value: formatNumber(setup?.weekendShiftHc, 2),
+    },
+  ]
+})
 
 /**
  * Outcome metrics only: simulation outputs and values derived from them
  * (inputs live in Scenario Info).
  */
 const resultRows = computed<ScenarioResultRow[]>(() => {
-  const rsHc = Number(form.rightSizingHc)
+  const rsHc = Number(rightSizingHc.value)
   const supportVal = supportFte.value
   const capacity =
     Number.isFinite(rsHc) && supportVal != null
-      ? deliveryHc.value - rsHc - supportVal
+      ? actualSize.value - rsHc - supportVal
       : null
   const capacityLabel =
     capacity == null ? '—' : `${capacity >= 0 ? '+' : ''}${capacity.toFixed(2)}`
 
   const firstSizing = latestMonthlySizing.value?.rows[0]
   const rows: ScenarioResultRow[] = [
-    { label: 'Actual size', value: deliveryHc.value.toFixed(2) },
+    { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
     {
-      label: 'Right size HC',
+      label: withUnit('Right size', FieldUnit.hc),
       value: firstSizing
         ? Number(firstSizing.rightSizingHc).toFixed(2)
-        : Number.isFinite(form.rightSizingHc)
-          ? form.rightSizingHc.toFixed(2)
+        : Number.isFinite(Number(rightSizingHc.value))
+          ? Number(rightSizingHc.value).toFixed(2)
           : '—',
     },
     {
-      label: 'Capacity Creation',
+      label: withUnit('Capacity Creation', FieldUnit.hc),
       value: firstSizing
         ? `${Number(firstSizing.capacityCreation) >= 0 ? '+' : ''}${Number(firstSizing.capacityCreation).toFixed(2)}`
         : capacityLabel,
@@ -216,7 +298,7 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
             ? 'good'
             : 'bad',
     },
-    { label: 'Shift Setup', value: shiftSetupLabel.value },
+    { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
   ]
 
   if (firstSizing) {
@@ -225,17 +307,11 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
       value: String(Number(firstSizing.nominalHcWithoutOt).toFixed(2)),
     })
   }
-  if (latestMonthlySizing.value?.calculationVersion) {
-    rows.unshift({
-      label: 'Sizing version',
-      value: latestMonthlySizing.value.calculationVersion,
-    })
-  }
   if (latestDailySizing.value?.rows?.length) {
     const endBacklog =
       latestDailySizing.value.rows[latestDailySizing.value.rows.length - 1]?.backlogEnd
     rows.push({
-      label: 'Daily sim days',
+      label: withUnit('Daily sim days', FieldUnit.days),
       value: String(latestDailySizing.value.rows.length),
     })
     if (endBacklog != null) {
@@ -250,13 +326,13 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
     const tatBad = target != null && Number(latestSlotSimulation.value.tatOnPeriod) < Number(target)
     rows.push(
       {
-        label: 'TAT on period',
-        value: `${tatPct.toFixed(2)}%`,
+        label: withUnit('TAT on period', FieldUnit.percent),
+        value: tatPct.toFixed(2),
         emphasize: tatBad ? 'bad' : 'good',
       },
       {
-        label: 'Actual vs theoretical',
-        value: `${actualVsPct.toFixed(0)}%`,
+        label: withUnit('Actual vs theoretical', FieldUnit.percent),
+        value: actualVsPct.toFixed(0),
       },
     )
   }
@@ -264,23 +340,21 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
   return rows
 })
 
-const slotLocked = computed(() => !sizingCompleted.value)
-
-watch(
-  () => form.rightSizingHc,
-  () => {
-    if (sizingCompleted.value || slotCompleted.value) {
-      // HC change invalidates preview results until user re-runs.
-      sizingCompleted.value = false
-      slotCompleted.value = false
-      latestForecastBundle.value = null
-      latestMonthlySizing.value = null
-      latestDailySizing.value = null
-      latestSlotSimulation.value = null
-    }
-  },
-  { flush: 'sync' },
+const slotApplicable = computed(() =>
+  slotApplicabilityOn(teamSetup.value?.slaType, teamSetup.value?.slaTurnaroundMinutes),
 )
+
+const slotLocked = computed(() => !sizingCompleted.value || !slotApplicable.value)
+
+const slotLockReason = computed(() => {
+  if (!sizingCompleted.value) {
+    return 'Run Sizing Simulation first to unlock Slot Simulation.'
+  }
+  if (!slotApplicable.value) {
+    return 'Slot Simulation is available when Calendar SLA ≤ 24h or business-hours SLA ≤ 8h.'
+  }
+  return null
+})
 
 async function loadSimulationResultsFromQueries() {
   sizingCompleted.value = false
@@ -315,29 +389,24 @@ async function loadSimulationResultsFromQueries() {
 }
 
 function applyScenarioToForm(value: Scenario) {
-  form.name = value.name
-  form.description = value.description ?? ''
-  const rs = value.rightSizingHc
-  form.rightSizingHc = rs != null ? Number(rs) : 0
-
   const savedShifts = value.shifts ?? []
-  shiftRows.value = savedShifts.length
-    ? savedShifts.map((s) => ({
-        shiftNo: s.shiftNo,
-        startTime: s.startTime.length === 5 ? `${s.startTime}:00` : s.startTime,
-        durationMinutes: s.durationMinutes,
-        headcount: Number(s.headcount),
-        worksOnWeekend: s.worksOnWeekend,
-      }))
-    : [
-        {
-          shiftNo: 1,
-          startTime: '',
-          durationMinutes: null,
-          headcount: null,
-          worksOnWeekend: false,
-        },
-      ]
+  resetForm({
+    values: {
+      name: value.name,
+      description: value.description ?? '',
+      rightSizingHc: value.rightSizingHc != null ? Number(value.rightSizingHc) : 0,
+      shifts: savedShifts.length
+        ? savedShifts.map((shift) => ({
+            shiftNo: shift.shiftNo,
+            startTime: shift.startTime.length === 5 ? `${shift.startTime}:00` : shift.startTime,
+            durationHours:
+              shift.durationMinutes == null ? null : Number(shift.durationMinutes) / 60,
+            headcount: Number(shift.headcount),
+            worksOnWeekend: shift.worksOnWeekend,
+          }))
+        : [emptyShiftDraft()],
+    },
+  })
 }
 
 const queriesReady = computed(() => {
@@ -388,157 +457,112 @@ watch(
   },
 )
 
-function isBlankShift(row: ShiftDraft) {
-  return !row.startTime?.trim() && row.durationMinutes == null && row.headcount == null
-}
-
-function toShiftRequests() {
-  return shiftRows.value
-    .filter((row) => !isBlankShift(row))
-    .map((row, index) => ({
-      shiftNo: index + 1,
-      startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
-      durationMinutes: Number(row.durationMinutes),
-      headcount: Number(row.headcount),
-      worksOnWeekend: row.worksOnWeekend,
-    }))
-}
-
 function addShift() {
   if (slotLocked.value || readOnly.value) return
-  shiftRows.value.push({
-    shiftNo: shiftRows.value.length + 1,
-    startTime: '',
-    durationMinutes: null,
-    headcount: null,
-    worksOnWeekend: false,
-  })
-  slotCompleted.value = false
-  latestSlotSimulation.value = null
+  const rows = [...(shiftRows.value ?? [])]
+  rows.push(emptyShiftDraft(rows.length + 1))
+  shiftRows.value = rows
 }
 
 function removeShift() {
-  if (slotLocked.value || readOnly.value || shiftRows.value.length <= 1) return
-  shiftRows.value.pop()
-  shiftRows.value.forEach((row, index) => {
-    row.shiftNo = index + 1
-  })
-  slotCompleted.value = false
+  const rows = shiftRows.value ?? []
+  if (slotLocked.value || readOnly.value || rows.length <= 1) return
+  const next = rows.slice(0, -1).map((row, index) => ({ ...row, shiftNo: index + 1 }))
+  shiftRows.value = next
 }
 
-function onShiftEdited() {
-  if (slotCompleted.value) {
-    slotCompleted.value = false
-    latestSlotSimulation.value = null
+function applyZodIssues(issues: { path: PropertyKey[]; message: string }[]) {
+  for (const issue of issues) {
+    setFieldError(issue.path.join('.'), issue.message)
   }
 }
 
-async function save() {
-  if (!scenario.value || readOnly.value || busy.value) return
-  const meta = scenarioMetadataSchema.safeParse({
-    name: form.name,
-    description: form.description,
-  })
-  if (!meta.success) {
-    toast.warning(meta.error.issues[0]?.message ?? 'Enter a scenario name.')
-    return
-  }
-  const shiftError = validateShiftDrafts(false)
-  if (shiftError) {
-    toast.warning(shiftError)
-    return
-  }
-  saving.value = true
-  try {
-    const hasSizingResults =
-      sizingCompleted.value &&
-      latestForecastBundle.value != null &&
-      latestMonthlySizing.value != null &&
-      latestDailySizing.value != null
-    await commitScenario.mutateAsync({
-      exerciseId: props.exerciseId,
-      scenarioId: props.scenarioId,
-      body: {
-        name: meta.data.name || scenario.value.scenarioCode,
-        description: meta.data.description.trim() || null,
-        rightSizingHc: Number(form.rightSizingHc),
-        shifts: toShiftRequests(),
-        results: hasSizingResults
-          ? {
-              forecast: latestForecastBundle.value!,
-              monthly: latestMonthlySizing.value!,
-              daily: latestDailySizing.value!,
-              slot: slotCompleted.value ? latestSlotSimulation.value : null,
-            }
-          : null,
-      },
-    })
-    toast.success('Scenario saved.')
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Save failed.')
-  } finally {
-    saving.value = false
-  }
-}
+const save = handleSubmit(
+  async (formValues) => {
+    if (!scenario.value || readOnly.value || busy.value) return
+    try {
+      const hasSizingResults =
+        sizingCompleted.value &&
+        latestForecastBundle.value != null &&
+        latestMonthlySizing.value != null &&
+        latestDailySizing.value != null
+      await commitScenario.mutateAsync({
+        exerciseId: props.exerciseId,
+        scenarioId: props.scenarioId,
+        body: {
+          name: formValues.name || scenario.value.scenarioCode,
+          description: formValues.description.trim() || null,
+          rightSizingHc: Number(formValues.rightSizingHc),
+          shifts: toShiftRequests(formValues.shifts),
+          results: hasSizingResults
+            ? {
+                forecast: latestForecastBundle.value!,
+                monthly: latestMonthlySizing.value!,
+                daily: latestDailySizing.value!,
+                slot: slotCompleted.value ? latestSlotSimulation.value : null,
+              }
+            : null,
+        },
+      })
+      toast.success('Scenario saved.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Save failed.')
+    }
+  },
+  ({ errors: submitErrors }) => {
+    toast.warning(firstFormError(submitErrors) ?? 'Check the highlighted fields.')
+  },
+)
 
 async function runSizing() {
   if (readOnly.value || busy.value) return
-  const hc = Number(form.rightSizingHc)
+  const result = await validate()
+  const hc = Number(values.rightSizingHc)
   if (!Number.isFinite(hc) || hc <= 0) {
+    setFieldError('rightSizingHc', 'Right Sizing HC must be a positive number.')
     toast.warning('Right Sizing HC must be a positive number.')
     return
   }
-  runningSizing.value = true
+  if (!result.valid) {
+    toast.warning(firstFormError(errors.value) ?? 'Check the highlighted fields.')
+    return
+  }
   try {
-    const preview = await exerciseApi.previewSizing(props.exerciseId, props.scenarioId, hc)
+    const preview = await previewSizing.mutateAsync({
+      exerciseId: props.exerciseId,
+      scenarioId: props.scenarioId,
+      rightSizingHc: hc,
+    })
     latestForecastBundle.value = preview.forecast
     latestMonthlySizing.value = preview.monthly
     latestDailySizing.value = preview.daily
     sizingCompleted.value = true
-    slotCompleted.value = false
-    latestSlotSimulation.value = null
     const method = preview.forecast.monthly?.method ?? 'forecast'
     toast.success(
       `Sizing preview ready (${method}, ${preview.monthly.rows.length} months, ${preview.daily.rows.length} days). Save to keep.`,
     )
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Sizing simulation failed.')
-  } finally {
-    runningSizing.value = false
   }
-}
-
-function validateShiftDrafts(requireAtLeastOne: boolean): string | null {
-  const filled = shiftRows.value.filter((row) => !isBlankShift(row))
-  if (requireAtLeastOne && !filled.length) return 'Add at least one shift.'
-  for (const row of filled) {
-    if (!row.startTime?.trim()) {
-      return `Shift ${row.shiftNo}: Start time is required.`
-    }
-    if (row.durationMinutes == null || !Number.isFinite(row.durationMinutes) || row.durationMinutes <= 0) {
-      return `Shift ${row.shiftNo}: Duration (minutes) must be a positive number.`
-    }
-    if (row.headcount == null || !Number.isFinite(row.headcount) || row.headcount < 0) {
-      return `Shift ${row.shiftNo}: Capacity FTE must be zero or greater.`
-    }
-  }
-  return null
 }
 
 async function runSlot() {
-  if (readOnly.value || busy.value || slotLocked.value) return
-  const validationError = validateShiftDrafts(true)
-  if (validationError) {
-    toast.warning(validationError)
+  if (readOnly.value || busy.value || slotLocked.value) {
+    if (slotLockReason.value) toast.warning(slotLockReason.value)
     return
   }
-  runningSlot.value = true
+  const slot = scenarioSlotSchema.safeParse(values)
+  if (!slot.success) {
+    applyZodIssues(slot.error.issues)
+    toast.warning(slot.error.issues[0]?.message ?? 'Check the highlighted fields.')
+    return
+  }
   try {
-    latestSlotSimulation.value = await exerciseApi.runSlotSimulation(
-      props.exerciseId,
-      props.scenarioId,
-      toShiftRequests(),
-    )
+    latestSlotSimulation.value = await runSlotSimulation.mutateAsync({
+      exerciseId: props.exerciseId,
+      scenarioId: props.scenarioId,
+      shifts: toShiftRequests(slot.data.shifts),
+    })
     slotCompleted.value = true
     const tatPct = (Number(latestSlotSimulation.value.tatOnPeriod) * 100).toFixed(2)
     toast.success(
@@ -546,8 +570,6 @@ async function runSlot() {
     )
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Slot simulation failed.')
-  } finally {
-    runningSlot.value = false
   }
 }
 
@@ -578,12 +600,15 @@ const scenarioInfoRows = computed(() => {
     { key: 'toolkit', label: 'Toolkit', value: exercise.value?.snapshot.toolkit.name },
     { label: 'Exercise No', value: exercise.value?.exerciseCode },
     { label: 'Scenario No.', value: scenario.value?.scenarioCode },
-    { label: 'Status', value: scenario.value?.status },
+    {
+      label: 'Official',
+      value: exercise.value?.officialScenarioId === scenario.value?.id ? 'Yes' : 'No',
+    },
   ]
   if (readOnly.value) {
     rows.push(
-      { label: 'Name', value: form.name },
-      { label: 'Description', value: form.description },
+      { label: 'Name', value: name.value },
+      { label: 'Description', value: description.value },
     )
   }
   return rows
@@ -636,11 +661,12 @@ const scenarioInfoRows = computed(() => {
         <div v-if="!readOnly" class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1 text-sm sm:col-span-2">
             Name
-            <Input v-model="form.name" />
+            <Input v-model="name" :aria-invalid="Boolean(errors.name)" />
+            <p v-if="errors.name" class="text-xs text-destructive">{{ errors.name }}</p>
           </label>
           <label class="grid gap-1 text-sm sm:col-span-2">
             Description
-            <Textarea v-model="form.description" rows="2" />
+            <Textarea v-model="description" rows="2" />
           </label>
         </div>
 
@@ -669,22 +695,25 @@ const scenarioInfoRows = computed(() => {
         :busy="busy"
         :running-sizing="runningSizing"
         :running-slot="runningSlot"
-        :right-sizing-hc="form.rightSizingHc"
-        :shift-rows="shiftRows"
+        :right-sizing-hc="Number(rightSizingHc ?? 0)"
+        :right-sizing-hc-error="errors.rightSizingHc"
+        :shift-rows="shiftRows ?? []"
+        :shifts-error="typeof errors.shifts === 'string' ? errors.shifts : undefined"
+        :shift-field-errors="shiftFieldErrors"
         :sizing-completed="sizingCompleted"
         :slot-completed="slotCompleted"
         :slot-locked="slotLocked"
+        :slot-lock-reason="slotLockReason"
         :latest-monthly-sizing="latestMonthlySizing"
         :latest-daily-sizing="latestDailySizing"
         :latest-slot-simulation="latestSlotSimulation"
         :team-setup="teamSetup"
         :shift-setup-label="shiftSetupLabel"
-        @update:right-sizing-hc="form.rightSizingHc = $event"
+        @update:right-sizing-hc="rightSizingHc = $event"
         @run-sizing="runSizing"
         @run-slot="runSlot"
         @add-shift="addShift"
         @remove-shift="removeShift"
-        @shift-edited="onShiftEdited"
       />
 
       <ScenarioResultsPanel
@@ -697,7 +726,7 @@ const scenarioInfoRows = computed(() => {
     <ConfirmDialog
       v-model:open="deleteOpen"
       title="Delete Scenario"
-      description="Only DRAFT scenarios can be deleted. This cannot be undone."
+      description="This scenario will be removed from the exercise. This cannot be undone."
       confirm-label="Delete Scenario"
       :pending="deletePending"
       @confirm="confirmDelete"

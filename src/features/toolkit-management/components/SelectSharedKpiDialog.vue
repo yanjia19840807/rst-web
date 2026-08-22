@@ -44,12 +44,25 @@ watch(open, (value) => {
 
 const selectedCount = computed(() => draft.value.size)
 
+const candidateKeys = computed(() => props.candidates.map(kpiKey))
+
+const allSelected = computed(
+  () =>
+    candidateKeys.value.length > 0 && candidateKeys.value.every((key) => draft.value.has(key)),
+)
+
+const someSelected = computed(() => candidateKeys.value.some((key) => draft.value.has(key)))
+
 function toggle(item: SharedKpiCandidate) {
   const key = kpiKey(item)
   const next = new Set(draft.value)
   if (next.has(key)) next.delete(key)
   else next.add(key)
   draft.value = next
+}
+
+function toggleAll() {
+  draft.value = allSelected.value ? new Set() : new Set(candidateKeys.value)
 }
 
 function confirm() {
@@ -85,7 +98,18 @@ function confirm() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead class="w-10" />
+                <TableHead class="w-10">
+                  <input
+                    type="checkbox"
+                    class="size-3.5 accent-primary"
+                    aria-label="Select all Shared KPI lines"
+                    :checked="allSelected"
+                    :indeterminate="someSelected && !allSelected"
+                    :disabled="!candidates.length"
+                    @click.stop
+                    @change="toggleAll"
+                  />
+                </TableHead>
                 <TableHead>Carrier</TableHead>
                 <TableHead>GBS Site</TableHead>
                 <TableHead>Customer Country</TableHead>

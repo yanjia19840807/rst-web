@@ -3,9 +3,14 @@ import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 
-type TabKey = 'Active' | 'Archived'
+import {
+  CURRENT_STEP_FILTERS,
+  IN_PROGRESS_TAB,
+  type CurrentStepFilter,
+} from '../workflowLabels'
+
+type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
-type ProgressStatusFilter = 'All statuses' | 'In Progress' | 'Returned' | 'Under Review'
 
 defineProps<{
   activeTab: TabKey
@@ -13,8 +18,7 @@ defineProps<{
   exerciseCodeFilter: string
   pl3Filter: string
   toolkitFilter: string
-  statusFilter: ProgressStatusFilter
-  reviewStageFilter: string
+  reviewStageFilter: CurrentStepFilter
   finalStatusFilter: string
   advancedOpen: TabKey | null
   advancedCount: number
@@ -35,8 +39,7 @@ const emit = defineEmits<{
   'update:exerciseCodeFilter': [value: string]
   'update:pl3Filter': [value: string]
   'update:toolkitFilter': [value: string]
-  'update:statusFilter': [value: ProgressStatusFilter]
-  'update:reviewStageFilter': [value: string]
+  'update:reviewStageFilter': [value: CurrentStepFilter]
   'update:finalStatusFilter': [value: string]
   'update:draftCreatedFrom': [value: string]
   'update:draftCreatedTo': [value: string]
@@ -53,8 +56,8 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <!-- Active filters -->
-  <template v-if="activeTab === 'Active'">
+  <!-- In Progress filters -->
+  <template v-if="activeTab === IN_PROGRESS_TAB">
     <div class="flex flex-wrap items-end gap-2.5">
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Exercise Code
@@ -90,31 +93,20 @@ const emit = defineEmits<{
         </select>
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Status
-        <select
-          :value="statusFilter"
-          :class="[selectClass, 'w-[170px]']"
-          @change="
-            emit('update:statusFilter', ($event.target as HTMLSelectElement).value as ProgressStatusFilter)
-          "
-        >
-          <option>All statuses</option>
-          <option>In Progress</option>
-          <option>Returned</option>
-          <option>Under Review</option>
-        </select>
-      </label>
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Review Stage
+        Current Step
         <select
           :value="reviewStageFilter"
           :class="[selectClass, 'w-[260px]']"
-          @change="emit('update:reviewStageFilter', ($event.target as HTMLSelectElement).value)"
+          @change="
+            emit(
+              'update:reviewStageFilter',
+              ($event.target as HTMLSelectElement).value as CurrentStepFilter,
+            )
+          "
         >
-          <option>All stages</option>
-          <option>Manager Review</option>
-          <option>Center Delivery Head Review</option>
-          <option>Local Transformation Head Review</option>
+          <option v-for="option in CURRENT_STEP_FILTERS" :key="option" :value="option">
+            {{ option }}
+          </option>
         </select>
       </label>
       <Button variant="outline" @click="emit('toggleAdvanced')">
@@ -122,7 +114,7 @@ const emit = defineEmits<{
       </Button>
     </div>
     <div
-      v-if="advancedOpen === 'Active'"
+      v-if="advancedOpen === IN_PROGRESS_TAB"
       class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
     >
       <label class="grid gap-1.5 text-xs text-muted-foreground">

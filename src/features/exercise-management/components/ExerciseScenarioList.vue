@@ -21,9 +21,8 @@ const props = defineProps<{
   officialScenarioId?: string | null
   locked: boolean
   snapshotMode: boolean
-  deliveryHc: number
+  actualSize: number
   slaTargetLabel: string
-  shiftSetupLabel: string
   medianLabel: string
   assumptionHc: (scenario: Scenario) => number | null
   capacityCreation: (scenario: Scenario) => number | null
@@ -43,11 +42,14 @@ function toggleSelect(scenarioId: string) {
   emit('update:selectedId', props.selectedId === scenarioId ? null : scenarioId)
 }
 
-/** Official pointer on the Exercise (kept after Withdraw/Return even if status is DRAFT). */
+/** Official is only the Exercise pointer — switching it does not create a row. */
 function isOfficial(scenario: Scenario) {
-  return (
-    scenario.id === props.officialScenarioId || scenario.status === 'OFFICIAL'
-  )
+  return scenario.id === props.officialScenarioId
+}
+
+function shiftSetupLabel(scenario: Scenario) {
+  const n = scenario.shifts?.length ?? 0
+  return n > 0 ? String(n) : '—'
 }
 </script>
 
@@ -57,7 +59,7 @@ function isOfficial(scenario: Scenario) {
       <CardTitle class="text-base">Scenario Matrix</CardTitle>
       <CardAction v-if="!locked" class="flex gap-2">
         <Button variant="outline" @click="emit('openOfficial')">Save Official Scenario</Button>
-        <Button @click="emit('newScenario')">New Scenario</Button>
+        <Button variant="outline" @click="emit('newScenario')">New Scenario</Button>
       </CardAction>
     </CardHeader>
     <CardContent>
@@ -67,12 +69,12 @@ function isOfficial(scenario: Scenario) {
             <TableRow>
               <TableHead class="w-24 text-center">Is Official</TableHead>
               <TableHead>Scenario</TableHead>
-              <TableHead>Actual size</TableHead>
-              <TableHead>SLA Target %</TableHead>
-              <TableHead>Shift Setup</TableHead>
-              <TableHead>Median Cycle Time</TableHead>
-              <TableHead>Right size HC</TableHead>
-              <TableHead>Capacity Creation</TableHead>
+              <TableHead>Actual size (HC)</TableHead>
+              <TableHead>SLA Target (%)</TableHead>
+              <TableHead>Shift Setup (shifts)</TableHead>
+              <TableHead>Median Cycle Time (s)</TableHead>
+              <TableHead>Right size (HC)</TableHead>
+              <TableHead>Capacity Creation (HC)</TableHead>
               <TableHead class="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -94,9 +96,9 @@ function isOfficial(scenario: Scenario) {
                 <span v-if="isOfficial(scenario)" class="text-amber-500">★</span>
               </TableCell>
               <TableCell>{{ scenario.scenarioCode }}</TableCell>
-              <TableCell>{{ deliveryHc.toFixed(2) }}</TableCell>
+              <TableCell>{{ actualSize.toFixed(2) }}</TableCell>
               <TableCell>{{ slaTargetLabel }}</TableCell>
-              <TableCell>{{ shiftSetupLabel }}</TableCell>
+              <TableCell>{{ shiftSetupLabel(scenario) }}</TableCell>
               <TableCell>{{ medianLabel }}</TableCell>
               <TableCell>
                 {{
@@ -126,7 +128,7 @@ function isOfficial(scenario: Scenario) {
                     })
                   "
                 >
-                  {{ locked ? 'Open' : 'Edit' }}
+                  Open
                 </Button>
               </TableCell>
             </TableRow>

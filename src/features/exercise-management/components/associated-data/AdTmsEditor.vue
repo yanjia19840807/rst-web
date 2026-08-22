@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { toast } from 'vue-sonner'
 
 import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -13,10 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { formatDuration } from '@/features/tms-management/composables/useTmsTimer'
+import { formatDate } from '@/lib/datetime'
 
-import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { useExerciseTmsSessionsQuery } from '../../api/queries'
-import type { CycleTimeBaseline, ExerciseTmsSession, TeamSetup } from '../../types'
+import { FieldUnit, withUnit } from '../../fieldUnits'
+import type { CycleTimeBaseline, ExerciseTmsSession } from '../../types'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
 
@@ -26,15 +26,8 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-const emit = defineEmits<{
-  'update:cycleTime': [value: CycleTimeBaseline]
-  'update:teamSetup': [value: TeamSetup]
-}>()
-
-const { patchTmsSession } = useExerciseAssociatedDataMutations()
 const page = ref(1)
 const pageSize = ref(10)
-const busySessionNo = ref<string | null>(null)
 const localCycleTime = ref<CycleTimeBaseline | null>(props.cycleTime)
 
 watch(
@@ -60,7 +53,7 @@ const loadError = computed(() => {
 })
 
 const medianLabel = computed(() =>
-  localCycleTime.value ? `${Number(localCycleTime.value.medianSeconds).toFixed(2)}s` : '—',
+  localCycleTime.value ? Number(localCycleTime.value.medianSeconds).toFixed(2) : '—',
 )
 
 const sessionTotalLabel = computed(() => {
@@ -71,29 +64,12 @@ const sessionTotalLabel = computed(() => {
   return total.value > 0 ? formatNumber(total.value) : '0'
 })
 
-function formatZScore(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return '—'
-  return value.toFixed(2)
-}
+const colCount = 11
 
-async function toggleIncluded(row: ExerciseTmsSession) {
-  if (props.readOnly || busySessionNo.value) return
-  busySessionNo.value = row.sessionNo
-  try {
-    const result = await patchTmsSession.mutateAsync({
-      exerciseId: props.exerciseId,
-      sessionNo: row.sessionNo,
-      included: !row.included,
-    })
-    if (result.baseline) {
-      localCycleTime.value = result.baseline
-      emit('update:cycleTime', result.baseline)
-    }
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not update session inclusion.')
-  } finally {
-    busySessionNo.value = null
-  }
+function cycleTimeLabel(row: ExerciseTmsSession) {
+  if (!row.processedVolume) return '—'
+  if (row.cycleTimeSeconds != null) return String(row.cycleTimeSeconds)
+  return String(Math.round(row.netDurationSeconds / row.processedVolume))
 }
 
 watch(
@@ -122,40 +98,44 @@ watch(
       <AdMetric
         label="Sessions"
         :value="sessionTotalLabel"
-        hint="Included samples for the SYSTEM median. Same Reference is summed when Combine same-reference session time is Yes."
+        hint="Included sessions used for the SYSTEM median. Blank volume counts as one unit. When Combine subtask time is Yes, each subtask's median is summed."
       />
       <AdMetric
-        label="Median cycle time"
+        :label="withUnit('Median cycle time', FieldUnit.seconds)"
         :value="medianLabel"
         hint="Baseline used for simulation"
       />
     </div>
 
     <section class="rounded-lg border bg-card p-4">
-      <h3 class="mb-3 text-base font-bold">TMS Sessions</h3>
+      <h3 class="mb-3 text-sm font-bold">TMS Sessions</h3>
 
       <div class="overflow-x-auto rounded-md border">
-        <Table class="min-w-[880px]">
+        <Table class="min-w-[1240px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Session</TableHead>
-              <TableHead>Reference</TableHead>
+              <TableHead>Session No</TableHead>
               <TableHead>Agent</TableHead>
+              <TableHead>Toolkit</TableHead>
               <TableHead>Subtask</TableHead>
-              <TableHead>Cycle time</TableHead>
-              <TableHead>Z-Score</TableHead>
-              <TableHead v-if="!readOnly" class="w-[120px]">Action</TableHead>
+              <TableHead>Start</TableHead>
+              <TableHead>End</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>{{ withUnit('Cycle Time', FieldUnit.seconds) }}</TableHead>
+              <TableHead>Reference</TableHead>
+              <TableHead>Volume</TableHead>
+              <TableHead>Remarks</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-if="loading">
-              <TableCell :colspan="readOnly ? 6 : 7" class="p-0">
+              <TableCell :colspan="colCount" class="p-0">
                 <ListLoading />
               </TableCell>
             </TableRow>
             <TableRow v-else-if="loadError">
               <TableCell
-                :colspan="readOnly ? 6 : 7"
+                :colspan="colCount"
                 class="h-24 text-center text-sm text-destructive"
               >
                 {{ loadError }}
@@ -163,43 +143,26 @@ watch(
             </TableRow>
             <TableRow v-else-if="sessions.length === 0">
               <TableCell
-                :colspan="readOnly ? 6 : 7"
-                class="h-24 text-center text-sm text-muted-foreground italic"
+                :colspan="colCount"
+                class="h-24 text-center text-muted-foreground"
               >
                 No TMS sessions linked to this exercise.
               </TableCell>
             </TableRow>
-            <TableRow
-              v-for="row in sessions"
-              :key="row.sessionNo"
-              :class="row.included ? undefined : 'text-muted-foreground'"
-            >
+            <TableRow v-for="row in sessions" :key="row.sessionNo">
               <TableCell class="font-mono text-xs">{{ row.sessionNo }}</TableCell>
-              <TableCell>{{ row.reference || '—' }}</TableCell>
               <TableCell>{{ row.agentName || '—' }}</TableCell>
+              <TableCell>{{ row.toolkitName || '—' }}</TableCell>
               <TableCell>{{ row.subtaskName || '—' }}</TableCell>
+              <TableCell>{{ formatDate(row.startedAt) }}</TableCell>
+              <TableCell>{{ formatDate(row.endedAt) }}</TableCell>
+              <TableCell>{{ formatDuration(row.netDurationSeconds) }}</TableCell>
+              <TableCell>{{ cycleTimeLabel(row) }}</TableCell>
+              <TableCell>{{ row.reference || '—' }}</TableCell>
               <TableCell>
-                {{ row.cycleTimeSeconds != null ? `${Number(row.cycleTimeSeconds).toFixed(2)}s` : '—' }}
+                {{ row.processedVolume == null ? '—' : Number(row.processedVolume).toFixed(2) }}
               </TableCell>
-              <TableCell
-                :class="
-                  row.zScore != null && row.zScore > 2 ? 'font-medium text-amber-700' : undefined
-                "
-              >
-                {{ formatZScore(row.zScore) }}
-              </TableCell>
-              <TableCell v-if="!readOnly">
-                <Button
-                  size="sm"
-                  variant="link"
-                  class="h-auto px-0"
-                  :class="row.included ? undefined : 'text-amber-600 hover:text-amber-700'"
-                  :disabled="busySessionNo === row.sessionNo"
-                  @click="toggleIncluded(row)"
-                >
-                  {{ row.included ? 'Exclude' : 'Restore' }}
-                </Button>
-              </TableCell>
+              <TableCell class="max-w-52 truncate">{{ row.remarks || '—' }}</TableCell>
             </TableRow>
           </TableBody>
         </Table>

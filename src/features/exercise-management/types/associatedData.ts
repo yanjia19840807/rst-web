@@ -25,7 +25,6 @@ export interface TeamSetup {
   workingDaysPerYear: number | null
   maxCapacityDays: number | null
   dailyCapacityPerAgent: number | null
-  calculationVersion: string | null
   version: number
 }
 
@@ -39,7 +38,6 @@ export type TeamSetupRequest = Omit<
   | 'workingDaysPerYear'
   | 'maxCapacityDays'
   | 'dailyCapacityPerAgent'
-  | 'calculationVersion'
   | 'version'
 >
 
@@ -74,7 +72,6 @@ export interface SupportItem {
   workloadPerYearHours: number | null
   supportFte: number | null
   comments: string | null
-  calculationVersion: string | null
 }
 
 export interface SupportItemRequest {
@@ -84,8 +81,6 @@ export interface SupportItemRequest {
   volume: number
   unitOfMeasure: string
   workloadPerUnitMinutes: number
-  /** Optional; server derives from Frequency (+ Working Days for Daily). */
-  annualMultiplier?: number | null
   comments?: string | null
 }
 
@@ -180,9 +175,11 @@ export interface ExerciseTmsSession {
   sessionNo: string
   reference: string
   agentName: string
+  toolkitName: string
   subtaskName: string
   processedVolume: number | null
   netDurationSeconds: number
+  remarks: string | null
   cycleTimeSeconds: number | null
   zScore: number | null
   included: boolean
@@ -222,16 +219,6 @@ export interface ManualBaselineRequest {
   medianSeconds: number
   manualReason: string
   fileArtifactIds: string[]
-}
-
-/** Canonical Toolkit volume coverage (not this Exercise window). */
-export interface ToolkitVolumeSummary {
-  monthlyCount: number
-  monthlyFrom: string | null
-  monthlyTo: string | null
-  dailyCount: number
-  dailyFrom: string | null
-  dailyTo: string | null
 }
 
 export interface ToolkitMonthlyPoint {

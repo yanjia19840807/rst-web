@@ -5,9 +5,25 @@
  * Instant TAT: IF(manual = 0, 1, MAX(0, 1 − outOfSla / manual))
  * Cumulative Daily TAT: 1 − (day-to-date outOfSla / day-to-date raw volume), reset at date change
  * Target TAT: Team Setup SLAPercentage
+ *
+ * Applicability (unlock Slot Simulation): Calendar SLA ≤ 24h, or business-hours SLA ≤ 8h.
  */
 
 import { dayKey, n } from './sizingChartMath'
+
+/** Same rule as backend {@code SlotMath.applicabilityOn}. */
+export function slotApplicabilityOn(
+  slaType: string | null | undefined,
+  slaTurnaroundMinutes: number | null | undefined,
+): boolean {
+  if (slaTurnaroundMinutes == null || !Number.isFinite(slaTurnaroundMinutes) || slaTurnaroundMinutes <= 0) {
+    return false
+  }
+  const type = (slaType ?? '').trim().toUpperCase()
+  const businessHours = type.includes('BUSINESS') || type.includes('BH')
+  const limitMinutes = businessHours ? 8 * 60 : 24 * 60
+  return slaTurnaroundMinutes <= limitMinutes
+}
 
 export function instantTat(manualVolume: number, volumeOutsideSla: number): number {
   if (manualVolume <= 0) return 1

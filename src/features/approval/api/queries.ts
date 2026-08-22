@@ -6,6 +6,7 @@ import type { ApprovalQueueQuery } from '../types'
 
 export const approvalQueryKeys = {
   all: ['approval'] as const,
+  queues: () => [...approvalQueryKeys.all, 'queue'] as const,
   queue: (query: ApprovalQueueQuery = {}) =>
     [...approvalQueryKeys.all, 'queue', query] as const,
   detail: (submissionId: string) =>

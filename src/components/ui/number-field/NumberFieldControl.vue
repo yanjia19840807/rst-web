@@ -13,6 +13,7 @@ const props = withDefaults(
     step?: number
     decimals?: number
     disabled?: boolean
+    invalid?: boolean
     id?: string
     class?: HTMLAttributes['class']
   }>(),
@@ -21,6 +22,7 @@ const props = withDefaults(
     min: 0,
     decimals: 2,
     disabled: false,
+    invalid: false,
   },
 )
 
@@ -60,7 +62,7 @@ function onUpdate(value: number | undefined) {
     @update:model-value="onUpdate"
   >
     <NumberFieldContent>
-      <NumberFieldInput />
+      <NumberFieldInput :aria-invalid="invalid || undefined" />
     </NumberFieldContent>
   </NumberField>
 </template>

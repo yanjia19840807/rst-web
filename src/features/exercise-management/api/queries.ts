@@ -1,6 +1,8 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 
+import { ApiError } from '@/api/client'
+
 import { exerciseApi } from '../api'
 import type { ExerciseListQuery, SupportItem } from '../types'
 
@@ -9,15 +11,17 @@ export type ForecastLevel = 'MONTHLY' | 'DAILY'
 
 export const exerciseQueryKeys = {
   all: ['exercises'] as const,
+  lists: () => [...exerciseQueryKeys.all, 'list'] as const,
   list: (query: ExerciseListQuery = {}) => [...exerciseQueryKeys.all, 'list', query] as const,
   detail: (id: string) => [...exerciseQueryKeys.all, 'detail', id] as const,
   scenarios: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'scenarios', exerciseId] as const,
+  scenarioPrefix: (exerciseId: string) =>
+    [...exerciseQueryKeys.all, 'scenario', exerciseId] as const,
   scenario: (exerciseId: string, scenarioId: string) =>
     [...exerciseQueryKeys.all, 'scenario', exerciseId, scenarioId] as const,
   teamSetup: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'teamSetup', exerciseId] as const,
-  shifts: (exerciseId: string) => [...exerciseQueryKeys.all, 'shifts', exerciseId] as const,
   support: (exerciseId: string) => [...exerciseQueryKeys.all, 'support', exerciseId] as const,
   calendar: (exerciseId: string) => [...exerciseQueryKeys.all, 'calendar', exerciseId] as const,
   volumesMonthly: (exerciseId: string) =>
@@ -26,16 +30,20 @@ export const exerciseQueryKeys = {
     [...exerciseQueryKeys.all, 'volumes', 'daily', exerciseId] as const,
   volumesSlot: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'volumes', 'slot', exerciseId] as const,
-  volumesToolkitSummary: (exerciseId: string) =>
-    [...exerciseQueryKeys.all, 'volumes', 'toolkit-summary', exerciseId] as const,
   volumesToolkitPoints: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'volumes', 'toolkit-points', exerciseId] as const,
   cycleTimeActive: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'cycleTime', 'active', exerciseId] as const,
   cycleTimeChart: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'cycleTime', 'chart', exerciseId] as const,
+  tmsSessionsPrefix: (exerciseId: string) =>
+    [...exerciseQueryKeys.all, 'tmsSessions', exerciseId] as const,
   tmsSessions: (exerciseId: string, page: number, pageSize: number) =>
     [...exerciseQueryKeys.all, 'tmsSessions', exerciseId, page, pageSize] as const,
+  simPrefix: (exerciseId: string, scenarioId?: string) =>
+    scenarioId
+      ? ([...exerciseQueryKeys.all, 'sim', exerciseId, scenarioId] as const)
+      : ([...exerciseQueryKeys.all, 'sim', exerciseId] as const),
   sim: (
     exerciseId: string,
     scenarioId: string,
@@ -43,8 +51,12 @@ export const exerciseQueryKeys = {
     level?: ForecastLevel,
   ) =>
     [...exerciseQueryKeys.all, 'sim', exerciseId, scenarioId, kind, level ?? ''] as const,
+  forecastTrainingPrefix: (exerciseId: string) =>
+    [...exerciseQueryKeys.all, 'forecastTraining', exerciseId] as const,
   forecastTraining: (exerciseId: string, scenarioId: string) =>
     [...exerciseQueryKeys.all, 'forecastTraining', exerciseId, scenarioId] as const,
+  committedResults: (exerciseId: string) =>
+    [...exerciseQueryKeys.all, 'committedResults', exerciseId] as const,
   submitPreview: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'submitPreview', exerciseId] as const,
   submittedDetails: (exerciseId: string) =>
@@ -57,6 +69,15 @@ export function useExercisesQuery(filters: MaybeRefOrGetter<ExerciseListQuery> =
     queryKey: computed(() => exerciseQueryKeys.list(resolved.value)),
     queryFn: () => exerciseApi.list(resolved.value),
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useCommittedResultsQuery(exerciseId: MaybeRefOrGetter<string | undefined>) {
+  const id = computed(() => toValue(exerciseId))
+  return useQuery({
+    queryKey: computed(() => exerciseQueryKeys.committedResults(id.value ?? '')),
+    queryFn: () => exerciseApi.committedResults(id.value!),
+    enabled: computed(() => Boolean(id.value)),
   })
 }
 
@@ -93,15 +114,6 @@ export function useTeamSetupQuery(exerciseId: MaybeRefOrGetter<string | undefine
   })
 }
 
-export function useShiftsQuery(exerciseId: MaybeRefOrGetter<string | undefined>) {
-  const id = computed(() => toValue(exerciseId))
-  return useQuery({
-    queryKey: computed(() => exerciseQueryKeys.shifts(id.value ?? '')),
-    queryFn: () => exerciseApi.getShifts(id.value!),
-    enabled: computed(() => Boolean(id.value)),
-  })
-}
-
 export function useSupportQuery(exerciseId: MaybeRefOrGetter<string | undefined>) {
   const id = computed(() => toValue(exerciseId))
   return useQuery({
@@ -122,15 +134,6 @@ export function useCalendarQuery(exerciseId: MaybeRefOrGetter<string | undefined
   return useQuery({
     queryKey: computed(() => exerciseQueryKeys.calendar(id.value ?? '')),
     queryFn: () => exerciseApi.getCalendar(id.value!),
-    enabled: computed(() => Boolean(id.value)),
-  })
-}
-
-export function useToolkitVolumeSummaryQuery(exerciseId: MaybeRefOrGetter<string | undefined>) {
-  const id = computed(() => toValue(exerciseId))
-  return useQuery({
-    queryKey: computed(() => exerciseQueryKeys.volumesToolkitSummary(id.value ?? '')),
-    queryFn: () => exerciseApi.getToolkitVolumeSummary(id.value!),
     enabled: computed(() => Boolean(id.value)),
   })
 }
@@ -178,11 +181,12 @@ export function useCycleTimeActiveQuery(exerciseId: MaybeRefOrGetter<string | un
     queryFn: async () => {
       try {
         return await exerciseApi.getActiveCycleTime(id.value!)
-      } catch {
-        return null
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null
+        throw error
       }
     },
-    enabled: computed(() => Boolean(id.value)),
+    enabled: computed(() => Boolean(id.value) && id.value !== 'undefined'),
   })
 }
 

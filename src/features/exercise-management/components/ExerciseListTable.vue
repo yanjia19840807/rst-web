@@ -13,9 +13,9 @@ import {
 import { formatDate } from '@/lib/datetime'
 
 import type { Exercise } from '../types'
-import { exerciseStatusLabel, nextStepLabel } from '../workflowLabels'
+import { currentStepLabel, IN_PROGRESS_TAB, isReturned } from '../workflowLabels'
 
-type TabKey = 'Active' | 'Archived'
+type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 
 const props = defineProps<{
   activeTab: TabKey
@@ -65,47 +65,30 @@ function deliveryHc(exercise: Exercise) {
     .toFixed(1)
 }
 
-function reviewStage(exercise: Exercise) {
-  if (exercise.workflowStatus !== 'UNDER_REVIEW') return '—'
-  return nextStepLabel(exercise.requiredRole)
-}
-
 function currentReviewerName(exercise: Exercise) {
   if (exercise.workflowStatus !== 'UNDER_REVIEW') return '—'
   return exercise.currentReviewer || '—'
 }
 
-function activeStatusLabel(exercise: Exercise) {
-  switch (exercise.workflowStatus) {
-    case 'UNDER_REVIEW':
-      return 'Under Review'
-    case 'RETURNED':
-      return 'Returned'
-    default:
-      return 'In Progress'
-  }
-}
-
-const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
+const colspan = () => (props.activeTab === IN_PROGRESS_TAB ? 12 : 11)
 </script>
 
 <template>
   <div class="overflow-x-auto rounded-lg border">
-    <Table :class="activeTab === 'Active' ? 'min-w-[1280px]' : 'min-w-[1200px]'">
+    <Table :class="activeTab === IN_PROGRESS_TAB ? 'min-w-[1280px]' : 'min-w-[1200px]'">
       <TableHeader>
-        <TableRow v-if="activeTab === 'Active'">
+        <TableRow v-if="activeTab === IN_PROGRESS_TAB">
           <TableHead>Exercise Code</TableHead>
           <TableHead>Toolkit</TableHead>
           <TableHead>Delivery HC</TableHead>
           <TableHead>Right Sizing HC</TableHead>
-          <TableHead>Production Support</TableHead>
-          <TableHead>Capacity Creation</TableHead>
+          <TableHead>Production Support (FTE)</TableHead>
+          <TableHead>Capacity Creation (HC)</TableHead>
           <TableHead>Created Date</TableHead>
           <TableHead>Submitted Date</TableHead>
-          <TableHead>Review Stage</TableHead>
+          <TableHead>Current Step</TableHead>
           <TableHead>Current Reviewer</TableHead>
           <TableHead>Aging</TableHead>
-          <TableHead>Status</TableHead>
           <TableHead class="text-right">Action</TableHead>
         </TableRow>
         <TableRow v-else>
@@ -113,8 +96,8 @@ const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
           <TableHead>Toolkit</TableHead>
           <TableHead>Delivery HC</TableHead>
           <TableHead>Right Sizing HC</TableHead>
-          <TableHead>Production Support</TableHead>
-          <TableHead>Capacity Creation</TableHead>
+          <TableHead>Production Support (FTE)</TableHead>
+          <TableHead>Capacity Creation (HC)</TableHead>
           <TableHead>Created Date</TableHead>
           <TableHead>Submitted Date</TableHead>
           <TableHead>Archived Date</TableHead>
@@ -124,7 +107,7 @@ const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
       </TableHeader>
       <TableBody>
         <TableRow v-for="exercise in rows" :key="exercise.id">
-          <template v-if="activeTab === 'Active'">
+          <template v-if="activeTab === IN_PROGRESS_TAB">
             <TableCell>{{ exercise.exerciseCode }}</TableCell>
             <TableCell>{{ exercise.snapshot.toolkit.name }}</TableCell>
             <TableCell>{{ deliveryHc(exercise) }}</TableCell>
@@ -135,7 +118,12 @@ const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
             </TableCell>
             <TableCell>{{ formatDate(exercise.createdAt) }}</TableCell>
             <TableCell>{{ formatDate(exercise.submittedAt) }}</TableCell>
-            <TableCell>{{ reviewStage(exercise) }}</TableCell>
+            <TableCell :title="exercise.lastDecisionComment || undefined">
+              <span class="inline-flex flex-wrap items-center gap-1.5">
+                <span>{{ currentStepLabel(exercise) }}</span>
+                <Badge v-if="isReturned(exercise)" variant="outline">Returned</Badge>
+              </span>
+            </TableCell>
             <TableCell>{{ currentReviewerName(exercise) }}</TableCell>
             <TableCell>
               <Badge
@@ -151,9 +139,6 @@ const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
               </Badge>
               <span v-else>—</span>
             </TableCell>
-            <TableCell :title="exercise.lastDecisionComment || undefined">
-              {{ activeStatusLabel(exercise) }}
-            </TableCell>
           </template>
           <template v-else>
             <TableCell>{{ exercise.exerciseCode }}</TableCell>
@@ -168,7 +153,7 @@ const colspan = () => (props.activeTab === 'Active' ? 13 : 11)
             <TableCell>{{ formatDate(exercise.submittedAt) }}</TableCell>
             <TableCell>{{ formatDate(exercise.archivedAt) }}</TableCell>
             <TableCell :title="exercise.lastDecisionComment || undefined">
-              {{ exerciseStatusLabel(exercise) }}
+              {{ currentStepLabel(exercise) }}
             </TableCell>
           </template>
           <TableCell class="text-right">

@@ -14,7 +14,7 @@ export const AD_EDITOR_TITLES: Record<AdTab, string> = {
   team: 'Team Setup',
   tms: 'Embedded TMS',
   support: 'Production Support',
-  calendar: 'Calendar And Holidays',
+  calendar: 'Calendar',
   volume: 'Volume Input',
 }
 

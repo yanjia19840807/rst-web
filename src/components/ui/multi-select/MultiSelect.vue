@@ -35,6 +35,10 @@ function isSelected(option: string) {
   return props.modelValue.includes(option)
 }
 
+const allSelected = computed(
+  () => props.options.length > 0 && props.options.every((option) => isSelected(option)),
+)
+
 function toggle(option: string) {
   if (props.disabled) return
   emit(
@@ -43,6 +47,11 @@ function toggle(option: string) {
       ? props.modelValue.filter((item) => item !== option)
       : [...props.modelValue, option],
   )
+}
+
+function selectAll() {
+  if (props.disabled) return
+  emit('update:modelValue', [...props.options])
 }
 
 function clear() {
@@ -94,15 +103,27 @@ function clear() {
           {{ emptyText }}
         </p>
       </div>
-      <button
-        v-if="modelValue.length"
-        type="button"
-        class="mt-1 w-full border-t px-2 pt-1.5 pb-0.5 text-left text-sm font-medium text-primary hover:underline"
-        :disabled="disabled"
-        @click="clear"
+      <div
+        v-if="options.length"
+        class="mt-1 flex items-center justify-between gap-2 border-t px-2 pt-1.5 pb-0.5"
       >
-        Clear selection
-      </button>
+        <button
+          type="button"
+          class="text-sm font-medium text-primary hover:underline disabled:pointer-events-none disabled:text-muted-foreground disabled:no-underline"
+          :disabled="disabled || allSelected"
+          @click="selectAll"
+        >
+          Select all
+        </button>
+        <button
+          type="button"
+          class="text-sm font-medium text-primary hover:underline disabled:pointer-events-none disabled:text-muted-foreground disabled:no-underline"
+          :disabled="disabled || !modelValue.length"
+          @click="clear"
+        >
+          Clear selection
+        </button>
+      </div>
     </PopoverContent>
   </Popover>
 </template>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { toTypedSchema } from '@vee-validate/zod'
+import { computed, ref, watch } from 'vue'
+import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import TablePager from '@/components/TablePager.vue'
@@ -20,7 +22,21 @@ import { exerciseApi } from '../../api'
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { useToolkitVolumePointsQuery } from '../../api/queries'
 import { triggerDownload } from '../../downloadBlob'
+import { useBeforeAssociatedDataWrite } from '../../composables/useAssociatedDataSaveGuard'
 import { addDaysIso, dailyTrainDates, deriveSlotPeriodLabel, shiftYearMonth } from '../../periodWindows'
+import {
+  dailyVolumeContextIssue,
+  dailyVolumeRowSchema,
+  emptyDailyVolumeRow,
+  emptyMonthlyVolumeRow,
+  emptySlotVolumeRow,
+  monthlyVolumeContextIssue,
+  monthlyVolumeRowSchema,
+  slotVolumeRowSchema,
+  type DailyVolumeRowValues,
+  type MonthlyVolumeRowValues,
+  type SlotVolumeRowValues,
+} from '../../schemas/volume'
 import type {
   DailyVolume,
   DailyVolumeRequest,
@@ -73,6 +89,7 @@ const {
   importDailyVolumes,
   importSlotVolumes,
 } = useExerciseAssociatedDataMutations()
+const beforeAssociatedDataWrite = useBeforeAssociatedDataWrite()
 
 const tab = ref<VolumeTab>('monthly')
 const page = ref(1)
@@ -85,16 +102,36 @@ const dayDrafts = ref<DraftDaily[]>([])
 const slotDrafts = ref<SlotVolumeRequest[]>([])
 
 const editKey = ref<string | null>(null)
-const periodDraft = reactive({
-  month: '',
-  volumeDate: '',
-  actualVolume: null as number | null,
-  commercialRatio: null as number | null,
-  dailyAdjustmentRatio: null as number | null,
-})
 const slotEditingIndex = ref<number | null>(null)
-const slotEditValue = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+const monthlyForm = useForm<MonthlyVolumeRowValues>({
+  validationSchema: toTypedSchema(monthlyVolumeRowSchema),
+  initialValues: emptyMonthlyVolumeRow(),
+  validateOnMount: false,
+})
+const [month] = monthlyForm.defineField('month')
+const [monthlyActualVolume] = monthlyForm.defineField('actualVolume')
+const [commercialRatio] = monthlyForm.defineField('commercialRatio')
+const monthlyErrors = monthlyForm.errors
+
+const dailyForm = useForm<DailyVolumeRowValues>({
+  validationSchema: toTypedSchema(dailyVolumeRowSchema),
+  initialValues: emptyDailyVolumeRow(),
+  validateOnMount: false,
+})
+const [volumeDate] = dailyForm.defineField('volumeDate')
+const [dailyActualVolume] = dailyForm.defineField('actualVolume')
+const [dailyAdjustmentRatio] = dailyForm.defineField('dailyAdjustmentRatio')
+const dailyErrors = dailyForm.errors
+
+const slotForm = useForm<SlotVolumeRowValues>({
+  validationSchema: toTypedSchema(slotVolumeRowSchema),
+  initialValues: emptySlotVolumeRow(),
+  validateOnMount: false,
+})
+const [slotActualVolume] = slotForm.defineField('actualVolume')
+const slotErrors = slotForm.errors
 
 const toolkitPointsQuery = useToolkitVolumePointsQuery(() => props.exerciseId)
 const toolkitMonthMap = computed(() => {
@@ -147,10 +184,10 @@ watch(
     }))
 
     if (keepEdit && pendingMonths.length) {
-      monthDrafts.value = [...monthDrafts.value, ...pendingMonths]
+      monthDrafts.value = [...pendingMonths, ...monthDrafts.value]
       editKey.value = keepEdit
     } else if (keepEdit && pendingDays.length) {
-      dayDrafts.value = [...dayDrafts.value, ...pendingDays]
+      dayDrafts.value = [...pendingDays, ...dayDrafts.value]
       editKey.value = keepEdit
     } else {
       editKey.value = null
@@ -166,19 +203,17 @@ watch(tab, () => {
   slotEditingIndex.value = null
 })
 
-watch(
-  () => [periodDraft.month, periodDraft.volumeDate] as const,
-  ([month, date]) => {
-    if (!editKey.value || periodDraft.actualVolume != null) return
-    if (tab.value === 'monthly') {
-      const seeded = toolkitMonthMap.value.get(month)
-      if (seeded != null) periodDraft.actualVolume = seeded
-    } else if (tab.value === 'daily') {
-      const seeded = toolkitDayMap.value.get(date)
-      if (seeded != null) periodDraft.actualVolume = seeded
-    }
-  },
-)
+watch(month, (value) => {
+  if (!editKey.value || tab.value !== 'monthly' || monthlyActualVolume.value != null) return
+  const seeded = toolkitMonthMap.value.get(value ?? '')
+  if (seeded != null) monthlyActualVolume.value = seeded
+})
+
+watch(volumeDate, (value) => {
+  if (!editKey.value || tab.value !== 'daily' || dailyActualVolume.value != null) return
+  const seeded = toolkitDayMap.value.get(value ?? '')
+  if (seeded != null) dailyActualVolume.value = seeded
+})
 
 const sortedMonths = computed(() =>
   [...monthDrafts.value].sort((a, b) => compareDraft(a.key, a.month, b.key, b.month)),
@@ -200,10 +235,10 @@ const currentTotal = computed(() => {
 
 const windowHint = computed(() => {
   if (tab.value === 'monthly') {
-    return 'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional (Excel 1 + Commercial). Charts show Sizing Month and the prior 2 months as history.'
+    return 'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional.'
   }
   if (tab.value === 'daily') {
-    return 'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Charts show all days in Sizing Month as history.'
+    return 'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional.'
   }
   return `Slot window: ${deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)} · 09:00–22:00 / 30 min`
 })
@@ -241,50 +276,42 @@ function confirmedDays() {
     .sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
 }
 
-function monthsAreContinuous(months: string[]) {
-  const keys = [...months].filter((month) => /^\d{4}-\d{2}$/.test(month)).sort()
-  for (let i = 1; i < keys.length; i++) {
-    if (shiftYearMonth(keys[i - 1], 1) !== keys[i]) return false
-  }
-  return true
-}
-
-function datesAreContinuous(dates: string[]) {
-  const keys = [...dates].filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort()
-  for (let i = 1; i < keys.length; i++) {
-    if (addDaysIso(keys[i - 1], 1) !== keys[i]) return false
-  }
-  return true
-}
-
 function canDeleteMonth(row: DraftMonthly) {
   if (row.key.startsWith('new-')) return true
   const rows = confirmedMonths()
-  if (rows.length <= 1) return true
-  return row.key === rows[0].key || row.key === rows[rows.length - 1].key
+  const first = rows[0]
+  const last = rows[rows.length - 1]
+  if (!first || !last || rows.length <= 1) return true
+  return row.key === first.key || row.key === last.key
 }
 
 function canDeleteDay(row: DraftDaily) {
   if (row.key.startsWith('new-')) return true
   const rows = confirmedDays()
-  if (rows.length <= 1) return true
-  return row.key === rows[0].key || row.key === rows[rows.length - 1].key
+  const first = rows[0]
+  const last = rows[rows.length - 1]
+  if (!first || !last || rows.length <= 1) return true
+  return row.key === first.key || row.key === last.key
 }
 
 function suggestedAddMonth() {
   const months = confirmedMonths().map((row) => row.month)
-  if (!months.length) return props.sizingMonth
-  const after = shiftYearMonth(months[months.length - 1], 1)
+  const first = months[0]
+  const last = months[months.length - 1]
+  if (!first || !last) return props.sizingMonth
+  const after = shiftYearMonth(last, 1)
   if (after <= props.sizingMonth) return after
-  return shiftYearMonth(months[0], -1)
+  return shiftYearMonth(first, -1)
 }
 
 function suggestedAddDate() {
   const dates = confirmedDays().map((row) => row.volumeDate)
-  if (!dates.length) return sizingMonthEnd.value
-  const after = addDaysIso(dates[dates.length - 1], 1)
+  const first = dates[0]
+  const last = dates[dates.length - 1]
+  if (!first || !last) return sizingMonthEnd.value
+  const after = addDaysIso(last, 1)
   if (after <= sizingMonthEnd.value) return after
-  return addDaysIso(dates[0], -1)
+  return addDaysIso(first, -1)
 }
 
 function slicePage<T>(rows: T[], currentPage: number, size: number) {
@@ -292,7 +319,7 @@ function slicePage<T>(rows: T[], currentPage: number, size: number) {
   return rows.slice(start, start + size)
 }
 
-function dayName(date: string) {
+function dayName(date: string | null | undefined) {
   if (!date) return '—'
   try {
     return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' })
@@ -355,26 +382,42 @@ async function persistSlot() {
   emit('update:slot', saved)
 }
 
+function firstFormError(bag: Record<string, unknown>): string | undefined {
+  for (const value of Object.values(bag)) {
+    if (typeof value === 'string' && value.trim()) return value
+  }
+}
+
 function startEditMonth(row: DraftMonthly) {
   if (props.readOnly || busy.value) return
+  monthlyForm.resetForm({
+    values: {
+      month: row.month,
+      actualVolume: row.actualVolume,
+      commercialRatio: row.commercialRatio,
+    },
+  })
   editKey.value = row.key
-  periodDraft.month = row.month
-  periodDraft.actualVolume = row.actualVolume
-  periodDraft.commercialRatio = row.commercialRatio
 }
 
 function startEditDay(row: DraftDaily) {
   if (props.readOnly || busy.value) return
+  dailyForm.resetForm({
+    values: {
+      volumeDate: row.volumeDate,
+      actualVolume: row.actualVolume,
+      dailyAdjustmentRatio: row.dailyAdjustmentRatio,
+    },
+  })
   editKey.value = row.key
-  periodDraft.volumeDate = row.volumeDate
-  periodDraft.actualVolume = row.actualVolume
-  periodDraft.dailyAdjustmentRatio = row.dailyAdjustmentRatio
 }
 
 function startEditSlot(index: number, current: string | number | null | undefined) {
   if (props.readOnly || busy.value) return
+  slotForm.resetForm({
+    values: { actualVolume: numOrNull(current) },
+  })
   slotEditingIndex.value = index
-  slotEditValue.value = numOrNull(current)
 }
 
 function cancelEdit() {
@@ -399,48 +442,33 @@ async function withBusy<T>(action: BusyAction, run: () => Promise<T>): Promise<T
 async function confirmEdit() {
   if (editKey.value == null) return
   const key = editKey.value
-  const n = periodDraft.actualVolume
-  if (n != null && n < 0) {
-    toast.error('Volume must be non-negative.')
-    return
-  }
 
   if (tab.value === 'monthly') {
-    const month = periodDraft.month.trim()
-    if (!/^\d{4}-\d{2}$/.test(month)) {
-      toast.error('Choose a month.')
+    const result = await monthlyForm.validate()
+    if (!result.valid) {
+      toast.warning(firstFormError(monthlyForm.errors.value) ?? 'Check the highlighted fields.')
       return
     }
-    if (month > props.sizingMonth) {
-      toast.error('Cannot add a month after Sizing Month.')
+    const nextMonth = String(monthlyForm.values.month).trim()
+    const context = monthlyVolumeContextIssue(nextMonth, {
+      sizingMonth: props.sizingMonth,
+      otherMonths: monthDrafts.value.filter((row) => row.key !== key).map((row) => row.month),
+    })
+    if (context) {
+      monthlyForm.setFieldError(context.path, context.message)
+      toast.warning(context.message)
       return
     }
-    if (monthDrafts.value.some((row) => row.key !== key && row.month === month)) {
-      toast.error(`${month} is already on this exercise.`)
-      return
-    }
-    const nextMonths = monthDrafts.value
-      .filter((row) => row.key !== key)
-      .map((row) => row.month)
-      .concat(month)
-    if (!monthsAreContinuous(nextMonths)) {
-      toast.error('Months must be consecutive. Add the month before the first or after the last row.')
-      return
-    }
-    const volume = n ?? toolkitMonthMap.value.get(month) ?? null
-    if (volume == null) {
-      toast.error('Actual Volume is required.')
-      return
-    }
+    if (!(await beforeAssociatedDataWrite())) return
     try {
       await withBusy('save', async () => {
         monthDrafts.value = monthDrafts.value.map((row) =>
           row.key === key
             ? {
-                key: month,
-                month,
-                actualVolume: volume,
-                commercialRatio: periodDraft.commercialRatio,
+                key: nextMonth,
+                month: nextMonth,
+                actualVolume: Number(monthlyForm.values.actualVolume),
+                commercialRatio: monthlyForm.values.commercialRatio,
               }
             : row,
         )
@@ -454,41 +482,31 @@ async function confirmEdit() {
     return
   }
 
-  const date = periodDraft.volumeDate.trim()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    toast.error('Choose a date.')
+  const result = await dailyForm.validate()
+  if (!result.valid) {
+    toast.warning(firstFormError(dailyForm.errors.value) ?? 'Check the highlighted fields.')
     return
   }
-  if (date > sizingMonthEnd.value) {
-    toast.error('Cannot add a date after Sizing Month.')
+  const nextDate = String(dailyForm.values.volumeDate).trim()
+  const context = dailyVolumeContextIssue(nextDate, {
+    sizingMonthEnd: sizingMonthEnd.value,
+    otherDates: dayDrafts.value.filter((row) => row.key !== key).map((row) => row.volumeDate),
+  })
+  if (context) {
+    dailyForm.setFieldError(context.path, context.message)
+    toast.warning(context.message)
     return
   }
-  if (dayDrafts.value.some((row) => row.key !== key && row.volumeDate === date)) {
-    toast.error(`${date} is already on this exercise.`)
-    return
-  }
-  const nextDates = dayDrafts.value
-    .filter((row) => row.key !== key)
-    .map((row) => row.volumeDate)
-    .concat(date)
-  if (!datesAreContinuous(nextDates)) {
-    toast.error('Dates must be consecutive. Add the date before the first or after the last row.')
-    return
-  }
-  const volume = n ?? toolkitDayMap.value.get(date) ?? null
-  if (volume == null) {
-    toast.error('Actual Volume is required.')
-    return
-  }
+  if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('save', async () => {
       dayDrafts.value = dayDrafts.value.map((row) =>
         row.key === key
           ? {
-              key: date,
-              volumeDate: date,
-              actualVolume: volume,
-              dailyAdjustmentRatio: periodDraft.dailyAdjustmentRatio,
+              key: nextDate,
+              volumeDate: nextDate,
+              actualVolume: Number(dailyForm.values.actualVolume),
+              dailyAdjustmentRatio: dailyForm.values.dailyAdjustmentRatio,
             }
           : row,
       )
@@ -504,19 +522,16 @@ async function confirmEdit() {
 async function confirmSlotEdit() {
   if (slotEditingIndex.value == null) return
   const idx = slotEditingIndex.value
-  const n = slotEditValue.value
-  if (n == null) {
-    toast.error('Actual Volume is required.')
+  const result = await slotForm.validate()
+  if (!result.valid) {
+    toast.warning(firstFormError(slotForm.errors.value) ?? 'Check the highlighted fields.')
     return
   }
-  if (n < 0) {
-    toast.error('Volume must be non-negative.')
-    return
-  }
+  if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('save', async () => {
       const row = slotDrafts.value[idx]
-      if (row) row.actualVolume = Number(n ?? 0)
+      if (row) row.actualVolume = Number(slotForm.values.actualVolume)
       await persistSlot()
       slotEditingIndex.value = null
       toast.success('Volume updated.')
@@ -530,17 +545,31 @@ function addRow() {
   if (props.readOnly || busy.value || editKey.value) return
   const key = `new-${Date.now()}`
   if (tab.value === 'monthly') {
-    const month = suggestedAddMonth()
-    monthDrafts.value = [...monthDrafts.value, { key, month, actualVolume: null, commercialRatio: null }]
-    periodDraft.month = month
-    periodDraft.actualVolume = toolkitMonthMap.value.get(month) ?? null
-    periodDraft.commercialRatio = null
+    const nextMonth = suggestedAddMonth()
+    monthDrafts.value = [
+      { key, month: nextMonth, actualVolume: null, commercialRatio: null },
+      ...monthDrafts.value,
+    ]
+    monthlyForm.resetForm({
+      values: {
+        month: nextMonth,
+        actualVolume: toolkitMonthMap.value.get(nextMonth) ?? null,
+        commercialRatio: null,
+      },
+    })
   } else if (tab.value === 'daily') {
-    const date = suggestedAddDate()
-    dayDrafts.value = [...dayDrafts.value, { key, volumeDate: date, actualVolume: null, dailyAdjustmentRatio: null }]
-    periodDraft.volumeDate = date
-    periodDraft.actualVolume = toolkitDayMap.value.get(date) ?? null
-    periodDraft.dailyAdjustmentRatio = null
+    const nextDate = suggestedAddDate()
+    dayDrafts.value = [
+      { key, volumeDate: nextDate, actualVolume: null, dailyAdjustmentRatio: null },
+      ...dayDrafts.value,
+    ]
+    dailyForm.resetForm({
+      values: {
+        volumeDate: nextDate,
+        actualVolume: toolkitDayMap.value.get(nextDate) ?? null,
+        dailyAdjustmentRatio: null,
+      },
+    })
   } else {
     return
   }
@@ -560,6 +589,7 @@ async function removeMonth(row: DraftMonthly) {
     return
   }
   const previous = monthDrafts.value
+  if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('delete', async () => {
       monthDrafts.value = previous.filter((item) => item.key !== row.key)
@@ -585,6 +615,7 @@ async function removeDay(row: DraftDaily) {
     return
   }
   const previous = dayDrafts.value
+  if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('delete', async () => {
       dayDrafts.value = previous.filter((item) => item.key !== row.key)
@@ -640,6 +671,7 @@ async function onImportFile(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file || props.readOnly) return
+  if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('import', async () => {
       if (tab.value === 'monthly') {
@@ -773,24 +805,27 @@ async function onImportFile(event: Event) {
             <TableCell>
               <MonthPicker
                 v-if="editKey === row.key"
-                v-model="periodDraft.month"
+                v-model="month"
                 class="w-[180px]"
+                :invalid="Boolean(monthlyErrors.month)"
               />
               <span v-else>{{ row.month }}</span>
             </TableCell>
             <TableCell>
               <NumberFieldControl
                 v-if="editKey === row.key"
-                v-model="periodDraft.actualVolume"
+                v-model="monthlyActualVolume"
                 class="max-w-36"
+                :invalid="Boolean(monthlyErrors.actualVolume)"
               />
               <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>
             <TableCell>
               <NumberFieldControl
                 v-if="editKey === row.key"
-                v-model="periodDraft.commercialRatio"
+                v-model="commercialRatio"
                 class="max-w-36"
+                :invalid="Boolean(monthlyErrors.commercialRatio)"
               />
               <span v-else>{{ formatNumber(row.commercialRatio, 4) }}</span>
             </TableCell>
@@ -868,27 +903,30 @@ async function onImportFile(event: Event) {
             <TableCell>
               <DatePicker
                 v-if="editKey === row.key"
-                v-model="periodDraft.volumeDate"
+                v-model="volumeDate"
                 aria-label="Volume date"
                 placeholder="Select date"
                 class="w-[180px]"
+                :invalid="Boolean(dailyErrors.volumeDate)"
               />
               <span v-else>{{ row.volumeDate }}</span>
             </TableCell>
-            <TableCell>{{ dayName(editKey === row.key ? periodDraft.volumeDate : row.volumeDate) }}</TableCell>
+            <TableCell>{{ dayName(editKey === row.key ? volumeDate : row.volumeDate) }}</TableCell>
             <TableCell>
               <NumberFieldControl
                 v-if="editKey === row.key"
-                v-model="periodDraft.actualVolume"
+                v-model="dailyActualVolume"
                 class="max-w-36"
+                :invalid="Boolean(dailyErrors.actualVolume)"
               />
               <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>
             <TableCell>
               <NumberFieldControl
                 v-if="editKey === row.key"
-                v-model="periodDraft.dailyAdjustmentRatio"
+                v-model="dailyAdjustmentRatio"
                 class="max-w-36"
+                :invalid="Boolean(dailyErrors.dailyAdjustmentRatio)"
               />
               <span v-else>{{ formatNumber(row.dailyAdjustmentRatio, 4) }}</span>
             </TableCell>
@@ -963,8 +1001,9 @@ async function onImportFile(event: Event) {
             <TableCell>
               <NumberFieldControl
                 v-if="slotEditingIndex === index"
-                v-model="slotEditValue"
+                v-model="slotActualVolume"
                 class="max-w-36"
+                :invalid="Boolean(slotErrors.actualVolume)"
               />
               <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>

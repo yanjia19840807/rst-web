@@ -17,10 +17,11 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import { floatingTooltip } from '@/lib/chartTooltip'
+
 import { n } from '../sizingChartMath'
 import {
   cumulativeDailyTat,
-  instantTat,
   roundedTheoreticalFte,
   shiftSeriesName,
   sortShiftKeys,
@@ -43,6 +44,9 @@ type LegendItem = {
   kind: 'bar' | 'solid' | 'dashed'
 }
 
+/** Demo Excel chart8 pastel fills for stacked shift coverage blocks. */
+const SHIFT_COLORS = ['#9BC2E6', '#F4B2C0', '#C5E0B4', '#FFE699', '#BDD7EE']
+
 const props = defineProps<{
   simulation: SlotSimulationView | null
 }>()
@@ -53,24 +57,13 @@ function themeColor(cssVar: string, fallback: string): string {
   return value || fallback
 }
 
-const palette = computed(() => {
-  const chart = [
-    themeColor('--chart-1', '#071d49'),
-    themeColor('--chart-2', '#315f9b'),
-    themeColor('--chart-3', '#79a6d2'),
-    themeColor('--chart-4', '#da291c'),
-    themeColor('--chart-5', '#4e7d69'),
-  ]
-  return {
-    chart,
-    theoretical: themeColor('--foreground', '#14233a'),
-    target: themeColor('--chart-4', '#da291c'),
-    cumulative: themeColor('--chart-5', '#4e7d69'),
-    instant: themeColor('--chart-2', '#315f9b'),
-    axis: themeColor('--foreground', '#14233a'),
-    border: themeColor('--border', '#d4dde9'),
-  }
-})
+const palette = computed(() => ({
+  theoretical: themeColor('--foreground', '#14233a'),
+  target: '#A6A6A6',
+  cumulative: '#548235',
+  axis: themeColor('--foreground', '#14233a'),
+  border: themeColor('--border', '#d4dde9'),
+}))
 
 const hasData = computed(() => (props.simulation?.chart?.labels?.length ?? 0) > 0)
 
@@ -107,14 +100,20 @@ const option = computed<ChartOption>(() => {
   const rows = alignedRows(labels, props.simulation?.rows ?? [])
 
   const shiftKeys = sortShiftKeys(Object.keys(chart.shiftFteByKey ?? {}))
+  // Demo chart8: stacked columns, gapWidth=0, overlap=100% → continuous coverage blocks.
   const stackSeries: BarSeriesOption[] = shiftKeys.map((key, index) => ({
     name: shiftSeriesName(key),
     type: 'bar',
     stack: 'fte',
     data: (chart.shiftFteByKey[key] ?? []).map((v) => n(v)),
-    itemStyle: { color: colors.chart[index % colors.chart.length] },
-    barMaxWidth: 18,
+    itemStyle: {
+      color: SHIFT_COLORS[index % SHIFT_COLORS.length],
+      opacity: 0.9,
+    },
+    barCategoryGap: '0%',
+    barGap: '0%',
     yAxisIndex: 0,
+    z: 2,
   }))
 
   const hasRowData = rows.some(Boolean)
@@ -124,11 +123,6 @@ const option = computed<ChartOption>(() => {
 
   const target = n(props.simulation?.slaTargetRatio)
   const hasTarget = props.simulation?.slaTargetRatio != null
-  const instant = hasRowData
-    ? rows.map((row) =>
-        row ? instantTat(n(row.manualVolume), n(row.volumeOutsideSla)) : null,
-      )
-    : labels.map(() => null)
   const cumulative = hasRowData
     ? cumulativeDailyTat(
         rows.map((row) =>
@@ -162,23 +156,26 @@ const option = computed<ChartOption>(() => {
   })
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: floatingTooltip(),
     legend: { show: false },
-    grid: { left: 48, right: 56, top: 28, bottom: 16 },
+    grid: { left: 48, right: 56, top: 28, bottom: 28 },
     xAxis: {
       type: 'category',
       data: axisLabels,
+      boundaryGap: true,
       axisLine: { lineStyle: { color: colors.border } },
       axisLabel: {
         color: colors.axis,
         fontSize: 10,
-        rotate: axisLabels.length > 24 ? 45 : 0,
+        hideOverlap: true,
+        rotate: axisLabels.length > 48 ? 45 : 0,
       },
     },
     yAxis: [
       {
         type: 'value',
         name: 'FTE',
+        min: 0,
         splitLine: { lineStyle: { color: colors.border } },
         axisLabel: { color: colors.axis, fontSize: 11 },
       },
@@ -211,7 +208,6 @@ const option = computed<ChartOption>(() => {
         ? [tatLine('Target TAT', labels.map(() => target), colors.target, true)]
         : []),
       tatLine('Cumulative Daily TAT', cumulative, colors.cumulative, false, 3),
-      tatLine('Instant TAT', instant, colors.instant),
     ],
   }
 })
@@ -222,7 +218,7 @@ const legendItems = computed<LegendItem[]>(() => {
   const items: LegendItem[] = sortShiftKeys(Object.keys(chart?.shiftFteByKey ?? {})).map(
     (key, index) => ({
       name: shiftSeriesName(key),
-      color: colors.chart[index % colors.chart.length]!,
+      color: SHIFT_COLORS[index % SHIFT_COLORS.length]!,
       kind: 'bar',
     }),
   )
@@ -235,7 +231,6 @@ const legendItems = computed<LegendItem[]>(() => {
     items.push({ name: 'Target TAT', color: colors.target, kind: 'dashed' })
   }
   items.push({ name: 'Cumulative Daily TAT', color: colors.cumulative, kind: 'solid' })
-  items.push({ name: 'Instant TAT', color: colors.instant, kind: 'solid' })
   return items
 })
 </script>
@@ -245,13 +240,13 @@ const legendItems = computed<LegendItem[]>(() => {
     <h4 class="mb-2.5 text-sm font-bold">Per-Shift FTE Available vs Theoretical FTE Needed</h4>
     <div
       v-if="hasData"
-      class="h-64 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+      class="h-80 overflow-hidden rounded-lg border bg-card px-1 pt-2"
     >
       <VChart class="h-full w-full" :option="option" autoresize />
     </div>
     <div
       v-else
-      class="flex h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
+      class="flex h-80 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
     >
       No slot chart data.
     </div>
@@ -266,7 +261,7 @@ const legendItems = computed<LegendItem[]>(() => {
       >
         <span
           v-if="item.kind === 'bar'"
-          class="inline-block h-2 w-4 rounded-sm"
+          class="inline-block h-2.5 w-4 rounded-sm"
           :style="{ backgroundColor: item.color }"
         />
         <span

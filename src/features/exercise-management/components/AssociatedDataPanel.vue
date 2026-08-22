@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { FieldUnit, withUnit } from '../fieldUnits'
 import { useAssociatedDataPanel } from '../composables/useAssociatedDataPanel'
 import { deriveSlotPeriodLabel } from '../periodWindows'
 import { normalizeHolidayType } from '../weekendCodes'
@@ -33,7 +34,6 @@ const {
   activeTab,
   loading,
   teamSetup,
-  shifts,
   support,
   calendar,
   monthly,
@@ -45,7 +45,6 @@ const {
   medianSource,
   openEditor,
   onCycleTimeUpdated,
-  reload,
 } = useAssociatedDataPanel(() => props.exerciseId)
 
 const supportFte = computed(() => {
@@ -109,9 +108,9 @@ const volumeSummary = computed(() => {
   ]
 })
 
-defineExpose({
-  getShifts: () => shifts.value,
-  reload,
+const editorActionLabel = computed(() => {
+  const name = AD_TAB_LABELS[activeTab.value]
+  return props.readOnly ? `View ${name}` : `Edit ${name}`
 })
 </script>
 
@@ -126,8 +125,8 @@ defineExpose({
         </p>
       </div>
       <CardAction>
-        <Button size="sm" :disabled="loading" @click="openEditor(activeTab)">
-          {{ readOnly ? 'View' : 'Edit' }}
+        <Button size="sm" variant="outline" :disabled="loading" @click="openEditor(activeTab)">
+          {{ editorActionLabel }}
         </Button>
       </CardAction>
     </CardHeader>
@@ -164,14 +163,14 @@ defineExpose({
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell>Daily capacity / agent</TableCell>
+                <TableCell>{{ withUnit('Daily capacity / agent', FieldUnit.transactions) }}</TableCell>
                 <TableCell>{{ formatNumber(teamSetup?.dailyCapacityPerAgent, 0) }}</TableCell>
                 <TableCell class="text-muted-foreground">
                   Calculated from baseline inputs
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Working days</TableCell>
+                <TableCell>{{ withUnit('Working days', FieldUnit.days) }}</TableCell>
                 <TableCell>{{ formatNumber(teamSetup?.workingDaysPerYear, 2) }}</TableCell>
                 <TableCell class="text-muted-foreground">
                   Calendar and holiday adjusted
@@ -186,8 +185,8 @@ defineExpose({
         <AdTmsSummary
           v-model:source="medianSource"
           :cycle-time="cycleTime"
-          :exercise-id="exerciseId"
-          :read-only="readOnly"
+          :exercise-id="props.exerciseId"
+          :read-only="props.readOnly"
         />
       </template>
 
@@ -203,14 +202,14 @@ defineExpose({
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell>Total support FTE</TableCell>
+                <TableCell>{{ withUnit('Total support', FieldUnit.fte) }}</TableCell>
                 <TableCell>
                   {{ supportFte != null ? formatNumber(supportFte, 2) : '—' }}
                 </TableCell>
                 <TableCell class="text-muted-foreground">Summed from registry</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Annual support hours</TableCell>
+                <TableCell>{{ withUnit('Annual support hours', FieldUnit.hours) }}</TableCell>
                 <TableCell>
                   {{
                     supportAnnualHours != null ? formatNumber(supportAnnualHours, 2) : '—'
@@ -268,10 +267,10 @@ defineExpose({
   <AssociatedDataEditorDialog
     v-model:open="editorOpen"
     :editor="editor"
-    :exercise-id="exerciseId"
-    :sizing-month="sizingMonth"
-    :slot-start-date="slotStartDate"
-    :slot-weeks="slotWeeks"
+    :exercise-id="props.exerciseId"
+    :sizing-month="props.sizingMonth"
+    :slot-start-date="props.slotStartDate"
+    :slot-weeks="props.slotWeeks"
     :team-setup="teamSetup"
     :support="support"
     :calendar="calendar"
@@ -280,7 +279,7 @@ defineExpose({
     :slot="slot"
     :cycle-time="cycleTime"
     :median-source="medianSource"
-    :read-only="readOnly"
+    :read-only="props.readOnly"
     @update:team-setup="teamSetup = $event"
     @update:support="support = $event"
     @update:calendar="calendar = $event"

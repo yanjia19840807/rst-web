@@ -52,6 +52,14 @@ function monthDayRange(ym: string): string {
   return `${formatDate(start)} – ${formatDate(end)}`
 }
 
+function monthSpanRange(fromYm: string, toYm: string): string {
+  const from = parseYearMonth(fromYm)
+  const to = parseYearMonth(toYm)
+  if (!from || !to) return '—'
+  const last = new Date(to.year, to.month, 0).getDate()
+  return `${formatDate(`${fromYm}-01`)} – ${formatDate(`${toYm}-${String(last).padStart(2, '0')}`)}`
+}
+
 export function addDaysIso(iso: string, days: number): string {
   const dt = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(dt.getTime())) return iso
@@ -72,7 +80,7 @@ export function deriveSizingWindows(sizingMonth: string): SizingWindows {
   return {
     monthTrain: `${formatMonth(shiftYearMonth(sizingMonth, -2))} – ${formatMonth(sizingMonth)}`,
     monthForecast: `${formatMonth(shiftYearMonth(sizingMonth, 1))} – ${formatMonth(shiftYearMonth(sizingMonth, 3))}`,
-    dailyTrain: monthDayRange(sizingMonth),
+    dailyTrain: monthSpanRange(`${sizingMonth.slice(0, 4)}-01`, sizingMonth),
     dailyForecast: monthDayRange(shiftYearMonth(sizingMonth, 1)),
   }
 }
@@ -92,12 +100,13 @@ export const SIZING_MONTH_HINT_DESCRIPTION =
 export const SLOT_PERIOD_HINT_DESCRIPTION =
   'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Values are seeded from the latest Approved archive where slots overlap.'
 
+export const TMS_PERIOD_HINT_DESCRIPTION =
+  'COMPLETED TMS sessions for this Toolkit whose session date falls in this inclusive range are linked to the Exercise. The SYSTEM Cycle Time baseline refreshes from those sessions. Changing the range adds newly included sessions and drops ones that fall outside it.'
+
 export function sizingHintLines(sizingMonth: string): DerivedHintLine[] {
   const w = deriveSizingWindows(sizingMonth)
   return [
-    { label: 'Month chart history', note: 'Sizing Month + prior 2 months', value: w.monthTrain },
     { label: 'Month forecast', note: 'next 3 months', value: w.monthForecast },
-    { label: 'Daily chart history', note: 'all days in Sizing Month', value: w.dailyTrain },
     { label: 'Daily forecast', note: 'all days in next month', value: w.dailyForecast },
   ]
 }
@@ -117,6 +126,29 @@ export function slotHintLines(startDate: string, weeks: number): DerivedHintLine
   ]
 }
 
+export function tmsHintLines(tmsFrom: string, tmsTo: string): DerivedHintLine[] {
+  const from = tmsFrom.trim()
+  const to = tmsTo.trim()
+  const valid = Boolean(from && to && to >= from)
+  return [
+    {
+      label: 'Resolved window',
+      note: 'inclusive from / to',
+      value: valid ? `${formatDate(from)} – ${formatDate(to)}` : '—',
+    },
+    {
+      label: 'Linked sessions',
+      note: 'this Toolkit, COMPLETED only',
+      value: 'Embedded TMS population for Cycle Time',
+    },
+    {
+      label: 'SYSTEM Cycle Time',
+      note: 'median of included sessions',
+      value: 'Refreshed when the period is saved',
+    },
+  ]
+}
+
 /** Chart history months: sizingMonth-2 … sizingMonth. Not a Volume Input row type. */
 export function monthlyTrainMonths(sizingMonth: string): string[] {
   if (!parseYearMonth(sizingMonth)) return []
@@ -131,6 +163,17 @@ export function dailyTrainDates(sizingMonth: string): string[] {
   const out: string[] = []
   for (let day = 1; day <= last; day++) {
     out.push(`${sizingMonth}-${String(day).padStart(2, '0')}`)
+  }
+  return out
+}
+
+/** Daily chart / SLA history: 1 Jan of the sizing year through sizing month. */
+export function dailyChartHistoryDates(sizingMonth: string): string[] {
+  const parsed = parseYearMonth(sizingMonth)
+  if (!parsed) return []
+  const out: string[] = []
+  for (let month = 1; month <= parsed.month; month++) {
+    out.push(...dailyTrainDates(`${parsed.year}-${String(month).padStart(2, '0')}`))
   }
   return out
 }

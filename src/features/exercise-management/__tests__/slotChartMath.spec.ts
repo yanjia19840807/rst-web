@@ -5,6 +5,7 @@ import {
   instantTat,
   roundedTheoreticalFte,
   shiftSeriesName,
+  slotApplicabilityOn,
   sortShiftKeys,
 } from '../slotChartMath'
 
@@ -55,5 +56,17 @@ describe('shift series labels', () => {
       'shift2',
       'shift10',
     ])
+  })
+})
+
+describe('slotApplicabilityOn', () => {
+  it('accepts calendar SLA within 24h and business-hours SLA within 8h', () => {
+    expect(slotApplicabilityOn('CALENDAR', 24 * 60)).toBe(true)
+    expect(slotApplicabilityOn('CALENDAR', 24 * 60 + 1)).toBe(false)
+    expect(slotApplicabilityOn('BUSINESS_HOURS', 8 * 60)).toBe(true)
+    expect(slotApplicabilityOn('BUSINESS_HOURS', 8 * 60 + 1)).toBe(false)
+    expect(slotApplicabilityOn('BH', 0.5)).toBe(true)
+    expect(slotApplicabilityOn(null, 60)).toBe(true)
+    expect(slotApplicabilityOn('BUSINESS_HOURS', null)).toBe(false)
   })
 })

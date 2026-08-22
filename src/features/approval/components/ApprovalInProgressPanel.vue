@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { toast } from 'vue-sonner'
+import { toTypedSchema } from '@vee-validate/zod'
+import { ref, watch } from 'vue'
+import { useForm } from 'vee-validate'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 
+import { decisionCommentSchema, returnCommentSchema } from '../schemas/decisionComment'
 import type { ApprovalWorkspaceView } from '../types'
 import ApprovalHistoryTable from './ApprovalHistoryTable.vue'
 
@@ -22,6 +24,25 @@ const emit = defineEmits<{
   return: []
 }>()
 
+const { defineField, errors, setFieldError, setFieldValue } = useForm({
+  validationSchema: toTypedSchema(decisionCommentSchema),
+  initialValues: { comments: props.comments },
+  validateOnMount: false,
+})
+const [comments] = defineField('comments')
+
+watch(
+  () => props.comments,
+  (value) => {
+    if (value !== (comments.value ?? '')) setFieldValue('comments', value)
+  },
+)
+
+watch(comments, (value) => {
+  const next = value ?? ''
+  if (next !== props.comments) emit('update:comments', next)
+})
+
 const approveOpen = ref(false)
 const returnOpen = ref(false)
 
@@ -30,8 +51,12 @@ function askApprove() {
 }
 
 function askReturn() {
-  if (!props.comments.trim()) {
-    toast.error('Comment is required when returning a submission.')
+  const parsed = returnCommentSchema.safeParse({ comments: comments.value ?? '' })
+  if (!parsed.success) {
+    setFieldError(
+      'comments',
+      parsed.error.issues[0]?.message ?? 'Comment is required when returning a submission.',
+    )
     return
   }
   returnOpen.value = true
@@ -63,12 +88,13 @@ function confirmReturn() {
         </dl>
         <Textarea
           id="approver-comments"
-          :model-value="comments"
+          v-model="comments"
           rows="3"
           placeholder="Add comment. Required if returning the submission."
           aria-label="Decision comment"
-          @update:model-value="emit('update:comments', String($event))"
+          :aria-invalid="Boolean(errors.comments)"
         />
+        <p v-if="errors.comments" class="text-xs text-destructive">{{ errors.comments }}</p>
         <div class="flex flex-wrap gap-2">
           <Button :disabled="pending" @click="askApprove">Approve Submission</Button>
           <Button variant="destructive" :disabled="pending" @click="askReturn">
@@ -113,7 +139,7 @@ function confirmReturn() {
       confirm-label="Return"
       :rows="[
         { label: 'Current step', value: workspace.currentHop?.step || '—' },
-        { label: 'Comment', value: comments.trim() || '—' },
+        { label: 'Comment', value: (comments ?? '').trim() || '—' },
       ]"
       :pending="pending"
       @confirm="confirmReturn"

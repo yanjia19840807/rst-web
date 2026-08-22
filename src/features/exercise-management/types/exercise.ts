@@ -73,6 +73,10 @@ export interface Exercise {
   }
 }
 
+export interface CommittedResultsStatus {
+  scenarioCount: number
+}
+
 export interface ExerciseListQuery {
   tab?: 'IN_PROGRESS' | 'ARCHIVED'
   exerciseCode?: string

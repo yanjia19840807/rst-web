@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
+import { provideAssociatedDataSaveGuard } from '../../composables/useAssociatedDataSaveGuard'
 import type {
   CalendarView,
   CycleTimeBaseline,
@@ -61,10 +63,21 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { putTeamSetup, putCalendar, createManualCycleTime } = useExerciseAssociatedDataMutations()
+const { putTeamSetup, createManualCycleTime } = useExerciseAssociatedDataMutations()
+const {
+  confirmOpen,
+  scenarioCount,
+  pending: clearingResults,
+  cancel: cancelClearResults,
+  confirm: confirmClearResults,
+  beforeAssociatedDataWrite,
+} = provideAssociatedDataSaveGuard(() => props.exerciseId)
 const busy = ref(false)
+
+function onImpactOpenChange(open: boolean) {
+  if (!open) cancelClearResults()
+}
 const teamEditor = ref<InstanceType<typeof AdTeamSetupEditor> | null>(null)
-const calendarEditor = ref<InstanceType<typeof AdCalendarEditor> | null>(null)
 const manualEditor = ref<InstanceType<typeof AdManualMedianEditor> | null>(null)
 
 const isManualTms = computed(
@@ -108,38 +121,61 @@ const closeOnly = computed(
   () =>
     props.editor === 'volume' ||
     props.editor === 'support' ||
+    props.editor === 'calendar' ||
     (props.editor === 'tms' && props.medianSource === 'system'),
 )
 
 async function save() {
-  if (!props.editor || props.readOnly || busy.value || closeOnly.value) return
+  if (!props.editor || props.readOnly || busy.value || closeOnly.value || clearingResults.value) {
+    return
+  }
+
+  let teamBody = null as Awaited<ReturnType<NonNullable<typeof teamEditor.value>['toRequest']>> | null
+  let manualBody = null as Awaited<
+    ReturnType<NonNullable<typeof manualEditor.value>['toRequest']>
+  > | null
+
+  if (props.editor === 'team') {
+    teamBody = (await teamEditor.value?.toRequest()) ?? null
+    if (!teamBody) {
+      toast.warning(
+        teamEditor.value
+          ? 'Check the highlighted fields.'
+          : 'Team Setup form is not ready. Close and open Edit again.',
+      )
+      return
+    }
+  } else if (isManualTms.value) {
+    manualBody = (await manualEditor.value?.toRequest()) ?? null
+    if (!manualBody) {
+      toast.warning(
+        manualEditor.value
+          ? 'Check the highlighted fields.'
+          : 'Manual median form is not ready. Close and open Edit again.',
+      )
+      return
+    }
+  } else {
+    return
+  }
+
+  if (!(await beforeAssociatedDataWrite())) return
 
   busy.value = true
   try {
-    if (props.editor === 'team') {
-      const body = teamEditor.value?.toRequest()
-      if (!body) {
-        toast.error('Team Setup form is not ready. Close and open Edit again.')
-        return
-      }
-      const saved = await putTeamSetup.mutateAsync({ exerciseId: props.exerciseId, body })
-      emit('update:teamSetup', saved)
-    } else if (props.editor === 'calendar') {
-      const body = calendarEditor.value?.toRequest()
-      if (!body) {
-        toast.error('Calendar form is not ready. Close and open Edit again.')
-        return
-      }
-      const saved = await putCalendar.mutateAsync({ exerciseId: props.exerciseId, body })
-      emit('update:calendar', saved)
-    } else if (isManualTms.value) {
-      const body = manualEditor.value?.toRequest()
-      if (!body) return
-      const saved = await createManualCycleTime.mutateAsync({
-        exerciseId: props.exerciseId,
-        body,
-      })
-      emit('update:cycleTime', saved)
+    if (props.editor === 'team' && teamBody) {
+      emit(
+        'update:teamSetup',
+        await putTeamSetup.mutateAsync({ exerciseId: props.exerciseId, body: teamBody }),
+      )
+    } else if (isManualTms.value && manualBody) {
+      emit(
+        'update:cycleTime',
+        await createManualCycleTime.mutateAsync({
+          exerciseId: props.exerciseId,
+          body: manualBody,
+        }),
+      )
     }
     toast.success(`${title.value} saved.`)
     onOpenChange(false)
@@ -167,13 +203,15 @@ async function save() {
               ? 'Read-only data snapshot for this exercise.'
               : editor === 'volume'
                 ? 'View and maintain the associated volume input data.'
-                : editor === 'support'
-                  ? 'Add, edit, or delete workload rows — changes are saved immediately.'
-                  : isManualTms
-                    ? 'Enter the manual median override and reason, then save. Support files are optional.'
-                    : editor === 'tms'
-                      ? 'Review TMS sessions linked to this exercise Cycle Time population.'
-                      : 'Edit the exercise Associated Data, then save your changes.'
+                : editor === 'calendar'
+                  ? 'Add, edit, or delete holiday dates — changes are saved immediately. Import Excel replaces the current list.'
+                  : editor === 'support'
+                    ? 'Add, edit, or delete workload rows — changes are saved immediately.'
+                    : isManualTms
+                      ? 'Enter the manual median override and reason, then save. Support files are optional.'
+                      : editor === 'tms'
+                        ? 'Review TMS sessions linked to this exercise Cycle Time population.'
+                        : 'Edit the exercise Associated Data, then save your changes.'
           }}
         </DialogDescription>
       </DialogHeader>
@@ -191,7 +229,7 @@ async function save() {
         <AdManualMedianEditor
           v-else-if="isManualTms"
           ref="manualEditor"
-          :exercise-id="exerciseId"
+          :exercise-id="props.exerciseId"
           :median-seconds="manualSeedMedian"
           :reason="manualSeedReason"
           :files="manualSeedFiles"
@@ -199,15 +237,13 @@ async function save() {
         />
         <AdTmsEditor
           v-else-if="editor === 'tms'"
-          :exercise-id="exerciseId"
+          :exercise-id="props.exerciseId"
           :cycle-time="cycleTime"
           :read-only="readOnly"
-          @update:cycle-time="emit('update:cycleTime', $event)"
-          @update:team-setup="emit('update:teamSetup', $event)"
         />
         <AdSupportEditor
           v-else-if="editor === 'support'"
-          :exercise-id="exerciseId"
+          :exercise-id="props.exerciseId"
           :items="support"
           :team-setup="teamSetup"
           :read-only="readOnly"
@@ -215,13 +251,14 @@ async function save() {
         />
         <AdCalendarEditor
           v-else-if="editor === 'calendar'"
-          ref="calendarEditor"
           :model-value="calendar"
+          :exercise-id="props.exerciseId"
           :read-only="readOnly"
+          @update:calendar="emit('update:calendar', $event)"
         />
         <AdVolumeEditor
           v-else-if="editor === 'volume'"
-          :exercise-id="exerciseId"
+          :exercise-id="props.exerciseId"
           :sizing-month="sizingMonth"
           :slot-start-date="slotStartDate"
           :slot-weeks="slotWeeks"
@@ -252,4 +289,20 @@ async function save() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ConfirmDialog
+    :open="confirmOpen"
+    elevated
+    title="Clear saved simulation results?"
+    @update:open="onImpactOpenChange"
+    description="Saving Associated Data will clear saved Forecast and Simulation results on all scenarios. Scenario inputs (name, Right Sizing HC, shifts) and Official stay. Re-run Preview / Save afterwards."
+    :rows="
+      scenarioCount > 0
+        ? [{ label: 'Scenarios with results', value: String(scenarioCount), strong: true }]
+        : []
+    "
+    confirm-label="Clear results and continue"
+    :pending="clearingResults"
+    @confirm="confirmClearResults"
+  />
 </template>

@@ -83,7 +83,7 @@ const toolkitDetailRows = computed(() => {
     {
       label: 'Timing mode',
       value: selectedToolkit.value.combineSubtasksTime
-        ? 'Combined same-reference session time'
+        ? 'Combine subtask time'
         : 'Per session',
     },
   ]

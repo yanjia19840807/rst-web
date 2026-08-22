@@ -29,7 +29,9 @@ import {
   useSupportQuery,
   useTeamSetupQuery,
 } from '../api/queries'
+import { FieldUnit, withUnit } from '../fieldUnits'
 import type { Scenario } from '../types'
+import { actualHeadcount } from '../sizingChartMath'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
 import ExerciseDetailHeader from './ExerciseDetailHeader.vue'
@@ -117,22 +119,25 @@ const selectedScenario = computed(
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce((sum, item) => sum + Number(item.deliveryHc), 0),
 )
+const actualSize = computed(() =>
+  actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
+)
 const supportFte = computed(() => {
   if (!support.value.length) return null
   return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
 })
 const medianLabel = computed(() =>
-  cycleTime.value ? `${Number(cycleTime.value.medianSeconds).toFixed(2)}s` : '—',
+  cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',
 )
 const slaTargetLabel = computed(() => {
   const ratio = teamSetup.value?.slaTargetRatio
   if (ratio == null) return '—'
-  return `${(Number(ratio) * 100).toFixed(2)}%`
+  return (Number(ratio) * 100).toFixed(2)
 })
 const shiftSetupLabel = computed(() => {
   const n = selectedScenario.value?.shifts?.length ?? 0
   if (n <= 0) return '—'
-  return n === 1 ? '1 shift' : `${n} shifts`
+  return String(n)
 })
 
 function assumptionHc(scenario: Scenario) {
@@ -142,7 +147,7 @@ function assumptionHc(scenario: Scenario) {
 function capacityCreation(scenario: Scenario) {
   const rs = assumptionHc(scenario)
   if (rs == null || supportFte.value == null) return null
-  return deliveryHc.value - rs - supportFte.value
+  return actualSize.value - rs - supportFte.value
 }
 
 function formatSigned(value: number | null) {
@@ -219,6 +224,14 @@ async function confirmOfficial() {
   }
 }
 
+function requestSubmit() {
+  if (!exercise.value?.officialScenarioId) {
+    toast.warning('An Official Scenario is required before Submit.')
+    return
+  }
+  submitOpen.value = true
+}
+
 function onSubmitted() {
   void router.push({ name: 'supervisor-submission', params: { id: props.exerciseId } })
 }
@@ -275,7 +288,12 @@ watch(
       >
         Submitted Exercise Details
       </Button>
-      <Button v-if="exercise.canSubmit && pageTab === 'exercise'" @click="submitOpen = true">Submit For Validation</Button>
+      <Button
+        v-if="!snapshotMode && exercise.canEdit && pageTab === 'exercise'"
+        @click="requestSubmit"
+      >
+        Submit For Validation
+      </Button>
     </PageActions>
 
     <div v-if="showApprovalTab" class="flex gap-1 border-b">
@@ -308,7 +326,6 @@ watch(
     <div v-show="!showApprovalTab || pageTab === 'exercise'" class="grid gap-4">
       <ExerciseDetailHeader
         :exercise="exercise"
-        :delivery-hc="deliveryHc"
         :locked="locked"
         @edit-periods="periodsEditOpen = true"
         @toolkit-info="toolkitInfoOpen = true"
@@ -339,9 +356,8 @@ watch(
         :official-scenario-id="exercise.officialScenarioId"
         :locked="locked"
         :snapshot-mode="snapshotMode"
-        :delivery-hc="deliveryHc"
+        :actual-size="actualSize"
         :sla-target-label="slaTargetLabel"
-        :shift-setup-label="shiftSetupLabel"
         :median-label="medianLabel"
         :assumption-hc="assumptionHc"
         :capacity-creation="capacityCreation"
@@ -399,7 +415,8 @@ watch(
         <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
           <DialogTitle>Save Official Scenario</DialogTitle>
           <DialogDescription>
-            Review the package below and confirm to mark this as the official scenario.
+            This only sets the Official flag on the selected scenario. It does not create a
+            new scenario. You can switch Official any time before Submit.
           </DialogDescription>
         </DialogHeader>
         <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -407,23 +424,23 @@ watch(
             <DetailTable
               :rows="[
                 { label: 'Scenario', value: selectedScenario.scenarioCode },
-                { label: 'Actual size', value: deliveryHc.toFixed(2) },
-                { label: 'SLA Target %', value: slaTargetLabel },
-                { label: 'Shift Setup', value: shiftSetupLabel },
-                { label: 'Median Cycle Time', value: medianLabel },
+                { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.toFixed(2) },
+                { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel },
+                { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel },
+                { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel },
                 {
-                  label: 'Right size HC',
+                  label: withUnit('Right size', FieldUnit.hc),
                   value:
                     assumptionHc(selectedScenario) != null
                       ? assumptionHc(selectedScenario)!.toFixed(2)
                       : '—',
                 },
                 {
-                  label: 'Production support',
+                  label: withUnit('Production support', FieldUnit.fte),
                   value: supportFte != null ? supportFte.toFixed(2) : '—',
                 },
                 {
-                  label: 'Capacity Creation',
+                  label: withUnit('Capacity Creation', FieldUnit.hc),
                   value: formatSigned(capacityCreation(selectedScenario)),
                 },
               ]"

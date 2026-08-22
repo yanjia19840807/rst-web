@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import DetailTable from '@/components/DetailTable.vue'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -14,19 +16,14 @@ import {
 } from '@/components/ui/table'
 import { TimePicker } from '@/components/ui/time-picker'
 
+import type { ShiftDraft } from '../schemas/scenario'
 import type { DailySizingView, MonthlySizingView, SlotSimulationView, TeamSetup } from '../types'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
 
-export type ShiftDraft = {
-  shiftNo: number
-  startTime: string
-  durationMinutes: number | null
-  headcount: number | null
-  worksOnWeekend: boolean
-}
+export type { ShiftDraft }
 
-defineProps<{
+const props = defineProps<{
   exerciseId: string
   sizingMonth?: string
   readOnly: boolean
@@ -38,11 +35,19 @@ defineProps<{
   sizingCompleted: boolean
   slotCompleted: boolean
   slotLocked: boolean
+  slotLockReason?: string | null
   latestMonthlySizing: MonthlySizingView | null
   latestDailySizing: DailySizingView | null
   latestSlotSimulation: SlotSimulationView | null
   teamSetup: TeamSetup | null
   shiftSetupLabel: string
+  rightSizingHcError?: string
+  shiftsError?: string
+  shiftFieldErrors?: Array<{
+    startTime?: string
+    durationHours?: string
+    headcount?: string
+  }>
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +58,8 @@ const emit = defineEmits<{
   removeShift: []
   shiftEdited: []
 }>()
+
+const showShiftInputs = computed(() => props.readOnly || !props.slotLocked)
 
 function formatShiftTime(value?: string | null) {
   if (!value) return '—'
@@ -93,8 +100,10 @@ function formatShiftTime(value?: string | null) {
             :model-value="rightSizingHc"
             :min="0"
             :disabled="busy"
+            :invalid="Boolean(rightSizingHcError)"
             @update:model-value="emit('update:rightSizingHc', Number($event ?? 0))"
           />
+          <p v-if="rightSizingHcError" class="text-xs text-destructive">{{ rightSizingHcError }}</p>
         </label>
       </div>
 
@@ -126,25 +135,16 @@ function formatShiftTime(value?: string | null) {
     </section>
 
     <!-- Slot Simulation Panel -->
-    <section
-      class="rounded-lg border bg-card p-4"
-      :class="!readOnly && slotLocked ? 'opacity-60' : undefined"
-    >
-      <h3 class="mb-1 text-base font-bold">2. Slot Simulation</h3>
-      <p v-if="!readOnly && slotLocked" class="mb-3 text-xs text-muted-foreground">
-        Run Sizing Simulation first to unlock Slot Simulation.
-      </p>
+    <section class="rounded-lg border bg-card p-4">
+      <h3 class="mb-3 text-base font-bold">2. Slot Simulation</h3>
 
-      <div
-        class="mb-3.5 rounded-lg border bg-card p-4"
-        :class="!readOnly && slotLocked ? 'pointer-events-none' : undefined"
-      >
+      <div v-if="showShiftInputs" class="mb-3.5 rounded-lg border bg-card p-4">
         <div class="mb-3 flex items-center justify-between gap-2">
           <h4 class="text-sm font-bold">Shift Inputs</h4>
           <Button
             v-if="!readOnly"
             size="sm"
-            :disabled="busy || slotLocked"
+            :disabled="busy"
             :loading="runningSlot"
             @click="emit('runSlot')"
           >
@@ -152,14 +152,15 @@ function formatShiftTime(value?: string | null) {
           </Button>
         </div>
 
+        <p v-if="shiftsError" class="mb-2 text-xs text-destructive">{{ shiftsError }}</p>
         <div v-if="!readOnly" class="mb-2.5 flex gap-2">
-          <Button variant="outline" size="sm" :disabled="busy || slotLocked" @click="emit('addShift')">
+          <Button variant="outline" size="sm" :disabled="busy" @click="emit('addShift')">
             Add
           </Button>
           <Button
             variant="outline"
             size="sm"
-            :disabled="busy || slotLocked || shiftRows.length <= 1"
+            :disabled="busy || shiftRows.length <= 1"
             @click="emit('removeShift')"
           >
             Remove
@@ -179,42 +180,68 @@ function formatShiftTime(value?: string | null) {
             <TableBody>
               <TableRow>
                 <TableCell class="text-muted-foreground">Start</TableCell>
-                <TableCell v-for="row in shiftRows" :key="`start-${row.shiftNo}`">
+                <TableCell v-for="(row, index) in shiftRows" :key="`start-${row.shiftNo}`">
                   <span v-if="readOnly">{{ formatShiftTime(row.startTime) }}</span>
-                  <TimePicker
-                    v-else
-                    v-model="row.startTime"
-                    class="h-8"
-                    :disabled="busy || slotLocked"
-                    :aria-label="`Shift ${row.shiftNo} start`"
-                    @update:model-value="emit('shiftEdited')"
-                  />
+                  <div v-else class="grid gap-1">
+                    <TimePicker
+                      v-model="row.startTime"
+                      class="h-8"
+                      :disabled="busy"
+                      :invalid="Boolean(shiftFieldErrors?.[index]?.startTime)"
+                      :aria-label="`Shift ${row.shiftNo} start`"
+                      @update:model-value="emit('shiftEdited')"
+                    />
+                    <p
+                      v-if="shiftFieldErrors?.[index]?.startTime"
+                      class="text-xs text-destructive"
+                    >
+                      {{ shiftFieldErrors[index]?.startTime }}
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell class="text-muted-foreground">Duration (min)</TableCell>
-                <TableCell v-for="row in shiftRows" :key="`dur-${row.shiftNo}`">
-                  <span v-if="readOnly">{{ row.durationMinutes ?? '—' }}</span>
-                  <NumberFieldControl
-                    v-else
-                    v-model="row.durationMinutes"
-                    :min="1"
-                    :disabled="busy || slotLocked"
-                    @update:model-value="emit('shiftEdited')"
-                  />
+                <TableCell class="text-muted-foreground">Duration (hours)</TableCell>
+                <TableCell v-for="(row, index) in shiftRows" :key="`dur-${row.shiftNo}`">
+                  <span v-if="readOnly">{{ row.durationHours ?? '—' }}</span>
+                  <div v-else class="grid gap-1">
+                    <NumberFieldControl
+                      v-model="row.durationHours"
+                      :min="0.25"
+                      :step="0.25"
+                      :decimals="2"
+                      :disabled="busy"
+                      :invalid="Boolean(shiftFieldErrors?.[index]?.durationHours)"
+                      @update:model-value="emit('shiftEdited')"
+                    />
+                    <p
+                      v-if="shiftFieldErrors?.[index]?.durationHours"
+                      class="text-xs text-destructive"
+                    >
+                      {{ shiftFieldErrors[index]?.durationHours }}
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell class="text-muted-foreground">Capacity FTE</TableCell>
-                <TableCell v-for="row in shiftRows" :key="`hc-${row.shiftNo}`">
+                <TableCell v-for="(row, index) in shiftRows" :key="`hc-${row.shiftNo}`">
                   <span v-if="readOnly">{{ row.headcount ?? '—' }}</span>
-                  <NumberFieldControl
-                    v-else
-                    v-model="row.headcount"
-                    :min="0"
-                    :disabled="busy || slotLocked"
-                    @update:model-value="emit('shiftEdited')"
-                  />
+                  <div v-else class="grid gap-1">
+                    <NumberFieldControl
+                      v-model="row.headcount"
+                      :min="0"
+                      :disabled="busy"
+                      :invalid="Boolean(shiftFieldErrors?.[index]?.headcount)"
+                      @update:model-value="emit('shiftEdited')"
+                    />
+                    <p
+                      v-if="shiftFieldErrors?.[index]?.headcount"
+                      class="text-xs text-destructive"
+                    >
+                      {{ shiftFieldErrors[index]?.headcount }}
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
               <TableRow>
@@ -225,7 +252,7 @@ function formatShiftTime(value?: string | null) {
                     <input
                       v-model="row.worksOnWeekend"
                       type="checkbox"
-                      :disabled="busy || slotLocked"
+                      :disabled="busy"
                       @change="emit('shiftEdited')"
                     />
                     Yes
@@ -236,15 +263,21 @@ function formatShiftTime(value?: string | null) {
           </Table>
         </div>
       </div>
+      <div
+        v-else
+        class="mb-3.5 rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
+      >
+        {{ slotLockReason || 'Slot Simulation is locked.' }}
+      </div>
 
       <section
-        v-if="slotCompleted && latestSlotSimulation"
+        v-if="showShiftInputs && slotCompleted && latestSlotSimulation"
         class="rounded-lg border bg-card p-4"
       >
         <h4 class="mb-3 text-sm font-bold">Slot Simulation Result</h4>
-        <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div class="rounded-md border px-3 py-2.5">
-            <div class="text-xs text-muted-foreground">TAT on period</div>
+            <div class="text-xs text-muted-foreground">TAT on period (%)</div>
             <div
               class="mt-1 font-semibold"
               :class="
@@ -255,21 +288,21 @@ function formatShiftTime(value?: string | null) {
                   : undefined
               "
             >
-              {{ (Number(latestSlotSimulation.tatOnPeriod) * 100).toFixed(2) }}%
+              {{ (Number(latestSlotSimulation.tatOnPeriod) * 100).toFixed(2) }}
             </div>
             <div class="mt-0.5 text-xs text-muted-foreground">
               Target
               {{
                 latestSlotSimulation.slaTargetRatio == null
                   ? '—'
-                  : `${Math.round(Number(latestSlotSimulation.slaTargetRatio) * 100)}%`
+                  : Math.round(Number(latestSlotSimulation.slaTargetRatio) * 100)
               }}
             </div>
           </div>
           <div class="rounded-md border px-3 py-2.5">
-            <div class="text-xs text-muted-foreground">Actual vs theoretical</div>
+            <div class="text-xs text-muted-foreground">Actual vs theoretical (%)</div>
             <div class="mt-1 font-semibold">
-              {{ (Number(latestSlotSimulation.actualVsTheoretical) * 100).toFixed(0) }}%
+              {{ (Number(latestSlotSimulation.actualVsTheoretical) * 100).toFixed(0) }}
             </div>
             <div class="mt-0.5 text-xs text-muted-foreground">
               sum(capacity) / sum(manual)
@@ -280,20 +313,11 @@ function formatShiftTime(value?: string | null) {
             <div class="mt-1 font-semibold">{{ latestSlotSimulation.shiftCount }}</div>
             <div class="mt-0.5 text-xs text-muted-foreground">{{ shiftSetupLabel }}</div>
           </div>
-          <div class="rounded-md border px-3 py-2.5">
-            <div class="text-xs text-muted-foreground">Applicability</div>
-            <div class="mt-1 font-semibold">
-              {{ latestSlotSimulation.applicability ? 'On' : 'Off' }}
-            </div>
-            <div class="mt-0.5 text-xs text-muted-foreground">
-              Calendar SLA &lt;= 24h or business-hours SLA &lt;= 8h
-            </div>
-          </div>
         </div>
         <SlotSimulationCharts :simulation="latestSlotSimulation" />
       </section>
       <div
-        v-else-if="runningSlot"
+        v-else-if="showShiftInputs && runningSlot"
         class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-3 py-10 text-sm text-muted-foreground"
       >
         <Spinner class="size-6 text-primary" />

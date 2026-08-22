@@ -13,6 +13,7 @@ const props = withDefaults(
     step?: number | string
     placeholder?: string
     ariaLabel?: string
+    invalid?: boolean
     class?: HTMLAttributes['class']
   }>(),
   {
@@ -21,6 +22,7 @@ const props = withDefaults(
     step: 60,
     placeholder: undefined,
     ariaLabel: 'Choose time',
+    invalid: false,
     class: undefined,
   },
 )
@@ -60,6 +62,7 @@ const localValue = computed({
     :step="step"
     :disabled="disabled"
     :aria-label="ariaLabel"
+    :aria-invalid="invalid || undefined"
     :placeholder="placeholder"
     :class="cn('bg-card', props.class)"
   />

@@ -2,14 +2,24 @@
  * Excel Demo 4.0 chart 口径 (Volume per Month / Volume per Day).
  *
  * Monthly: Overcapacity Z, Max Overtime X, Weekdays Overtime V,
- * Max HC Q, Right Size HC, Min HC R, Volume, Volume Forecasted.
- * Daily: Volume, Volume Forecasted, SLA Turntime (days),
- * Backlog OK / KO from backlog aging vs SLA goal.
+ * Max HC Q, Right Size HC, Min HC R, Volume, Volume Forecasted
+ * (history months sizingMonth − 2 … sizingMonth plus forecast months).
+ * Daily / SLA: Excel Input Full Period — first daily actual through the
+ * forecast month, one continuous backlog-aging line (OK / KO by color).
  */
 
 export function n(value: number | string | null | undefined): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+/** Excel Input TotalAgent; falls back to Shared KPI Delivery HC. */
+export function actualHeadcount(
+  totalAgents: number | string | null | undefined,
+  deliveryHc: number | string | null | undefined,
+): number {
+  const total = n(totalAgents)
+  return total > 0 ? total : n(deliveryHc)
 }
 
 export function monthKey(value: string): string {

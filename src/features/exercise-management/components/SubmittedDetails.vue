@@ -38,7 +38,9 @@ import {
   useSupportQuery,
   useTeamSetupQuery,
 } from '../api/queries'
+import { FieldUnit, withUnit } from '../fieldUnits'
 import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
+import { actualHeadcount } from '../sizingChartMath'
 import type { ForecastTrainingObservation, SubmittedDetails } from '../types'
 import { formatNumber } from './associated-data/adTypes'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
@@ -205,6 +207,10 @@ const deliveryHc = computed(() =>
   ),
 )
 
+const actualSize = computed(() =>
+  actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
+)
+
 const supportFte = computed(() => {
   if (!support.value.length) return null
   return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
@@ -222,18 +228,18 @@ const capacityCreation = computed(() => {
   if (fromSizing != null) return Number(fromSizing)
   const rs = rightSizingHc.value
   if (rs == null || supportFte.value == null) return null
-  return deliveryHc.value - rs - supportFte.value
+  return actualSize.value - rs - supportFte.value
 })
 
 const shiftSetupLabel = computed(() => {
   const fromSlot = latestSlotSimulation.value?.shiftCount
   const n = fromSlot ?? scenario.value?.shifts?.length ?? 0
   if (n <= 0) return '—'
-  return n === 1 ? '1 shift' : `${n} shifts`
+  return String(n)
 })
 
 const medianLabel = computed(() =>
-  cycleTime.value ? `${Number(cycleTime.value.medianSeconds).toFixed(2)}s` : '—',
+  cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',
 )
 
 const medianSourceLabel = computed(() => {
@@ -246,13 +252,13 @@ const medianSourceLabel = computed(() => {
 const slaTargetLabel = computed(() => {
   const ratio = teamSetup.value?.slaTargetRatio
   if (ratio == null) return '—'
-  return `${Math.round(Number(ratio) * 100)}%`
+  return String(Math.round(Number(ratio) * 100))
 })
 
 const slaTurntimeLabel = computed(() => {
   const minutes = teamSetup.value?.slaTurnaroundMinutes
   if (minutes == null) return '—'
-  return `${(Number(minutes) / 60).toFixed(2)} business hours`
+  return Number(minutes).toFixed(2)
 })
 
 function formatSigned(value: number | null) {
@@ -297,18 +303,18 @@ const packageRows = computed(() => {
       value: deriveSlotPeriodLabel(ex.slotStartDate, ex.slotWeeks),
     },
     { label: 'TMS period', value: `${formatDate(ex.tmsFrom)} – ${formatDate(ex.tmsTo)}` },
-    { label: 'Actual size', value: deliveryHc.value.toFixed(2) },
-    { label: 'SLA Turntime', value: slaTurntimeLabel.value },
-    { label: 'SLA Target %', value: slaTargetLabel.value },
-    { label: 'Shift Setup', value: shiftSetupLabel.value },
-    { label: 'Median Cycle Time', value: medianLabel.value },
+    { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
+    { label: withUnit('SLA Turntime', FieldUnit.minutes), value: slaTurntimeLabel.value },
+    { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
+    { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
+    { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
     { key: 'medianSource', label: 'Median source', value: medianSourceLabel.value },
     {
-      label: 'Production support',
+      label: withUnit('Production support', FieldUnit.fte),
       value: supportFte.value != null ? supportFte.value.toFixed(2) : '—',
     },
-    { label: 'Right size HC', value: formatHc(rightSizingHc.value) },
-    { key: 'capacityCreation', label: 'Capacity Creation', value: formatSigned(capacityCreation.value) },
+    { label: withUnit('Right size', FieldUnit.hc), value: formatHc(rightSizingHc.value) },
+    { key: 'capacityCreation', label: withUnit('Capacity Creation', FieldUnit.hc), value: formatSigned(capacityCreation.value) },
   ]
 })
 
@@ -334,18 +340,18 @@ const kpiAllocationRows = computed(() => {
 })
 
 const resultRows = computed(() => [
-  { label: 'Actual size', value: deliveryHc.value.toFixed(2) },
-  { label: 'SLA Turntime', value: slaTurntimeLabel.value },
-  { label: 'SLA Target %', value: slaTargetLabel.value },
-  { label: 'Shift Setup', value: shiftSetupLabel.value },
-  { label: 'Median Cycle Time', value: medianLabel.value },
+  { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
+  { label: withUnit('SLA Turntime', FieldUnit.minutes), value: slaTurntimeLabel.value },
+  { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
+  { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
+  { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
   { label: 'Median source', value: medianSourceLabel.value },
   {
-    label: 'Production support',
+    label: withUnit('Production support', FieldUnit.fte),
     value: supportFte.value != null ? supportFte.value.toFixed(2) : '—',
   },
-  { label: 'Right size HC', value: formatHc(rightSizingHc.value) },
-  { key: 'capacityCreation', label: 'Capacity Creation', value: formatSigned(capacityCreation.value) },
+  { label: withUnit('Right size', FieldUnit.hc), value: formatHc(rightSizingHc.value) },
+  { key: 'capacityCreation', label: withUnit('Capacity Creation', FieldUnit.hc), value: formatSigned(capacityCreation.value) },
 ])
 
 async function onApprove() {
@@ -551,7 +557,7 @@ function downloadSummary() {
                   <TableHead>Customer Country</TableHead>
                   <TableHead>Delivery HC</TableHead>
                   <TableHead>Right Sizing HC</TableHead>
-                  <TableHead>Capacity Creation</TableHead>
+                  <TableHead>Capacity Creation (HC)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -708,7 +714,7 @@ function downloadSummary() {
             </div>
 
             <template v-else-if="simulationTab === 'slot' && hasSlot && latestSlotSimulation">
-              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="rounded-md border px-3 py-2.5">
                   <div class="text-xs text-muted-foreground">TAT on period</div>
                   <div
@@ -742,12 +748,6 @@ function downloadSummary() {
                   <div class="text-xs text-muted-foreground">Shift setup</div>
                   <div class="mt-1 font-semibold">{{ latestSlotSimulation.shiftCount }}</div>
                   <div class="mt-0.5 text-xs text-muted-foreground">{{ shiftSetupLabel }}</div>
-                </div>
-                <div class="rounded-md border px-3 py-2.5">
-                  <div class="text-xs text-muted-foreground">Applicability</div>
-                  <div class="mt-1 font-semibold">
-                    {{ latestSlotSimulation.applicability ? 'On' : 'Off' }}
-                  </div>
                 </div>
               </div>
               <SlotSimulationCharts :simulation="latestSlotSimulation" />

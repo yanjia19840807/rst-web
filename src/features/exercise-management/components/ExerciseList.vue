@@ -16,18 +16,22 @@ import { formatDate } from '@/lib/datetime'
 import { useExerciseMutations } from '../api/mutations'
 import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
+import {
+  IN_PROGRESS_TAB,
+  reviewStageQueryValue,
+  type CurrentStepFilter,
+} from '../workflowLabels'
 import CreateExerciseDialog from './CreateExerciseDialog.vue'
 import ExerciseListFilters from './ExerciseListFilters.vue'
 import ExerciseListTable from './ExerciseListTable.vue'
 
-type TabKey = 'Active' | 'Archived'
+type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
-type ProgressStatusFilter = 'All statuses' | 'In Progress' | 'Returned' | 'Under Review'
 
 const route = useRoute()
 const router = useRouter()
 const { withdraw } = useExerciseMutations()
-const activeTab = ref<TabKey>('Active')
+const activeTab = ref<TabKey>(IN_PROGRESS_TAB)
 const createOpen = ref(false)
 const initialToolkitId = ref<string | undefined>()
 const withdrawOpen = ref(false)
@@ -40,9 +44,8 @@ const toolkitFilter = ref('All toolkits')
 const createdFrom = ref('')
 const createdTo = ref('')
 const officialScenarioFilter = ref<OfficialScenarioFilter>('All scenarios')
-const reviewStageFilter = ref('All stages')
+const reviewStageFilter = ref<CurrentStepFilter>('All stages')
 const reviewerFilter = ref('All reviewers')
-const statusFilter = ref<ProgressStatusFilter>('All statuses')
 const submittedFrom = ref('')
 const submittedTo = ref('')
 const finalStatusFilter = ref('All statuses')
@@ -61,40 +64,25 @@ const draftArchivedTo = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 
-const tabs: TabKey[] = ['Active', 'Archived']
+const tabs: TabKey[] = [IN_PROGRESS_TAB, 'Archived']
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 const listQuery = computed<ExerciseListQuery>(() => {
-  const inProgress = activeTab.value === 'Active'
+  const inProgress = activeTab.value === IN_PROGRESS_TAB
   return {
     tab: inProgress ? 'IN_PROGRESS' : 'ARCHIVED',
     exerciseCode: appliedExerciseCode.value,
     toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
     pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
     workflowStatus: inProgress
-      ? statusFilter.value === 'Returned'
-        ? 'RETURNED'
-        : statusFilter.value === 'Under Review'
-          ? 'UNDER_REVIEW'
-          : statusFilter.value === 'In Progress'
-            ? 'IN_PROGRESS'
-            : undefined
+      ? undefined
       : finalStatusFilter.value === 'Approved'
         ? 'APPROVED'
         : finalStatusFilter.value === 'Rejected'
           ? 'REJECTED'
           : undefined,
-    reviewStage:
-      !inProgress || reviewStageFilter.value === 'All stages'
-        ? undefined
-        : reviewStageFilter.value === 'Manager Review'
-          ? 'MANAGER'
-          : reviewStageFilter.value === 'Center Delivery Head Review'
-            ? 'CDH'
-            : reviewStageFilter.value === 'Local Transformation Head Review'
-              ? 'LTH'
-              : undefined,
+    reviewStage: inProgress ? reviewStageQueryValue(reviewStageFilter.value) : undefined,
     handler:
       !inProgress || reviewerFilter.value === 'All reviewers'
         ? undefined
@@ -138,7 +126,7 @@ function resetPage() {
 }
 
 const advancedCount = computed(() => {
-  if (activeTab.value === 'Active') {
+  if (activeTab.value === IN_PROGRESS_TAB) {
     return (
       Number(Boolean(createdFrom.value || createdTo.value)) +
       Number(officialScenarioFilter.value !== 'All scenarios') +
@@ -155,8 +143,7 @@ const hasCurrentFilters = computed(() =>
       pl3Filter.value !== 'All PL3' ||
       toolkitFilter.value !== 'All toolkits' ||
       advancedCount.value ||
-      (activeTab.value === 'Active' && statusFilter.value !== 'All statuses') ||
-      (activeTab.value === 'Active' && reviewStageFilter.value !== 'All stages') ||
+      (activeTab.value === IN_PROGRESS_TAB && reviewStageFilter.value !== 'All stages') ||
       (activeTab.value === 'Archived' && finalStatusFilter.value !== 'All statuses'),
   ),
 )
@@ -171,7 +158,7 @@ function switchTab(tab: TabKey) {
 
 function toggleAdvanced() {
   if (advancedOpen.value !== activeTab.value) {
-    if (activeTab.value === 'Active') {
+    if (activeTab.value === IN_PROGRESS_TAB) {
       draftCreatedFrom.value = createdFrom.value
       draftCreatedTo.value = createdTo.value
       draftOfficialScenario.value = officialScenarioFilter.value
@@ -189,7 +176,7 @@ function toggleAdvanced() {
 }
 
 function clearAdvancedDrafts() {
-  if (activeTab.value === 'Active') {
+  if (activeTab.value === IN_PROGRESS_TAB) {
     draftCreatedFrom.value = ''
     draftCreatedTo.value = ''
     draftOfficialScenario.value = 'All scenarios'
@@ -203,7 +190,7 @@ function clearAdvancedDrafts() {
 }
 
 function applyAdvanced() {
-  if (activeTab.value === 'Active') {
+  if (activeTab.value === IN_PROGRESS_TAB) {
     createdFrom.value = draftCreatedFrom.value
     createdTo.value = draftCreatedTo.value
     officialScenarioFilter.value = draftOfficialScenario.value
@@ -223,8 +210,7 @@ function clearCurrentFilters() {
   appliedExerciseCode.value = ''
   pl3Filter.value = 'All PL3'
   toolkitFilter.value = 'All toolkits'
-  if (activeTab.value === 'Active') {
-    statusFilter.value = 'All statuses'
+  if (activeTab.value === IN_PROGRESS_TAB) {
     createdFrom.value = ''
     createdTo.value = ''
     officialScenarioFilter.value = 'All scenarios'
@@ -247,7 +233,7 @@ function openCreate(toolkitId?: string) {
 }
 
 function onCreated(exercise: Exercise) {
-  activeTab.value = 'Active'
+  activeTab.value = IN_PROGRESS_TAB
   if (route.query.create || route.query.toolkitId) {
     void router.replace({ name: 'supervisor-exercises' })
   }
@@ -296,7 +282,6 @@ watch(
     pl3Filter,
     toolkitFilter,
     reviewStageFilter,
-    statusFilter,
     finalStatusFilter,
     createdFrom,
     createdTo,
@@ -390,7 +375,6 @@ watch(
           :exercise-code-filter="exerciseCodeFilter"
           :pl3-filter="pl3Filter"
           :toolkit-filter="toolkitFilter"
-          :status-filter="statusFilter"
           :review-stage-filter="reviewStageFilter"
           :final-status-filter="finalStatusFilter"
           :advanced-open="advancedOpen"
@@ -409,7 +393,6 @@ watch(
           @update:exercise-code-filter="exerciseCodeFilter = $event"
           @update:pl3-filter="pl3Filter = $event"
           @update:toolkit-filter="toolkitFilter = $event"
-          @update:status-filter="statusFilter = $event"
           @update:review-stage-filter="reviewStageFilter = $event"
           @update:final-status-filter="finalStatusFilter = $event"
           @update:draft-created-from="draftCreatedFrom = $event"
@@ -459,7 +442,7 @@ watch(
     <ConfirmDialog
       v-model:open="withdrawOpen"
       title="Withdraw Submission"
-      description="Withdraw this Under Review submission and reopen the exercise for editing."
+      description="Withdraw this submission and return the exercise to Supervisor Sizing."
       confirm-label="Withdraw"
       :rows="
         withdrawTarget

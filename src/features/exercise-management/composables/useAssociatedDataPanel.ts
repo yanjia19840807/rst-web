@@ -6,7 +6,6 @@ import {
   useCycleTimeActiveQuery,
   useDailyVolumesQuery,
   useMonthlyVolumesQuery,
-  useShiftsQuery,
   useSlotVolumesQuery,
   useSupportQuery,
   useTeamSetupQuery,
@@ -16,7 +15,6 @@ import type {
   CycleTimeBaseline,
   DailyVolume,
   MonthlyVolume,
-  Shift,
   SlotVolume,
   SupportItem,
   TeamSetup,
@@ -38,7 +36,6 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
   const id = computed(() => toValue(exerciseId))
 
   const teamSetupQuery = useTeamSetupQuery(id)
-  const shiftsQuery = useShiftsQuery(id)
   const supportQuery = useSupportQuery(id)
   const calendarQuery = useCalendarQuery(id)
   const monthlyQuery = useMonthlyVolumesQuery(id)
@@ -48,7 +45,6 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
 
   const activeTab = ref<AdTab>('team')
   const teamSetup = ref<TeamSetup | null>(null)
-  const shifts = ref<Shift[]>([])
   const support = ref<SupportItem[]>([])
   const calendar = ref<CalendarView | null>(null)
   const monthly = ref<MonthlyVolume[]>([])
@@ -61,7 +57,6 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
   const medianSource = ref<MedianSourceMode>('system')
 
   syncRefFromQuery(teamSetupQuery.data, teamSetup, null)
-  syncRefFromQuery(shiftsQuery.data, shifts, [])
   syncRefFromQuery(supportQuery.data, support, [])
   syncRefFromQuery(calendarQuery.data, calendar, null)
   syncRefFromQuery(monthlyQuery.data, monthly, [])
@@ -73,30 +68,31 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
     () =>
       (teamSetupQuery.isPending.value && teamSetupQuery.data.value === undefined) ||
       (supportQuery.isPending.value && supportQuery.data.value === undefined) ||
-      (calendarQuery.isPending.value && calendarQuery.data.value === undefined),
+      (calendarQuery.isPending.value && calendarQuery.data.value === undefined) ||
+      (cycleTimeQuery.isPending.value && cycleTimeQuery.data.value === undefined),
   )
 
   const anyError = computed(
     () =>
       teamSetupQuery.isError.value ||
-      shiftsQuery.isError.value ||
       supportQuery.isError.value ||
       calendarQuery.isError.value ||
       monthlyQuery.isError.value ||
       dailyQuery.isError.value ||
-      slotQuery.isError.value,
+      slotQuery.isError.value ||
+      cycleTimeQuery.isError.value,
   )
 
   watch(anyError, (isError) => {
     if (!isError) return
     const error =
       teamSetupQuery.error.value ||
-      shiftsQuery.error.value ||
       supportQuery.error.value ||
       calendarQuery.error.value ||
       monthlyQuery.error.value ||
       dailyQuery.error.value ||
-      slotQuery.error.value
+      slotQuery.error.value ||
+      cycleTimeQuery.error.value
     toast.error(error instanceof Error ? error.message : 'Could not load Associated Data.')
   })
 
@@ -125,25 +121,11 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
     syncMedianFromBaseline()
   }
 
-  async function reload() {
-    await Promise.all([
-      teamSetupQuery.refetch(),
-      shiftsQuery.refetch(),
-      supportQuery.refetch(),
-      calendarQuery.refetch(),
-      monthlyQuery.refetch(),
-      dailyQuery.refetch(),
-      slotQuery.refetch(),
-      cycleTimeQuery.refetch(),
-    ])
-  }
-
   return {
     tabs: ['team', 'tms', 'support', 'calendar', 'volume'] as AdTab[],
     activeTab,
     loading,
     teamSetup,
-    shifts,
     support,
     calendar,
     monthly,
@@ -155,6 +137,5 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
     medianSource,
     openEditor,
     onCycleTimeUpdated,
-    reload,
   }
 }

@@ -8,7 +8,12 @@ import { tmsQueryKeys } from './queries'
 export function useTmsSessionMutations() {
   const queryClient = useQueryClient()
 
-  const refreshTmsData = () => queryClient.invalidateQueries({ queryKey: tmsQueryKeys.all })
+  const invalidateSessionState = () => {
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.current() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.summary() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.sessionsPrefix() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.sessionPrefix() })
+  }
 
   const start = useMutation({
     mutationFn: (input: StartSessionInput) =>
@@ -16,7 +21,10 @@ export function useTmsSessionMutations() {
         method: 'POST',
         body: JSON.stringify(input),
       }),
-    onSuccess: refreshTmsData,
+    onSuccess: (session) => {
+      queryClient.setQueryData(tmsQueryKeys.current(), session)
+      invalidateSessionState()
+    },
   })
 
   const pause = useMutation({
@@ -24,23 +32,25 @@ export function useTmsSessionMutations() {
       apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/pause`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.setQueryData(tmsQueryKeys.current(), null)
-      refreshTmsData()
+      invalidateSessionState()
     },
   })
 
   const resume = useMutation({
     mutationFn: (id: string) =>
       apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/resume`, { method: 'POST' }),
-    onSuccess: refreshTmsData,
+    onSuccess: (session) => {
+      queryClient.setQueryData(tmsQueryKeys.current(), session)
+      invalidateSessionState()
+    },
   })
 
   const end = useMutation({
     mutationFn: (id: string) =>
       apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/end`, { method: 'POST' }),
     onSuccess: () => {
-      // Clear immediately so the workspace does not rehydrate from a stale current-session cache.
       queryClient.setQueryData(tmsQueryKeys.current(), null)
-      refreshTmsData()
+      invalidateSessionState()
     },
   })
 
@@ -52,7 +62,7 @@ export function useTmsSessionMutations() {
       }),
     onSuccess: () => {
       queryClient.setQueryData(tmsQueryKeys.current(), null)
-      refreshTmsData()
+      invalidateSessionState()
     },
   })
 

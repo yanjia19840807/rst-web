@@ -16,12 +16,14 @@ const props = withDefaults(
     placeholder?: string
     ariaLabel?: string
     disabled?: boolean
+    invalid?: boolean
     class?: string
   }>(),
   {
     placeholder: 'Pick a date',
     ariaLabel: 'Choose date',
     disabled: false,
+    invalid: false,
     class: undefined,
   },
 )
@@ -68,6 +70,7 @@ watch(open, (isOpen) => {
         variant="outline"
         :disabled="disabled"
         :aria-label="ariaLabel"
+        :aria-invalid="invalid || undefined"
         :class="
           cn(
             'w-44 justify-start text-left font-normal',

@@ -17,8 +17,10 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import { floatingTooltip } from '@/lib/chartTooltip'
+
 import { useDailyVolumesQuery, useMonthlyVolumesQuery } from '../api/queries'
-import { dailyTrainDates, monthlyTrainMonths } from '../periodWindows'
+import { monthlyTrainMonths } from '../periodWindows'
 import {
   backlogAgingDays,
   dayKey,
@@ -180,7 +182,7 @@ const monthlyOption = computed<ChartOption>(() => {
   })
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: floatingTooltip(),
     legend: { show: false },
     grid: { left: 48, right: 52, top: 28, bottom: 16 },
     xAxis: {
@@ -254,23 +256,8 @@ const dailyOption = computed<ChartOption>(() => {
     props.teamSetup?.slaTurnaroundMinutes,
     props.teamSetup?.workingHoursPerDay,
   )
-  const agingByDate = new Map(simRows.map((row, index) => [dayKey(row.resultDate), aging[index] ?? 0]))
-  const forecastByDate = new Map(
-    simRows.map((row) => [dayKey(row.resultDate), n(row.forecastVolume)]),
-  )
-  const historyDates = new Set(props.sizingMonth ? dailyTrainDates(props.sizingMonth) : [])
-  const actualByDate = new Map(
-    (dailyVolumesQuery.data.value ?? [])
-      .filter((row) => {
-        const key = dayKey(row.volumeDate)
-        return historyDates.size === 0 || historyDates.has(key) || forecastByDate.has(key)
-      })
-      .map((row) => [
-        dayKey(row.volumeDate),
-        row.actualVolume == null ? null : n(row.actualVolume),
-      ]),
-  )
-  const dates = [...new Set([...actualByDate.keys(), ...forecastByDate.keys()])].sort()
+  const historyEnd = props.sizingMonth ? monthKey(props.sizingMonth) : ''
+  const dates = simRows.map((row) => dayKey(row.resultDate))
 
   const actual: (number | null)[] = []
   const forecast: (number | null)[] = []
@@ -278,38 +265,39 @@ const dailyOption = computed<ChartOption>(() => {
   const backlogKo: (number | null)[] = []
   const slaLine: (number | null)[] = []
 
-  for (const date of dates) {
-    const actualVolume = actualByDate.get(date)
-    const forecastVolume = forecastByDate.get(date)
-    const hasActual = actualVolume != null
-    actual.push(hasActual ? actualVolume : null)
-    forecast.push(!hasActual && forecastVolume != null ? forecastVolume : null)
-    const days = agingByDate.get(date)
-    if (days == null || goal == null) {
-      backlogOk.push(null)
-      backlogKo.push(null)
-      slaLine.push(null)
-      continue
-    }
+  simRows.forEach((row, index) => {
+    const date = dayKey(row.resultDate)
+    const volume = n(row.forecastVolume)
+    const history = historyEnd !== '' && monthKey(date) <= historyEnd
+    const days = aging[index] ?? 0
+    actual.push(history ? volume : null)
+    forecast.push(history ? null : volume)
     slaLine.push(goal)
-    if (days > goal) {
-      backlogOk.push(null)
+    // Keep both series populated at every point so the stroke stays continuous;
+    // color switches by putting the value on OK or KO (Excel Full Period look).
+    if (goal != null && days > goal) {
+      backlogOk.push(days)
       backlogKo.push(days)
     } else {
       backlogOk.push(days)
       backlogKo.push(null)
     }
-  }
+  })
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: floatingTooltip(),
     legend: { show: false },
     grid: { left: 52, right: 52, top: 28, bottom: 16 },
     xAxis: {
       type: 'category',
-      data: dates.map((date) => date.slice(5)),
+      data: dates,
       axisLine: { lineStyle: { color: colors.border } },
-      axisLabel: { color: colors.axis, fontSize: 10 },
+      axisLabel: {
+        color: colors.axis,
+        fontSize: 10,
+        hideOverlap: true,
+        formatter: (value: string) => (value.length >= 10 ? value.slice(5) : value),
+      },
     },
     yAxis: [
       {
@@ -332,7 +320,8 @@ const dailyOption = computed<ChartOption>(() => {
         yAxisIndex: 1,
         data: actual,
         itemStyle: { color: colors.volume, borderRadius: [4, 4, 0, 0] },
-        barMaxWidth: 16,
+        barMaxWidth: 8,
+        z: 1,
       },
       {
         name: 'Volume Forecasted',
@@ -340,8 +329,9 @@ const dailyOption = computed<ChartOption>(() => {
         yAxisIndex: 1,
         data: forecast,
         itemStyle: { color: colors.forecast, borderRadius: [4, 4, 0, 0] },
-        barMaxWidth: 16,
+        barMaxWidth: 8,
         barGap: '-100%',
+        z: 1,
       },
       {
         name: 'SLA Turntime',
@@ -349,6 +339,7 @@ const dailyOption = computed<ChartOption>(() => {
         yAxisIndex: 0,
         data: slaLine,
         symbol: 'none',
+        z: 5,
         lineStyle: { width: 2, type: 'dashed', color: colors.axis },
         itemStyle: { color: colors.axis },
       },
@@ -358,8 +349,9 @@ const dailyOption = computed<ChartOption>(() => {
         yAxisIndex: 0,
         data: backlogOk,
         symbol: 'circle',
-        symbolSize: 8,
-        connectNulls: false,
+        symbolSize: 5,
+        connectNulls: true,
+        z: 6,
         lineStyle: { width: 3, color: colors.overtime },
         itemStyle: { color: colors.overtime },
       },
@@ -369,8 +361,9 @@ const dailyOption = computed<ChartOption>(() => {
         yAxisIndex: 0,
         data: backlogKo,
         symbol: 'circle',
-        symbolSize: 8,
+        symbolSize: 5,
         connectNulls: false,
+        z: 7,
         lineStyle: { width: 3, color: colors.overcapacity },
         itemStyle: { color: colors.overcapacity },
       },
@@ -407,10 +400,9 @@ const slaOption = computed<ChartOption>(() => {
       : Math.round(n(props.teamSetup.slaTargetRatio) * 1000) / 10
 
   return {
-    tooltip: {
-      trigger: 'axis',
+    tooltip: floatingTooltip({
       valueFormatter: (value) => `${Number(value).toFixed(1)}%`,
-    },
+    }),
     legend: { show: false },
     grid: { left: 48, right: 24, top: 24, bottom: 16 },
     xAxis: {

@@ -1,6 +1,6 @@
 import type { Shift, ShiftRequest } from './associatedData'
 
-export type ScenarioStatus = 'DRAFT' | 'OFFICIAL'
+export type ScenarioStatus = 'DRAFT'
 
 export interface Scenario {
   id: string
@@ -9,7 +9,6 @@ export interface Scenario {
   description: string | null
   status: ScenarioStatus | string
   rightSizingHc: number | null
-  officialAt: string | null
   version: number
   shifts: Shift[]
 }

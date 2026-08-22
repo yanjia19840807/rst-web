@@ -1,11 +1,12 @@
 import type {
   CalendarView,
   CycleTimeBaseline,
+  CycleTimeChartView,
   DailyVolume,
   Exercise,
+  ExerciseTmsSession,
   MonthlyVolume,
   Scenario,
-  Shift,
   SlotVolume,
   StubRun,
   SubmittedDetails,
@@ -21,13 +22,14 @@ import { computeNetworkDays } from '@/features/exercise-management/workingDays'
 
 export type ExerciseShell = {
   teamSetup: TeamSetup
-  shifts: Shift[]
   support: SupportItem[]
   calendar: CalendarView
   monthlyVolumes: MonthlyVolume[]
   dailyVolumes: DailyVolume[]
   slotVolumes: SlotVolume[]
   cycleTime: CycleTimeBaseline | null
+  tmsSessions: ExerciseTmsSession[]
+  cycleTimeChart: CycleTimeChartView
   scenarios: Scenario[]
   stubRuns: Array<StubRun & { scenarioId: string }>
   submitted: SubmittedDetails | null
@@ -60,7 +62,6 @@ const emptyTeamSetup = (): TeamSetup => ({
   maxCapacityDays: null,
   workingDaysPerYear: null,
   dailyCapacityPerAgent: null,
-  calculationVersion: 'v1',
   version: 0,
 })
 
@@ -93,6 +94,83 @@ export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
   })
 }
 
+function demoTms(): Pick<ExerciseShell, 'cycleTime' | 'tmsSessions' | 'cycleTimeChart'> {
+  const tmsSessions: ExerciseTmsSession[] = [
+    {
+      sessionNo: 'TMS-1001',
+      reference: 'BKG-1001',
+      agentName: 'Demo Agent',
+      toolkitName: 'Booking Amendments',
+      subtaskName: 'Booking amendment',
+      processedVolume: 2,
+      netDurationSeconds: 280,
+      remarks: 'Demo import',
+      cycleTimeSeconds: 140,
+      zScore: 0.21,
+      included: true,
+      exclusionReason: null,
+      startedAt: '2026-05-04T09:12:00Z',
+      endedAt: '2026-05-04T09:16:40Z',
+    },
+    {
+      sessionNo: 'TMS-1002',
+      reference: 'BKG-1002',
+      agentName: 'Demo Agent',
+      toolkitName: 'Booking Amendments',
+      subtaskName: 'Booking amendment',
+      processedVolume: 1,
+      netDurationSeconds: 145,
+      remarks: '',
+      cycleTimeSeconds: 145,
+      zScore: 0.48,
+      included: true,
+      exclusionReason: null,
+      startedAt: '2026-05-05T10:04:00Z',
+      endedAt: '2026-05-05T10:06:25Z',
+    },
+    {
+      sessionNo: 'TMS-1003',
+      reference: 'BKG-1003',
+      agentName: 'Demo Agent',
+      toolkitName: 'Booking Amendments',
+      subtaskName: 'Booking amendment',
+      processedVolume: 2,
+      netDurationSeconds: 284,
+      remarks: '',
+      cycleTimeSeconds: 142,
+      zScore: 0.32,
+      included: true,
+      exclusionReason: null,
+      startedAt: '2026-05-06T11:20:00Z',
+      endedAt: '2026-05-06T11:24:44Z',
+    },
+  ]
+  return {
+    tmsSessions,
+    cycleTime: {
+      id: crypto.randomUUID(),
+      baselineType: 'SYSTEM',
+      medianSeconds: 142,
+      sampleCount: tmsSessions.length,
+      calculationMethod: 'MEDIAN',
+      manualReason: null,
+      active: true,
+      calculatedAt: '2026-05-06T12:00:00Z',
+      files: [],
+    },
+    cycleTimeChart: {
+      points: [
+        { date: '2026-05-04', dailyMedianSeconds: 140, rollingMedianSeconds: 140, outlier: false },
+        { date: '2026-05-05', dailyMedianSeconds: 145, rollingMedianSeconds: 142.5, outlier: false },
+        { date: '2026-05-06', dailyMedianSeconds: 142, rollingMedianSeconds: 142, outlier: false },
+      ],
+      upperControlLimitSeconds: 148,
+      lowerControlLimitSeconds: 136,
+      sampleCount: tmsSessions.length,
+    },
+  }
+}
+
 export function createExerciseShell(): ExerciseShell {
   return {
     teamSetup: {
@@ -104,7 +182,6 @@ export function createExerciseShell(): ExerciseShell {
       slaEndTime: '18:00:00',
       weekendCode: '1',
     },
-    shifts: [],
     support: [],
     calendar: {
       holidays: [
@@ -125,7 +202,7 @@ export function createExerciseShell(): ExerciseShell {
     monthlyVolumes: [],
     dailyVolumes: [],
     slotVolumes: [],
-    cycleTime: null,
+    ...demoTms(),
     scenarios: [],
     stubRuns: [],
     submitted: null,

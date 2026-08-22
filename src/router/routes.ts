@@ -100,7 +100,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/supervisor/ExerciseManagementPage.vue'),
     meta: {
       title: 'Exercises',
-      subtitle: 'Active and archived sizing exercises',
+      subtitle: 'In Progress and archived sizing exercises',
       roles: ['supervisor'],
     },
   },

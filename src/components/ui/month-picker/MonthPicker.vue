@@ -14,11 +14,13 @@ const props = withDefaults(
     modelValue: string
     placeholder?: string
     ariaLabel?: string
+    invalid?: boolean
     class?: string
   }>(),
   {
     placeholder: 'Pick a month',
     ariaLabel: 'Choose month',
+    invalid: false,
     class: undefined,
   },
 )
@@ -70,6 +72,7 @@ function isSelected(month: number) {
         type="button"
         variant="outline"
         :aria-label="ariaLabel"
+        :aria-invalid="invalid || undefined"
         :class="
           cn(
             'w-44 justify-start text-left font-normal',

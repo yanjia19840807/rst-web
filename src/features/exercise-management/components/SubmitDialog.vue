@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { toTypedSchema } from '@vee-validate/zod'
+import { computed, watch } from 'vue'
+import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
@@ -26,6 +28,11 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { useExerciseMutations } from '../api/mutations'
 import { useSubmitPreviewQuery } from '../api/queries'
+import {
+  emptySubmitRemarks,
+  submitRemarksRequiredSchema,
+  submitRemarksSchema,
+} from '../schemas/submitRemarks'
 import type { SubmittedDetails } from '../types'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -39,7 +46,12 @@ const emit = defineEmits<{
 }>()
 
 const { submit } = useExerciseMutations()
-const remarks = ref('')
+const { defineField, errors, handleSubmit, resetForm, setFieldError } = useForm({
+  validationSchema: toTypedSchema(submitRemarksSchema),
+  initialValues: emptySubmitRemarks(),
+  validateOnMount: false,
+})
+const [remarks] = defineField('remarks')
 const previewQuery = useSubmitPreviewQuery(
   () => props.exerciseId,
   open,
@@ -56,9 +68,8 @@ const findingLabel: Record<string, string> = {
 }
 
 watch(open, (value) => {
-  if (!value) {
-    remarks.value = ''
-  }
+  if (!value) return
+  resetForm({ values: emptySubmitRemarks() })
 })
 
 watch(
@@ -74,16 +85,23 @@ watch(
   },
 )
 
-async function submitNow() {
-  if (remarksRequired.value && !remarks.value.trim()) {
-    toast.warning('Remarks are required when severe validation checks fail.')
-    return
+const submitNow = handleSubmit(async (values) => {
+  if (remarksRequired.value) {
+    const required = submitRemarksRequiredSchema().safeParse(values)
+    if (!required.success) {
+      setFieldError(
+        'remarks',
+        required.error.issues[0]?.message ??
+          'Remarks are required when severe validation checks fail.',
+      )
+      return
+    }
   }
   try {
     const key = crypto.randomUUID()
     const details = await submit.mutateAsync({
       id: props.exerciseId,
-      body: { remarks: remarks.value.trim() || null, requestId: key },
+      body: { remarks: values.remarks.trim() || null, requestId: key },
       idempotencyKey: key,
     })
     emit('submitted', details)
@@ -92,7 +110,7 @@ async function submitNow() {
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Submit failed.')
   }
-}
+})
 
 function severityLabel(finding: { severity: string; passed: boolean }) {
   if (finding.passed && finding.severity !== 'SEVERE') return 'Passed'
@@ -110,7 +128,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Submit For Validation</DialogTitle>
         <DialogDescription>
-          This will lock the official scenario and send the exercise to Manager Review.
+          This will send the Official Scenario to Manager Review and lock the exercise.
           You cannot edit it until it is returned or withdrawn. Failed severe checks require remarks.
         </DialogDescription>
       </DialogHeader>
@@ -184,7 +202,13 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
                   : 'Optional context for the Manager reviewer.'
               }}
             </p>
-            <Textarea id="submit-remarks" v-model="remarks" rows="3" />
+            <Textarea
+              id="submit-remarks"
+              v-model="remarks"
+              rows="3"
+              :aria-invalid="Boolean(errors.remarks)"
+            />
+            <p v-if="errors.remarks" class="text-xs text-destructive">{{ errors.remarks }}</p>
           </div>
         </div>
       </div>

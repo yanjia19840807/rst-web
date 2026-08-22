@@ -1,4 +1,4 @@
-import { delay, http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse, passthrough } from 'msw'
 
 import { buildApprovalWorkspace } from '../approvalWorkspace'
 
@@ -10,7 +10,6 @@ import type {
   Exercise,
   ManualBaselineRequest,
   MonthlyVolumeRequest,
-  ShiftRequest,
   SlotVolumeRequest,
   SubmitRequest,
   SupportItemRequest,
@@ -45,6 +44,57 @@ import { pageOf, pageParams } from '../page'
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Supervisor request failed', status, detail }, { status })
+}
+
+type SimulationShell = {
+  latestForecastByScenario?: Record<string, unknown>
+  latestMonthlySizingByScenario?: Record<string, unknown>
+  latestDailySizingByScenario?: Record<string, unknown>
+  latestSlotByScenario?: Record<string, unknown>
+  stubRuns: Array<{ scenarioId: string; runType: string; status: string }>
+  scenarios: Array<{ id: string }>
+}
+
+function committedScenarioCount(shell: SimulationShell) {
+  const ids = new Set<string>()
+  for (const run of shell.stubRuns) {
+    if (
+      run.status === 'ACCEPTED' &&
+      (run.runType === 'FORECAST' ||
+        run.runType === 'MONTHLY_SIZING' ||
+        run.runType === 'DAILY' ||
+        run.runType === 'SLOT')
+    ) {
+      ids.add(run.scenarioId)
+    }
+  }
+  for (const map of [
+    shell.latestForecastByScenario,
+    shell.latestMonthlySizingByScenario,
+    shell.latestDailySizingByScenario,
+    shell.latestSlotByScenario,
+  ]) {
+    for (const id of Object.keys(map ?? {})) ids.add(id)
+  }
+  return ids.size
+}
+
+function clearCommittedSimulationResults(shell: SimulationShell) {
+  const cleared = committedScenarioCount(shell)
+  shell.latestForecastByScenario = {}
+  shell.latestMonthlySizingByScenario = {}
+  shell.latestDailySizingByScenario = {}
+  shell.latestSlotByScenario = {}
+  shell.stubRuns = shell.stubRuns.filter(
+    (run) =>
+      !(
+        run.runType === 'FORECAST' ||
+        run.runType === 'MONTHLY_SIZING' ||
+        run.runType === 'DAILY' ||
+        run.runType === 'SLOT'
+      ),
+  )
+  return cleared
 }
 
 function sameKey(a: SharedKpiKey, b: SharedKpiKey) {
@@ -121,7 +171,6 @@ function derivedSupport(
     annualMultiplier: multiplier,
     workloadPerYearHours: hours,
     supportFte: supportFte(hours, fteAnnualHours(setup)),
-    calculationVersion: null as string | null,
   }
 }
 
@@ -129,12 +178,14 @@ function editable(exercise: Exercise) {
   return exercise.canEdit && (exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED')
 }
 
+function isWorking(scenario: { status: string }) {
+  return scenario.status === 'DRAFT'
+}
+
 function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
-  const liveOfficial = shell.scenarios.find((item) => item.status === 'OFFICIAL')?.id ?? null
-  // Prefer live OFFICIAL; otherwise keep the Exercise pointer (Withdraw/Return demote status to DRAFT).
   exercise.officialScenarioId =
-    liveOfficial ?? exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
+    exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
   exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
@@ -171,6 +222,13 @@ function uniqueSorted(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((name): name is string => Boolean(name)))].sort()
 }
 
+function matchesReviewStage(exercise: Exercise, reviewStage: string) {
+  if (reviewStage === 'SUPERVISOR') {
+    return exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
+  }
+  return exercise.workflowStatus === 'UNDER_REVIEW' && exercise.requiredRole === reviewStage
+}
+
 function matchesExerciseList(exercise: Exercise, params: URLSearchParams) {
   const code = params.get('exerciseCode')?.trim().toLowerCase()
   if (code && !exercise.exerciseCode.toLowerCase().includes(code)) return false
@@ -181,7 +239,7 @@ function matchesExerciseList(exercise: Exercise, params: URLSearchParams) {
   const workflowStatus = params.get('workflowStatus')
   if (workflowStatus && exercise.workflowStatus !== workflowStatus) return false
   const reviewStage = params.get('reviewStage')
-  if (reviewStage && exercise.requiredRole !== reviewStage) return false
+  if (reviewStage && !matchesReviewStage(exercise, reviewStage)) return false
   const handler = params.get('handler')
   if (handler && exercise.currentReviewer !== handler) return false
   const officialScenario = params.get('officialScenario')
@@ -375,7 +433,7 @@ export const supervisorHandlers = [
     const exercise = findExercise(params.id)
     if (!exercise) return problem(404, 'Exercise not found.')
     syncFlags(exercise)
-    if (!exercise.canEdit) return problem(422, 'Exercise periods can only be changed while In Progress or Returned.')
+    if (!exercise.canEdit) return problem(422, 'Exercise periods can only be changed during Supervisor Sizing.')
     const body = (await request.json()) as Pick<
       CreateExerciseInput,
       'sizingMonth' | 'slotStartDate' | 'slotWeeks' | 'tmsFrom' | 'tmsTo'
@@ -401,13 +459,35 @@ export const supervisorHandlers = [
     const notices: string[] = []
     if (previousYear !== nextYear) {
       notices.push(
-        `Sizing year changed (${previousYear} → ${nextYear}). Holiday templates were re-applied.`,
+        `Sizing year changed (${previousYear} → ${nextYear}). Review holiday dates in Calendar.`,
       )
       notices.push(`Working Days / Year computed for ${nextYear}.`)
     }
     seedTrainVolumes(exercise, ensureShell(exercise))
     notices.push('Volume Input grids refreshed for the updated training windows.')
+    const shell = ensureShell(exercise) as SimulationShell
+    const cleared = clearCommittedSimulationResults(shell)
+    if (cleared > 0) {
+      notices.push(
+        `Cleared saved Forecast and Simulation results for ${cleared} scenario(s). Re-run Preview / Save sizing on each scenario.`,
+      )
+    }
     return HttpResponse.json({ exercise, notices })
+  }),
+
+  http.get('*/api/v1/supervisor/exercises/:id/committed-results', ({ params }) => {
+    const exercise = findExercise(params.id)
+    if (!exercise) return problem(404, 'Exercise not found.')
+    return HttpResponse.json({ scenarioCount: committedScenarioCount(ensureShell(exercise)) })
+  }),
+
+  http.post('*/api/v1/supervisor/exercises/:id/committed-results/clear', ({ params }) => {
+    const exercise = findExercise(params.id)
+    if (!exercise) return problem(404, 'Exercise not found.')
+    syncFlags(exercise)
+    if (!exercise.canEdit) return problem(409, 'The Exercise is not editable in its current workflow status.')
+    const cleared = clearCommittedSimulationResults(ensureShell(exercise))
+    return HttpResponse.json({ scenarioCount: cleared })
   }),
 
   http.delete('*/api/v1/supervisor/exercises/:id', ({ params }) => {
@@ -438,28 +518,6 @@ export const supervisorHandlers = [
       version: ctx.shell.teamSetup.version + 1,
     }
     return HttpResponse.json(teamSetupView(ctx.exercise, ctx.shell))
-  }),
-
-  http.get('*/api/v1/supervisor/exercises/:id/shifts', ({ params }) => {
-    const ctx = requireExercise(params.id)
-    if (!ctx) return problem(404, 'Exercise not found.')
-    return HttpResponse.json(ctx.shell.shifts)
-  }),
-
-  http.put('*/api/v1/supervisor/exercises/:id/shifts', async ({ params, request }) => {
-    const ctx = requireExercise(params.id)
-    if (!ctx) return problem(404, 'Exercise not found.')
-    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
-    const body = (await request.json()) as ShiftRequest[]
-    ctx.shell.shifts = body.map((item) => ({
-      id: crypto.randomUUID(),
-      shiftNo: item.shiftNo,
-      startTime: item.startTime,
-      durationMinutes: item.durationMinutes,
-      headcount: item.headcount,
-      worksOnWeekend: item.worksOnWeekend,
-    }))
-    return HttpResponse.json(ctx.shell.shifts)
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id/production-support', ({ params }) => {
@@ -551,6 +609,31 @@ export const supervisorHandlers = [
     ctx.shell.calendar = {
       holidays,
     }
+    return HttpResponse.json(ctx.shell.calendar)
+  }),
+
+  http.get('*/api/v1/supervisor/exercises/:id/calendar/export-template', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="calendar-template.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/supervisor/exercises/:id/calendar/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="calendar.xlsx"',
+      },
+    }),
+  ),
+  http.post('*/api/v1/supervisor/exercises/:id/calendar/import', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.calendar)
   }),
 
@@ -725,23 +808,27 @@ export const supervisorHandlers = [
 
   http.get('*/api/v1/supervisor/exercises/:id/cycle-time/chart', ({ params }) => {
     const ctx = requireExercise(params.id)
-    if (!ctx) return problem(404, 'Exercise not found.')
-    return HttpResponse.json({
-      points: [],
-      upperControlLimitSeconds: null,
-      lowerControlLimitSeconds: null,
-      sampleCount: 0,
-    })
+    if (!ctx) return passthrough()
+    return HttpResponse.json(ctx.shell.cycleTimeChart)
   }),
 
   http.get('*/api/v1/supervisor/exercises/:id/cycle-time/active', ({ params }) => {
     const ctx = requireExercise(params.id)
-    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!ctx) return passthrough()
     if (!ctx.shell.cycleTime) return problem(404, 'No active Cycle Time baseline.')
     return HttpResponse.json({
       ...ctx.shell.cycleTime,
       files: ctx.shell.cycleTime.files ?? [],
     })
+  }),
+
+  http.get('*/api/v1/supervisor/exercises/:id/cycle-time/sessions', ({ params, request }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return passthrough()
+    const url = new URL(request.url)
+    const page = Number(url.searchParams.get('page') || 1)
+    const pageSize = Number(url.searchParams.get('pageSize') || 10)
+    return HttpResponse.json(pageOf(ctx.shell.tmsSessions, page, pageSize))
   }),
 
   http.post(
@@ -849,7 +936,6 @@ export const supervisorHandlers = [
       name,
       description: body.description ?? null,
       status: 'DRAFT',
-      officialAt: null,
       version: 0,
       rightSizingHc: body.rightSizingHc ?? 0,
       shifts: [],
@@ -874,7 +960,7 @@ export const supervisorHandlers = [
       const index = ctx.shell.scenarios.findIndex((item) => item.id === params.scenarioId)
       const current = ctx.shell.scenarios[index]
       if (!current) return problem(404, 'The Scenario was not found.')
-      if (current.status !== 'DRAFT') return problem(409, 'Only DRAFT scenarios can be modified.')
+      if (!isWorking(current)) return problem(409, 'Only a live scenario can be modified.')
       const body = (await request.json()) as UpdateScenarioRequest
       const updated = {
         ...current,
@@ -898,7 +984,7 @@ export const supervisorHandlers = [
       const index = ctx.shell.scenarios.findIndex((item) => item.id === params.scenarioId)
       const current = ctx.shell.scenarios[index]
       if (!current) return problem(404, 'The Scenario was not found.')
-      if (current.status !== 'DRAFT') return problem(409, 'Only DRAFT scenarios can be saved.')
+      if (!isWorking(current)) return problem(409, 'Only a live scenario can be saved.')
       const body = (await request.json()) as {
         name: string
         description?: string | null
@@ -981,7 +1067,10 @@ export const supervisorHandlers = [
     const index = ctx.shell.scenarios.findIndex((item) => item.id === params.scenarioId)
     const current = ctx.shell.scenarios[index]
     if (!current) return problem(404, 'The Scenario was not found.')
-    if (current.status !== 'DRAFT') return problem(409, 'Only DRAFT scenarios can be modified.')
+    if (!isWorking(current)) return problem(409, 'Only a live scenario can be modified.')
+    if (ctx.exercise.officialScenarioId === current.id) {
+      ctx.exercise.officialScenarioId = null
+    }
     ctx.shell.scenarios.splice(index, 1)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -992,44 +1081,16 @@ export const supervisorHandlers = [
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const target = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
     if (!target) return problem(404, 'The Scenario was not found.')
-    if (target.status !== 'DRAFT') return problem(409, 'Only DRAFT scenarios can be marked Official.')
+    if (ctx.exercise.officialScenarioId === target.id) {
+      return HttpResponse.json(target)
+    }
+    if (!isWorking(target)) {
+      return problem(409, 'Only a live scenario can be marked Official.')
+    }
     if (!ctx.shell.cycleTime?.active) {
       return problem(422, 'An active Cycle Time baseline is required before Official.')
     }
-    const hasForecast = ctx.shell.stubRuns.some(
-      (run) =>
-        run.scenarioId === target.id &&
-        run.runType === 'FORECAST' &&
-        run.status === 'ACCEPTED',
-    )
-    const hasMonthly = ctx.shell.stubRuns.some(
-      (run) =>
-        run.scenarioId === target.id &&
-        run.runType === 'MONTHLY_SIZING' &&
-        run.status === 'ACCEPTED',
-    )
-    const hasSlot = ctx.shell.stubRuns.some(
-      (run) =>
-        run.scenarioId === target.id && run.runType === 'SLOT' && run.status === 'ACCEPTED',
-    )
-    if (!hasForecast) {
-      return problem(422, 'An ACCEPTED forecast run is required before Official.')
-    }
-    if (!hasMonthly) {
-      return problem(422, 'An ACCEPTED monthly sizing run is required before Official.')
-    }
-    if (!hasSlot) {
-      return problem(422, 'An ACCEPTED slot simulation run is required before Official.')
-    }
-    for (const scenario of ctx.shell.scenarios) {
-      if (scenario.status === 'OFFICIAL') {
-        scenario.status = 'DRAFT'
-        scenario.officialAt = null
-      }
-    }
-    target.status = 'OFFICIAL'
-    target.officialAt = new Date().toISOString()
-    target.version += 1
+    ctx.exercise.officialScenarioId = target.id
     syncFlags(ctx.exercise)
     return HttpResponse.json(target)
   }),
@@ -1045,8 +1106,8 @@ export const supervisorHandlers = [
       if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
       const scenario = ctx.shell.scenarios.find((item) => item.id === scenarioId)
       if (!scenario) return problem(404, 'The Scenario was not found.')
-      if (scenario.status !== 'DRAFT') {
-        return problem(409, 'Simulations can only run against DRAFT scenarios.')
+      if (!isWorking(scenario)) {
+        return problem(409, 'Simulations can only run against a live scenario.')
       }
       const sizing = ctx.exercise.sizingMonth || '2026-08'
       const [y, m] = sizing.split('-').map(Number)
@@ -1121,8 +1182,8 @@ export const supervisorHandlers = [
       if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
       const scenario = ctx.shell.scenarios.find((item) => item.id === scenarioId)
       if (!scenario) return problem(404, 'The Scenario was not found.')
-      if (scenario.status !== 'DRAFT') {
-        return problem(409, 'Simulations can only run against DRAFT scenarios.')
+      if (!isWorking(scenario)) {
+        return problem(409, 'Simulations can only run against a live scenario.')
       }
       const body = (await request.json()) as { rightSizingHc?: number }
       const rsHc = Number(body.rightSizingHc)
@@ -1318,8 +1379,8 @@ export const supervisorHandlers = [
       if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
       const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
       if (!scenario) return problem(404, 'The Scenario was not found.')
-      if (scenario.status !== 'DRAFT') {
-        return problem(409, 'Simulations can only run against DRAFT scenarios.')
+      if (!isWorking(scenario)) {
+        return problem(409, 'Simulations can only run against a live scenario.')
       }
       if (
         !ctx.shell.stubRuns.some(
@@ -1409,8 +1470,8 @@ export const supervisorHandlers = [
       if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
       const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
       if (!scenario) return problem(404, 'The Scenario was not found.')
-      if (scenario.status !== 'DRAFT') {
-        return problem(409, 'Simulations can only run against DRAFT scenarios.')
+      if (!isWorking(scenario)) {
+        return problem(409, 'Simulations can only run against a live scenario.')
       }
       if (
         !ctx.shell.stubRuns.some(
@@ -1507,8 +1568,8 @@ export const supervisorHandlers = [
       if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
       const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
       if (!scenario) return problem(404, 'The Scenario was not found.')
-      if (scenario.status !== 'DRAFT') {
-        return problem(409, 'Simulations can only run against DRAFT scenarios.')
+      if (!isWorking(scenario)) {
+        return problem(409, 'Simulations can only run against a live scenario.')
       }
       const body = (await request.json()) as {
         shifts?: Array<{
@@ -1622,7 +1683,7 @@ export const supervisorHandlers = [
       return problem(409, 'Exercise must have an Official Scenario and be editable to submit.')
     }
     const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
-    const official = ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+    const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
     return HttpResponse.json({
       scenarioId: official?.id ?? ctx.exercise.officialScenarioId ?? '',
       findings: [
@@ -1658,7 +1719,7 @@ export const supervisorHandlers = [
     if (!hasKpis && !body.remarks?.trim()) {
       return problem(422, 'SEVERE validation failures require remarks before Submit.')
     }
-    const official = ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+    const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
     const previous = ctx.shell.submitted
     const reopenable = previous
       && (previous.submissionStatus === 'RETURNED' || previous.submissionStatus === 'WITHDRAWN')
@@ -1790,15 +1851,11 @@ export const supervisorHandlers = [
     ctx.shell.submitted.workflowStatusLabel = 'CANCELLED'
     ctx.shell.submitted.workflowStatus = 'IN_PROGRESS'
     ctx.exercise.workflowStatus = 'IN_PROGRESS'
-    // Keep officialScenarioId; demote scenario to DRAFT so it can be edited / re-simulated.
     const official =
       ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId) ??
-      ctx.shell.scenarios.find((item) => item.id === ctx.shell.submitted?.scenarioId) ??
-      ctx.shell.scenarios.find((item) => item.status === 'OFFICIAL')
+      ctx.shell.scenarios.find((item) => item.id === ctx.shell.submitted?.scenarioId)
     if (official) {
       ctx.exercise.officialScenarioId = official.id
-      official.status = 'DRAFT'
-      official.officialAt = null
     }
     syncFlags(ctx.exercise)
     return HttpResponse.json({

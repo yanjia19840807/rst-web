@@ -116,7 +116,7 @@ const controlClass =
         />
       </div>
       <div class="grid gap-1.5">
-        <Label>Combine same-reference session time</Label>
+        <Label>Combine subtask time</Label>
         <div class="flex h-9 items-center gap-4 text-sm">
           <label class="inline-flex cursor-pointer items-center gap-2">
             <input
@@ -140,8 +140,8 @@ const controlClass =
           </label>
         </div>
         <p class="text-xs text-muted-foreground">
-          Yes: sessions that share a Reference are summed before the SYSTEM median.
-          No: each session is an independent median sample.
+          Yes: SYSTEM baseline is the sum of each subtask's median.
+          No: SYSTEM baseline is the median of all included sessions.
         </p>
       </div>
     </CardContent>

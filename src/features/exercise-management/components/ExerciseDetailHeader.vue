@@ -3,6 +3,7 @@ import { Info } from '@lucide/vue'
 import { computed } from 'vue'
 
 import DetailTable from '@/components/DetailTable.vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate } from '@/lib/datetime'
@@ -10,16 +11,17 @@ import { formatDate } from '@/lib/datetime'
 import {
   SIZING_MONTH_HINT_DESCRIPTION,
   SLOT_PERIOD_HINT_DESCRIPTION,
+  TMS_PERIOD_HINT_DESCRIPTION,
   sizingHintLines,
   slotHintLines,
+  tmsHintLines,
 } from '../periodWindows'
 import type { Exercise } from '../types'
-import { exerciseStatusLabel } from '../workflowLabels'
+import { currentStepLabel, isReturned } from '../workflowLabels'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 const props = defineProps<{
   exercise: Exercise
-  deliveryHc: number
   locked: boolean
 }>()
 
@@ -32,6 +34,7 @@ const sizingHints = computed(() => sizingHintLines(props.exercise.sizingMonth))
 const slotHints = computed(() =>
   slotHintLines(props.exercise.slotStartDate, props.exercise.slotWeeks),
 )
+const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exercise.tmsTo))
 const slotPeriodSummary = computed(() => {
   const weeks = props.exercise.slotWeeks
   const weekLabel = weeks === 1 ? '1 week' : `${weeks} weeks`
@@ -44,7 +47,7 @@ const slotPeriodSummary = computed(() => {
     <CardHeader class="items-center">
       <CardTitle class="text-base">Exercise Info</CardTitle>
       <CardAction v-if="!locked">
-        <Button size="sm" variant="outline" @click="emit('editPeriods')">Edit</Button>
+        <Button size="sm" variant="outline" @click="emit('editPeriods')">Edit Periods</Button>
       </CardAction>
     </CardHeader>
     <CardContent class="grid gap-3">
@@ -56,11 +59,11 @@ const slotPeriodSummary = computed(() => {
           { key: 'sizingMonth', label: 'Sizing Month', value: exercise.sizingMonth },
           { key: 'slotPeriod', label: 'Slot Period', value: slotPeriodSummary },
           {
+            key: 'tmsPeriod',
             label: 'TMS period',
             value: `${formatDate(exercise.tmsFrom)} – ${formatDate(exercise.tmsTo)}`,
           },
-          { label: 'Status', value: exerciseStatusLabel(exercise) },
-          { label: 'Delivery HC', value: deliveryHc.toFixed(2) },
+          { key: 'status', label: 'Current Step', value: currentStepLabel(exercise) },
         ]"
       >
         <template #toolkit="{ row }">
@@ -95,6 +98,22 @@ const slotPeriodSummary = computed(() => {
               :description="SLOT_PERIOD_HINT_DESCRIPTION"
               :lines="slotHints"
             />
+          </span>
+        </template>
+        <template #tmsPeriod="{ row }">
+          <span class="inline-flex items-center gap-1.5">
+            <span>{{ row.value || '—' }}</span>
+            <PeriodDerivedHints
+              title="TMS period"
+              :description="TMS_PERIOD_HINT_DESCRIPTION"
+              :lines="tmsHints"
+            />
+          </span>
+        </template>
+        <template #status="{ row }">
+          <span class="inline-flex items-center gap-1.5">
+            <span>{{ row.value || '—' }}</span>
+            <Badge v-if="isReturned(exercise)" variant="outline">Returned</Badge>
           </span>
         </template>
       </DetailTable>

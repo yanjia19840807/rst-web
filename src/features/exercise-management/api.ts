@@ -3,6 +3,7 @@ import { ApiError, apiRequest } from '@/api/client'
 import type {
   CalendarRequest,
   CalendarView,
+  CommittedResultsStatus,
   CreateExerciseInput,
   CreateExerciseResult,
   CreateScenarioRequest,
@@ -23,13 +24,11 @@ import type {
   MonthlyVolume,
   MonthlyVolumeRequest,
   Scenario,
-  Shift,
   ShiftRequest,
   SlotVolume,
   SlotVolumeRequest,
   CommitScenarioRequest,
   DailySizingView,
-  ForecastBundle,
   ForecastTrainingBundle,
   ForecastView,
   MonthlySizingView,
@@ -43,7 +42,6 @@ import type {
   TeamSetup,
   TeamSetupRequest,
   ToolkitVolumePoints,
-  ToolkitVolumeSummary,
   UpdateScenarioRequest,
 } from './types'
 
@@ -123,6 +121,12 @@ export const exerciseApi = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+  committedResults: (id: string) =>
+    apiRequest<CommittedResultsStatus>(exercisePath(id, '/committed-results')),
+  clearCommittedResults: (id: string) =>
+    apiRequest<CommittedResultsStatus>(exercisePath(id, '/committed-results/clear'), {
+      method: 'POST',
+    }),
   delete: (id: string) =>
     apiRequest<void>(exercisePath(id), {
       method: 'DELETE',
@@ -152,14 +156,6 @@ export const exerciseApi = {
       body: JSON.stringify(body),
     }),
 
-  getShifts: (exerciseId: string) =>
-    apiRequest<Shift[]>(exercisePath(exerciseId, '/shifts')),
-  putShifts: (exerciseId: string, body: ShiftRequest[]) =>
-    apiRequest<Shift[]>(exercisePath(exerciseId, '/shifts'), {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
-
   listSupport: (exerciseId: string) =>
     apiRequest<SupportItem[]>(exercisePath(exerciseId, '/production-support')),
   createSupport: (exerciseId: string, body: SupportItemRequest) =>
@@ -184,9 +180,13 @@ export const exerciseApi = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+  exportCalendarTemplate: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/calendar/export-template', 'calendar-template.xlsx'),
+  exportCalendar: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/calendar/export', 'calendar.xlsx'),
+  importCalendar: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<CalendarView>(exerciseId, '/calendar/import', file),
 
-  getToolkitVolumeSummary: (exerciseId: string) =>
-    apiRequest<ToolkitVolumeSummary>(exercisePath(exerciseId, '/volumes/toolkit-summary')),
   getToolkitVolumePoints: (exerciseId: string) =>
     apiRequest<ToolkitVolumePoints>(exercisePath(exerciseId, '/volumes/toolkit-points')),
   getMonthlyVolumes: (exerciseId: string) =>
@@ -304,10 +304,6 @@ export const exerciseApi = {
     }),
   markOfficial: (exerciseId: string, scenarioId: string) =>
     apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}/official`), {
-      method: 'POST',
-    }),
-  runForecast: (exerciseId: string, scenarioId: string) =>
-    apiRequest<ForecastBundle>(exercisePath(exerciseId, `/scenarios/${scenarioId}/forecast:run`), {
       method: 'POST',
     }),
   getLatestForecast: (
