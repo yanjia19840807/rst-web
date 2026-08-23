@@ -4,23 +4,16 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
-import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
+import { DataTable } from '@/components/ui/data-table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 import { useSupervisorToolkitsQuery } from '../api/queries'
 import type { SupervisorToolkit, ToolkitListQuery } from '../types'
+import { createToolkitColumns } from './toolkitColumns'
 
 const router = useRouter()
 const nameFilter = ref('')
@@ -86,6 +79,17 @@ watch(
   },
 )
 
+const columns = computed(() =>
+  createToolkitColumns({
+    onCreate: createExercise,
+    onEdit: (id) =>
+      void router.push({
+        name: 'supervisor-toolkit-edit',
+        params: { id },
+      }),
+  }),
+)
+
 function createExercise(toolkit: SupervisorToolkit) {
   void router.push({
     name: 'supervisor-exercises',
@@ -124,75 +128,14 @@ function createExercise(toolkit: SupervisorToolkit) {
           </label>
         </div>
 
-        <div class="overflow-x-auto rounded-lg border">
-          <Table class="min-w-[960px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Toolkit Name</TableHead>
-                <TableHead>GBS Center</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>Process Level 1</TableHead>
-                <TableHead>Process Level 2</TableHead>
-                <TableHead>Process Level 3</TableHead>
-                <TableHead>Subtasks</TableHead>
-                <TableHead class="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="toolkit in toolkits" :key="toolkit.id">
-                <TableCell>{{ toolkit.name }}</TableCell>
-                <TableCell>{{ toolkit.center }}</TableCell>
-                <TableCell>{{ toolkit.domain }}</TableCell>
-                <TableCell>{{ toolkit.pl1 }}</TableCell>
-                <TableCell>{{ toolkit.pl2 }}</TableCell>
-                <TableCell>{{ toolkit.pl3Name }}</TableCell>
-                <TableCell>
-                  {{
-                    toolkit.subtasks
-                      .filter((item) => !item.deletedAt)
-                      .map((item) => item.name)
-                      .join('; ') || '—'
-                  }}
-                </TableCell>
-                <TableCell>
-                  <div class="flex justify-end gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      @click="createExercise(toolkit)"
-                    >
-                      Create Exercise
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      @click="
-                        router.push({
-                          name: 'supervisor-toolkit-edit',
-                          params: { id: toolkit.id },
-                        })
-                      "
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="!loading && !toolkits.length">
-                <TableCell colspan="8" class="h-24 text-center text-muted-foreground">
-                  No Toolkit is currently available.
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="loading">
-                <TableCell colspan="8" class="p-0">
-                  <ListLoading />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          :columns="columns"
+          :data="toolkits"
+          :pending="loading"
+          empty-text="No Toolkit is currently available."
+          table-class="min-w-[960px]"
+          :get-row-id="(row) => row.id"
+        />
 
         <TablePager
           :total="total"

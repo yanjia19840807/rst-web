@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatMonth } from '@/lib/datetime'
+import { measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { useScenarioMutations } from '../api/mutations'
 import {
@@ -263,25 +264,20 @@ const baselineInputRows = computed(() => {
  * (inputs live in Scenario Info).
  */
 const resultRows = computed<ScenarioResultRow[]>(() => {
-  const rsHc = Number(rightSizingHc.value)
+  const rsHc = measuredRightSizingHc(rightSizingHc.value)
   const supportVal = supportFte.value
   const capacity =
-    Number.isFinite(rsHc) && supportVal != null
-      ? actualSize.value - rsHc - supportVal
-      : null
+    rsHc != null && supportVal != null ? actualSize.value - rsHc - supportVal : null
   const capacityLabel =
     capacity == null ? '—' : `${capacity >= 0 ? '+' : ''}${capacity.toFixed(2)}`
 
   const firstSizing = latestMonthlySizing.value?.rows[0]
+  const firstRs = measuredRightSizingHc(firstSizing?.rightSizingHc)
   const rows: ScenarioResultRow[] = [
     { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
     {
       label: withUnit('Right size', FieldUnit.hc),
-      value: firstSizing
-        ? Number(firstSizing.rightSizingHc).toFixed(2)
-        : Number.isFinite(Number(rightSizingHc.value))
-          ? Number(rightSizingHc.value).toFixed(2)
-          : '—',
+      value: firstRs != null ? firstRs.toFixed(2) : rsHc != null ? rsHc.toFixed(2) : '—',
     },
     {
       label: withUnit('Capacity Creation', FieldUnit.hc),

@@ -19,6 +19,7 @@ export type CurrentUser = {
   email: string
   roles: string[]
   scopes: string[]
+  center?: string | null
 }
 
 /**

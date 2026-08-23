@@ -3,26 +3,18 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
-import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 import { useRepositoryQuery } from '../api/queries'
 import type { RepositoryListQuery } from '../types'
-import CapacityCell from './CapacityCell.vue'
 import FilterField from './FilterField.vue'
+import { createRstRepositoryColumns } from './rstRepositoryColumns'
 
 const exerciseFilter = ref('')
 const appliedExerciseCode = ref('')
@@ -62,19 +54,11 @@ const pl3Options = computed(() => ['All', ...(repositoryQuery.data.value?.pl3Nam
 const toolkitOptions = computed(() => ['All', ...(repositoryQuery.data.value?.toolkitNames ?? [])])
 const loading = computed(() => repositoryQuery.isPending.value && !repositoryQuery.data.value)
 
-function formatHc(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return n.toFixed(2)
-}
-
-function formatPct(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(String(value).replace(/[%+]/g, ''))
-  if (!Number.isFinite(n)) return '—'
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
-}
+const columns = computed(() =>
+  createRstRepositoryColumns({
+    onToolkitClick,
+  }),
+)
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
 
@@ -255,75 +239,14 @@ watch(
           </button>
         </div>
 
-        <div class="overflow-x-auto rounded-lg border">
-          <Table class="min-w-[1480px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Exercise No</TableHead>
-                <TableHead>Carrier</TableHead>
-                <TableHead>GBS Site</TableHead>
-                <TableHead>GBS Country</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>PL1</TableHead>
-                <TableHead>PL2</TableHead>
-                <TableHead>PL3</TableHead>
-                <TableHead>Toolkit</TableHead>
-                <TableHead>Customer Country</TableHead>
-                <TableHead>Delivery HC</TableHead>
-                <TableHead>Right Sizing HC</TableHead>
-                <TableHead>Production Support</TableHead>
-                <TableHead>Capacity Creation</TableHead>
-                <TableHead>Capacity Creation %</TableHead>
-                <TableHead>Volume Increase % YoY</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-if="loading">
-                <TableCell colspan="16" class="p-0">
-                  <ListLoading />
-                </TableCell>
-              </TableRow>
-              <template v-else>
-                <TableRow
-                  v-for="(row, index) in rows"
-                  :key="`${row.exerciseId}-${row.site}-${row.toolkit}-${index}`"
-                >
-                  <TableCell>{{ row.exerciseId }}</TableCell>
-                  <TableCell>{{ row.carrier }}</TableCell>
-                  <TableCell>{{ row.site }}</TableCell>
-                  <TableCell>{{ row.country }}</TableCell>
-                  <TableCell>{{ row.domain }}</TableCell>
-                  <TableCell>{{ row.pl1 }}</TableCell>
-                  <TableCell>{{ row.pl2 }}</TableCell>
-                  <TableCell>{{ row.pl3 }}</TableCell>
-                  <TableCell>
-                    <button
-                      type="button"
-                      class="font-semibold text-primary"
-                      @click="onToolkitClick(row.toolkit)"
-                    >
-                      {{ row.toolkit }}
-                    </button>
-                  </TableCell>
-                  <TableCell>{{ row.kpi }}</TableCell>
-                  <TableCell>{{ formatHc(row.deliveryHc) }}</TableCell>
-                  <TableCell>{{ formatHc(row.rsHc) }}</TableCell>
-                  <TableCell>{{ formatHc(row.support) }}</TableCell>
-                  <TableCell>
-                    <CapacityCell :value="row.capacityCreation" />
-                  </TableCell>
-                  <TableCell>{{ formatPct(row.capacityPct) }}</TableCell>
-                  <TableCell>{{ row.volumeYoY || '—' }}</TableCell>
-                </TableRow>
-                <TableRow v-if="!rows.length">
-                  <TableCell colspan="16" class="h-24 text-center text-muted-foreground">
-                    No repository records found.
-                  </TableCell>
-                </TableRow>
-              </template>
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          :columns="columns"
+          :data="rows"
+          :pending="loading"
+          empty-text="No repository records found."
+          table-class="min-w-[1480px]"
+          :get-row-id="(row, index) => `${row.exerciseId}-${row.site}-${row.toolkit}-${index}`"
+        />
 
         <TablePager
           :total="total"

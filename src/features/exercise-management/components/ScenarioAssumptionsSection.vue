@@ -90,7 +90,7 @@ function formatShiftTime(value?: string | null) {
           :rows="[
             {
               label: 'Right Sizing HC',
-              value: Number.isFinite(rightSizingHc) ? rightSizingHc.toFixed(2) : '—',
+              value: rightSizingHc > 0 ? rightSizingHc.toFixed(2) : '—',
             },
           ]"
         />

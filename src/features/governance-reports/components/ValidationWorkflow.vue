@@ -3,26 +3,17 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
-import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 import { useValidationWorkflowQuery } from '../api/queries'
 import type { ValidationWorkflowQuery } from '../types'
-import CapacityCell from './CapacityCell.vue'
 import FilterField from './FilterField.vue'
+import { createValidationWorkflowColumns } from './validationWorkflowColumns'
 
 const exerciseFilter = ref('')
 const appliedExerciseCode = ref('')
@@ -65,20 +56,7 @@ const pl3Options = computed(() => ['All', ...(workflowQuery.data.value?.pl3Names
 const toolkitOptions = computed(() => ['All', ...(workflowQuery.data.value?.toolkitNames ?? [])])
 const loading = computed(() => workflowQuery.isPending.value && !workflowQuery.data.value)
 
-function formatPct(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(String(value).replace(/[%+]/g, ''))
-  if (!Number.isFinite(n)) return '—'
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
-}
-
-function displayOrDash(value: string | null | undefined) {
-  return value && value.trim() ? value : '—'
-}
-
-function agingVariant(days: number): 'secondary' | 'destructive' {
-  return days >= 14 ? 'destructive' : 'secondary'
-}
+const columns = createValidationWorkflowColumns()
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
 
@@ -263,62 +241,14 @@ watch(
           </button>
         </div>
 
-        <div class="overflow-x-auto rounded-lg border">
-          <Table class="min-w-[900px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Exercise No</TableHead>
-                <TableHead>GBS</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>PL3</TableHead>
-                <TableHead>Toolkit</TableHead>
-                <TableHead>Current step</TableHead>
-                <TableHead>Current owner</TableHead>
-                <TableHead>Aging</TableHead>
-                <TableHead>Capacity Creation</TableHead>
-                <TableHead>Capacity Creation %</TableHead>
-                <TableHead>Volume Increase % YoY</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-if="loading">
-                <TableCell colspan="11" class="p-0">
-                  <ListLoading />
-                </TableCell>
-              </TableRow>
-              <template v-else>
-                <TableRow v-for="row in rows" :key="row.exerciseNo">
-                  <TableCell>{{ row.exerciseNo }}</TableCell>
-                  <TableCell>{{ displayOrDash(row.gbs) }}</TableCell>
-                  <TableCell>{{ displayOrDash(row.domain) }}</TableCell>
-                  <TableCell>{{ displayOrDash(row.pl3) }}</TableCell>
-                  <TableCell>{{ displayOrDash(row.toolkit) }}</TableCell>
-                  <TableCell>{{ displayOrDash(row.currentStep) }}</TableCell>
-                  <TableCell>{{ displayOrDash(row.currentOwner) }}</TableCell>
-                  <TableCell>
-                    <Badge
-                      v-if="row.agingDays != null"
-                      :variant="agingVariant(row.agingDays)"
-                    >
-                      {{ row.agingDays }} days
-                    </Badge>
-                    <span v-else>—</span>
-                  </TableCell>
-                  <TableCell>
-                    <CapacityCell :value="row.capacityCreation" />
-                  </TableCell>
-                  <TableCell>{{ formatPct(row.capacityPct) }}</TableCell>
-                  <TableCell>{{ row.volumeYoY || '—' }}</TableCell>
-                </TableRow>
-                <TableRow v-if="!rows.length">
-                  <TableCell colspan="11" class="h-24 text-center text-muted-foreground">
-                    No stuck exercises found.
-                  </TableCell>
-                </TableRow>
-              </template>
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          :columns="columns"
+          :data="rows"
+          :pending="loading"
+          empty-text="No stuck exercises found."
+          table-class="min-w-[900px]"
+          :get-row-id="(row) => row.exerciseNo"
+        />
 
         <TablePager
           :total="total"

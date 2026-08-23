@@ -5,8 +5,7 @@ import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import {
@@ -62,19 +61,6 @@ const pl3Options = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const hasActiveFilters = computed(
-  () =>
-    Boolean(
-      filters.sessionNo ||
-        filters.reference ||
-        filters.dateFrom ||
-        filters.dateTo ||
-        filters.agentCcgid ||
-        filters.toolkitId ||
-        filters.pl3Code,
-    ),
-)
-
 watch(
   () => [
     filters.sessionNo,
@@ -89,17 +75,6 @@ watch(
     filters.page = 1
   },
 )
-
-function clearFilters() {
-  filters.sessionNo = ''
-  filters.reference = ''
-  filters.dateFrom = ''
-  filters.dateTo = ''
-  filters.agentCcgid = ''
-  filters.toolkitId = ''
-  filters.pl3Code = ''
-  filters.page = 1
-}
 
 function openDelete(id: string) {
   deleteTargetId.value = id
@@ -131,11 +106,6 @@ function openDetail(id: string) {
   <Card>
     <CardHeader class="items-baseline">
       <CardTitle>{{ isSupervisor ? 'Team TMS Sessions' : 'My TMS Sessions' }}</CardTitle>
-      <CardAction v-if="hasActiveFilters">
-        <Button variant="ghost" size="sm" class="text-primary" @click="clearFilters">
-          Clear All
-        </Button>
-      </CardAction>
     </CardHeader>
     <CardContent class="grid gap-4">
       <TmsSessionFilters

@@ -14,7 +14,6 @@ export interface SharedKpiKey {
 
 export interface SharedKpiCandidate extends SharedKpiKey {
   deliveryHc: number
-  valid: boolean
 }
 
 export interface SupervisorToolkit {

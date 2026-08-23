@@ -1,35 +1,28 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
-import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import AdMetric from '@/features/exercise-management/components/associated-data/AdMetric.vue'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { exerciseApi } from '@/features/exercise-management/api'
 import { exerciseQueryKeys } from '@/features/exercise-management/api/queries'
 import type { Exercise } from '@/features/exercise-management/types'
-import { formatDateTime } from '@/lib/datetime'
 
 import { useApprovalQueueQuery } from '../api/queries'
 import type { ApprovalQueueItem, ApprovalQueueQuery } from '../types'
+import {
+  approvalQueueVisibility,
+  createApprovalQueueColumns,
+} from './approvalQueueColumns'
 
 type TabKey = 'Awaiting Review' | 'Completed Task'
 
@@ -60,45 +53,17 @@ const tabs: TabKey[] = ['Awaiting Review', 'Completed Task']
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
-function formatHc(value?: number | string | null) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return n.toFixed(1)
-}
+const columns = computed(() =>
+  createApprovalQueueColumns({
+    tab: activeTab.value,
+    onReview: openReview,
+    onToolkitInfo: (item) => {
+      void openToolkit(item)
+    },
+  }),
+)
 
-function formatSigned(value?: number | string | null) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`
-}
-
-function capacityTone(value?: number | string | null) {
-  if (value == null || value === '') return ''
-  const n = Number(value)
-  if (!Number.isFinite(n)) return ''
-  return n < 0 ? 'text-destructive font-semibold' : 'text-emerald-600 font-semibold'
-}
-
-function agingTone(days?: number | null) {
-  if (days == null) return 'neutral' as const
-  if (days >= 5) return 'bad' as const
-  if (days >= 3) return 'warn' as const
-  return 'neutral' as const
-}
-
-function previousStepLabel(step?: string | null) {
-  const value = step?.trim()
-  if (!value || value === 'Submitted') return '—'
-  return value
-}
-
-function decisionTone(decision?: string | null) {
-  if (decision === 'Returned') return 'bad' as const
-  if (decision === 'Approved') return 'good' as const
-  return 'muted' as const
-}
+const columnVisibility = computed(() => approvalQueueVisibility(activeTab.value))
 
 const listQuery = computed<ApprovalQueueQuery>(() => {
   const completed = activeTab.value === 'Completed Task'
@@ -435,182 +400,19 @@ watch(
           </div>
         </template>
 
-        <div class="overflow-x-auto rounded-lg border">
-          <Table v-if="activeTab === 'Awaiting Review'" class="min-w-[1520px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Exercise code</TableHead>
-                <TableHead>GBS</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>PL3</TableHead>
-                <TableHead>Toolkit</TableHead>
-                <TableHead>Supervisor</TableHead>
-                <TableHead>Submitted Date</TableHead>
-                <TableHead>Delivery HC</TableHead>
-                <TableHead>Right Sizing HC</TableHead>
-                <TableHead>Production Support</TableHead>
-                <TableHead>Capacity Creation</TableHead>
-                <TableHead>Previous Step</TableHead>
-                <TableHead>Previous Actor</TableHead>
-                <TableHead>Previous Step At</TableHead>
-                <TableHead>Aging</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="item in items" :key="item.submissionId">
-                <TableCell class="font-semibold">{{ item.exerciseCode }}</TableCell>
-                <TableCell>{{ item.center || '—' }}</TableCell>
-                <TableCell>{{ item.domain || '—' }}</TableCell>
-                <TableCell>{{ item.pl3Name || '—' }}</TableCell>
-                <TableCell>
-                  <span class="inline-flex items-center gap-1.5">
-                    <span>{{ item.toolkitName || '—' }}</span>
-                    <button
-                      v-if="item.exerciseId && item.toolkitName"
-                      type="button"
-                      class="inline-flex size-5 shrink-0 items-center justify-center rounded text-primary hover:bg-primary/10"
-                      title="Toolkit info"
-                      @click="openToolkit(item)"
-                    >
-                      <Info class="size-3.5" />
-                      <span class="sr-only">Toolkit info</span>
-                    </button>
-                  </span>
-                </TableCell>
-                <TableCell>{{ item.supervisor || '—' }}</TableCell>
-                <TableCell>{{ formatDateTime(item.submittedAt) }}</TableCell>
-                <TableCell>{{ formatHc(item.deliveryHc) }}</TableCell>
-                <TableCell>{{ formatHc(item.rightSizingHc) }}</TableCell>
-                <TableCell>{{ formatHc(item.productionSupport) }}</TableCell>
-                <TableCell :class="capacityTone(item.capacityCreation)">
-                  {{ formatSigned(item.capacityCreation) }}
-                </TableCell>
-                <TableCell>{{ previousStepLabel(item.previousStep) }}</TableCell>
-                <TableCell>{{ item.previousActor || '—' }}</TableCell>
-                <TableCell>{{ formatDateTime(item.previousStepAt) }}</TableCell>
-                <TableCell>
-                  <Badge
-                    :variant="agingTone(item.agingDays) === 'bad' ? 'destructive' : 'outline'"
-                    :class="{
-                      'border-amber-200 bg-amber-50 text-amber-800':
-                        agingTone(item.agingDays) === 'warn',
-                    }"
-                  >
-                    {{ item.agingDays ?? 0 }}
-                    {{ item.agingDays === 1 ? 'day' : 'days' }}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    @click="openReview(item)"
-                  >
-                    Review
-                  </Button>
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="!loading && !items.length">
-                <TableCell colspan="16" class="h-24 text-center text-muted-foreground">
-                  No submitted records found.
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="loading">
-                <TableCell colspan="16" class="p-0">
-                  <ListLoading />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-
-          <Table v-else class="min-w-[1320px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Exercise code</TableHead>
-                <TableHead>GBS</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>PL3</TableHead>
-                <TableHead>Toolkit</TableHead>
-                <TableHead>Supervisor</TableHead>
-                <TableHead>Submitted Date</TableHead>
-                <TableHead>Delivery HC</TableHead>
-                <TableHead>Right Sizing HC</TableHead>
-                <TableHead>Production Support</TableHead>
-                <TableHead>Capacity Creation</TableHead>
-                <TableHead>My Decision</TableHead>
-                <TableHead>Completed On</TableHead>
-                <TableHead>Completed Step</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="item in items" :key="item.submissionId">
-                <TableCell class="font-semibold">{{ item.exerciseCode }}</TableCell>
-                <TableCell>{{ item.center || '—' }}</TableCell>
-                <TableCell>{{ item.domain || '—' }}</TableCell>
-                <TableCell>{{ item.pl3Name || '—' }}</TableCell>
-                <TableCell>
-                  <span class="inline-flex items-center gap-1.5">
-                    <span>{{ item.toolkitName || '—' }}</span>
-                    <button
-                      v-if="item.exerciseId && item.toolkitName"
-                      type="button"
-                      class="inline-flex size-5 shrink-0 items-center justify-center rounded text-primary hover:bg-primary/10"
-                      title="Toolkit info"
-                      @click="openToolkit(item)"
-                    >
-                      <Info class="size-3.5" />
-                      <span class="sr-only">Toolkit info</span>
-                    </button>
-                  </span>
-                </TableCell>
-                <TableCell>{{ item.supervisor || '—' }}</TableCell>
-                <TableCell>{{ formatDateTime(item.submittedAt) }}</TableCell>
-                <TableCell>{{ formatHc(item.deliveryHc) }}</TableCell>
-                <TableCell>{{ formatHc(item.rightSizingHc) }}</TableCell>
-                <TableCell>{{ formatHc(item.productionSupport) }}</TableCell>
-                <TableCell :class="capacityTone(item.capacityCreation)">
-                  {{ formatSigned(item.capacityCreation) }}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    :variant="decisionTone(item.myDecision) === 'bad' ? 'destructive' : 'outline'"
-                    :class="{
-                      'border-emerald-200 bg-emerald-50 text-emerald-700':
-                        decisionTone(item.myDecision) === 'good',
-                    }"
-                  >
-                    {{ item.myDecision || '—' }}
-                  </Badge>
-                </TableCell>
-                <TableCell>{{ formatDateTime(item.myCompletedAt) }}</TableCell>
-                <TableCell>{{ item.completedStep || '—' }}</TableCell>
-                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    @click="openReview(item)"
-                  >
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="!loading && !items.length">
-                <TableCell colspan="15" class="h-24 text-center text-muted-foreground">
-                  No completed tasks found.
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="loading">
-                <TableCell colspan="15" class="p-0">
-                  <ListLoading />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          :columns="columns"
+          :data="items"
+          :pending="loading"
+          :empty-text="
+            activeTab === 'Awaiting Review'
+              ? 'No submitted records found.'
+              : 'No completed tasks found.'
+          "
+          :table-class="activeTab === 'Awaiting Review' ? 'min-w-[1520px]' : 'min-w-[1320px]'"
+          :get-row-id="(row) => row.submissionId"
+          :column-visibility="columnVisibility"
+        />
 
         <TablePager
           :total="total"

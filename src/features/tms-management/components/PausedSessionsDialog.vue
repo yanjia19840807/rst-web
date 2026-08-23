@@ -4,9 +4,7 @@ import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -14,20 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { DataTable } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { formatDateTime } from '@/lib/datetime'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionsQuery } from '../api/queries'
 import type { SessionFilters } from '../types'
+import { createPausedSessionColumns } from './pausedSessionColumns'
 
 const props = defineProps<{
   open: boolean
@@ -58,6 +49,18 @@ const deleteOpen = ref(false)
 const items = computed(() => pausedQuery.data.value?.items ?? [])
 const total = computed(() => pausedQuery.data.value?.total ?? 0)
 const loading = computed(() => pausedQuery.isPending.value && !pausedQuery.data.value)
+
+const columns = computed(() =>
+  createPausedSessionColumns({
+    hasRunningSession: props.hasRunningSession,
+    resumePending: resume.isPending.value,
+    deletePending: discard.isPending.value,
+    onResume: (id) => {
+      void resumeSession(id)
+    },
+    onDelete: openDelete,
+  }),
+)
 
 watchDebounced(
   queryInput,
@@ -149,57 +152,14 @@ async function confirmDelete() {
           <div class="grid gap-4">
             <Input v-model="queryInput" placeholder="Session No / Reference" />
 
-            <div class="overflow-x-auto rounded-lg border">
-              <Table class="min-w-[680px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Session No</TableHead>
-                    <TableHead>Pause Time</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead class="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-for="session in items" :key="session.id">
-                    <TableCell class="font-mono text-xs">{{ session.id }}</TableCell>
-                    <TableCell>{{ formatDateTime(session.pausedAt) }}</TableCell>
-                    <TableCell>{{ session.reference || '—' }}</TableCell>
-                    <TableCell>
-                      <div class="flex justify-end gap-3">
-                        <Button
-                          size="sm"
-                          variant="link"
-                          class="h-auto px-0 font-semibold"
-                          :disabled="hasRunningSession || resume.isPending.value"
-                          @click="resumeSession(session.id)"
-                        >
-                          Resume
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="link-destructive"
-                          class="h-auto px-0 font-semibold"
-                          :disabled="discard.isPending.value"
-                          @click="openDelete(session.id)"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow v-if="loading">
-                    <TableCell colspan="4" class="p-0">
-                      <ListLoading />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow v-else-if="!items.length">
-                    <TableCell colspan="4" class="h-20 text-center text-muted-foreground">
-                      No paused sessions found.
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
+            <DataTable
+              :columns="columns"
+              :data="items"
+              :pending="loading"
+              empty-text="No paused sessions found."
+              table-class="min-w-[680px]"
+              :get-row-id="(row) => row.id"
+            />
 
             <TablePager
               :total="total"

@@ -2,13 +2,23 @@
 import { computed } from 'vue'
 
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-const props = defineProps<{
-  total: number
-  page: number
-  pageSize: number
-  label: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    total: number
+    page: number
+    pageSize: number
+    label: string
+    class?: string
+    hideSummary?: boolean
+    linkButtons?: boolean
+  }>(),
+  {
+    hideSummary: false,
+    linkButtons: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:page': [value: number]
@@ -28,11 +38,15 @@ function next() {
 </script>
 
 <template>
-  <div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-    <span>
+  <div
+    :class="
+      cn('mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground', props.class)
+    "
+  >
+    <span v-if="!hideSummary">
       Showing {{ from }}–{{ to }} of {{ total }} {{ label }}
     </span>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2" :class="hideSummary ? 'ml-auto' : undefined">
       <label class="flex items-center gap-1.5 text-xs">
         Rows
         <select
@@ -45,9 +59,25 @@ function next() {
           <option :value="50">50</option>
         </select>
       </label>
-      <Button size="sm" variant="outline" :disabled="page <= 1" @click="prev">Prev</Button>
+      <Button
+        size="sm"
+        :variant="linkButtons ? 'link' : 'outline'"
+        :class="linkButtons ? 'h-auto px-0' : undefined"
+        :disabled="page <= 1"
+        @click="prev"
+      >
+        Prev
+      </Button>
       <span class="text-xs">{{ page }} / {{ totalPages }}</span>
-      <Button size="sm" variant="outline" :disabled="page >= totalPages" @click="next">Next</Button>
+      <Button
+        size="sm"
+        :variant="linkButtons ? 'link' : 'outline'"
+        :class="linkButtons ? 'h-auto px-0' : undefined"
+        :disabled="page >= totalPages"
+        @click="next"
+      >
+        Next
+      </Button>
     </div>
   </div>
 </template>

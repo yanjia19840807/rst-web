@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
+import { DataTable } from '@/components/ui/data-table'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { formatDuration } from '@/features/tms-management/composables/useTmsTimer'
-import { formatDate } from '@/lib/datetime'
+  createTmsSessionColumns,
+  type TmsSessionTableRow,
+} from '@/features/tms-management/components/tmsSessionColumns'
 
 import { useExerciseTmsSessionsQuery } from '../../api/queries'
 import { FieldUnit, withUnit } from '../../fieldUnits'
@@ -64,12 +58,32 @@ const sessionTotalLabel = computed(() => {
   return total.value > 0 ? formatNumber(total.value) : '0'
 })
 
-const colCount = 11
+const rows = computed<TmsSessionTableRow[]>(() =>
+  sessions.value.map((session) => toTmsSessionRow(session)),
+)
 
-function cycleTimeLabel(row: ExerciseTmsSession) {
-  if (!row.processedVolume) return '—'
-  if (row.cycleTimeSeconds != null) return String(row.cycleTimeSeconds)
-  return String(Math.round(row.netDurationSeconds / row.processedVolume))
+const columns = computed(() =>
+  createTmsSessionColumns({
+    showActions: false,
+    cycleTimeHeader: withUnit('Cycle Time', FieldUnit.seconds),
+    cycleTimeWithUnit: false,
+  }),
+)
+
+function toTmsSessionRow(session: ExerciseTmsSession): TmsSessionTableRow {
+  return {
+    id: session.sessionNo,
+    agentName: session.agentName,
+    toolkitName: session.toolkitName,
+    subtaskName: session.subtaskName,
+    startedAt: session.startedAt,
+    endedAt: session.endedAt,
+    netDurationSeconds: session.netDurationSeconds,
+    processedVolume: session.processedVolume,
+    reference: session.reference,
+    remarks: session.remarks,
+    cycleTimeSeconds: session.cycleTimeSeconds,
+  }
 }
 
 watch(
@@ -110,63 +124,18 @@ watch(
     <section class="rounded-lg border bg-card p-4">
       <h3 class="mb-3 text-sm font-bold">TMS Sessions</h3>
 
-      <div class="overflow-x-auto rounded-md border">
-        <Table class="min-w-[1240px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Session No</TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead>Toolkit</TableHead>
-              <TableHead>Subtask</TableHead>
-              <TableHead>Start</TableHead>
-              <TableHead>End</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>{{ withUnit('Cycle Time', FieldUnit.seconds) }}</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Volume</TableHead>
-              <TableHead>Remarks</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-if="loading">
-              <TableCell :colspan="colCount" class="p-0">
-                <ListLoading />
-              </TableCell>
-            </TableRow>
-            <TableRow v-else-if="loadError">
-              <TableCell
-                :colspan="colCount"
-                class="h-24 text-center text-sm text-destructive"
-              >
-                {{ loadError }}
-              </TableCell>
-            </TableRow>
-            <TableRow v-else-if="sessions.length === 0">
-              <TableCell
-                :colspan="colCount"
-                class="h-24 text-center text-muted-foreground"
-              >
-                No TMS sessions linked to this exercise.
-              </TableCell>
-            </TableRow>
-            <TableRow v-for="row in sessions" :key="row.sessionNo">
-              <TableCell class="font-mono text-xs">{{ row.sessionNo }}</TableCell>
-              <TableCell>{{ row.agentName || '—' }}</TableCell>
-              <TableCell>{{ row.toolkitName || '—' }}</TableCell>
-              <TableCell>{{ row.subtaskName || '—' }}</TableCell>
-              <TableCell>{{ formatDate(row.startedAt) }}</TableCell>
-              <TableCell>{{ formatDate(row.endedAt) }}</TableCell>
-              <TableCell>{{ formatDuration(row.netDurationSeconds) }}</TableCell>
-              <TableCell>{{ cycleTimeLabel(row) }}</TableCell>
-              <TableCell>{{ row.reference || '—' }}</TableCell>
-              <TableCell>
-                {{ row.processedVolume == null ? '—' : Number(row.processedVolume).toFixed(2) }}
-              </TableCell>
-              <TableCell class="max-w-52 truncate">{{ row.remarks || '—' }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        :columns="columns"
+        :data="rows"
+        :pending="loading"
+        empty-text="No TMS sessions linked to this exercise."
+        table-class="min-w-[1240px]"
+        :get-row-id="(row) => row.id"
+      >
+        <template v-if="loadError" #empty>
+          <span class="text-sm text-destructive">{{ loadError }}</span>
+        </template>
+      </DataTable>
 
       <TablePager
         :total="total"

@@ -40,15 +40,15 @@ export const hierarchy: HierarchyOption[] = [
 
 const kpiByPl3: Record<string, SharedKpiCandidate[]> = {
   'PL3-BANK-REC': [
-    { carrier: 'CMA CGM', site: 'Sydney', customerCountry: 'Australia', deliveryHc: 12.5, valid: true },
-    { carrier: 'ANL', site: 'Melbourne', customerCountry: 'Australia', deliveryHc: 8, valid: true },
-    { carrier: 'CMA CGM', site: 'Auckland', customerCountry: 'New Zealand', deliveryHc: 4.5, valid: true },
+    { carrier: 'CMA CGM', site: 'Sydney', customerCountry: 'Australia', deliveryHc: 12.5 },
+    { carrier: 'ANL', site: 'Melbourne', customerCountry: 'Australia', deliveryHc: 8 },
+    { carrier: 'CMA CGM', site: 'Auckland', customerCountry: 'New Zealand', deliveryHc: 4.5 },
   ],
   'PL3-INVOICE': [
-    { carrier: 'CMA CGM', site: 'Singapore', customerCountry: 'Singapore', deliveryHc: 16, valid: true },
+    { carrier: 'CMA CGM', site: 'Singapore', customerCountry: 'Singapore', deliveryHc: 16 },
   ],
   'PL3-BOOKING': [
-    { carrier: 'APL', site: 'Los Angeles', customerCountry: 'United States', deliveryHc: 21, valid: true },
+    { carrier: 'APL', site: 'Los Angeles', customerCountry: 'United States', deliveryHc: 21 },
   ],
 }
 

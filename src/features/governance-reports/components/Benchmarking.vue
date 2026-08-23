@@ -7,19 +7,13 @@ import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 import { useBenchmarkingQuery } from '../api/queries'
+import { formatCapacity, formatPct, formatSeconds } from '../reportFormat'
 import type { BenchmarkingQuery } from '../types'
-import CapacityCell from './CapacityCell.vue'
+import { createBenchmarkingColumns } from './benchmarkingColumns'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 
@@ -63,27 +57,7 @@ const pl3Options = computed(() => data.value?.pl3Options ?? [])
 const loading = computed(() => benchmarkingQuery.isPending.value && !benchmarkingQuery.data.value)
 const pl3Selected = computed(() => pl3Filter.value !== 'All')
 
-function formatSeconds(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  const rounded = Math.round(n * 10) / 10
-  return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`
-}
-
-function formatCapacity(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return Number.isInteger(n) ? String(n) : n.toFixed(1)
-}
-
-function formatPct(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return `${n.toFixed(1)}%`
-}
+const columns = createBenchmarkingColumns()
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
 
@@ -276,48 +250,17 @@ watch(
           <CardTitle class="text-base">Same-PL3 Productivity Benchmark</CardTitle>
         </CardHeader>
         <CardContent class="space-y-3">
-          <div class="overflow-x-auto rounded-lg border">
-            <Table class="min-w-[1100px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>GBS</TableHead>
-                  <TableHead>Shared KPI Line</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>PL3</TableHead>
-                  <TableHead>Cycle time</TableHead>
-                  <TableHead>Daily Production Capacity / Agent</TableHead>
-                  <TableHead>Production Support Ratio</TableHead>
-                  <TableHead>Capacity Creation</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="(row, index) in rows"
-                  :key="`${row.pl3Code}-${row.gbs}-${row.sharedKpiLine}-${index}`"
-                >
-                  <TableCell>{{ row.gbs }}</TableCell>
-                  <TableCell>{{ row.sharedKpiLine }}</TableCell>
-                  <TableCell>{{ row.domain }}</TableCell>
-                  <TableCell>{{ row.pl3 }}</TableCell>
-                  <TableCell>{{ formatSeconds(row.cycleTimeSeconds) }}</TableCell>
-                  <TableCell>{{ formatCapacity(row.dailyCapacityPerAgent) }}</TableCell>
-                  <TableCell>{{ formatPct(row.productionSupportRatioPct) }}</TableCell>
-                  <TableCell>
-                    <CapacityCell :value="row.capacityCreation" />
-                  </TableCell>
-                </TableRow>
-                <TableRow v-if="!rows.length">
-                  <TableCell colspan="8" class="h-24 text-center text-muted-foreground">
-                    {{
-                      pl3Selected
-                        ? 'No benchmark rows found.'
-                        : 'Select a PL3 to compare like-for-like work.'
-                    }}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            :columns="columns"
+            :data="rows"
+            table-class="min-w-[1100px]"
+            :get-row-id="(row, index) => `${row.pl3Code}-${row.gbs}-${row.sharedKpiLine}-${index}`"
+            :empty-text="
+              pl3Selected
+                ? 'No benchmark rows found.'
+                : 'Select a PL3 to compare like-for-like work.'
+            "
+          />
           <TablePager
             :total="total"
             :page="page"

@@ -7,20 +7,18 @@ import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 import { useSupportRepositoryQuery } from '../api/queries'
+import { formatHc } from '../reportFormat'
 import type { SupportRepositoryQuery } from '../types'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
+import {
+  createSupportCategoryColumns,
+  createSupportRowColumns,
+} from './supportRepositoryColumns'
 
 const gbsFilter = ref('All')
 const categoryFilter = ref('All')
@@ -56,19 +54,8 @@ const categoryOptions = computed(() => data.value?.categories ?? [])
 const toolkitOptions = computed(() => ['All', ...(data.value?.toolkitNames ?? [])])
 const loading = computed(() => supportQuery.isPending.value && !supportQuery.data.value)
 
-function formatHc(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return n.toFixed(2)
-}
-
-function formatVolume(value: number | string | null | undefined) {
-  if (value == null || value === '') return '—'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return Number.isInteger(n) ? String(n) : n.toFixed(2)
-}
+const categoryColumns = createSupportCategoryColumns()
+const rowColumns = createSupportRowColumns()
 
 const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
 
@@ -236,29 +223,12 @@ watch(
           <CardTitle class="text-base">Support FTE By Standard Category</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Standard Category</TableHead>
-                  <TableHead>Support FTE</TableHead>
-                  <TableHead>% of support FTE</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="row in categorySummaries" :key="row.category">
-                  <TableCell>{{ row.category }}</TableCell>
-                  <TableCell>{{ formatHc(row.supportFte) }}</TableCell>
-                  <TableCell>{{ row.pctOfSupport || '—' }}</TableCell>
-                </TableRow>
-                <TableRow v-if="!categorySummaries.length">
-                  <TableCell colspan="3" class="h-24 text-center text-muted-foreground">
-                    No support categories found.
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            :columns="categoryColumns"
+            :data="categorySummaries"
+            empty-text="No support categories found."
+            :get-row-id="(row) => row.category"
+          />
         </CardContent>
       </Card>
 
@@ -267,47 +237,13 @@ watch(
           <CardTitle class="text-base">Granular Support Rows</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="overflow-x-auto rounded-lg border">
-            <Table class="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Exercise NO</TableHead>
-                  <TableHead>GBS Center</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>PL3</TableHead>
-                  <TableHead>Toolkit</TableHead>
-                  <TableHead>Standard Category</TableHead>
-                  <TableHead>Activity</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Volume</TableHead>
-                  <TableHead>UOM</TableHead>
-                  <TableHead>FTE</TableHead>
-                  <TableHead>Comments</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="(row, index) in rows" :key="`${row.exerciseNo}-${row.activity}-${index}`">
-                  <TableCell>{{ row.exerciseNo }}</TableCell>
-                  <TableCell>{{ row.center }}</TableCell>
-                  <TableCell>{{ row.domain }}</TableCell>
-                  <TableCell>{{ row.pl3 }}</TableCell>
-                  <TableCell>{{ row.toolkit }}</TableCell>
-                  <TableCell>{{ row.standardCategory }}</TableCell>
-                  <TableCell>{{ row.activity }}</TableCell>
-                  <TableCell>{{ row.frequency }}</TableCell>
-                  <TableCell>{{ formatVolume(row.volume) }}</TableCell>
-                  <TableCell>{{ row.uom }}</TableCell>
-                  <TableCell>{{ formatHc(row.fte) }}</TableCell>
-                  <TableCell>{{ row.comments || '—' }}</TableCell>
-                </TableRow>
-                <TableRow v-if="!rows.length">
-                  <TableCell colspan="12" class="h-24 text-center text-muted-foreground">
-                    No support rows found.
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            :columns="rowColumns"
+            :data="rows"
+            empty-text="No support rows found."
+            table-class="min-w-[900px]"
+            :get-row-id="(row, index) => `${row.exerciseNo}-${row.activity}-${index}`"
+          />
           <TablePager
             :total="total"
             :page="page"

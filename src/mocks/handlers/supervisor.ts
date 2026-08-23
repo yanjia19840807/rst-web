@@ -17,7 +17,6 @@ import type {
   UpdateScenarioRequest,
 } from '@/features/exercise-management/types'
 import type {
-  SharedKpiCandidate,
   SharedKpiKey,
   SupervisorToolkit,
   ToolkitEditorPayload,
@@ -101,11 +100,15 @@ function sameKey(a: SharedKpiKey, b: SharedKpiKey) {
   return a.carrier === b.carrier && a.site === b.site && a.customerCountry === b.customerCountry
 }
 
-function resolvedKpis(toolkit: SupervisorToolkit): SharedKpiCandidate[] {
+function resolvedKpis(toolkit: SupervisorToolkit) {
   const candidates = kpiCandidates(toolkit.pl3Code)
   return toolkit.sharedKpiSelections.map((selection) => {
     const current = candidates.find((candidate) => sameKey(candidate, selection))
-    return current ?? { ...selection, deliveryHc: 0, valid: false }
+    return {
+      ...selection,
+      deliveryHc: current?.deliveryHc ?? 0,
+      valid: Boolean(current),
+    }
   })
 }
 
@@ -937,7 +940,7 @@ export const supervisorHandlers = [
       description: body.description ?? null,
       status: 'DRAFT',
       version: 0,
-      rightSizingHc: body.rightSizingHc ?? 0,
+      rightSizingHc: body.rightSizingHc != null && body.rightSizingHc > 0 ? body.rightSizingHc : null,
       shifts: [],
     }
     ctx.shell.scenarios.push(scenario)
@@ -968,7 +971,11 @@ export const supervisorHandlers = [
         description: body.description ?? null,
         version: current.version + 1,
         rightSizingHc:
-          body.rightSizingHc === undefined ? current.rightSizingHc : (body.rightSizingHc ?? 0),
+          body.rightSizingHc === undefined
+            ? current.rightSizingHc
+            : body.rightSizingHc != null && body.rightSizingHc > 0
+              ? body.rightSizingHc
+              : null,
       }
       ctx.shell.scenarios[index] = updated
       return HttpResponse.json(updated)
@@ -1010,7 +1017,11 @@ export const supervisorHandlers = [
         description: body.description ?? null,
         version: current.version + 1,
         rightSizingHc:
-          body.rightSizingHc === undefined ? current.rightSizingHc : (body.rightSizingHc ?? 0),
+          body.rightSizingHc === undefined
+            ? current.rightSizingHc
+            : body.rightSizingHc != null && body.rightSizingHc > 0
+              ? body.rightSizingHc
+              : null,
         shifts: body.shifts.map((row) => ({
           id: crypto.randomUUID(),
           shiftNo: row.shiftNo,

@@ -29,6 +29,8 @@ import {
   useSupportQuery,
   useTeamSetupQuery,
 } from '../api/queries'
+import { measuredRightSizingHc } from '@/lib/hcFormat'
+
 import { FieldUnit, withUnit } from '../fieldUnits'
 import type { Scenario } from '../types'
 import { actualHeadcount } from '../sizingChartMath'
@@ -141,7 +143,7 @@ const shiftSetupLabel = computed(() => {
 })
 
 function assumptionHc(scenario: Scenario) {
-  return scenario.rightSizingHc != null ? Number(scenario.rightSizingHc) : null
+  return measuredRightSizingHc(scenario.rightSizingHc)
 }
 
 function capacityCreation(scenario: Scenario) {
@@ -188,7 +190,7 @@ async function createScenario() {
         scenarioCode: nextScenarioCode.value,
         name: `${exercise.value.snapshot.toolkit.name} ${nextScenarioCode.value}`,
         description: null,
-        rightSizingHc: 0,
+        rightSizingHc: null,
       },
     })
     newScenarioOpen.value = false

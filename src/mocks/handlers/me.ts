@@ -9,6 +9,7 @@ export const meHandlers = [
       email: 's00628182@dev.local',
       roles: ['SUPERVISOR'],
       scopes: ['TIMESHEET', 'SELF'],
+      center: 'Kuala Lumpur',
     }),
   ),
 ]

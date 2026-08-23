@@ -169,6 +169,16 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/approver/domain-heads',
+    name: 'approver-domain-heads',
+    component: () => import('@/pages/approver/DomainHeadsPage.vue'),
+    meta: {
+      title: 'Domain Head',
+      subtitle: 'Assign one CDH approver for each GBS Domain in your Center.',
+      roles: ['approver'],
+    },
+  },
+  {
     path: '/approver/submissions/:submissionId',
     name: 'approver-review',
     component: () => import('@/pages/approver/ApprovalReviewPage.vue'),

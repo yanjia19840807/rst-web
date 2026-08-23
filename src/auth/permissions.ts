@@ -5,6 +5,7 @@ export const PERMISSIONS = {
   toolkitManage: 'toolkit:manage',
   exerciseManage: 'exercise:manage',
   approvalQueue: 'approval:queue',
+  domainHeadConfig: 'approver:domain-heads',
   governanceRepository: 'governance:repository',
   governanceSupport: 'governance:support',
   governanceValidationWorkflow: 'governance:validation-workflow',
@@ -35,6 +36,7 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   CDH: [PERMISSIONS.approvalQueue],
   LTH: [
     PERMISSIONS.approvalQueue,
+    PERMISSIONS.domainHeadConfig,
     PERMISSIONS.governanceValidationWorkflow,
     ...SHARED_REPORTS,
   ],

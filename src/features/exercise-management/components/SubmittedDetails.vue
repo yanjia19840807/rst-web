@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatDate, formatDateTime, formatMonth } from '@/lib/datetime'
+import { measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
 import { useApprovalDetailQuery } from '@/features/approval/api/queries'
 import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
@@ -217,10 +218,9 @@ const supportFte = computed(() => {
 })
 
 const rightSizingHc = computed(() => {
-  const fromSizing = latestMonthlySizing.value?.rows[0]?.rightSizingHc
-  if (fromSizing != null) return Number(fromSizing)
-  const stored = scenario.value?.rightSizingHc
-  return stored != null ? Number(stored) : null
+  const fromSizing = measuredRightSizingHc(latestMonthlySizing.value?.rows[0]?.rightSizingHc)
+  if (fromSizing != null) return fromSizing
+  return measuredRightSizingHc(scenario.value?.rightSizingHc)
 })
 
 const capacityCreation = computed(() => {
