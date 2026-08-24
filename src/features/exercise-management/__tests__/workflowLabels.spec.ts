@@ -10,7 +10,7 @@ import {
 describe('currentStepLabel', () => {
   it('uses Supervisor Sizing before the first Submit and after Return / Withdraw', () => {
     expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS' })).toBe(SUPERVISOR_SIZING_STEP)
-    expect(currentStepLabel({ workflowStatus: 'RETURNED', requiredRole: 'MANAGER' })).toBe(
+    expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS', requiredRole: 'MANAGER' })).toBe(
       SUPERVISOR_SIZING_STEP,
     )
   })
@@ -35,7 +35,8 @@ describe('currentStepLabel', () => {
 
 describe('isReturned', () => {
   it('is a last-action flag, not a step', () => {
-    expect(isReturned({ workflowStatus: 'RETURNED' })).toBe(true)
+    expect(isReturned({ submissionStatus: 'RETURNED' })).toBe(true)
+    expect(isReturned({ submissionStatus: 'OPEN' })).toBe(false)
     expect(isReturned({ workflowStatus: 'IN_PROGRESS' })).toBe(false)
   })
 })

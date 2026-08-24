@@ -15,7 +15,7 @@ export interface SharedKpiResponse {
   items: SharedKpiCandidate[]
 }
 
-const supervisorToolkits = '/api/v1/supervisor/toolkits'
+const toolkits = '/api/v1/toolkits'
 
 export const toolkitApi = {
   list: (query?: ToolkitListQuery) => {
@@ -25,9 +25,9 @@ export const toolkitApi = {
     if (query?.pl3Name) params.set('pl3Name', query.pl3Name)
     params.set('page', String(query?.page ?? 1))
     params.set('pageSize', String(query?.pageSize ?? 10))
-    return apiRequest<ToolkitListView>(`${supervisorToolkits}?${params.toString()}`)
+    return apiRequest<ToolkitListView>(`${toolkits}/managed?${params.toString()}`)
   },
-  get: (id: string) => apiRequest<SupervisorToolkit>(`${supervisorToolkits}/${id}`),
+  get: (id: string) => apiRequest<SupervisorToolkit>(`${toolkits}/${id}`),
   hierarchy: () => apiRequest<HierarchyOption[]>('/api/v1/timesheet/toolkit-hierarchy'),
   candidates: (pl3Code: string, supervisorPositionId: string, countries: string[]) => {
     const params = new URLSearchParams({ pl3Code, supervisorPositionId })
@@ -37,15 +37,15 @@ export const toolkitApi = {
     )
   },
   create: (input: ToolkitEditorPayload) =>
-    apiRequest<SupervisorToolkit>(supervisorToolkits, {
+    apiRequest<SupervisorToolkit>(toolkits, {
       method: 'POST',
       body: JSON.stringify(input),
     }),
   update: (id: string, input: ToolkitEditorPayload) =>
-    apiRequest<SupervisorToolkit>(`${supervisorToolkits}/${id}`, {
+    apiRequest<SupervisorToolkit>(`${toolkits}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
   remove: (id: string) =>
-    apiRequest<void>(`${supervisorToolkits}/${id}`, { method: 'DELETE' }),
+    apiRequest<void>(`${toolkits}/${id}`, { method: 'DELETE' }),
 }

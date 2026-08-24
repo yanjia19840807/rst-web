@@ -34,8 +34,13 @@ function roleLabel(role?: string | null) {
   }
 }
 
+function isSubmit(action: WorkflowActionView) {
+  return action.actionType === 'APPROVED'
+    && (action.actorRoleCode === 'SUPERVISOR' || (action.stepNo ?? 0) === 0)
+}
+
 function historyStep(action: WorkflowActionView) {
-  if (action.actionType === 'SUBMIT' || action.actionType === 'WITHDRAW') {
+  if (isSubmit(action) || action.actionType === 'WITHDRAWN') {
     return 'Supervisor Workbench'
   }
   const stepNo = action.stepNo ?? 0
@@ -45,15 +50,16 @@ function historyStep(action: WorkflowActionView) {
   return reviewStage(action.actorRoleCode) ?? 'Review'
 }
 
-function historyDecision(type?: string | null) {
-  switch (type) {
-    case 'SUBMIT':
-      return 'Submitted'
-    case 'APPROVE':
+function historyDecision(action: WorkflowActionView) {
+  if (isSubmit(action)) return 'Submitted'
+  switch (action.actionType) {
+    case 'APPROVED':
       return 'Approved'
-    case 'RETURN':
+    case 'RETURNED':
       return 'Returned'
-    case 'WITHDRAW':
+    case 'REJECTED':
+      return 'Rejected'
+    case 'WITHDRAWN':
       return 'Withdrawn'
     default:
       return null
@@ -61,13 +67,13 @@ function historyDecision(type?: string | null) {
 }
 
 function readyRole(submitted: SubmittedDetails) {
-  return submitted.steps.find((step) => step.routingStatus === 'READY')?.requiredRoleCode
+  return submitted.steps.find((step) => step.routingStatus === 'PENDING')?.requiredRoleCode
     ?? submitted.requiredRole
     ?? null
 }
 
 function waiting(submitted: SubmittedDetails) {
-  const ready = submitted.steps.find((step) => step.routingStatus === 'READY')
+  const ready = submitted.steps.find((step) => step.routingStatus === 'PENDING')
   const role = readyRole(submitted)
   return {
     step: OPEN.has(submitted.submissionStatus) ? reviewStage(role) : null,
@@ -84,12 +90,15 @@ function historyRows(submitted: SubmittedDetails, mineStepNo?: number | null): A
       return (a.stepNo ?? 0) - (b.stepNo ?? 0)
     })
     .flatMap((action) => {
-      const decision = historyDecision(action.actionType)
+      const decision = historyDecision(action)
       if (!decision) return []
       const mine =
         mineStepNo != null
         && action.stepNo === mineStepNo
-        && (action.actionType === 'APPROVE' || action.actionType === 'RETURN')
+        && !isSubmit(action)
+        && (action.actionType === 'APPROVED'
+          || action.actionType === 'RETURNED'
+          || action.actionType === 'REJECTED')
       return [
         {
           actionId: action.requestId || `${action.stepNo}-${action.actionAt}`,
@@ -140,9 +149,11 @@ export function buildApprovalWorkspace(
       ? { state: 'APPROVED', label: 'Approved' }
       : submitted.submissionStatus === 'RETURNED'
         ? { state: 'RETURNED', label: 'Returned' }
-        : submitted.submissionStatus === 'WITHDRAWN'
-          ? { state: 'WITHDRAWN', label: 'Withdrawn' }
-          : null
+        : submitted.submissionStatus === 'REJECTED'
+          ? { state: 'REJECTED', label: 'Rejected' }
+          : submitted.submissionStatus === 'WITHDRAWN'
+            ? { state: 'WITHDRAWN', label: 'Withdrawn' }
+            : null
   return {
     mode: 'COMPLETED',
     statusBar: closed

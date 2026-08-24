@@ -30,6 +30,7 @@ import {
   useTeamSetupQuery,
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
+import { sumSupportFte } from './associated-data/supportOptions'
 import { deriveSlotPeriodLabel } from '../periodWindows'
 import { slotApplicabilityOn } from '../slotChartMath'
 import {
@@ -132,10 +133,7 @@ const periodHint = computed(() => {
   return `${month} · ${slot}`
 })
 
-const supportFte = computed(() => {
-  if (!support.value.length) return null
-  return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
-})
+const supportFte = computed(() => sumSupportFte(support.value))
 
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce(
@@ -550,7 +548,7 @@ async function runSlot() {
   const slot = scenarioSlotSchema.safeParse(values)
   if (!slot.success) {
     applyZodIssues(slot.error.issues)
-    toast.warning(slot.error.issues[0]?.message ?? 'Check the highlighted fields.')
+    toast.warning('Check the highlighted fields.')
     return
   }
   try {

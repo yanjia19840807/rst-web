@@ -44,6 +44,7 @@ import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
 import { actualHeadcount } from '../sizingChartMath'
 import type { ForecastTrainingObservation, SubmittedDetails } from '../types'
 import { formatNumber } from './associated-data/adTypes'
+import { sumSupportFte } from './associated-data/supportOptions'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
@@ -67,7 +68,7 @@ const toolkitInfoOpen = ref(false)
 const comments = ref('')
 const redirected = ref(false)
 
-const { approve, returnToSupervisor } = useApprovalMutations()
+const { approve, returnToSupervisor, reject } = useApprovalMutations()
 const approvalQuery = useApprovalDetailQuery(
   () => props.submissionId,
   isApprover,
@@ -86,14 +87,11 @@ function toSubmittedDetails(detail: ApprovalDetailView): SubmittedDetails {
     scenarioId: detail.scenarioId,
     scenarioName: detail.scenarioName,
     submissionId: detail.submissionId,
-    submissionCode: detail.submissionCode,
     submissionStatus: detail.submissionStatus,
     currentStep: detail.currentStep,
     requiredRole: detail.requiredRole,
     remarks: detail.remarks,
     scopes: detail.scopes,
-    workflowInstanceId: detail.workflowInstanceId,
-    workflowStatusLabel: detail.workflowStatusLabel,
     steps: detail.steps,
     actions: detail.actions,
     canDecide: detail.canDecide,
@@ -145,7 +143,8 @@ function trainingPeriodLabel(row: ForecastTrainingObservation) {
   return formatDate(row.periodStart)
 }
 const pending = computed(
-  () => approve.isPending.value || returnToSupervisor.isPending.value,
+  () =>
+    approve.isPending.value || returnToSupervisor.isPending.value || reject.isPending.value,
 )
 
 const primaryPending = computed(() =>
@@ -212,10 +211,7 @@ const actualSize = computed(() =>
   actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
 )
 
-const supportFte = computed(() => {
-  if (!support.value.length) return null
-  return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
-})
+const supportFte = computed(() => sumSupportFte(support.value))
 
 const rightSizingHc = computed(() => {
   const fromSizing = measuredRightSizingHc(latestMonthlySizing.value?.rows[0]?.rightSizingHc)
@@ -395,6 +391,32 @@ function requestReturn() {
     return
   }
   void onReturn(reason)
+}
+
+async function onReject(reason: string) {
+  if (!props.submissionId || pending.value) return
+  try {
+    await reject.mutateAsync({
+      submissionId: props.submissionId,
+      body: {
+        comments: reason,
+        requestId: crypto.randomUUID(),
+      },
+    })
+    comments.value = ''
+    toast.success('Submission rejected.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Reject failed.')
+  }
+}
+
+function requestReject() {
+  const reason = comments.value.trim()
+  if (!reason) {
+    toast.error('Comment is required when rejecting a submission.')
+    return
+  }
+  void onReject(reason)
 }
 
 function downloadSummary() {
@@ -793,6 +815,7 @@ function downloadSummary() {
         @update:comments="comments = $event"
         @approve="onApprove"
         @return="requestReturn"
+        @reject="requestReject"
       />
       <ApprovalCompletedPanel v-else :workspace="workspace" />
     </div>

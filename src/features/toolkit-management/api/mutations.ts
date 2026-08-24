@@ -13,7 +13,7 @@ export function useToolkitMutations() {
     void queryClient.invalidateQueries({ queryKey: [...toolkitQueryKeys.all, 'list'] })
     void queryClient.invalidateQueries({ queryKey: toolkitQueryKeys.hierarchy() })
     void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.toolkits() })
-    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.supervisorToolkits() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.managedToolkits() })
   }
 
   const create = useMutation({

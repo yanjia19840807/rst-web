@@ -22,6 +22,7 @@ const emit = defineEmits<{
   'update:comments': [value: string]
   approve: []
   return: []
+  reject: []
 }>()
 
 const { defineField, errors, setFieldError, setFieldValue } = useForm({
@@ -45,6 +46,7 @@ watch(comments, (value) => {
 
 const approveOpen = ref(false)
 const returnOpen = ref(false)
+const rejectOpen = ref(false)
 
 function askApprove() {
   approveOpen.value = true
@@ -71,6 +73,23 @@ function confirmReturn() {
   returnOpen.value = false
   emit('return')
 }
+
+function askReject() {
+  const parsed = returnCommentSchema.safeParse({ comments: comments.value ?? '' })
+  if (!parsed.success) {
+    setFieldError(
+      'comments',
+      parsed.error.issues[0]?.message ?? 'Comment is required when rejecting a submission.',
+    )
+    return
+  }
+  rejectOpen.value = true
+}
+
+function confirmReject() {
+  rejectOpen.value = false
+  emit('reject')
+}
 </script>
 
 <template>
@@ -90,15 +109,18 @@ function confirmReturn() {
           id="approver-comments"
           v-model="comments"
           rows="3"
-          placeholder="Add comment. Required if returning the submission."
+          placeholder="Add comment. Required if returning or rejecting the submission."
           aria-label="Decision comment"
           :aria-invalid="Boolean(errors.comments)"
         />
         <p v-if="errors.comments" class="text-xs text-destructive">{{ errors.comments }}</p>
         <div class="flex flex-wrap gap-2">
           <Button :disabled="pending" @click="askApprove">Approve Submission</Button>
-          <Button variant="destructive" :disabled="pending" @click="askReturn">
+          <Button variant="outline" :disabled="pending" @click="askReturn">
             Return To Supervisor
+          </Button>
+          <Button variant="destructive" :disabled="pending" @click="askReject">
+            Reject Submission
           </Button>
         </div>
         <p v-if="workspace.nextStep" class="text-sm text-muted-foreground">
@@ -143,6 +165,20 @@ function confirmReturn() {
       ]"
       :pending="pending"
       @confirm="confirmReturn"
+    />
+
+    <ConfirmDialog
+      v-model:open="rejectOpen"
+      title="Reject submission"
+      description="This ends the approval process. The exercise will not reopen for editing, and your comment will be recorded."
+      warning="This decision cannot be undone."
+      confirm-label="Reject"
+      :rows="[
+        { label: 'Current step', value: workspace.currentHop?.step || '—' },
+        { label: 'Comment', value: (comments ?? '').trim() || '—' },
+      ]"
+      :pending="pending"
+      @confirm="confirmReject"
     />
   </div>
 </template>

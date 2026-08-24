@@ -25,6 +25,7 @@ import type {
   TeamSetup,
 } from '../../types'
 import type { AdTab, MedianSourceMode } from './adTypes'
+import { sumSupportFte } from './supportOptions'
 import { AD_EDITOR_TITLES } from './adTypes'
 import AdCalendarEditor from './AdCalendarEditor.vue'
 import AdManualMedianEditor from './AdManualMedianEditor.vue'
@@ -89,9 +90,7 @@ const title = computed(() => {
   return props.editor ? AD_EDITOR_TITLES[props.editor] : ''
 })
 
-const supportFte = computed(() =>
-  props.support.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0),
-)
+const supportFte = computed(() => sumSupportFte(props.support))
 
 const manualSeedMedian = computed(() =>
   props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL'

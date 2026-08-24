@@ -49,8 +49,10 @@ export function currentStepLabel(exercise: {
   }
 }
 
-export function isReturned(exercise: { workflowStatus: string }): boolean {
-  return exercise.workflowStatus === 'RETURNED'
+export function isReturned(exercise: {
+  submissionStatus?: string | null
+}): boolean {
+  return exercise.submissionStatus === 'RETURNED'
 }
 
 /** Maps the Current Step filter label to the list API `reviewStage` value. */

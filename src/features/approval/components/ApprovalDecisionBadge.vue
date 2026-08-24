@@ -6,7 +6,7 @@ const props = defineProps<{
 }>()
 
 function tone() {
-  if (props.decision === 'Returned') return 'bad' as const
+  if (props.decision === 'Returned' || props.decision === 'Rejected') return 'bad' as const
   if (props.decision === 'Approved') return 'good' as const
   return 'muted' as const
 }

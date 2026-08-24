@@ -3,7 +3,6 @@ import type { SupervisorToolkit, ToolkitSubtask } from '@/features/toolkit-manag
 export type WorkflowStatus =
   | 'IN_PROGRESS'
   | 'UNDER_REVIEW'
-  | 'RETURNED'
   | 'APPROVED'
   | 'REJECTED'
 
@@ -36,6 +35,7 @@ export interface Exercise {
   tmsFrom: string
   tmsTo: string
   workflowStatus: WorkflowStatus
+  submissionStatus?: string | null
   officialScenarioId: string | null
   submittedAt: string | null
   canDelete: boolean

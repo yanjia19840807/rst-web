@@ -45,4 +45,9 @@ export const approvalApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  reject: (submissionId: string, body: ReturnRequest) =>
+    apiRequest<ApprovalDetailView>(`${base}/${submissionId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }

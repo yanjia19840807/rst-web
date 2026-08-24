@@ -18,7 +18,7 @@ defineProps<{
 }>()
 
 function decisionTone(decision?: string | null) {
-  if (decision === 'Returned' || decision === 'Withdrawn') return 'bad' as const
+  if (decision === 'Returned' || decision === 'Rejected' || decision === 'Withdrawn') return 'bad' as const
   if (decision === 'Approved') return 'good' as const
   return 'muted' as const
 }

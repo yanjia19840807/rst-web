@@ -95,13 +95,13 @@ server adapter, while production builds always call `VITE_API_BASE_URL`.
 ### Temporary REST contract
 
 - `GET /api/v1/toolkits` — Toolkits dynamically visible to the current Agent.
-- `GET|POST /api/v1/supervisor/toolkits` and
-  `GET|PUT|DELETE /api/v1/supervisor/toolkits/{id}` — Supervisor CRUD; update requires `version`,
-  delete is soft-delete.
+- `GET /api/v1/toolkits/managed` — Toolkits the current principal can manage.
+- `POST /api/v1/toolkits` and `GET|PUT|DELETE /api/v1/toolkits/{id}` — Toolkit CRUD;
+  update requires `version`, delete is soft-delete.
 - `GET /api/v1/timesheet/toolkit-hierarchy` — Center → Domain → PL1 → PL2 → PL3 candidates.
 - `GET /api/v1/timesheet/shared-kpi-candidates` — country-filtered rows and dynamic Delivery HC.
-- `GET|POST /api/v1/supervisor/exercises` and
-  `GET /api/v1/supervisor/exercises/{id}` — Exercise list, create-with-freeze, and detail.
+- `GET|POST /api/v1/exercises` and
+  `GET /api/v1/exercises/{id}` — Exercise list, create-with-freeze, and detail.
 
 Toolkit Shared KPI write payloads contain only `carrier`, `site`, and `customerCountry`. Exercise
 snapshots additionally contain the resolved `deliveryHc` and `timesheetSyncDate`.

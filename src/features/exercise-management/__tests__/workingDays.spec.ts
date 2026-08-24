@@ -19,4 +19,10 @@ describe('computeNetworkDays', () => {
     // 2025-01-04 is Saturday
     expect(computeNetworkDays(2025, '1', ['2025-01-04'])).toBe(base)
   })
+
+  it('does not invent Saturday-Sunday for an unknown weekend code', () => {
+    expect(computeNetworkDays(2025, 'NONE', [])).toBeNull()
+    expect(computeNetworkDays(2025, '99', [])).toBeNull()
+    expect(computeNetworkDays(2025, null, [])).toBeNull()
+  })
 })

@@ -184,7 +184,7 @@ const workingDaysPerYear = computed(() => {
   if (!Number.isFinite(year) || year < 1900) {
     return props.modelValue?.workingDaysPerYear ?? null
   }
-  return computeNetworkDays(year, values.weekendCode || DEFAULT_WEEKEND_CODE, [])
+  return computeNetworkDays(year, values.weekendCode, [])
 })
 
 /** Live: WorkingDays − paidLeave − otherLeave. Matches backend. */

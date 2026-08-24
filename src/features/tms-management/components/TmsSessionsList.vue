@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import {
-  useSupervisorToolkitsQuery,
+  useManagedToolkitsQuery,
   useTeamAgentsQuery,
   useTmsSessionsQuery,
 } from '../api/queries'
@@ -42,7 +42,7 @@ const filters = reactive({
 const queryFilters = computed(() => ({ ...filters }))
 const sessionsQuery = useTmsSessionsQuery(queryFilters, () => props.mode)
 const teamAgentsQuery = useTeamAgentsQuery(isSupervisor)
-const toolkitsQuery = useSupervisorToolkitsQuery(isSupervisor)
+const toolkitsQuery = useManagedToolkitsQuery(isSupervisor)
 const { discard } = useTmsSessionMutations()
 const deletingId = ref('')
 const deleteTargetId = ref('')

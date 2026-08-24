@@ -56,5 +56,19 @@ export function useApprovalMutations() {
     },
   })
 
-  return { approve, returnToSupervisor }
+  const reject = useMutation({
+    mutationFn: ({
+      submissionId,
+      body,
+    }: {
+      submissionId: string
+      body: ReturnRequest
+    }) => approvalApi.reject(submissionId, body),
+    onSuccess: (detail, { submissionId }) => {
+      queryClient.setQueryData(approvalQueryKeys.detail(submissionId), detail)
+      invalidateAfterDecision(queryClient, submissionId, detail.exerciseId)
+    },
+  })
+
+  return { approve, returnToSupervisor, reject }
 }

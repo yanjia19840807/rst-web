@@ -65,6 +65,7 @@ const submitting = computed(() => submit.isPending.value)
 const findingLabel: Record<string, string> = {
   DAILY_VS_MONTHLY: 'Daily total vs monthly total',
   SHARED_KPI_PRESENT: 'Shared KPI lines present',
+  TEAM_SETUP_COMPLETE: 'Team Setup SLA hours and Availability',
 }
 
 watch(open, (value) => {

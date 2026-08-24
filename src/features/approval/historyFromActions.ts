@@ -29,15 +29,28 @@ function roleLabel(role?: string | null) {
   }
 }
 
-function decision(type?: string | null) {
-  switch (type) {
-    case 'SUBMIT':
-      return 'Submitted'
-    case 'APPROVE':
+function isSubmit(action: WorkflowActionView) {
+  return action.actionType === 'APPROVED'
+    && (action.actorRoleCode === 'SUPERVISOR' || (action.stepNo ?? 0) === 0)
+}
+
+function isReviewerDecision(action: WorkflowActionView) {
+  return !isSubmit(action)
+    && (action.actionType === 'APPROVED'
+      || action.actionType === 'RETURNED'
+      || action.actionType === 'REJECTED')
+}
+
+function decision(action: WorkflowActionView) {
+  if (isSubmit(action)) return 'Submitted'
+  switch (action.actionType) {
+    case 'APPROVED':
       return 'Approved'
-    case 'RETURN':
+    case 'RETURNED':
       return 'Returned'
-    case 'WITHDRAW':
+    case 'REJECTED':
+      return 'Rejected'
+    case 'WITHDRAWN':
       return 'Withdrawn'
     default:
       return null
@@ -45,7 +58,7 @@ function decision(type?: string | null) {
 }
 
 function stepLabel(action: WorkflowActionView) {
-  if (action.actionType === 'SUBMIT' || action.actionType === 'WITHDRAW') {
+  if (isSubmit(action) || action.actionType === 'WITHDRAWN') {
     return 'Supervisor Workbench'
   }
   const stepNo = action.stepNo ?? 0
@@ -62,11 +75,9 @@ export function historyFromActions(actions: WorkflowActionView[]): ApprovalHisto
     if (byTime !== 0) return byTime
     return (a.stepNo ?? 0) - (b.stepNo ?? 0)
   })
-  const lastDecision = [...sorted]
-    .reverse()
-    .find((action) => action.actionType === 'APPROVE' || action.actionType === 'RETURN')
+  const lastDecision = [...sorted].reverse().find(isReviewerDecision)
   return sorted.flatMap((action) => {
-    const label = decision(action.actionType)
+    const label = decision(action)
     if (!label) return []
     return [
       {
@@ -81,7 +92,7 @@ export function historyFromActions(actions: WorkflowActionView[]): ApprovalHisto
         mine:
           lastDecision != null
           && action.stepNo === lastDecision.stepNo
-          && (action.actionType === 'APPROVE' || action.actionType === 'RETURN'),
+          && isReviewerDecision(action),
       },
     ]
   })

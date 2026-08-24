@@ -178,7 +178,7 @@ function derivedSupport(
 }
 
 function editable(exercise: Exercise) {
-  return exercise.canEdit && (exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED')
+  return exercise.canEdit && exercise.workflowStatus === 'IN_PROGRESS'
 }
 
 function isWorking(scenario: { status: string }) {
@@ -189,19 +189,20 @@ function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
   exercise.officialScenarioId =
     exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
-  exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
+  exercise.submissionStatus = shell.submitted?.submissionStatus ?? null
+  exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
   exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
-  const ready = shell.submitted?.steps.find((step) => step.routingStatus === 'READY')
+  const ready = shell.submitted?.steps.find((step) => step.routingStatus === 'PENDING')
   if (exercise.workflowStatus === 'UNDER_REVIEW' && shell.submitted) {
     exercise.currentStep = shell.submitted.currentStep
     exercise.requiredRole = shell.submitted.requiredRole ?? ready?.requiredRoleCode ?? null
     exercise.currentReviewer = ready?.assigneeDisplayName ?? null
     exercise.lastDecisionComment = null
-  } else if (exercise.workflowStatus === 'RETURNED' && shell.submitted) {
+  } else if (shell.submitted?.submissionStatus === 'RETURNED') {
     const returned = [...shell.submitted.actions]
       .reverse()
-      .find((action) => action.actionType === 'RETURN')
+      .find((action) => action.actionType === 'RETURNED')
     exercise.currentStep = returned?.stepNo ?? null
     exercise.requiredRole = returned?.actorRoleCode ?? null
     exercise.currentReviewer = returned?.actorDisplayName ?? null
@@ -227,7 +228,7 @@ function uniqueSorted(values: Array<string | null | undefined>) {
 
 function matchesReviewStage(exercise: Exercise, reviewStage: string) {
   if (reviewStage === 'SUPERVISOR') {
-    return exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
+    return exercise.workflowStatus === 'IN_PROGRESS'
   }
   return exercise.workflowStatus === 'UNDER_REVIEW' && exercise.requiredRole === reviewStage
 }
@@ -282,7 +283,7 @@ export const supervisorHandlers = [
     })
   }),
 
-  http.get('*/api/v1/supervisor/toolkits', async ({ request }) => {
+  http.get('*/api/v1/toolkits/managed', async ({ request }) => {
     await delay(80)
     const url = new URL(request.url)
     const name = (url.searchParams.get('name') ?? '').trim().toLowerCase()
@@ -298,12 +299,12 @@ export const supervisorHandlers = [
     return HttpResponse.json({ ...paged, pl3Names })
   }),
 
-  http.get('*/api/v1/supervisor/toolkits/:id', ({ params }) => {
+  http.get('*/api/v1/toolkits/:id', ({ params }) => {
     const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
     return toolkit ? HttpResponse.json(toolkit) : problem(404, 'Toolkit not found.')
   }),
 
-  http.post('*/api/v1/supervisor/toolkits', async ({ request }) => {
+  http.post('*/api/v1/toolkits', async ({ request }) => {
     const input = (await request.json()) as ToolkitEditorPayload
     if (!input.name.trim() || !input.pl3Code) {
       return problem(422, 'Name and hierarchy are required.')
@@ -328,7 +329,7 @@ export const supervisorHandlers = [
     return HttpResponse.json(toolkit, { status: 201 })
   }),
 
-  http.put('*/api/v1/supervisor/toolkits/:id', async ({ params, request }) => {
+  http.put('*/api/v1/toolkits/:id', async ({ params, request }) => {
     const input = (await request.json()) as ToolkitEditorPayload
     const index = supervisorToolkits.findIndex((item) => item.id === params.id && !item.deletedAt)
     const current = supervisorToolkits[index]
@@ -350,7 +351,7 @@ export const supervisorHandlers = [
     return HttpResponse.json(updated)
   }),
 
-  http.delete('*/api/v1/supervisor/toolkits/:id', ({ params }) => {
+  http.delete('*/api/v1/toolkits/:id', ({ params }) => {
     const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
     if (!toolkit) return problem(404, 'Toolkit not found.')
     if (exercises.some((item) => item.toolkitId === toolkit.id)) {
@@ -361,13 +362,13 @@ export const supervisorHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises', ({ request }) => {
+  http.get('*/api/v1/exercises', ({ request }) => {
     exercises.forEach(syncFlags)
     const params = new URL(request.url).searchParams
     const tab = params.get('tab') || 'IN_PROGRESS'
     const tabStatuses = tab === 'ARCHIVED'
       ? new Set(['APPROVED', 'REJECTED'])
-      : new Set(['IN_PROGRESS', 'RETURNED', 'UNDER_REVIEW'])
+      : new Set(['IN_PROGRESS', 'UNDER_REVIEW'])
     const source = exercises.filter((item) => tabStatuses.has(item.workflowStatus))
     const items = source.filter((item) => matchesExerciseList(item, params))
     const paged = pageOf(items, Number(params.get('page') ?? 1), Number(params.get('pageSize') ?? 10))
@@ -379,7 +380,7 @@ export const supervisorHandlers = [
     })
   }),
 
-  http.post('*/api/v1/supervisor/exercises', async ({ request }) => {
+  http.post('*/api/v1/exercises', async ({ request }) => {
     const input = (await request.json()) as CreateExerciseInput
     const toolkit = supervisorToolkits.find(
       (item) => item.id === input.toolkitId && !item.deletedAt,
@@ -425,14 +426,14 @@ export const supervisorHandlers = [
     )
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id', ({ params }) => {
+  http.get('*/api/v1/exercises/:id', ({ params }) => {
     const exercise = findExercise(params.id)
     if (!exercise) return problem(404, 'Exercise not found.')
     syncFlags(exercise)
     return HttpResponse.json(exercise)
   }),
 
-  http.put('*/api/v1/supervisor/exercises/:id/periods', async ({ params, request }) => {
+  http.put('*/api/v1/exercises/:id/periods', async ({ params, request }) => {
     const exercise = findExercise(params.id)
     if (!exercise) return problem(404, 'Exercise not found.')
     syncFlags(exercise)
@@ -478,13 +479,13 @@ export const supervisorHandlers = [
     return HttpResponse.json({ exercise, notices })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/committed-results', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/committed-results', ({ params }) => {
     const exercise = findExercise(params.id)
     if (!exercise) return problem(404, 'Exercise not found.')
     return HttpResponse.json({ scenarioCount: committedScenarioCount(ensureShell(exercise)) })
   }),
 
-  http.post('*/api/v1/supervisor/exercises/:id/committed-results/clear', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/committed-results/clear', ({ params }) => {
     const exercise = findExercise(params.id)
     if (!exercise) return problem(404, 'Exercise not found.')
     syncFlags(exercise)
@@ -493,7 +494,7 @@ export const supervisorHandlers = [
     return HttpResponse.json({ scenarioCount: cleared })
   }),
 
-  http.delete('*/api/v1/supervisor/exercises/:id', ({ params }) => {
+  http.delete('*/api/v1/exercises/:id', ({ params }) => {
     const index = exercises.findIndex((item) => item.id === params.id)
     const exercise = exercises[index]
     if (!exercise) return problem(404, 'Exercise not found.')
@@ -504,13 +505,13 @@ export const supervisorHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/team-setup', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/team-setup', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(teamSetupView(ctx.exercise, ctx.shell))
   }),
 
-  http.put('*/api/v1/supervisor/exercises/:id/team-setup', async ({ params, request }) => {
+  http.put('*/api/v1/exercises/:id/team-setup', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -523,13 +524,13 @@ export const supervisorHandlers = [
     return HttpResponse.json(teamSetupView(ctx.exercise, ctx.shell))
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/production-support', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/production-support', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(ctx.shell.support.map((item) => ({ ...item, ...derivedSupport(ctx, item) })))
   }),
 
-  http.post('*/api/v1/supervisor/exercises/:id/production-support', async ({ params, request }) => {
+  http.post('*/api/v1/exercises/:id/production-support', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -554,7 +555,7 @@ export const supervisorHandlers = [
   }),
 
   http.put(
-    '*/api/v1/supervisor/exercises/:id/production-support/:itemId',
+    '*/api/v1/exercises/:id/production-support/:itemId',
     async ({ params, request }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -582,7 +583,7 @@ export const supervisorHandlers = [
     },
   ),
 
-  http.delete('*/api/v1/supervisor/exercises/:id/production-support/:itemId', ({ params }) => {
+  http.delete('*/api/v1/exercises/:id/production-support/:itemId', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -592,13 +593,13 @@ export const supervisorHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/calendar', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/calendar', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(ctx.shell.calendar)
   }),
 
-  http.put('*/api/v1/supervisor/exercises/:id/calendar', async ({ params, request }) => {
+  http.put('*/api/v1/exercises/:id/calendar', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -615,7 +616,7 @@ export const supervisorHandlers = [
     return HttpResponse.json(ctx.shell.calendar)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/calendar/export-template', () =>
+  http.get('*/api/v1/exercises/:id/calendar/export-template', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -624,7 +625,7 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.get('*/api/v1/supervisor/exercises/:id/calendar/export', () =>
+  http.get('*/api/v1/exercises/:id/calendar/export', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -633,14 +634,14 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.post('*/api/v1/supervisor/exercises/:id/calendar/import', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/calendar/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.calendar)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/toolkit-summary', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/volumes/toolkit-summary', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json({
@@ -653,19 +654,19 @@ export const supervisorHandlers = [
     })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/toolkit-points', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/volumes/toolkit-points', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json({ monthly: [], daily: [] })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/volumes/monthly', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(ctx.shell.monthlyVolumes)
   }),
 
-  http.put('*/api/v1/supervisor/exercises/:id/volumes/monthly', async ({ params, request }) => {
+  http.put('*/api/v1/exercises/:id/volumes/monthly', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -684,13 +685,13 @@ export const supervisorHandlers = [
     return HttpResponse.json(ctx.shell.monthlyVolumes)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/daily', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/volumes/daily', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(ctx.shell.dailyVolumes)
   }),
 
-  http.put('*/api/v1/supervisor/exercises/:id/volumes/daily', async ({ params, request }) => {
+  http.put('*/api/v1/exercises/:id/volumes/daily', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -709,13 +710,13 @@ export const supervisorHandlers = [
     return HttpResponse.json(ctx.shell.dailyVolumes)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/slot', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/volumes/slot', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(ctx.shell.slotVolumes)
   }),
 
-  http.put('*/api/v1/supervisor/exercises/:id/volumes/slot', async ({ params, request }) => {
+  http.put('*/api/v1/exercises/:id/volumes/slot', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -736,7 +737,7 @@ export const supervisorHandlers = [
     return HttpResponse.json(ctx.shell.slotVolumes)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly/export-template', () =>
+  http.get('*/api/v1/exercises/:id/volumes/monthly/export-template', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -745,7 +746,7 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/monthly/export', () =>
+  http.get('*/api/v1/exercises/:id/volumes/monthly/export', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -754,13 +755,13 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.post('*/api/v1/supervisor/exercises/:id/volumes/monthly/import', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/volumes/monthly/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.monthlyVolumes)
   }),
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/daily/export-template', () =>
+  http.get('*/api/v1/exercises/:id/volumes/daily/export-template', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -769,7 +770,7 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/daily/export', () =>
+  http.get('*/api/v1/exercises/:id/volumes/daily/export', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -778,13 +779,13 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.post('*/api/v1/supervisor/exercises/:id/volumes/daily/import', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/volumes/daily/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.dailyVolumes)
   }),
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/slot/export-template', () =>
+  http.get('*/api/v1/exercises/:id/volumes/slot/export-template', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -793,7 +794,7 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.get('*/api/v1/supervisor/exercises/:id/volumes/slot/export', () =>
+  http.get('*/api/v1/exercises/:id/volumes/slot/export', () =>
     HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
@@ -802,20 +803,20 @@ export const supervisorHandlers = [
       },
     }),
   ),
-  http.post('*/api/v1/supervisor/exercises/:id/volumes/slot/import', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/volumes/slot/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.slotVolumes)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/cycle-time/chart', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/cycle-time/chart', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return passthrough()
     return HttpResponse.json(ctx.shell.cycleTimeChart)
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/cycle-time/active', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/cycle-time/active', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return passthrough()
     if (!ctx.shell.cycleTime) return problem(404, 'No active Cycle Time baseline.')
@@ -825,7 +826,7 @@ export const supervisorHandlers = [
     })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/cycle-time/sessions', ({ params, request }) => {
+  http.get('*/api/v1/exercises/:id/cycle-time/sessions', ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return passthrough()
     const url = new URL(request.url)
@@ -835,7 +836,7 @@ export const supervisorHandlers = [
   }),
 
   http.post(
-    '*/api/v1/supervisor/exercises/:id/cycle-time/support-files',
+    '*/api/v1/exercises/:id/cycle-time/support-files',
     async ({ params, request }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -865,7 +866,7 @@ export const supervisorHandlers = [
     },
   ),
 
-  http.post('*/api/v1/supervisor/exercises/:id/cycle-time/manual', async ({ params, request }) => {
+  http.post('*/api/v1/exercises/:id/cycle-time/manual', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -906,13 +907,13 @@ export const supervisorHandlers = [
     return HttpResponse.json(ctx.shell.cycleTime, { status: 201 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/scenarios', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/scenarios', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     return HttpResponse.json(ctx.shell.scenarios)
   }),
 
-  http.post('*/api/v1/supervisor/exercises/:id/scenarios', async ({ params, request }) => {
+  http.post('*/api/v1/exercises/:id/scenarios', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -947,7 +948,7 @@ export const supervisorHandlers = [
     return HttpResponse.json(scenario, { status: 201 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/scenarios/:scenarioId', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     const scenario = ctx.shell.scenarios.find((item) => item.id === params.scenarioId)
@@ -955,7 +956,7 @@ export const supervisorHandlers = [
   }),
 
   http.put(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId',
     async ({ params, request }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -983,7 +984,7 @@ export const supervisorHandlers = [
   ),
 
   http.put(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/commit',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/commit',
     async ({ params, request }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1071,7 +1072,7 @@ export const supervisorHandlers = [
     },
   ),
 
-  http.delete('*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId', ({ params }) => {
+  http.delete('*/api/v1/exercises/:id/scenarios/:scenarioId', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -1086,7 +1087,7 @@ export const supervisorHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.post('*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/official', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/scenarios/:scenarioId/official', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
@@ -1331,7 +1332,7 @@ export const supervisorHandlers = [
   ),
 
   http.get(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/forecast/latest',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/forecast/latest',
     ({ params, request }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1350,7 +1351,7 @@ export const supervisorHandlers = [
   ),
 
   http.get(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/forecast/training',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/forecast/training',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1383,7 +1384,7 @@ export const supervisorHandlers = [
   ),
 
   http.post(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/monthly',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/simulations/monthly',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1459,7 +1460,7 @@ export const supervisorHandlers = [
   ),
 
   http.get(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/monthly/latest',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/simulations/monthly/latest',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1474,7 +1475,7 @@ export const supervisorHandlers = [
   ),
 
   http.post(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/daily',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/simulations/daily',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1557,7 +1558,7 @@ export const supervisorHandlers = [
   ),
 
   http.get(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/daily/latest',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/simulations/daily/latest',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1572,7 +1573,7 @@ export const supervisorHandlers = [
   ),
 
   http.post(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/slot',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/simulations/slot',
     async ({ params, request }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1673,7 +1674,7 @@ export const supervisorHandlers = [
   ),
 
   http.get(
-    '*/api/v1/supervisor/exercises/:id/scenarios/:scenarioId/simulations/slot/latest',
+    '*/api/v1/exercises/:id/scenarios/:scenarioId/simulations/slot/latest',
     ({ params }) => {
       const ctx = requireExercise(params.id)
       if (!ctx) return problem(404, 'Exercise not found.')
@@ -1686,7 +1687,7 @@ export const supervisorHandlers = [
     },
   ),
 
-  http.post('*/api/v1/supervisor/exercises/:id/validations/submit-preview', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/validations/submit-preview', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     syncFlags(ctx.exercise)
@@ -1694,6 +1695,7 @@ export const supervisorHandlers = [
       return problem(409, 'Exercise must have an Official Scenario and be editable to submit.')
     }
     const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
+    const teamComplete = fteAnnualHours(teamSetupView(ctx.exercise, ctx.shell)) != null
     const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
     return HttpResponse.json({
       scenarioId: official?.id ?? ctx.exercise.officialScenarioId ?? '',
@@ -1710,12 +1712,18 @@ export const supervisorHandlers = [
           passed: hasKpis,
           remarks: null,
         },
+        {
+          ruleCode: 'TEAM_SETUP_COMPLETE',
+          severity: teamComplete ? 'INFO' : 'SEVERE',
+          passed: teamComplete,
+          remarks: null,
+        },
       ],
-      remarksRequired: !hasKpis,
+      remarksRequired: !hasKpis || !teamComplete,
     })
   }),
 
-  http.post('*/api/v1/supervisor/exercises/:id/submit', async ({ params, request }) => {
+  http.post('*/api/v1/exercises/:id/submit', async ({ params, request }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     syncFlags(ctx.exercise)
@@ -1727,6 +1735,10 @@ export const supervisorHandlers = [
     }
     const body = ((await request.json().catch(() => ({}))) ?? {}) as SubmitRequest
     const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
+    const teamComplete = fteAnnualHours(teamSetupView(ctx.exercise, ctx.shell)) != null
+    if (!teamComplete) {
+      return problem(422, 'Team Setup must include SLA clock hours and Availability before Submit.')
+    }
     if (!hasKpis && !body.remarks?.trim()) {
       return problem(422, 'SEVERE validation failures require remarks before Submit.')
     }
@@ -1738,7 +1750,7 @@ export const supervisorHandlers = [
     if (reopenable && previous) {
       previous.actions.push({
         stepNo: 0,
-        actionType: 'SUBMIT',
+        actionType: 'APPROVED',
         actorCcgid: crypto.randomUUID(),
         actorRoleCode: 'SUPERVISOR',
         comments: body.remarks ?? null,
@@ -1747,9 +1759,9 @@ export const supervisorHandlers = [
       })
       for (const step of previous.steps) {
         if (step.stepNo === 1) {
-          step.routingStatus = 'READY'
-        } else if (step.routingStatus === 'READY' || step.routingStatus === 'PENDING') {
-          step.routingStatus = 'INVALIDATED'
+          step.routingStatus = 'PENDING'
+        } else if (step.routingStatus === 'PENDING') {
+          step.routingStatus = 'WITHDRAWN'
         }
       }
       if (!previous.steps.some((step) => step.stepNo === 1)) {
@@ -1758,7 +1770,7 @@ export const supervisorHandlers = [
           requiredRoleCode: 'MANAGER',
           assigneeCcgid: crypto.randomUUID(),
           assigneeDisplayName: 'Grace Li',
-          routingStatus: 'READY',
+          routingStatus: 'PENDING',
         })
       }
       previous.workflowStatus = 'UNDER_REVIEW'
@@ -1769,7 +1781,6 @@ export const supervisorHandlers = [
       previous.currentStep = 1
       previous.requiredRole = 'MANAGER'
       previous.remarks = body.remarks ?? null
-      previous.workflowStatusLabel = 'ACTIVE'
       ctx.exercise.workflowStatus = 'UNDER_REVIEW'
       ctx.exercise.submittedAt = now
       syncFlags(ctx.exercise)
@@ -1783,7 +1794,6 @@ export const supervisorHandlers = [
       scenarioId: official?.id ?? '',
       scenarioName: official?.name ?? null,
       submissionId: crypto.randomUUID(),
-      submissionCode: `SUB-${ctx.exercise.exerciseCode}`,
       submissionStatus: 'OPEN',
       currentStep: 1,
       requiredRole: 'MANAGER',
@@ -1797,21 +1807,19 @@ export const supervisorHandlers = [
         carrier: kpi.carrier,
         customerCountry: kpi.customerCountry,
       })),
-      workflowInstanceId: crypto.randomUUID(),
-      workflowStatusLabel: 'ACTIVE',
       steps: [
         {
           stepNo: 1,
           requiredRoleCode: 'MANAGER',
           assigneeCcgid: crypto.randomUUID(),
           assigneeDisplayName: 'Grace Li',
-          routingStatus: 'READY',
+          routingStatus: 'PENDING',
         },
       ],
       actions: [
         {
           stepNo: 0,
-          actionType: 'SUBMIT',
+          actionType: 'APPROVED',
           actorCcgid: crypto.randomUUID(),
           actorRoleCode: 'SUPERVISOR',
           comments: body.remarks ?? null,
@@ -1827,7 +1835,7 @@ export const supervisorHandlers = [
     return HttpResponse.json(details, { status: 201 })
   }),
 
-  http.get('*/api/v1/supervisor/exercises/:id/submitted-details', ({ params }) => {
+  http.get('*/api/v1/exercises/:id/submitted-details', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!ctx.shell.submitted) return problem(404, 'No submission exists for this Exercise.')
@@ -1837,21 +1845,21 @@ export const supervisorHandlers = [
     })
   }),
 
-  http.post('*/api/v1/supervisor/exercises/:id/withdraw', ({ params }) => {
+  http.post('*/api/v1/exercises/:id/withdraw', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (ctx.exercise.workflowStatus !== 'UNDER_REVIEW' || !ctx.shell.submitted) {
       return problem(409, 'Only UNDER_REVIEW Exercises can be withdrawn.')
     }
     if (!OPEN_LIKE_STATUSES.has(ctx.shell.submitted.submissionStatus)) {
-      return problem(409, 'Workflow is not ACTIVE and cannot be withdrawn.')
+      return problem(409, 'Workflow is not OPEN and cannot be withdrawn.')
     }
     const now = new Date().toISOString()
-    const step = ctx.shell.submitted.steps.find((item) => item.routingStatus === 'READY')
-    if (step) step.routingStatus = 'INVALIDATED'
+    const step = ctx.shell.submitted.steps.find((item) => item.routingStatus === 'PENDING')
+    if (step) step.routingStatus = 'WITHDRAWN'
     ctx.shell.submitted.actions.push({
       stepNo: step?.stepNo ?? ctx.shell.submitted.currentStep ?? 1,
-      actionType: 'WITHDRAW',
+      actionType: 'WITHDRAWN',
       actorCcgid: crypto.randomUUID(),
       actorRoleCode: 'SUPERVISOR',
       comments: null,
@@ -1859,7 +1867,6 @@ export const supervisorHandlers = [
       requestId: crypto.randomUUID(),
     })
     ctx.shell.submitted.submissionStatus = 'WITHDRAWN'
-    ctx.shell.submitted.workflowStatusLabel = 'CANCELLED'
     ctx.shell.submitted.workflowStatus = 'IN_PROGRESS'
     ctx.exercise.workflowStatus = 'IN_PROGRESS'
     const official =

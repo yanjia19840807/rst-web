@@ -16,7 +16,7 @@ import type {
 export const tmsQueryKeys = {
   all: ['tms'] as const,
   toolkits: () => [...tmsQueryKeys.all, 'toolkits'] as const,
-  supervisorToolkits: () => [...tmsQueryKeys.all, 'supervisor-toolkits'] as const,
+  managedToolkits: () => [...tmsQueryKeys.all, 'managed-toolkits'] as const,
   teamAgents: () => [...tmsQueryKeys.all, 'team-agents'] as const,
   summary: () => [...tmsQueryKeys.all, 'summary'] as const,
   current: () => [...tmsQueryKeys.all, 'current'] as const,
@@ -35,12 +35,12 @@ export function useToolkitsQuery() {
   })
 }
 
-export function useSupervisorToolkitsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
+export function useManagedToolkitsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
-    queryKey: tmsQueryKeys.supervisorToolkits(),
+    queryKey: tmsQueryKeys.managedToolkits(),
     queryFn: async () => {
       const view = await apiRequest<{ items: Toolkit[] }>(
-        '/api/v1/supervisor/toolkits?page=1&pageSize=100',
+        '/api/v1/toolkits/managed?page=1&pageSize=100',
       )
       return view.items
     },
@@ -51,7 +51,7 @@ export function useSupervisorToolkitsQuery(enabled: MaybeRefOrGetter<boolean> = 
 export function useTeamAgentsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: tmsQueryKeys.teamAgents(),
-    queryFn: () => apiRequest<TeamAgentOption[]>('/api/v1/supervisor/tms/agents'),
+    queryFn: () => apiRequest<TeamAgentOption[]>('/api/v1/tms/team/agents'),
     enabled: computed(() => toValue(enabled)),
   })
 }
@@ -81,7 +81,7 @@ export function useTmsSessionDetailQuery(
     queryFn: () => {
       const path =
         resolvedMode.value === 'supervisor'
-          ? `/api/v1/supervisor/tms/sessions/${sessionId.value}`
+          ? `/api/v1/tms/team/sessions/${sessionId.value}`
           : `/api/v1/tms/sessions/${sessionId.value}`
       return apiRequest<TmsSession>(path)
     },
@@ -132,7 +132,7 @@ export function useTmsSessionsQuery(
       if (pl3Code) params.set('pl3Code', pl3Code)
       const path =
         resolvedMode.value === 'supervisor'
-          ? `/api/v1/supervisor/tms/sessions?${params}`
+          ? `/api/v1/tms/team/sessions?${params}`
           : `/api/v1/tms/sessions?${params}`
       return apiRequest<PageResult<TmsSession>>(path)
     },

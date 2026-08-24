@@ -367,6 +367,7 @@ watch(
                 <option>All decisions</option>
                 <option>Approved</option>
                 <option>Returned</option>
+                <option>Rejected</option>
               </select>
             </label>
             <Button variant="outline" @click="toggleMoreFilters">

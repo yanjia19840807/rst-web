@@ -34,6 +34,7 @@ import { measuredRightSizingHc } from '@/lib/hcFormat'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import type { Scenario } from '../types'
 import { actualHeadcount } from '../sizingChartMath'
+import { sumSupportFte } from './associated-data/supportOptions'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
 import ExerciseDetailHeader from './ExerciseDetailHeader.vue'
@@ -83,7 +84,7 @@ const pageTab = ref<'exercise' | 'approval'>('exercise')
 
 const hasApprovalHistory = computed(
   () =>
-    Boolean(exercise.value?.submittedAt) || exercise.value?.workflowStatus === 'RETURNED',
+    Boolean(exercise.value?.submittedAt) || exercise.value?.submissionStatus === 'RETURNED',
 )
 const submittedQuery = useSubmittedDetailsQuery(exerciseIdRef, hasApprovalHistory)
 const submitted = computed(() => submittedQuery.data.value ?? null)
@@ -124,10 +125,7 @@ const deliveryHc = computed(() =>
 const actualSize = computed(() =>
   actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
 )
-const supportFte = computed(() => {
-  if (!support.value.length) return null
-  return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
-})
+const supportFte = computed(() => sumSupportFte(support.value))
 const medianLabel = computed(() =>
   cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',
 )

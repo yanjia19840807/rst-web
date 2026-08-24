@@ -68,7 +68,7 @@ export interface SupportItem {
   volume: number
   unitOfMeasure: string
   workloadPerUnitMinutes: number
-  annualMultiplier: number
+  annualMultiplier: number | null
   workloadPerYearHours: number | null
   supportFte: number | null
   comments: string | null

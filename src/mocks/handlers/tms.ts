@@ -191,6 +191,54 @@ export const tmsHandlers = [
     return HttpResponse.json(session)
   }),
 
+  http.get('*/api/v1/tms/team/agents', async () => {
+    await delay(80)
+    return HttpResponse.json([
+      { ccgid: 'AGENT010', name: 'Test Agent AGENT010' },
+      { ccgid: 'AGENT011', name: 'Test Agent AGENT011' },
+    ])
+  }),
+
+  http.get('*/api/v1/tms/team/sessions', async ({ request }) => {
+    await delay(150)
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status')
+    const sessionNo = url.searchParams.get('sessionNo')?.trim().toLowerCase() ?? ''
+    const reference = url.searchParams.get('reference')?.trim().toLowerCase() ?? ''
+    const query = url.searchParams.get('query')?.trim().toLowerCase() ?? ''
+    const dateFrom = url.searchParams.get('dateFrom')
+    const dateTo = url.searchParams.get('dateTo')
+    const agentCcgid = url.searchParams.get('agentCcgid')
+    const toolkitId = url.searchParams.get('toolkitId')
+    const pl3Code = url.searchParams.get('pl3Code')
+    const page = Number(url.searchParams.get('page') ?? 1)
+    const pageSize = Number(url.searchParams.get('pageSize') ?? 10)
+
+    const filtered = sessions
+      .filter((session) => !status || session.status === status)
+      .filter((session) => !sessionNo || session.id.toLowerCase().includes(sessionNo))
+      .filter((session) => !reference || session.reference.toLowerCase().includes(reference))
+      .filter(
+        (session) =>
+          !query ||
+          session.id.toLowerCase().includes(query) ||
+          session.reference.toLowerCase().includes(query),
+      )
+      .filter((session) => !agentCcgid || session.agentCcgid === agentCcgid)
+      .filter((session) => !toolkitId || session.toolkitId === toolkitId)
+      .filter((session) => !pl3Code || session.toolkitName.includes(pl3Code))
+      .filter((session) => !dateFrom || session.startedAt.slice(0, 10) >= dateFrom)
+      .filter((session) => !dateTo || session.startedAt.slice(0, 10) <= dateTo)
+    return HttpResponse.json(pageOf(filtered, page, pageSize))
+  }),
+
+  http.get('*/api/v1/tms/team/sessions/:id', async ({ params }) => {
+    await delay(80)
+    const session = sessions.find((candidate) => candidate.id === params.id)
+    if (!session) return problem(404, 'The TMS session was not found.')
+    return HttpResponse.json(session)
+  }),
+
   http.post('*/api/v1/tms/sessions/:id/discard', async ({ params }) => {
     await delay(100)
     const session = sessions.find((candidate) => candidate.id === params.id)

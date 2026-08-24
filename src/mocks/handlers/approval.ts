@@ -25,7 +25,7 @@ function problem(status: number, detail: string) {
 function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
   exercise.officialScenarioId = exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
-  exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED'
+  exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS'
   exercise.canDelete = exercise.canEdit && !exercise.submittedAt
   exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
 }
@@ -42,7 +42,7 @@ function findBySubmission(submissionId: string | readonly string[] | undefined) 
 }
 
 function requiredRole(submitted: SubmittedDetails) {
-  const ready = submitted.steps.find((step) => step.routingStatus === 'READY')
+  const ready = submitted.steps.find((step) => step.routingStatus === 'PENDING')
   return ready?.requiredRoleCode ?? 'MANAGER'
 }
 
@@ -77,7 +77,7 @@ function currentAwaitingRole(submitted: SubmittedDetails) {
 function roleDecision(submitted: SubmittedDetails) {
   return submitted.actions.filter(
     (action) =>
-      (action.actionType === 'APPROVE' || action.actionType === 'RETURN') &&
+      (action.actionType === 'APPROVED' || action.actionType === 'RETURNED' || action.actionType === 'REJECTED') &&
       (action.actorRoleCode === 'MANAGER' ||
         action.actorRoleCode === 'CDH' ||
         action.actorRoleCode === 'LTH'),
@@ -85,7 +85,7 @@ function roleDecision(submitted: SubmittedDetails) {
 }
 
 function isClosedSubmission(status: string) {
-  return status === 'APPROVED' || status === 'RETURNED' || status === 'WITHDRAWN'
+  return status === 'APPROVED' || status === 'RETURNED' || status === 'REJECTED' || status === 'WITHDRAWN'
 }
 
 function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQueueItem {
@@ -93,19 +93,26 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
     (sum, item) => sum + Number(item.deliveryHc || 0),
     0,
   )
-  const previousActions = submitted.actions.filter((action) => action.actionType === 'APPROVE')
+  const previousActions = submitted.actions.filter(
+    (action) =>
+      action.actionType === 'APPROVED'
+      && action.actorRoleCode !== 'SUPERVISOR'
+      && (action.stepNo ?? 0) !== 0,
+  )
   const previous = previousActions[previousActions.length - 1] ?? null
-  const last = submitted.actions.filter(
-    (action) => action.actionType === 'SUBMIT' || action.actionType === 'APPROVE',
-  ).at(-1) ?? null
+  const last = submitted.actions.filter((action) => action.actionType === 'APPROVED').at(-1) ?? null
   const supervisor =
-    submitted.actions.find((action) => action.actionType === 'SUBMIT')?.actorDisplayName ?? null
+    submitted.actions.find(
+      (action) =>
+        action.actionType === 'APPROVED'
+        && (action.actorRoleCode === 'SUPERVISOR' || (action.stepNo ?? 0) === 0),
+    )?.actorDisplayName ?? null
   const agingFrom = previous?.actionAt ?? submitted.submittedAt
   const closeActions = submitted.actions.filter(
     (action) =>
-      action.actionType === 'RETURN' ||
-      action.actionType === 'WITHDRAW' ||
-      action.actionType === 'APPROVE',
+      action.actionType === 'RETURNED' ||
+      action.actionType === 'WITHDRAWN' ||
+      action.actionType === 'APPROVED',
   )
   const mine = roleDecision(submitted)
   const archivedAt = isClosedSubmission(submitted.submissionStatus)
@@ -141,7 +148,13 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
       : null,
     status: submitted.submissionStatus,
     myDecision:
-      mine?.actionType === 'APPROVE' ? 'Approved' : mine?.actionType === 'RETURN' ? 'Returned' : null,
+      mine?.actionType === 'APPROVED'
+        ? 'Approved'
+        : mine?.actionType === 'RETURNED'
+          ? 'Returned'
+          : mine?.actionType === 'REJECTED'
+            ? 'Rejected'
+            : null,
     myCompletedAt: mine?.actionAt ?? null,
     completedStep: mine ? previousStepLabel(mine.actorRoleCode) : null,
   }
@@ -157,14 +170,11 @@ function toDetail(exercise: Exercise, submitted: SubmittedDetails): ApprovalDeta
     scenarioId: submitted.scenarioId,
     scenarioName: submitted.scenarioName,
     submissionId: submitted.submissionId,
-    submissionCode: submitted.submissionCode,
     submissionStatus: submitted.submissionStatus,
     currentStep: submitted.currentStep,
     requiredRole: requiredRole(submitted),
     remarks: submitted.remarks,
     scopes: submitted.scopes,
-    workflowInstanceId: submitted.workflowInstanceId,
-    workflowStatusLabel: submitted.workflowStatusLabel,
     steps: submitted.steps,
     actions: submitted.actions.map((action) => ({
       stepNo: action.stepNo ?? 0,
@@ -313,14 +323,14 @@ export const approvalHandlers = [
     }
 
     const now = new Date().toISOString()
-    const step = ctx.submitted.steps.find((item) => item.routingStatus === 'READY')
+    const step = ctx.submitted.steps.find((item) => item.routingStatus === 'PENDING')
     const stepNo = step?.stepNo ?? ctx.submitted.currentStep ?? 1
     const role = step?.requiredRoleCode ?? 'MANAGER'
 
-    if (step) step.routingStatus = 'ACTED'
+    if (step) step.routingStatus = 'APPROVED'
     ctx.submitted.actions.push({
       stepNo,
-      actionType: 'APPROVE',
+      actionType: 'APPROVED',
       actorCcgid: crypto.randomUUID(),
       actorRoleCode: role,
       actorDisplayName: 'Approver',
@@ -331,7 +341,6 @@ export const approvalHandlers = [
 
     // Happy-path MSW: single approve completes the submission.
     ctx.submitted.submissionStatus = 'APPROVED'
-    ctx.submitted.workflowStatusLabel = 'COMPLETED'
     ctx.submitted.currentStep = stepNo
     ctx.exercise.workflowStatus = 'APPROVED'
     syncFlags(ctx.exercise)
@@ -354,14 +363,14 @@ export const approvalHandlers = [
     }
 
     const now = new Date().toISOString()
-    const step = ctx.submitted.steps.find((item) => item.routingStatus === 'READY')
+    const step = ctx.submitted.steps.find((item) => item.routingStatus === 'PENDING')
     const stepNo = step?.stepNo ?? ctx.submitted.currentStep ?? 1
     const role = step?.requiredRoleCode ?? 'MANAGER'
 
-    if (step) step.routingStatus = 'ACTED'
+    if (step) step.routingStatus = 'RETURNED'
     ctx.submitted.actions.push({
       stepNo,
-      actionType: 'RETURN',
+      actionType: 'RETURNED',
       actorCcgid: crypto.randomUUID(),
       actorRoleCode: role,
       actorDisplayName: 'Approver',
@@ -370,8 +379,46 @@ export const approvalHandlers = [
       requestId,
     })
     ctx.submitted.submissionStatus = 'RETURNED'
-    ctx.submitted.workflowStatusLabel = 'RETURNED'
-    ctx.exercise.workflowStatus = 'RETURNED'
+    ctx.exercise.workflowStatus = 'IN_PROGRESS'
+    ctx.exercise.submissionStatus = 'RETURNED'
+    syncFlags(ctx.exercise)
+    return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
+  }),
+
+  http.post('*/api/v1/approvals/:submissionId/reject', async ({ params, request }) => {
+    const ctx = findBySubmission(params.submissionId)
+    if (!ctx) return problem(404, 'The Submission was not found.')
+    if (!isOpenStatus(ctx.submitted.submissionStatus)) {
+      return problem(409, 'Submission is not awaiting approval.')
+    }
+    const body = ((await request.json().catch(() => ({}))) ?? {}) as ReturnRequest
+    if (!body.comments?.trim()) {
+      return problem(422, 'Reject comments are required.')
+    }
+    const requestId = body.requestId ?? crypto.randomUUID()
+    if (ctx.submitted.actions.some((action) => action.requestId === requestId)) {
+      return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
+    }
+
+    const now = new Date().toISOString()
+    const step = ctx.submitted.steps.find((item) => item.routingStatus === 'PENDING')
+    const stepNo = step?.stepNo ?? ctx.submitted.currentStep ?? 1
+    const role = step?.requiredRoleCode ?? 'MANAGER'
+
+    if (step) step.routingStatus = 'REJECTED'
+    ctx.submitted.actions.push({
+      stepNo,
+      actionType: 'REJECTED',
+      actorCcgid: crypto.randomUUID(),
+      actorRoleCode: role,
+      actorDisplayName: 'Approver',
+      comments: body.comments,
+      actionAt: now,
+      requestId,
+    })
+    ctx.submitted.submissionStatus = 'REJECTED'
+    ctx.exercise.workflowStatus = 'REJECTED'
+    ctx.exercise.submissionStatus = 'REJECTED'
     syncFlags(ctx.exercise)
     return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
   }),

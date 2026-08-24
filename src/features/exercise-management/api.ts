@@ -45,7 +45,7 @@ import type {
   UpdateScenarioRequest,
 } from './types'
 
-const base = '/api/v1/supervisor/exercises'
+const base = '/api/v1/exercises'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 function exercisePath(id: string, suffix = '') {

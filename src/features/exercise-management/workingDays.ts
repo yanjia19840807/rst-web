@@ -1,4 +1,4 @@
-import { DEFAULT_WEEKEND_CODE, weekendDays } from './weekendCodes'
+import { weekendDays } from './weekendCodes'
 
 /**
  * Counts working days in a calendar year excluding weekends and holiday dates.
@@ -8,8 +8,9 @@ export function computeNetworkDays(
   year: number,
   weekendCode: string | null | undefined,
   holidayDates: readonly string[] = [],
-): number {
-  const weekend = weekendDays(weekendCode ?? DEFAULT_WEEKEND_CODE)
+): number | null {
+  const weekend = weekendDays(weekendCode)
+  if (!weekend) return null
   const nonWorking = new Set(
     holidayDates.filter((date) => date && date.startsWith(`${year}-`)),
   )

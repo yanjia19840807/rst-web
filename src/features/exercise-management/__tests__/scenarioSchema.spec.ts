@@ -42,11 +42,15 @@ describe('scenarioFormSchema', () => {
 })
 
 describe('scenarioSlotSchema', () => {
-  it('requires at least one complete shift', () => {
+  it('marks empty default shift fields instead of asking to add a shift', () => {
     const blank = scenarioSlotSchema.safeParse(emptyScenarioForm())
     expect(blank.success).toBe(false)
     if (blank.success) return
-    expect(blank.error.issues.some((issue) => issue.path.join('.') === 'shifts')).toBe(true)
+    const paths = blank.error.issues.map((issue) => issue.path.join('.'))
+    expect(paths).toContain('shifts.0.startTime')
+    expect(paths).toContain('shifts.0.durationHours')
+    expect(paths).toContain('shifts.0.headcount')
+    expect(paths).not.toContain('shifts')
   })
 
   it('accepts one complete shift', () => {

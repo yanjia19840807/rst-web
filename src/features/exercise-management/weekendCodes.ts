@@ -50,12 +50,12 @@ const JS_DAYS: Record<string, ReadonlySet<number>> = {
   '15': new Set([4]),
   '16': new Set([5]),
   '17': new Set([6]),
-  NONE: new Set([6, 0]),
 }
 
-export function weekendDays(code: string | null | undefined): ReadonlySet<number> {
-  const key = (code ?? DEFAULT_WEEKEND_CODE).trim().toUpperCase()
-  return JS_DAYS[key] ?? JS_DAYS[DEFAULT_WEEKEND_CODE]!
+export function weekendDays(code: string | null | undefined): ReadonlySet<number> | null {
+  if (code == null || code.trim() === '') return null
+  const key = code.trim().toUpperCase()
+  return JS_DAYS[key] ?? null
 }
 
 export function weekendCodeLabel(code: string | null | undefined): string {
@@ -63,22 +63,28 @@ export function weekendCodeLabel(code: string | null | undefined): string {
   const match = WEEKEND_CODE_OPTIONS.find((option) => option.value === String(code).trim())
   if (match) return match.label
   const days = weekendDays(code)
-  const fallback = WEEKEND_CODE_OPTIONS.find((option) => {
+  if (!days) return String(code)
+  const known = WEEKEND_CODE_OPTIONS.find((option) => {
     const optionDays = weekendDays(option.value)
-    return optionDays.size === days.size && [...optionDays].every((day) => days.has(day))
+    return optionDays != null
+      && optionDays.size === days.size
+      && [...optionDays].every((day) => days.has(day))
   })
-  return fallback?.label ?? String(code)
+  return known?.label ?? String(code)
 }
 
 export function normalizeWeekendCode(code: string | null | undefined): string {
   const match = WEEKEND_CODE_OPTIONS.find((option) => option.value === String(code ?? '').trim())
   if (match) return match.value
   const days = weekendDays(code)
-  const fallback = WEEKEND_CODE_OPTIONS.find((option) => {
+  if (!days) return ''
+  const known = WEEKEND_CODE_OPTIONS.find((option) => {
     const optionDays = weekendDays(option.value)
-    return optionDays.size === days.size && [...optionDays].every((day) => days.has(day))
+    return optionDays != null
+      && optionDays.size === days.size
+      && [...optionDays].every((day) => days.has(day))
   })
-  return fallback?.value ?? DEFAULT_WEEKEND_CODE
+  return known?.value ?? ''
 }
 
 export function holidayTypeLabel(type: string | null | undefined): string {

@@ -39,6 +39,7 @@ import {
   annualMultiplier,
   fteAnnualHours,
   hoursPerYear,
+  sumSupportFte,
   supportFte,
 } from './supportOptions'
 
@@ -84,10 +85,7 @@ const currentCategory = computed(() =>
 )
 const categoryChoices = computed(() => categoriesForSelect(catalog.value, currentCategory.value))
 
-const totalFte = computed(() => {
-  if (!props.items.length) return null
-  return props.items.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
-})
+const totalFte = computed(() => sumSupportFte(props.items))
 
 const totalAnnualHours = computed(() => {
   if (!props.items.length) return null

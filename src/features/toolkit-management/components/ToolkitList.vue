@@ -11,7 +11,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 
-import { useSupervisorToolkitsQuery } from '../api/queries'
+import { useManagedToolkitsQuery } from '../api/queries'
 import type { SupervisorToolkit, ToolkitListQuery } from '../types'
 import { createToolkitColumns } from './toolkitColumns'
 
@@ -29,7 +29,7 @@ const listQuery = computed<ToolkitListQuery>(() => ({
   pageSize: pageSize.value,
 }))
 
-const toolkitsQuery = useSupervisorToolkitsQuery(listQuery)
+const toolkitsQuery = useManagedToolkitsQuery(listQuery)
 const toolkits = computed(() => toolkitsQuery.data.value?.items ?? [])
 const total = computed(() => toolkitsQuery.data.value?.total ?? 0)
 const pl3Options = computed(() => [

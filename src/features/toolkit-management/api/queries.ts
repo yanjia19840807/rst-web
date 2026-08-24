@@ -21,7 +21,7 @@ export const toolkitQueryKeys = {
     [...toolkitQueryKeys.all, 'candidates', pl3Code, supervisorPositionId, ...countries] as const,
 }
 
-export function useSupervisorToolkitsQuery(
+export function useManagedToolkitsQuery(
   filters: MaybeRefOrGetter<ToolkitListQuery> = {},
 ) {
   const resolved = computed(() => toValue(filters))

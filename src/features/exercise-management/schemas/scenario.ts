@@ -41,38 +41,29 @@ const shiftDraftSchema = z.object({
   worksOnWeekend: z.boolean(),
 })
 
-function refineShifts(requireAtLeastOne: boolean) {
+function refineShifts(requireCompleteRows: boolean) {
   return (data: { shifts: ShiftDraft[] }, ctx: z.RefinementCtx) => {
-    const filled = data.shifts.filter((row) => !isBlankShift(row))
-    if (requireAtLeastOne && !filled.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['shifts'],
-        message: 'Add at least one shift.',
-      })
-      return
-    }
     for (const [index, row] of data.shifts.entries()) {
-      if (isBlankShift(row)) continue
+      if (!requireCompleteRows && isBlankShift(row)) continue
       if (!row.startTime?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['shifts', index, 'startTime'],
-          message: `Shift ${row.shiftNo}: Start time is required.`,
+          message: 'Start time is required.',
         })
       }
       if (row.durationHours == null || !Number.isFinite(row.durationHours) || row.durationHours <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['shifts', index, 'durationHours'],
-          message: `Shift ${row.shiftNo}: Duration (hours) must be a positive number.`,
+          message: 'Duration (hours) must be a positive number.',
         })
       }
       if (row.headcount == null || !Number.isFinite(row.headcount) || row.headcount < 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['shifts', index, 'headcount'],
-          message: `Shift ${row.shiftNo}: Capacity FTE must be zero or greater.`,
+          message: 'Capacity FTE must be zero or greater.',
         })
       }
     }
@@ -103,7 +94,7 @@ const scenarioFieldsSchema = z.object({
 /** Save: name required; filled shifts must be complete; blank shift rows are ignored. */
 export const scenarioFormSchema = scenarioFieldsSchema.superRefine(refineShifts(false))
 
-/** Slot run: same as save, plus at least one complete shift. */
+/** Slot run: every displayed shift row must be complete (the form always has one). */
 export const scenarioSlotSchema = scenarioFieldsSchema.superRefine(refineShifts(true))
 
 export type ScenarioFormValues = z.input<typeof scenarioFieldsSchema>

@@ -130,14 +130,11 @@ export interface ApprovalDetailView {
   scenarioId: string
   scenarioName: string | null
   submissionId: string
-  submissionCode: string
   submissionStatus: string
   currentStep: number | null
   requiredRole: string
   remarks: string | null
   scopes: ScopeView[]
-  workflowInstanceId: string
-  workflowStatusLabel: string
   steps: StepView[]
   actions: ActionView[]
   canDecide?: boolean

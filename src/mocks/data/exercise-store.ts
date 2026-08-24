@@ -17,7 +17,6 @@ import {
   dailyTrainDates,
   slotTrainKeys,
 } from '@/features/exercise-management/periodWindows'
-import { DEFAULT_WEEKEND_CODE } from '@/features/exercise-management/weekendCodes'
 import { computeNetworkDays } from '@/features/exercise-management/workingDays'
 
 export type ExerciseShell = {
@@ -248,7 +247,7 @@ export function teamSetupView(exercise: Exercise, shell: ExerciseShell): TeamSet
   const c = Number(setup.agents24To48m ?? 0)
   const d = Number(setup.agentsGt48m ?? 0)
   const total = a + b + c + d
-  const weekend = setup.weekendCode ?? DEFAULT_WEEKEND_CODE
+  const weekend = setup.weekendCode
   const year = Number(String(exercise.sizingMonth ?? '').slice(0, 4))
   const workingDays = Number.isFinite(year)
     ? computeNetworkDays(year, weekend, [])
@@ -272,7 +271,7 @@ export function teamSetupView(exercise: Exercise, shell: ExerciseShell): TeamSet
   return {
     ...setup,
     deliveryHc,
-    weekendCode: weekend,
+    weekendCode: weekend ?? null,
     workingHoursPerDay: hours,
     capacityRatio,
     totalAgents: total || null,

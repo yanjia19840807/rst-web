@@ -10,7 +10,7 @@ import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
-import { useSupervisorToolkitsQuery } from '@/features/toolkit-management/api/queries'
+import { useManagedToolkitsQuery } from '@/features/toolkit-management/api/queries'
 import { formatDate } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../api/mutations'
@@ -105,7 +105,7 @@ const listQuery = computed<ExerciseListQuery>(() => {
 })
 
 const exercisesQuery = useExercisesQuery(listQuery)
-const toolkitsQuery = useSupervisorToolkitsQuery({ page: 1, pageSize: 100 })
+const toolkitsQuery = useManagedToolkitsQuery({ page: 1, pageSize: 100 })
 const exercises = computed(() => exercisesQuery.data.value?.items ?? [])
 const total = computed(() => exercisesQuery.data.value?.total ?? 0)
 const toolkits = computed<SupervisorToolkit[]>(() => toolkitsQuery.data.value?.items ?? [])
@@ -242,7 +242,7 @@ function onCreated(exercise: Exercise) {
 
 function openExercise(exercise: Exercise) {
   // Editable exercises (including after Return / Withdraw) open the workbench.
-  if (exercise.workflowStatus === 'IN_PROGRESS' || exercise.workflowStatus === 'RETURNED') {
+  if (exercise.workflowStatus === 'IN_PROGRESS') {
     void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
     return
   }

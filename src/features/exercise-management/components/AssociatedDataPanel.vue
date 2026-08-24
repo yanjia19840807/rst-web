@@ -18,6 +18,7 @@ import { useAssociatedDataPanel } from '../composables/useAssociatedDataPanel'
 import { deriveSlotPeriodLabel } from '../periodWindows'
 import { normalizeHolidayType } from '../weekendCodes'
 import { AD_TAB_LABELS, formatNumber } from './associated-data/adTypes'
+import { sumSupportFte } from './associated-data/supportOptions'
 import AdTmsSummary from './associated-data/AdTmsSummary.vue'
 import AssociatedDataEditorDialog from './associated-data/AssociatedDataEditorDialog.vue'
 
@@ -47,10 +48,7 @@ const {
   onCycleTimeUpdated,
 } = useAssociatedDataPanel(() => props.exerciseId)
 
-const supportFte = computed(() => {
-  if (!support.value.length) return null
-  return support.value.reduce((sum, item) => sum + (Number(item.supportFte) || 0), 0)
-})
+const supportFte = computed(() => sumSupportFte(support.value))
 
 const supportAnnualHours = computed(() => {
   if (!support.value.length) return null

@@ -37,14 +37,11 @@ export interface SubmittedDetails {
   scenarioId: string
   scenarioName: string | null
   submissionId: string
-  submissionCode: string
   submissionStatus: string
   currentStep: number | null
   requiredRole?: string | null
   remarks: string | null
   scopes: SubmissionScope[]
-  workflowInstanceId: string
-  workflowStatusLabel: string
   steps: StepView[]
   actions: ActionView[]
   canDecide?: boolean
