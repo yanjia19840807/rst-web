@@ -5,7 +5,7 @@ import { domainHeadHandlers } from './handlers/domain-heads'
 import { governanceHandlers } from './handlers/governance'
 import { meHandlers } from './handlers/me'
 import { supervisorHandlers } from './handlers/supervisor'
-import { supportTaxonomyHandlers } from './handlers/support-taxonomy'
+import { supportCategoryHandlers } from './handlers/support-category'
 import { timesheetHandlers } from './handlers/timesheet'
 import { tmsHandlers } from './handlers/tms'
 
@@ -14,7 +14,7 @@ export const server = setupServer(
   ...timesheetHandlers,
   ...tmsHandlers,
   ...supervisorHandlers,
-  ...supportTaxonomyHandlers,
+  ...supportCategoryHandlers,
   ...approvalHandlers,
   ...domainHeadHandlers,
   ...governanceHandlers,

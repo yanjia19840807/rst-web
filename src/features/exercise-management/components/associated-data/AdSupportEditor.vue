@@ -17,8 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useSupportTaxonomyQuery } from '@/features/support-taxonomy/api/queries'
-import { categoriesForSelect } from '@/features/support-taxonomy/options'
+import { useSupportCategoryQuery } from '@/features/support-category/api/queries'
+import { categoriesForSelect } from '@/features/support-category/options'
 
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { useBeforeAssociatedDataWrite } from '../../composables/useAssociatedDataSaveGuard'
@@ -59,7 +59,7 @@ const controlClass =
 
 const { createSupport, updateSupport, deleteSupport } = useExerciseAssociatedDataMutations()
 const beforeAssociatedDataWrite = useBeforeAssociatedDataWrite()
-const taxonomyQuery = useSupportTaxonomyQuery()
+const categoryQuery = useSupportCategoryQuery()
 const adding = ref(false)
 const editingId = ref<string | null>(null)
 const busy = ref(false)
@@ -79,7 +79,7 @@ const [unitOfMeasure] = defineField('unitOfMeasure')
 const [workloadPerUnitMinutes] = defineField('workloadPerUnitMinutes')
 const [comments] = defineField('comments')
 
-const catalog = computed(() => taxonomyQuery.data.value?.categories ?? [])
+const catalog = computed(() => categoryQuery.data.value?.categories ?? [])
 const currentCategory = computed(() =>
   values.categoryId ? { id: values.categoryId, name: values.categoryName } : null,
 )

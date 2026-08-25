@@ -10,7 +10,7 @@ const seedCategories = [
   { id: '31000000-0000-0000-0000-000000000009', name: 'Performance Monitoring' },
 ]
 
-export const supportTaxonomyStore = {
+export const supportCategoryStore = {
   list: () => ({ categories: seedCategories }),
   lookup(categoryId: string) {
     return seedCategories.find((item) => item.id === categoryId) ?? null

@@ -83,7 +83,7 @@ export type SupportCategorySummary = {
   pctOfSupport: string
 }
 
-export type SupportTaxonomyOption = {
+export type SupportCategoryOption = {
   id: string
   name: string
 }
@@ -125,7 +125,7 @@ export type SupportRepositoryResponse = {
   total: number
   totalPages: number
   centers: string[]
-  categories: SupportTaxonomyOption[]
+  categories: SupportCategoryOption[]
   toolkitNames: string[]
 }
 

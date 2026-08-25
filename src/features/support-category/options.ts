@@ -1,12 +1,12 @@
-export type TaxonomyChoice = { id: string; name: string }
+export type CategoryChoice = { id: string; name: string }
 
 /**
  * Active categories from the lookup, plus the row's current category when it is no longer active.
  */
 export function categoriesForSelect(
-  categories: readonly TaxonomyChoice[],
+  categories: readonly CategoryChoice[],
   current?: { id: string | null; name: string } | null,
-): TaxonomyChoice[] {
+): CategoryChoice[] {
   const list = [...categories]
   if (current?.id && current.name && !list.some((item) => item.id === current.id)) {
     return [{ id: current.id, name: current.name }, ...list]

@@ -30,7 +30,7 @@ import {
 } from '@/features/exercise-management/components/associated-data/supportOptions'
 
 import { ensureShell, exerciseShells, seedTrainVolumes, teamSetupView } from '../data/exercise-store'
-import { supportTaxonomyStore } from '../data/support-taxonomy'
+import { supportCategoryStore } from '../data/support-category'
 import {
   activeTimesheetSyncDate,
   exercises,
@@ -535,13 +535,13 @@ export const supervisorHandlers = [
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     const body = (await request.json()) as SupportItemRequest
-    const taxonomy = supportTaxonomyStore.lookup(body.categoryId)
-    if (!taxonomy || !body.activity?.trim()) return problem(422, 'Category and Activity are required.')
+    const category = supportCategoryStore.lookup(body.categoryId)
+    if (!category || !body.activity?.trim()) return problem(422, 'Category and Activity are required.')
     const item = {
       id: crypto.randomUUID(),
       lineageId: crypto.randomUUID(),
-      categoryId: taxonomy.id,
-      category: taxonomy.name,
+      categoryId: category.id,
+      category: category.name,
       activity: body.activity.trim(),
       frequencyCode: body.frequencyCode,
       volume: body.volume,
@@ -564,12 +564,12 @@ export const supervisorHandlers = [
       const current = ctx.shell.support[index]
       if (!current) return problem(404, 'The support item was not found.')
       const body = (await request.json()) as SupportItemRequest
-      const taxonomy = supportTaxonomyStore.lookup(body.categoryId)
-      if (!taxonomy || !body.activity?.trim()) return problem(422, 'Category and Activity are required.')
+      const category = supportCategoryStore.lookup(body.categoryId)
+      if (!category || !body.activity?.trim()) return problem(422, 'Category and Activity are required.')
       const updated = {
         ...current,
-        categoryId: taxonomy.id,
-        category: taxonomy.name,
+        categoryId: category.id,
+        category: category.name,
         activity: body.activity.trim(),
         frequencyCode: body.frequencyCode,
         volume: body.volume,
