@@ -10,7 +10,7 @@ export const submitRemarksSchema = z.object({
 
 export function submitRemarksRequiredSchema() {
   return z.object({
-    remarks: remarksField.trim().min(1, 'Remarks are required when severe validation checks fail.'),
+    remarks: remarksField.trim().min(1, 'Remarks are required when warning checks fail.'),
   })
 }
 

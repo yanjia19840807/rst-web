@@ -6,8 +6,10 @@ import type {
   CalendarRequest,
   CreateExerciseInput,
   CreateScenarioRequest,
+  DailyVolume,
   DailyVolumeRequest,
   Exercise,
+  MonthlyVolume,
   ManualBaselineRequest,
   MonthlyVolumeRequest,
   SlotVolumeRequest,
@@ -15,7 +17,9 @@ import type {
   SupportItemRequest,
   TeamSetupRequest,
   UpdateScenarioRequest,
+  ValidationSeverity,
 } from '@/features/exercise-management/types'
+import { VALIDATION_RULES } from '@/features/exercise-management/types'
 import type {
   SharedKpiKey,
   SupervisorToolkit,
@@ -40,6 +44,76 @@ import {
   supervisorToolkits,
 } from '../data/supervisor'
 import { pageOf, pageParams } from '../page'
+
+function volumeText(value: number): string {
+  return String(Number(value.toPrecision(12)))
+}
+
+function dailyMonthlyVolumeCheck(
+  monthly: MonthlyVolume[],
+  daily: DailyVolume[],
+): {
+  severity: ValidationSeverity
+  detail: {
+    reason: string
+    comparedMonths: number
+    mismatches: { month: string; daily: string; monthly: string }[]
+  }
+} {
+  const monthlyByMonth = new Map<string, number>()
+  for (const row of monthly) {
+    if (row.actualVolume == null || !row.month) continue
+    monthlyByMonth.set(row.month, (monthlyByMonth.get(row.month) ?? 0) + Number(row.actualVolume))
+  }
+  const dailyByMonth = new Map<string, number>()
+  for (const row of daily) {
+    if (row.actualVolume == null || !row.volumeDate) continue
+    const month = row.volumeDate.slice(0, 7)
+    dailyByMonth.set(month, (dailyByMonth.get(month) ?? 0) + Number(row.actualVolume))
+  }
+  if (monthlyByMonth.size === 0 || dailyByMonth.size === 0) {
+    const reason =
+      monthlyByMonth.size === 0 && dailyByMonth.size === 0
+        ? 'both-empty'
+        : monthlyByMonth.size === 0
+          ? 'monthly-empty'
+          : 'daily-empty'
+    return {
+      severity: 'OK',
+      detail: { reason, comparedMonths: 0, mismatches: [] },
+    }
+  }
+  const mismatches: { month: string; daily: string; monthly: string }[] = []
+  let compared = 0
+  for (const [month, monthlyTotal] of monthlyByMonth) {
+    const dailyTotal = dailyByMonth.get(month)
+    if (dailyTotal == null) continue
+    compared++
+    if (dailyTotal !== monthlyTotal) {
+      mismatches.push({
+        month,
+        daily: volumeText(dailyTotal),
+        monthly: volumeText(monthlyTotal),
+      })
+    }
+  }
+  if (compared === 0) {
+    return {
+      severity: 'OK',
+      detail: { reason: 'no-overlap', comparedMonths: 0, mismatches: [] },
+    }
+  }
+  if (mismatches.length === 0) {
+    return {
+      severity: 'OK',
+      detail: { reason: 'matched', comparedMonths: compared, mismatches: [] },
+    }
+  }
+  return {
+    severity: VALIDATION_RULES.DAILY_VS_MONTHLY.severity,
+    detail: { reason: 'mismatch', comparedMonths: compared, mismatches },
+  }
+}
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Supervisor request failed', status, detail }, { status })
@@ -1694,32 +1768,22 @@ export const supervisorHandlers = [
     if (!ctx.exercise.canSubmit) {
       return problem(409, 'Exercise must have an Official Scenario and be editable to submit.')
     }
-    const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
-    const teamComplete = fteAnnualHours(teamSetupView(ctx.exercise, ctx.shell)) != null
     const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
+    const dailyVsMonthly = dailyMonthlyVolumeCheck(
+      ctx.shell.monthlyVolumes,
+      ctx.shell.dailyVolumes,
+    )
     return HttpResponse.json({
       scenarioId: official?.id ?? ctx.exercise.officialScenarioId ?? '',
       findings: [
         {
           ruleCode: 'DAILY_VS_MONTHLY',
-          severity: 'WARNING',
-          passed: true,
-          remarks: null,
-        },
-        {
-          ruleCode: 'SHARED_KPI_PRESENT',
-          severity: hasKpis ? 'INFO' : 'SEVERE',
-          passed: hasKpis,
-          remarks: null,
-        },
-        {
-          ruleCode: 'TEAM_SETUP_COMPLETE',
-          severity: teamComplete ? 'INFO' : 'SEVERE',
-          passed: teamComplete,
-          remarks: null,
+          severity: dailyVsMonthly.severity,
+          detail: dailyVsMonthly.detail,
         },
       ],
-      remarksRequired: !hasKpis || !teamComplete,
+      remarksRequired: dailyVsMonthly.severity === 'WARNING',
+      submitBlocked: false,
     })
   }),
 
@@ -1734,14 +1798,6 @@ export const supervisorHandlers = [
       return HttpResponse.json(ctx.shell.submitted, { status: 201 })
     }
     const body = ((await request.json().catch(() => ({}))) ?? {}) as SubmitRequest
-    const hasKpis = ctx.exercise.snapshot.sharedKpis.length > 0
-    const teamComplete = fteAnnualHours(teamSetupView(ctx.exercise, ctx.shell)) != null
-    if (!teamComplete) {
-      return problem(422, 'Team Setup must include SLA clock hours and Availability before Submit.')
-    }
-    if (!hasKpis && !body.remarks?.trim()) {
-      return problem(422, 'SEVERE validation failures require remarks before Submit.')
-    }
     const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
     const previous = ctx.shell.submitted
     const reopenable = previous

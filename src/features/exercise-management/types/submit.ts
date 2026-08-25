@@ -8,17 +8,37 @@ export type {
 
 import type { ActionView, ScopeView, StepView } from '@/features/approval/types'
 
+export interface MonthMismatch {
+  month: string
+  daily: string
+  monthly: string
+}
+
+export interface ValidationDetail {
+  reason: string
+  comparedMonths: number
+  mismatches: MonthMismatch[]
+}
+
+export type ValidationRuleCode = 'DAILY_VS_MONTHLY'
+export type ValidationSeverity = 'OK' | 'WARNING' | 'SEVERE'
+
+/** Failure grade is fixed per rule, same as the API ValidationRule enum. */
+export const VALIDATION_RULES: Record<ValidationRuleCode, { severity: ValidationSeverity }> = {
+  DAILY_VS_MONTHLY: { severity: 'WARNING' },
+}
+
 export interface ValidationFinding {
-  ruleCode: string
-  severity: string
-  passed: boolean
-  remarks: string | null
+  ruleCode: ValidationRuleCode
+  severity: ValidationSeverity
+  detail: ValidationDetail | null
 }
 
 export interface SubmitPreview {
   scenarioId: string
   findings: ValidationFinding[]
   remarksRequired: boolean
+  submitBlocked: boolean
 }
 
 export interface SubmitRequest {

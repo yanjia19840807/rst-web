@@ -85,10 +85,8 @@ function shiftSetupLabel(scenario: Scenario) {
               class="cursor-pointer"
               :class="
                 selectedId === scenario.id
-                  ? 'bg-primary/5'
-                  : isOfficial(scenario)
-                    ? 'bg-amber-50'
-                    : undefined
+                  ? 'bg-primary/15 hover:bg-primary/20'
+                  : undefined
               "
               @click="toggleSelect(scenario.id)"
             >

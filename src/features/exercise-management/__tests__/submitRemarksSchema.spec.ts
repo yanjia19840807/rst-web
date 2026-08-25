@@ -20,7 +20,7 @@ describe('submitRemarksSchema', () => {
 })
 
 describe('submitRemarksRequiredSchema', () => {
-  it('requires remarks when severe checks fail', () => {
+  it('requires remarks when warning checks fail', () => {
     const result = submitRemarksRequiredSchema().safeParse({ remarks: '   ' })
     expect(result.success).toBe(false)
     if (result.success) return

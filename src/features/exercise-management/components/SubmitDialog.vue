@@ -33,7 +33,11 @@ import {
   submitRemarksRequiredSchema,
   submitRemarksSchema,
 } from '../schemas/submitRemarks'
-import type { SubmittedDetails } from '../types'
+import type {
+  SubmittedDetails,
+  ValidationFinding,
+  ValidationRuleCode,
+} from '../types'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -60,12 +64,20 @@ const preview = computed(() => previewQuery.data.value ?? null)
 const loading = computed(() => previewQuery.isPending.value && !previewQuery.data.value)
 
 const remarksRequired = computed(() => preview.value?.remarksRequired ?? false)
+const submitBlocked = computed(() => preview.value?.submitBlocked ?? false)
 const submitting = computed(() => submit.isPending.value)
 
-const findingLabel: Record<string, string> = {
+const findingLabel: Record<ValidationRuleCode, string> = {
   DAILY_VS_MONTHLY: 'Daily total vs monthly total',
-  SHARED_KPI_PRESENT: 'Shared KPI lines present',
-  TEAM_SETUP_COMPLETE: 'Team Setup SLA hours and Availability',
+}
+
+const reasonLabel: Record<string, string> = {
+  'both-empty': 'No monthly or daily actuals to compare',
+  'monthly-empty': 'No monthly actuals to compare',
+  'daily-empty': 'No daily actuals to compare',
+  'no-overlap': 'No overlapping months to compare',
+  matched: 'Overlapping months match',
+  mismatch: 'Overlapping months do not match',
 }
 
 watch(open, (value) => {
@@ -87,13 +99,14 @@ watch(
 )
 
 const submitNow = handleSubmit(async (values) => {
+  if (submitBlocked.value) return
   if (remarksRequired.value) {
     const required = submitRemarksRequiredSchema().safeParse(values)
     if (!required.success) {
       setFieldError(
         'remarks',
         required.error.issues[0]?.message ??
-          'Remarks are required when severe validation checks fail.',
+          'Remarks are required when warning checks fail.',
       )
       return
     }
@@ -113,24 +126,34 @@ const submitNow = handleSubmit(async (values) => {
   }
 })
 
-function severityLabel(finding: { severity: string; passed: boolean }) {
-  if (finding.passed && finding.severity !== 'SEVERE') return 'Passed'
-  if (finding.severity === 'SEVERE') return 'Severe'
-  if (finding.severity === 'WARNING') return 'Warning'
-  return finding.severity
+function validationSummary(): string {
+  if (submitBlocked.value) return 'Severe checks failed — submit is blocked'
+  if (remarksRequired.value) return 'Warning checks failed — remarks required'
+  return 'Ready to submit'
+}
+
+function findingDetail(finding: ValidationFinding): string {
+  const reason = finding.detail?.reason
+  if (reason && reasonLabel[reason]) return reasonLabel[reason]
+  return reason ?? '—'
+}
+
+function mismatchesOf(finding: ValidationFinding) {
+  return finding.detail?.mismatches ?? []
 }
 </script>
 
 <template>
   <Dialog v-model:open="open">
     <DialogContent
-      class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+      class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
     >
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Submit For Validation</DialogTitle>
         <DialogDescription>
           This will send the Official Scenario to Manager Review and lock the exercise.
-          You cannot edit it until it is returned or withdrawn. Failed severe checks require remarks.
+          You cannot edit it until it is returned or withdrawn. Warning checks require remarks.
+          Severe checks block submit.
         </DialogDescription>
       </DialogHeader>
 
@@ -158,11 +181,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
                 Pre-submit Validation
               </div>
               <span class="text-xs text-muted-foreground">
-                {{
-                  remarksRequired
-                    ? 'Severe checks failed — remarks required'
-                    : 'All severe checks passed'
-                }}
+                {{ validationSummary() }}
               </span>
             </div>
             <div class="overflow-x-auto rounded-lg border">
@@ -170,17 +189,29 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Check</TableHead>
-                    <TableHead>Result</TableHead>
                     <TableHead class="w-28">Severity</TableHead>
+                    <TableHead>Detail</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <TableRow v-for="finding in preview?.findings ?? []" :key="finding.ruleCode">
                     <TableCell>{{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}</TableCell>
+                    <TableCell>{{ finding.severity }}</TableCell>
                     <TableCell>
-                      {{ finding.passed ? 'Passed' : 'Failed' }}
+                      <div>{{ findingDetail(finding) }}</div>
+                      <ul
+                        v-if="mismatchesOf(finding).length"
+                        class="mt-1 space-y-0.5 text-xs text-muted-foreground"
+                      >
+                        <li
+                          v-for="mismatch in mismatchesOf(finding)"
+                          :key="mismatch.month"
+                        >
+                          {{ mismatch.month }}: daily {{ mismatch.daily }} ≠ monthly
+                          {{ mismatch.monthly }}
+                        </li>
+                      </ul>
                     </TableCell>
-                    <TableCell>{{ severityLabel(finding) }}</TableCell>
                   </TableRow>
                   <TableRow v-if="!(preview?.findings?.length)">
                     <TableCell colspan="3" class="text-muted-foreground">
@@ -194,13 +225,15 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
 
           <div class="mt-4 grid gap-1.5">
             <Label for="submit-remarks">
-              Submission remarks{{ remarksRequired ? ' *' : '' }}
+              Submission remarks{{ remarksRequired && !submitBlocked ? ' *' : '' }}
             </Label>
             <p class="text-xs text-muted-foreground">
               {{
-                remarksRequired
-                  ? 'Required because at least one severe check failed.'
-                  : 'Optional context for the Manager reviewer.'
+                submitBlocked
+                  ? 'Resolve severe checks before submitting.'
+                  : remarksRequired
+                    ? 'Required because at least one warning check failed.'
+                    : 'Optional context for the Manager reviewer.'
               }}
             </p>
             <Textarea
@@ -216,7 +249,7 @@ function severityLabel(finding: { severity: string; passed: boolean }) {
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="submitting" @click="open = false">Cancel</Button>
-        <Button :disabled="loading || submitting" @click="submitNow">
+        <Button :disabled="loading || submitting || submitBlocked" @click="submitNow">
           {{ submitting ? 'Submitting…' : 'Confirm Submit' }}
         </Button>
       </DialogFooter>
