@@ -197,9 +197,9 @@ const create = handleSubmit(async (formValues) => {
           <div
             class="mt-4 rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
           >
-            Associated Data (Team Setup, Support, Calendar) will be initialized from the latest
-            Approved archive for this Toolkit when available. Volume Input is pre-filled from
-            Toolkit volume when available. Creating the Exercise freezes the current Toolkit,
+            Associated Data (Team Setup, Support, Calendar) will be initialized from Toolkit
+            latest state when available. Volume Input is pre-filled from Toolkit volume when
+            available. Creating the Exercise freezes the current Toolkit,
             Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
           </div>
         </div>

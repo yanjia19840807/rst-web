@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/client'
+import { ApiError, apiRequest } from '@/api/client'
 
 import type {
   HierarchyOption,
@@ -48,4 +48,15 @@ export const toolkitApi = {
     }),
   remove: (id: string) =>
     apiRequest<void>(`${toolkits}/${id}`, { method: 'DELETE' }),
+  exportWorkbook: async (id: string) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}${toolkits}/${id}/export`)
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { detail?: string } | null
+      throw new ApiError(body?.detail || 'Export failed.', response.status)
+    }
+    const blob = await response.blob()
+    const disposition = response.headers.get('Content-Disposition') || ''
+    const match = /filename="?([^"]+)"?/.exec(disposition)
+    return { blob, filename: match?.[1] || 'toolkit-export.xlsx' }
+  },
 }

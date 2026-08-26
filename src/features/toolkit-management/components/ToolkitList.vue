@@ -11,6 +11,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 
+import { toolkitApi } from '../api'
 import { useManagedToolkitsQuery } from '../api/queries'
 import type { SupervisorToolkit, ToolkitListQuery } from '../types'
 import { createToolkitColumns } from './toolkitColumns'
@@ -37,6 +38,7 @@ const pl3Options = computed(() => [
   ...(toolkitsQuery.data.value?.pl3Names ?? []),
 ])
 const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.data.value)
+const exportingId = ref<string | null>(null)
 
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
@@ -81,7 +83,9 @@ watch(
 
 const columns = computed(() =>
   createToolkitColumns({
+    exportingId: exportingId.value,
     onCreate: createExercise,
+    onExport: exportToolkit,
     onEdit: (id) =>
       void router.push({
         name: 'supervisor-toolkit-edit',
@@ -95,6 +99,24 @@ function createExercise(toolkit: SupervisorToolkit) {
     name: 'supervisor-exercises',
     query: { create: '1', toolkitId: toolkit.id },
   })
+}
+
+async function exportToolkit(toolkit: SupervisorToolkit) {
+  if (exportingId.value) return
+  exportingId.value = toolkit.id
+  try {
+    const result = await toolkitApi.exportWorkbook(toolkit.id)
+    const url = URL.createObjectURL(result.blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = result.filename
+    anchor.click()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Export failed.')
+  } finally {
+    exportingId.value = null
+  }
 }
 </script>
 

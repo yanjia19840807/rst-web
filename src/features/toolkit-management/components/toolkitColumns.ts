@@ -7,8 +7,10 @@ import type { SupervisorToolkit } from '../types'
 import ToolkitRowActions from './ToolkitRowActions.vue'
 
 export type ToolkitColumnOptions = {
+  exportingId?: string | null
   onCreate?: (toolkit: SupervisorToolkit) => void
   onEdit?: (id: string) => void
+  onExport?: (toolkit: SupervisorToolkit) => void
 }
 
 const columnHelper = createColumnHelper<SupervisorToolkit>()
@@ -55,8 +57,11 @@ export function createToolkitColumns(
       cell: ({ row }) =>
         h('div', { class: 'relative' }, [
           h(ToolkitRowActions, {
+            exporting: options.exportingId === row.original.id,
+            exportDisabled: Boolean(options.exportingId),
             onCreate: () => options.onCreate?.(row.original),
             onEdit: () => options.onEdit?.(row.original.id),
+            onExport: () => options.onExport?.(row.original),
           }),
         ]),
       meta: { headerClass: 'text-right', cellClass: 'text-right' },

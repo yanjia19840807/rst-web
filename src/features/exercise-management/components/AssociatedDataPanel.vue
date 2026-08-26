@@ -122,7 +122,7 @@ const editorActionLabel = computed(() => {
         <CardTitle class="text-base">Associated Data</CardTitle>
         <p class="mt-1 text-xs text-muted-foreground">
           Shared by all scenarios in this exercise. Team Setup, Support and Calendar are seeded from
-          the last Approved archive. Volume is pre-filled from Toolkit volume when available.
+          Toolkit latest state. Volume is pre-filled from Toolkit volume when available.
         </p>
       </div>
       <CardAction>

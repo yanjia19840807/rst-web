@@ -379,6 +379,20 @@ export const supervisorHandlers = [
     return HttpResponse.json({ ...paged, pl3Names })
   }),
 
+  http.get('*/api/v1/toolkits/:id/export', ({ params }) => {
+    const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
+    if (!toolkit) return problem(404, 'Toolkit not found.')
+    const day = new Date().toISOString().slice(0, 10).replaceAll('-', '')
+    const safe = toolkit.name.replace(/[^A-Za-z0-9._-]+/g, '_')
+    return new HttpResponse(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${safe}_export_${day}.xlsx"`,
+      },
+    })
+  }),
+
   http.get('*/api/v1/toolkits/:id', ({ params }) => {
     const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
     return toolkit ? HttpResponse.json(toolkit) : problem(404, 'Toolkit not found.')
@@ -498,7 +512,7 @@ export const supervisorHandlers = [
       {
         exercise,
         notices: [
-          'Associated Data initialized from archived exercise (mock).',
+          'Associated Data seeded from Toolkit latest state (mock).',
           'Volume Input pre-filled from Toolkit volume when available.',
           'Working Days / Year computed for sizing year.',
         ],
@@ -539,9 +553,6 @@ export const supervisorHandlers = [
     })
     const notices: string[] = []
     if (previousYear !== nextYear) {
-      notices.push(
-        `Sizing year changed (${previousYear} → ${nextYear}). Review holiday dates in Calendar.`,
-      )
       notices.push(`Working Days / Year computed for ${nextYear}.`)
     }
     seedTrainVolumes(exercise, ensureShell(exercise))

@@ -100,7 +100,7 @@ const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exerc
         v-if="!locked"
         class="rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
       >
-        Associated Data initialized from the latest Approved archive. Volume Input is pre-filled
+        Associated Data initialized from Toolkit latest state. Volume Input is pre-filled
         from Toolkit volume when available. Edit below — all scenarios in this exercise share this
         baseline.
       </div>

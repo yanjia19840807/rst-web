@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 
+defineProps<{
+  exporting?: boolean
+  exportDisabled?: boolean
+}>()
+
 const emit = defineEmits<{
   create: []
   edit: []
+  export: []
 }>()
 </script>
 
@@ -16,6 +22,16 @@ const emit = defineEmits<{
       @click="emit('create')"
     >
       Create Exercise
+    </Button>
+    <Button
+      size="sm"
+      variant="link"
+      class="h-auto px-0 font-semibold"
+      :loading="exporting"
+      :disabled="exportDisabled"
+      @click="emit('export')"
+    >
+      {{ exporting ? 'Exporting…' : 'Export' }}
     </Button>
     <Button
       size="sm"

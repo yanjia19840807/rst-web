@@ -267,13 +267,6 @@ const windowHint = computed(() => {
   return `Slot window: ${deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)} · 09:00–22:00 / 30 min`
 })
 
-const seededHint = computed(() => {
-  if (tab.value === 'slot' && props.slot.some((row) => row.sourceType === 'ARCHIVE')) {
-    return 'Slot volumes were seeded from the latest Approved archive where slots overlap.'
-  }
-  return ''
-})
-
 function comparePeriod(a: string, b: string) {
   if (!a && !b) return 0
   if (!a) return 1
@@ -909,7 +902,6 @@ async function onImportFile(event: Event) {
       class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground"
     >
       {{ windowHint }}
-      <span v-if="seededHint"> {{ seededHint }}</span>
     </p>
 
     <div class="overflow-x-auto rounded-md border">
