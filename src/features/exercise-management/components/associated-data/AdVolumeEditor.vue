@@ -4,9 +4,11 @@ import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import {
@@ -17,6 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+import { showOperationNotices } from '@/composables/useOperationNotices'
 
 import { exerciseApi } from '../../api'
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
@@ -37,6 +41,7 @@ import {
   type MonthlyVolumeRowValues,
   type SlotVolumeRowValues,
 } from '../../schemas/volume'
+import { slotPeriodSchema } from '../../schemas/exercisePeriods'
 import type {
   DailyVolume,
   DailyVolumeRequest,
@@ -48,7 +53,7 @@ import type {
 import { formatNumber, numOrNull } from './adTypes'
 
 type VolumeTab = 'monthly' | 'daily' | 'slot'
-type BusyAction = 'template' | 'export' | 'import' | 'save' | 'delete'
+type BusyAction = 'template' | 'export' | 'import' | 'save' | 'delete' | 'period'
 
 type DraftMonthly = {
   key: string
@@ -67,8 +72,8 @@ type DraftDaily = {
 const props = defineProps<{
   exerciseId: string
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
+  slotStartDate: string | null
+  slotWeeks: number | null
   monthly: MonthlyVolume[]
   daily: DailyVolume[]
   slot: SlotVolume[]
@@ -85,6 +90,7 @@ const {
   putMonthlyVolumes,
   putDailyVolumes,
   putSlotVolumes,
+  updateSlotPeriod,
   importMonthlyVolumes,
   importDailyVolumes,
   importSlotVolumes,
@@ -104,6 +110,21 @@ const slotDrafts = ref<SlotVolumeRequest[]>([])
 const editKey = ref<string | null>(null)
 const slotEditingIndex = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const draftSlotStartDate = ref('')
+const draftSlotWeeks = ref<number | ''>('')
+const confirmPeriodOpen = ref(false)
+
+const periodSet = computed(() => Boolean(props.slotStartDate && props.slotWeeks))
+const periodReady = computed(() => Boolean(draftSlotStartDate.value && draftSlotWeeks.value))
+
+watch(
+  () => [props.slotStartDate, props.slotWeeks] as const,
+  ([start, weeks]) => {
+    draftSlotStartDate.value = start ?? ''
+    draftSlotWeeks.value = weeks ?? ''
+  },
+  { immediate: true },
+)
 
 const monthlyForm = useForm<MonthlyVolumeRowValues>({
   validationSchema: toTypedSchema(monthlyVolumeRowSchema),
@@ -239,6 +260,9 @@ const windowHint = computed(() => {
   }
   if (tab.value === 'daily') {
     return 'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional.'
+  }
+  if (!periodSet.value) {
+    return 'Set a Slot Period to generate the per-slot grid. Each day is 09:00–22:00 in 30-minute slots.'
   }
   return `Slot window: ${deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)} · 09:00–22:00 / 30 min`
 })
@@ -382,6 +406,49 @@ async function persistSlot() {
   emit('update:slot', saved)
 }
 
+function requestApplyPeriod() {
+  if (props.readOnly || busy.value) return
+  const parsed = slotPeriodSchema.safeParse({
+    slotStartDate: draftSlotStartDate.value,
+    slotWeeks: draftSlotWeeks.value,
+  })
+  if (!parsed.success) {
+    toast.warning(parsed.error.issues[0]?.message ?? 'Please complete the Slot Period.')
+    return
+  }
+  if (periodSet.value || slotDrafts.value.length) {
+    confirmPeriodOpen.value = true
+    return
+  }
+  void applyPeriod()
+}
+
+async function applyPeriod() {
+  if (props.readOnly || busy.value) return
+  if (!(await beforeAssociatedDataWrite())) return
+  try {
+    await withBusy('period', async () => {
+      const result = await updateSlotPeriod.mutateAsync({
+        exerciseId: props.exerciseId,
+        body: {
+          slotStartDate: draftSlotStartDate.value,
+          slotWeeks: Number(draftSlotWeeks.value),
+        },
+      })
+      emit('update:slot', result.volumes)
+      confirmPeriodOpen.value = false
+      const summary = 'Per-slot Volume grid generated.'
+      const shown = showOperationNotices({
+        summary,
+        notices: result.notices ?? [],
+      })
+      if (!shown) toast.success(summary)
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not apply Slot Period.')
+  }
+}
+
 function firstFormError(bag: Record<string, unknown>): string | undefined {
   for (const value of Object.values(bag)) {
     if (typeof value === 'string' && value.trim()) return value
@@ -413,7 +480,7 @@ function startEditDay(row: DraftDaily) {
 }
 
 function startEditSlot(index: number, current: string | number | null | undefined) {
-  if (props.readOnly || busy.value) return
+  if (props.readOnly || busy.value || !periodSet.value) return
   slotForm.resetForm({
     values: { actualVolume: numOrNull(current) },
   })
@@ -630,6 +697,10 @@ async function removeDay(row: DraftDaily) {
 }
 
 async function downloadTemplate() {
+  if (tab.value === 'slot' && !periodSet.value) {
+    toast.warning('Set a Slot Period to generate the per-slot grid.')
+    return
+  }
   try {
     await withBusy('template', async () => {
       const result =
@@ -646,6 +717,10 @@ async function downloadTemplate() {
 }
 
 async function downloadCurrent() {
+  if (tab.value === 'slot' && !periodSet.value) {
+    toast.warning('Set a Slot Period to generate the per-slot grid.')
+    return
+  }
   try {
     await withBusy('export', async () => {
       const result =
@@ -663,6 +738,10 @@ async function downloadCurrent() {
 
 function triggerImport() {
   if (busy.value) return
+  if (tab.value === 'slot' && !periodSet.value) {
+    toast.warning('Set a Slot Period to generate the per-slot grid.')
+    return
+  }
   fileInput.value?.click()
 }
 
@@ -725,10 +804,49 @@ async function onImportFile(event: Event) {
       </button>
     </div>
 
-    <p class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground">
+    <p
+      v-if="tab !== 'slot'"
+      class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground"
+    >
       {{ windowHint }}
-      <span v-if="seededHint"> {{ seededHint }}</span>
     </p>
+
+    <div
+      v-if="tab === 'slot'"
+      class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3"
+    >
+      <div class="grid gap-1.5">
+        <span class="text-xs text-muted-foreground">Start date</span>
+        <DatePicker
+          v-model="draftSlotStartDate"
+          aria-label="Choose slot start date"
+          placeholder="Select start date"
+          size="sm"
+          class="w-[180px]"
+          :disabled="readOnly || busy"
+        />
+      </div>
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Weeks
+        <select
+          v-model="draftSlotWeeks"
+          class="h-8 w-20 rounded-[min(var(--radius-md),12px)] border border-input bg-card px-2 text-[0.8rem] text-foreground"
+          :disabled="readOnly || busy"
+        >
+          <option value="">—</option>
+          <option v-for="week in 12" :key="week" :value="week">{{ week }}</option>
+        </select>
+      </label>
+      <Button
+        v-if="!readOnly"
+        size="sm"
+        :disabled="busy || !periodReady"
+        :loading="busyAction === 'period'"
+        @click="requestApplyPeriod"
+      >
+        {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
+      </Button>
+    </div>
 
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3 class="text-sm font-bold">
@@ -753,7 +871,7 @@ async function onImportFile(event: Event) {
         <Button
           size="sm"
           variant="outline"
-          :disabled="busy"
+          :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'template'"
           @click="downloadTemplate"
         >
@@ -762,7 +880,7 @@ async function onImportFile(event: Event) {
         <Button
           size="sm"
           variant="outline"
-          :disabled="busy"
+          :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'export'"
           @click="downloadCurrent"
         >
@@ -770,7 +888,7 @@ async function onImportFile(event: Event) {
         </Button>
         <Button
           size="sm"
-          :disabled="busy"
+          :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'import'"
           @click="triggerImport"
         >
@@ -785,6 +903,14 @@ async function onImportFile(event: Event) {
         />
       </div>
     </div>
+
+    <p
+      v-if="tab === 'slot'"
+      class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground"
+    >
+      {{ windowHint }}
+      <span v-if="seededHint"> {{ seededHint }}</span>
+    </p>
 
     <div class="overflow-x-auto rounded-md border">
       <Table v-if="tab === 'monthly'">
@@ -1045,7 +1171,11 @@ async function onImportFile(event: Event) {
           </TableRow>
           <TableRow v-if="!slotDrafts.length">
             <TableCell :colspan="readOnly ? 3 : 4" class="h-20 text-center text-muted-foreground">
-              No slot training volumes yet.
+              {{
+                periodSet
+                  ? 'No slot training volumes yet.'
+                  : 'Set a Slot Period to generate the per-slot grid.'
+              }}
             </TableCell>
           </TableRow>
         </TableBody>
@@ -1064,6 +1194,16 @@ async function onImportFile(event: Event) {
           page = 1
         }
       "
+    />
+
+    <ConfirmDialog
+      v-model:open="confirmPeriodOpen"
+      title="Change Slot Period"
+      description="Changing the period rebuilds the grid. Existing slot values will be cleared."
+      confirm-label="Apply Period"
+      confirm-variant="default"
+      :pending="busyAction === 'period'"
+      @confirm="applyPeriod"
     />
   </div>
 </template>

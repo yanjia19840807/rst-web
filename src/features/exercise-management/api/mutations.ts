@@ -26,6 +26,7 @@ import type {
   TeamSetupRequest,
   UpdateExercisePeriodsInput,
   UpdateScenarioRequest,
+  UpdateSlotPeriodInput,
 } from '../types'
 import { exerciseQueryKeys } from './queries'
 
@@ -258,6 +259,22 @@ export function useExerciseAssociatedDataMutations() {
     },
   })
 
+  const updateSlotPeriod = useMutation({
+    mutationFn: ({
+      exerciseId,
+      body,
+    }: {
+      exerciseId: string
+      body: UpdateSlotPeriodInput
+    }) => exerciseApi.updateSlotPeriod(exerciseId, body),
+    onSuccess: (result, { exerciseId }) => {
+      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
+      queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.simPrefix(exerciseId) })
+      invalidateSubmitPreview(queryClient, exerciseId)
+    },
+  })
+
   const importMonthlyVolumes = useMutation({
     mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
       exerciseApi.importMonthlyVolumes(exerciseId, file),
@@ -335,6 +352,7 @@ export function useExerciseAssociatedDataMutations() {
     putMonthlyVolumes,
     putDailyVolumes,
     putSlotVolumes,
+    updateSlotPeriod,
     createManualCycleTime,
     uploadCycleTimeSupportFile,
     patchTmsSession,

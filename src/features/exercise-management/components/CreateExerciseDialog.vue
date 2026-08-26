@@ -24,10 +24,8 @@ import { formatDate } from '@/lib/datetime'
 import { useExerciseMutations } from '../api/mutations'
 import {
   SIZING_MONTH_HINT_DESCRIPTION,
-  SLOT_PERIOD_HINT_DESCRIPTION,
   TMS_PERIOD_HINT_DESCRIPTION,
   sizingHintLines,
-  slotHintLines,
   tmsHintLines,
 } from '../periodWindows'
 import {
@@ -59,30 +57,15 @@ const { defineField, errors, handleSubmit, resetForm, values } = useForm({
 
 const [toolkitId] = defineField('toolkitId')
 const [sizingMonth] = defineField('sizingMonth')
-const [slotStartDate] = defineField('slotStartDate')
-const [slotWeeks] = defineField('slotWeeks')
 const [tmsFrom] = defineField('tmsFrom')
 const [tmsTo] = defineField('tmsTo')
 
 const createdLabel = computed(() => formatDate(new Date()))
 const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
-const slotHints = computed(() =>
-  slotHintLines(
-    values.slotStartDate ?? '',
-    typeof values.slotWeeks === 'number' ? values.slotWeeks : 0,
-  ),
-)
 const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
 const formReady = computed(
   () =>
-    Boolean(
-      values.toolkitId &&
-        values.sizingMonth &&
-        values.slotStartDate &&
-        values.slotWeeks &&
-        values.tmsFrom &&
-        values.tmsTo,
-    ),
+    Boolean(values.toolkitId && values.sizingMonth && values.tmsFrom && values.tmsTo),
 )
 
 watch(open, (value) => {
@@ -97,8 +80,6 @@ const create = handleSubmit(async (formValues) => {
     const result = await createMutation.mutateAsync({
       toolkitId: formValues.toolkitId,
       sizingMonth: formValues.sizingMonth,
-      slotStartDate: formValues.slotStartDate,
-      slotWeeks: formValues.slotWeeks,
       tmsFrom: formValues.tmsFrom,
       tmsTo: formValues.tmsTo,
     })
@@ -177,44 +158,6 @@ const create = handleSubmit(async (formValues) => {
               />
               <p v-if="errors.sizingMonth" class="mt-1 text-xs text-destructive">
                 {{ errors.sizingMonth }}
-              </p>
-            </div>
-
-            <div class="inline-flex items-center gap-1.5 self-start pt-2">
-              <Label class="text-muted-foreground">Slot Period</Label>
-              <PeriodDerivedHints
-                title="Slot Period"
-                :description="SLOT_PERIOD_HINT_DESCRIPTION"
-                :lines="slotHints"
-              />
-            </div>
-            <div>
-              <div class="flex flex-wrap items-center gap-3">
-                <div class="grid gap-1.5">
-                  <span class="text-xs text-muted-foreground">Start date</span>
-                  <DatePicker
-                    v-model="slotStartDate"
-                    aria-label="Choose slot start date"
-                    placeholder="Select start date"
-                    class="w-[180px]"
-                  />
-                </div>
-                <label class="grid gap-1.5 text-xs text-muted-foreground">
-                  Weeks
-                  <select
-                    v-model="slotWeeks"
-                    class="h-9 w-20 rounded-md border border-input bg-card px-2 text-sm text-foreground"
-                  >
-                    <option value="">—</option>
-                    <option v-for="week in 12" :key="week" :value="week">{{ week }}</option>
-                  </select>
-                </label>
-              </div>
-              <p
-                v-if="errors.slotStartDate || errors.slotWeeks"
-                class="mt-1 text-xs text-destructive"
-              >
-                {{ errors.slotStartDate || errors.slotWeeks }}
               </p>
             </div>
 

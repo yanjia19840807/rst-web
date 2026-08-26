@@ -29,8 +29,6 @@ const slotWeeksSchema = z.preprocess(
 
 const periodsBaseSchema = z.object({
   sizingMonth: sizingMonthSchema,
-  slotStartDate: isoDateSchema('Please complete the Slot Period.'),
-  slotWeeks: slotWeeksSchema,
   tmsFrom: isoDateSchema('Please complete the TMS period.'),
   tmsTo: isoDateSchema('Please complete the TMS period.'),
 })
@@ -56,15 +54,19 @@ export const createExercisePeriodsSchema = withTmsOrder(
 
 export const editExercisePeriodsSchema = withTmsOrder(periodsBaseSchema)
 
+export const slotPeriodSchema = z.object({
+  slotStartDate: isoDateSchema('Please complete the Slot Period.'),
+  slotWeeks: slotWeeksSchema,
+})
+
 export type CreateExercisePeriodsValues = z.output<typeof createExercisePeriodsSchema>
 export type EditExercisePeriodsValues = z.output<typeof editExercisePeriodsSchema>
+export type SlotPeriodValues = z.output<typeof slotPeriodSchema>
 
 export function emptyCreateExercisePeriodsForm(toolkitId = '') {
   return {
     toolkitId,
     sizingMonth: '',
-    slotStartDate: '',
-    slotWeeks: '' as number | '',
     tmsFrom: '',
     tmsTo: '',
   }
@@ -72,16 +74,22 @@ export function emptyCreateExercisePeriodsForm(toolkitId = '') {
 
 export function emptyEditExercisePeriodsForm(): {
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
   tmsFrom: string
   tmsTo: string
 } {
   return {
     sizingMonth: '',
-    slotStartDate: '',
-    slotWeeks: 4,
     tmsFrom: '',
     tmsTo: '',
+  }
+}
+
+export function emptySlotPeriodForm(): {
+  slotStartDate: string
+  slotWeeks: number | ''
+} {
+  return {
+    slotStartDate: '',
+    slotWeeks: '' as number | '',
   }
 }

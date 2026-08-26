@@ -86,7 +86,10 @@ export function deriveSizingWindows(sizingMonth: string): SizingWindows {
 }
 
 /** Resolved slot window: start – end (N week(s)). */
-export function deriveSlotPeriodLabel(startDate: string, weeks: number): string {
+export function deriveSlotPeriodLabel(
+  startDate: string | null | undefined,
+  weeks: number | null | undefined,
+): string {
   const n = Number(weeks)
   if (!startDate || !Number.isFinite(n) || n < 1) return '—'
   const end = addDaysIso(startDate, n * 7 - 1)
@@ -98,7 +101,7 @@ export const SIZING_MONTH_HINT_DESCRIPTION =
   'Volume Input months and dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required. Toolkit values are pre-filled when that period already exists. The ranges below are for charts and forecast only — they are not created as Volume rows.'
 
 export const SLOT_PERIOD_HINT_DESCRIPTION =
-  'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Values are seeded from the latest Approved archive where slots overlap.'
+  'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Applying a period rebuilds an empty grid.'
 
 export const TMS_PERIOD_HINT_DESCRIPTION =
   'COMPLETED TMS sessions for this Toolkit whose session date falls in this inclusive range are linked to the Exercise. The SYSTEM Cycle Time baseline refreshes from those sessions. Changing the range adds newly included sessions and drops ones that fall outside it.'
@@ -179,16 +182,23 @@ export function dailyChartHistoryDates(sizingMonth: string): string[] {
 }
 
 /** Slot training date range end (inclusive). */
-export function slotTrainEndDate(startDate: string, weeks: number): string {
+export function slotTrainEndDate(
+  startDate: string | null | undefined,
+  weeks: number | null | undefined,
+): string {
   const n = Number(weeks)
-  if (!startDate || !Number.isFinite(n) || n < 1) return startDate
+  if (!startDate || !Number.isFinite(n) || n < 1) return startDate ?? ''
   return addDaysIso(startDate, n * 7 - 1)
 }
 
 /** Volume Input per-slot train keys: 09:00–22:00 in 30-minute steps (prototype). */
-export function slotTrainKeys(startDate: string, weeks: number): SlotKey[] {
+export function slotTrainKeys(
+  startDate: string | null | undefined,
+  weeks: number | null | undefined,
+): SlotKey[] {
+  if (!startDate || weeks == null) return []
   const endDate = slotTrainEndDate(startDate, weeks)
-  if (!startDate || !endDate || endDate < startDate) return []
+  if (!endDate || endDate < startDate) return []
   const out: SlotKey[] = []
   let cur = startDate
   while (cur <= endDate) {

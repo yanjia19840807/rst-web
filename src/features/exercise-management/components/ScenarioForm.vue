@@ -31,8 +31,6 @@ import {
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { sumSupportFte } from './associated-data/supportOptions'
-import { deriveSlotPeriodLabel } from '../periodWindows'
-import { slotApplicabilityOn } from '../slotChartMath'
 import {
   emptyScenarioForm,
   emptyShiftDraft,
@@ -128,9 +126,7 @@ const readOnly = computed(() => !exercise.value?.canEdit)
 
 const periodHint = computed(() => {
   if (!exercise.value) return ''
-  const month = formatMonth(exercise.value.sizingMonth)
-  const slot = deriveSlotPeriodLabel(exercise.value.slotStartDate, exercise.value.slotWeeks)
-  return `${month} · ${slot}`
+  return formatMonth(exercise.value.sizingMonth)
 })
 
 const supportFte = computed(() => sumSupportFte(support.value))
@@ -309,7 +305,7 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
       value: String(latestDailySizing.value.rows.length),
     })
     if (endBacklog != null) {
-      rows.push({ label: 'End backlog', value: String(endBacklog) })
+      rows.push({ label: 'End backlog', value: Number(endBacklog).toFixed(2) })
     }
   }
 
@@ -334,18 +330,11 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
   return rows
 })
 
-const slotApplicable = computed(() =>
-  slotApplicabilityOn(teamSetup.value?.slaType, teamSetup.value?.slaTurnaroundMinutes),
-)
-
-const slotLocked = computed(() => !sizingCompleted.value || !slotApplicable.value)
+const slotLocked = computed(() => !sizingCompleted.value)
 
 const slotLockReason = computed(() => {
   if (!sizingCompleted.value) {
     return 'Run Sizing Simulation first to unlock Slot Simulation.'
-  }
-  if (!slotApplicable.value) {
-    return 'Slot Simulation is available when Calendar SLA ≤ 24h or business-hours SLA ≤ 8h.'
   }
   return null
 })
@@ -673,8 +662,9 @@ const scenarioInfoRows = computed(() => {
         </div>
 
         <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-          Sizing Month, Slot Period, TMS period, and Associated Data are maintained on the Exercise
-          ({{ periodHint }}). This scenario only changes Right Sizing HC, shifts, and simulation.
+          Sizing Month, TMS period, and Associated Data are maintained on the Exercise
+          ({{ periodHint }}). Slot Period is set in Volume Input. This scenario only changes
+          Right Sizing HC, shifts, and simulation.
         </div>
       </CardContent>
     </Card>

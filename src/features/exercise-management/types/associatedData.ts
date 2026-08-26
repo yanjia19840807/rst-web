@@ -139,7 +139,7 @@ export interface SlotVolume {
   id: string
   slotStartAt: string
   slotEndAt: string
-  actualVolume: number
+  actualVolume: number | null
   sourceType: string | null
   importBatchId?: string | null
 }
@@ -147,7 +147,7 @@ export interface SlotVolume {
 export interface SlotVolumeRequest {
   slotStartAt: string
   slotEndAt: string
-  actualVolume: number
+  actualVolume: number | null
 }
 
 export interface CycleTimeBaselineFile {

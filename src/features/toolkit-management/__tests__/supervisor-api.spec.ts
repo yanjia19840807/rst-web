@@ -21,11 +21,12 @@ describe('supervisor mock contract', () => {
     const result = await exerciseApi.create({
       toolkitId: toolkit!.id,
       sizingMonth: '2026-09',
-      slotStartDate: '2026-09-01',
-      slotWeeks: 4,
       tmsFrom: '2026-08-01',
       tmsTo: '2026-08-31',
     })
+
+    expect(result.exercise.slotStartDate).toBeNull()
+    expect(result.exercise.slotWeeks).toBeNull()
 
     expect(result.exercise.snapshot.toolkit.version).toBe(toolkit!.version)
     expect(result.exercise.snapshot.subtasks.every((item) => item.deletedAt === null)).toBe(true)

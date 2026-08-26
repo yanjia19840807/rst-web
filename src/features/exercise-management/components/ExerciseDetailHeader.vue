@@ -10,10 +10,8 @@ import { formatDate } from '@/lib/datetime'
 
 import {
   SIZING_MONTH_HINT_DESCRIPTION,
-  SLOT_PERIOD_HINT_DESCRIPTION,
   TMS_PERIOD_HINT_DESCRIPTION,
   sizingHintLines,
-  slotHintLines,
   tmsHintLines,
 } from '../periodWindows'
 import type { Exercise } from '../types'
@@ -31,15 +29,7 @@ const emit = defineEmits<{
 }>()
 
 const sizingHints = computed(() => sizingHintLines(props.exercise.sizingMonth))
-const slotHints = computed(() =>
-  slotHintLines(props.exercise.slotStartDate, props.exercise.slotWeeks),
-)
 const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exercise.tmsTo))
-const slotPeriodSummary = computed(() => {
-  const weeks = props.exercise.slotWeeks
-  const weekLabel = weeks === 1 ? '1 week' : `${weeks} weeks`
-  return `${formatDate(props.exercise.slotStartDate)} · ${weekLabel}`
-})
 </script>
 
 <template>
@@ -47,7 +37,7 @@ const slotPeriodSummary = computed(() => {
     <CardHeader class="items-center">
       <CardTitle class="text-base">Exercise Info</CardTitle>
       <CardAction v-if="!locked">
-        <Button size="sm" variant="outline" @click="emit('editPeriods')">Edit Periods</Button>
+        <Button variant="outline" @click="emit('editPeriods')">Edit Periods</Button>
       </CardAction>
     </CardHeader>
     <CardContent class="grid gap-3">
@@ -57,7 +47,6 @@ const slotPeriodSummary = computed(() => {
           { label: 'Exercise No', value: exercise.exerciseCode },
           { label: 'Created', value: formatDate(exercise.createdAt) },
           { key: 'sizingMonth', label: 'Sizing Month', value: exercise.sizingMonth },
-          { key: 'slotPeriod', label: 'Slot Period', value: slotPeriodSummary },
           {
             key: 'tmsPeriod',
             label: 'TMS period',
@@ -87,16 +76,6 @@ const slotPeriodSummary = computed(() => {
               title="Sizing Month"
               :description="SIZING_MONTH_HINT_DESCRIPTION"
               :lines="sizingHints"
-            />
-          </span>
-        </template>
-        <template #slotPeriod="{ row }">
-          <span class="inline-flex items-center gap-1.5">
-            <span>{{ row.value || '—' }}</span>
-            <PeriodDerivedHints
-              title="Slot Period"
-              :description="SLOT_PERIOD_HINT_DESCRIPTION"
-              :lines="slotHints"
             />
           </span>
         </template>

@@ -76,21 +76,18 @@ export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
     .filter((row) => !lastDate || row.volumeDate <= lastDate)
     .sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
 
+}
+
+export function replaceEmptySlotGrid(exercise: Exercise, shell: ExerciseShell) {
   const slots = slotTrainKeys(exercise.slotStartDate, exercise.slotWeeks)
-  const slotMap = new Map(
-    shell.slotVolumes.map((row) => [`${row.slotStartAt}|${row.slotEndAt}`, row]),
-  )
-  shell.slotVolumes = slots.map(({ slotStartAt, slotEndAt }) => {
-    const prior = slotMap.get(`${slotStartAt}|${slotEndAt}`)
-    return {
-      id: prior?.id ?? crypto.randomUUID(),
-      slotStartAt,
-      slotEndAt,
-      actualVolume: prior?.actualVolume ?? 0,
-      sourceType: prior?.sourceType ?? 'MANUAL',
-      importBatchId: prior?.importBatchId ?? null,
-    }
-  })
+  shell.slotVolumes = slots.map(({ slotStartAt, slotEndAt }) => ({
+    id: crypto.randomUUID(),
+    slotStartAt,
+    slotEndAt,
+    actualVolume: null,
+    sourceType: 'MANUAL',
+    importBatchId: null,
+  }))
 }
 
 function demoTms(): Pick<ExerciseShell, 'cycleTime' | 'tmsSessions' | 'cycleTimeChart'> {

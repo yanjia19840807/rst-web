@@ -341,7 +341,7 @@ watch(
       <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
 
       <AssociatedDataPanel
-        :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.slotStartDate}-${exercise.slotWeeks}-${exercise.version}`"
+        :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.tmsFrom}-${exercise.tmsTo}`"
         :exercise-id="exerciseId"
         :sizing-month="exercise.sizingMonth"
         :slot-start-date="exercise.slotStartDate"

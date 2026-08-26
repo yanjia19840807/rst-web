@@ -4,7 +4,7 @@ import type { DateValue } from '@internationalized/date'
 import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
 import { CalendarIcon } from '@lucide/vue'
 
-import { Button } from '@/components/ui/button'
+import { Button, type ButtonVariants } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { formatDate } from '@/lib/datetime'
@@ -17,6 +17,7 @@ const props = withDefaults(
     ariaLabel?: string
     disabled?: boolean
     invalid?: boolean
+    size?: ButtonVariants['size']
     class?: string
   }>(),
   {
@@ -24,6 +25,7 @@ const props = withDefaults(
     ariaLabel: 'Choose date',
     disabled: false,
     invalid: false,
+    size: 'default',
     class: undefined,
   },
 )
@@ -68,6 +70,7 @@ watch(open, (isOpen) => {
       <Button
         type="button"
         variant="outline"
+        :size="size"
         :disabled="disabled"
         :aria-label="ariaLabel"
         :aria-invalid="invalid || undefined"

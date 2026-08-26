@@ -17,7 +17,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
-import { floatingTooltip } from '@/lib/chartTooltip'
+import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { useDailyVolumesQuery, useMonthlyVolumesQuery } from '../api/queries'
 import { monthlyTrainMonths } from '../periodWindows'
@@ -196,13 +196,13 @@ const monthlyOption = computed<ChartOption>(() => {
         type: 'value',
         name: 'FTE',
         splitLine: { lineStyle: { color: colors.border } },
-        axisLabel: { color: colors.axis, fontSize: 11 },
+        axisLabel: { color: colors.axis, fontSize: 11, formatter: formatChartNumber },
       },
       {
         type: 'value',
         name: 'Volume',
         splitLine: { show: false },
-        axisLabel: { color: colors.axis, fontSize: 11 },
+        axisLabel: { color: colors.axis, fontSize: 11, formatter: formatChartNumber },
       },
     ],
     series: [
@@ -304,13 +304,13 @@ const dailyOption = computed<ChartOption>(() => {
         type: 'value',
         name: 'Backlog aging in days',
         splitLine: { lineStyle: { color: colors.border } },
-        axisLabel: { color: colors.axis, fontSize: 11 },
+        axisLabel: { color: colors.axis, fontSize: 11, formatter: formatChartNumber },
       },
       {
         type: 'value',
         name: 'Volume',
         splitLine: { show: false },
-        axisLabel: { color: colors.axis, fontSize: 11 },
+        axisLabel: { color: colors.axis, fontSize: 11, formatter: formatChartNumber },
       },
     ],
     series: [
@@ -401,7 +401,7 @@ const slaOption = computed<ChartOption>(() => {
 
   return {
     tooltip: floatingTooltip({
-      valueFormatter: (value) => `${Number(value).toFixed(1)}%`,
+      valueFormatter: (value) => `${formatChartNumber(value)}%`,
     }),
     legend: { show: false },
     grid: { left: 48, right: 24, top: 24, bottom: 16 },
@@ -433,7 +433,7 @@ const slaOption = computed<ChartOption>(() => {
         itemStyle: { color: colors.volume },
         label: {
           show: true,
-          formatter: (params) => `${Number(params.value).toFixed(0)}%`,
+          formatter: (params) => `${formatChartNumber(params.value)}%`,
           color: colors.axis,
           fontSize: 11,
         },

@@ -1,5 +1,7 @@
 import type { SupervisorToolkit, ToolkitSubtask } from '@/features/toolkit-management/types'
 
+import type { SlotVolume } from './associatedData'
+
 export type WorkflowStatus =
   | 'IN_PROGRESS'
   | 'UNDER_REVIEW'
@@ -30,8 +32,8 @@ export interface Exercise {
   exerciseCode: string
   toolkitId: string
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
+  slotStartDate: string | null
+  slotWeeks: number | null
   tmsFrom: string
   tmsTo: string
   workflowStatus: WorkflowStatus
@@ -110,8 +112,6 @@ export interface ExerciseListView {
 export interface CreateExerciseInput {
   toolkitId: string
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
   tmsFrom: string
   tmsTo: string
 }
@@ -123,10 +123,19 @@ export interface CreateExerciseResult {
 
 export interface UpdateExercisePeriodsInput {
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
   tmsFrom: string
   tmsTo: string
+}
+
+export interface UpdateSlotPeriodInput {
+  slotStartDate: string
+  slotWeeks: number
+}
+
+export interface UpdateSlotPeriodResult {
+  exercise: Exercise
+  volumes: SlotVolume[]
+  notices: string[]
 }
 
 export interface UpdateExercisePeriodsResult {

@@ -9,6 +9,8 @@ import type {
   CreateScenarioRequest,
   UpdateExercisePeriodsInput,
   UpdateExercisePeriodsResult,
+  UpdateSlotPeriodInput,
+  UpdateSlotPeriodResult,
   CycleTimeBaseline,
   CycleTimeBaselineFile,
   CycleTimeChartView,
@@ -118,6 +120,11 @@ export const exerciseApi = {
   detail: (id: string) => apiRequest<Exercise>(exercisePath(id)),
   updatePeriods: (id: string, body: UpdateExercisePeriodsInput) =>
     apiRequest<UpdateExercisePeriodsResult>(exercisePath(id, '/periods'), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  updateSlotPeriod: (id: string, body: UpdateSlotPeriodInput) =>
+    apiRequest<UpdateSlotPeriodResult>(exercisePath(id, '/slot-period'), {
       method: 'PUT',
       body: JSON.stringify(body),
     }),

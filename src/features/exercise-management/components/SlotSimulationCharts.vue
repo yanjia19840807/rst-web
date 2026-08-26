@@ -17,7 +17,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
-import { floatingTooltip } from '@/lib/chartTooltip'
+import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { n } from '../sizingChartMath'
 import {
@@ -87,7 +87,7 @@ function formatSlotLabel(label: string, multiDay: boolean): string {
 }
 
 const percentTooltip = {
-  valueFormatter: (value: number | string) => `${(Number(value) * 100).toFixed(1)}%`,
+  valueFormatter: (value: number | string) => `${formatChartNumber(Number(value) * 100)}%`,
 }
 
 const option = computed<ChartOption>(() => {
@@ -177,7 +177,7 @@ const option = computed<ChartOption>(() => {
         name: 'FTE',
         min: 0,
         splitLine: { lineStyle: { color: colors.border } },
-        axisLabel: { color: colors.axis, fontSize: 11 },
+        axisLabel: { color: colors.axis, fontSize: 11, formatter: formatChartNumber },
       },
       {
         type: 'value',

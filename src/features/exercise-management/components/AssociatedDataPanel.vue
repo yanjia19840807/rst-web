@@ -25,8 +25,8 @@ import AssociatedDataEditorDialog from './associated-data/AssociatedDataEditorDi
 const props = defineProps<{
   exerciseId: string
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
+  slotStartDate: string | null
+  slotWeeks: number | null
   readOnly?: boolean
 }>()
 
@@ -99,7 +99,10 @@ const volumeSummary = computed(() => {
     },
     {
       granularity: 'Slot',
-      period: deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks),
+      period:
+        props.slotStartDate && props.slotWeeks
+          ? deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)
+          : 'Not set',
       volume: slot.value.length ? formatNumber(slotVolume, 2) : '—',
       rows: `${slot.value.length} slots`,
     },
@@ -123,7 +126,7 @@ const editorActionLabel = computed(() => {
         </p>
       </div>
       <CardAction>
-        <Button size="sm" variant="outline" :disabled="loading" @click="openEditor(activeTab)">
+        <Button variant="outline" :disabled="loading" @click="openEditor(activeTab)">
           {{ editorActionLabel }}
         </Button>
       </CardAction>

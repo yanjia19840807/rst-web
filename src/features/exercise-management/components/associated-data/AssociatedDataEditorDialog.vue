@@ -39,8 +39,8 @@ const props = defineProps<{
   editor: AdTab | null
   exerciseId: string
   sizingMonth: string
-  slotStartDate: string
-  slotWeeks: number
+  slotStartDate: string | null
+  slotWeeks: number | null
   teamSetup: TeamSetup | null
   support: SupportItem[]
   calendar: CalendarView | null

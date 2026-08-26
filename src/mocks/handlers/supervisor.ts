@@ -33,7 +33,13 @@ import {
   supportFte,
 } from '@/features/exercise-management/components/associated-data/supportOptions'
 
-import { ensureShell, exerciseShells, seedTrainVolumes, teamSetupView } from '../data/exercise-store'
+import {
+  ensureShell,
+  exerciseShells,
+  replaceEmptySlotGrid,
+  seedTrainVolumes,
+  teamSetupView,
+} from '../data/exercise-store'
 import { supportCategoryStore } from '../data/support-category'
 import {
   activeTimesheetSyncDate,
@@ -462,7 +468,6 @@ export const supervisorHandlers = [
     if (!toolkit) return problem(404, 'Toolkit not found.')
     if (
       !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.sizingMonth) ||
-      input.slotWeeks < 1 ||
       input.tmsTo < input.tmsFrom
     ) {
       return problem(422, 'Exercise dates are invalid.')
@@ -473,6 +478,8 @@ export const supervisorHandlers = [
     }
     const exercise: Exercise = {
       ...input,
+      slotStartDate: null,
+      slotWeeks: null,
       id: crypto.randomUUID(),
       exerciseCode: `EX-${new Date().getFullYear()}-${String(exercises.length + 1).padStart(4, '0')}`,
       workflowStatus: 'IN_PROGRESS',
@@ -514,12 +521,10 @@ export const supervisorHandlers = [
     if (!exercise.canEdit) return problem(422, 'Exercise periods can only be changed during Supervisor Sizing.')
     const body = (await request.json()) as Pick<
       CreateExerciseInput,
-      'sizingMonth' | 'slotStartDate' | 'slotWeeks' | 'tmsFrom' | 'tmsTo'
+      'sizingMonth' | 'tmsFrom' | 'tmsTo'
     >
     if (
       !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.sizingMonth) ||
-      body.slotWeeks < 1 ||
-      body.slotWeeks > 12 ||
       body.tmsTo < body.tmsFrom
     ) {
       return problem(422, 'Exercise dates are invalid.')
@@ -528,8 +533,6 @@ export const supervisorHandlers = [
     const nextYear = body.sizingMonth.slice(0, 4)
     Object.assign(exercise, {
       sizingMonth: body.sizingMonth,
-      slotStartDate: body.slotStartDate,
-      slotWeeks: body.slotWeeks,
       tmsFrom: body.tmsFrom,
       tmsTo: body.tmsTo,
       version: exercise.version + 1,
@@ -551,6 +554,31 @@ export const supervisorHandlers = [
       )
     }
     return HttpResponse.json({ exercise, notices })
+  }),
+
+  http.put('*/api/v1/exercises/:id/slot-period', async ({ params, request }) => {
+    const exercise = findExercise(params.id)
+    if (!exercise) return problem(404, 'Exercise not found.')
+    syncFlags(exercise)
+    if (!exercise.canEdit) return problem(422, 'Slot Period can only be changed during Supervisor Sizing.')
+    const body = (await request.json()) as { slotStartDate?: string; slotWeeks?: number }
+    if (!body.slotStartDate || !body.slotWeeks || body.slotWeeks < 1 || body.slotWeeks > 12) {
+      return problem(422, 'Please complete the Slot Period.')
+    }
+    Object.assign(exercise, {
+      slotStartDate: body.slotStartDate,
+      slotWeeks: body.slotWeeks,
+      version: exercise.version + 1,
+    })
+    const shell = ensureShell(exercise) as SimulationShell
+    replaceEmptySlotGrid(exercise, shell)
+    shell.latestSlotByScenario = {}
+    shell.stubRuns = shell.stubRuns.filter((run) => run.runType !== 'SLOT')
+    return HttpResponse.json({
+      exercise,
+      volumes: shell.slotVolumes,
+      notices: ['Per-slot Volume grid generated for the selected Slot Period.'],
+    })
   }),
 
   http.get('*/api/v1/exercises/:id/committed-results', ({ params }) => {
@@ -794,6 +822,9 @@ export const supervisorHandlers = [
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    if (!ctx.exercise.slotStartDate || !ctx.exercise.slotWeeks) {
+      return problem(422, 'Set a Slot Period to generate the per-slot grid.')
+    }
     const body = (await request.json()) as SlotVolumeRequest[]
     for (const row of body) {
       if (!(row.slotEndAt > row.slotStartAt)) {
@@ -859,28 +890,41 @@ export const supervisorHandlers = [
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
     return HttpResponse.json(ctx.shell.dailyVolumes)
   }),
-  http.get('*/api/v1/exercises/:id/volumes/slot/export-template', () =>
-    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+  http.get('*/api/v1/exercises/:id/volumes/slot/export-template', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!ctx.exercise.slotStartDate || !ctx.exercise.slotWeeks) {
+      return problem(422, 'Set a Slot Period to generate the per-slot grid.')
+    }
+    return HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': 'attachment; filename="volume-slot-template.xlsx"',
       },
-    }),
-  ),
-  http.get('*/api/v1/exercises/:id/volumes/slot/export', () =>
-    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+    })
+  }),
+  http.get('*/api/v1/exercises/:id/volumes/slot/export', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!ctx.exercise.slotStartDate || !ctx.exercise.slotWeeks) {
+      return problem(422, 'Set a Slot Period to generate the per-slot grid.')
+    }
+    return HttpResponse.arrayBuffer(new ArrayBuffer(0), {
       headers: {
         'Content-Type':
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': 'attachment; filename="volume-slot.xlsx"',
       },
-    }),
-  ),
+    })
+  }),
   http.post('*/api/v1/exercises/:id/volumes/slot/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    if (!ctx.exercise.slotStartDate || !ctx.exercise.slotWeeks) {
+      return problem(422, 'Set a Slot Period to generate the per-slot grid.')
+    }
     return HttpResponse.json(ctx.shell.slotVolumes)
   }),
 
@@ -1670,8 +1714,11 @@ export const supervisorHandlers = [
       if (!shifts.length) {
         return problem(422, 'At least one shift is required before slot simulation.')
       }
-      if (!ctx.shell.slotVolumes?.length) {
-        return problem(422, 'Slot volume inputs are required before slot simulation.')
+      const allEmpty =
+        !ctx.shell.slotVolumes?.length ||
+        ctx.shell.slotVolumes.every((row) => row.actualVolume == null)
+      if (allEmpty) {
+        return problem(422, 'Set Slot Period and fill Per-slot Volume first.')
       }
 
       const volumes = [...ctx.shell.slotVolumes].sort((a, b) =>
