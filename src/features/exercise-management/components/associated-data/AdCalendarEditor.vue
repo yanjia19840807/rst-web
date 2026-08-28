@@ -4,8 +4,11 @@ import { computed, ref } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import { Info } from '@lucide/vue'
+
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
@@ -306,9 +309,12 @@ async function onImportFile(event: Event) {
 
 <template>
   <div class="space-y-4 rounded-lg border bg-card p-4">
-    <p class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground">
-      Holiday and Weekend are rest days. Normal is a makeup working day.
-    </p>
+    <Alert variant="info">
+      <Info />
+      <AlertDescription>
+        Holiday and Weekend are rest days. Normal is a makeup working day.
+      </AlertDescription>
+    </Alert>
 
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3 class="text-sm font-bold">Holidays and Makeup Days</h3>

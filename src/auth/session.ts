@@ -5,6 +5,7 @@ import { apiRequest } from '@/api/client'
 
 import { homePathForRoles } from '@/navigation/home'
 
+import { readDelegationId, writeDelegationId } from './delegation'
 import {
   isAppRole,
   permissionsForRoles,
@@ -20,7 +21,17 @@ export type CurrentUser = {
   roles: string[]
   scopes: string[]
   center?: string | null
+  actor?: { ccgid: string; displayName: string } | null
+  delegationId?: string | null
 }
+
+const GRANTABLE_ROLES: readonly AppRole[] = [
+  'AGENT',
+  'SUPERVISOR',
+  'MANAGER',
+  'CDH',
+  'LTH',
+]
 
 /**
  * Client session backed by {@code GET /api/v1/me} (dev-identity or SSO principal).
@@ -45,12 +56,21 @@ export const useSessionStore = defineStore('session', () => {
   )
   const homePath = computed(() => homePathForRoles(roles.value))
 
+  const actingAs = computed(() => Boolean(user.value?.delegationId))
+  const actorCcgid = computed(() => user.value?.actor?.ccgid ?? ccgid.value)
+  const actorDisplayName = computed(() => user.value?.actor?.displayName ?? displayName.value)
+  const delegationId = computed(() => user.value?.delegationId ?? readDelegationId())
+
   const contextLabel = computed(() => {
     if (!displayName.value) return ''
     return rolesLabel.value
       ? `${displayName.value} · ${rolesLabel.value}`
       : displayName.value
   })
+
+  const canManageDelegation = computed(
+    () => !actingAs.value && roles.value.some((role) => GRANTABLE_ROLES.includes(role)),
+  )
 
   async function load() {
     if (signedOut.value) return
@@ -61,6 +81,9 @@ export const useSessionStore = defineStore('session', () => {
       .then((me) => {
         user.value = me
         signedOut.value = false
+        if (!me.delegationId && readDelegationId()) {
+          writeDelegationId(null)
+        }
       })
       .catch((err: unknown) => {
         user.value = null
@@ -72,6 +95,21 @@ export const useSessionStore = defineStore('session', () => {
     return loadPromise
   }
 
+  async function reload() {
+    loadPromise = null
+    await load()
+  }
+
+  async function actAs(id: string) {
+    writeDelegationId(id)
+    await reload()
+  }
+
+  async function stopActing() {
+    writeDelegationId(null)
+    await reload()
+  }
+
   function azureLogoutUrl() {
     const tenant = String(import.meta.env.VITE_AZURE_TENANT_ID ?? '').trim()
     if (!tenant || typeof window === 'undefined') return null
@@ -80,6 +118,7 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   async function signOut() {
+    writeDelegationId(null)
     user.value = null
     error.value = null
     loadPromise = null
@@ -117,7 +156,15 @@ export const useSessionStore = defineStore('session', () => {
     rolesLabel,
     homePath,
     contextLabel,
+    actingAs,
+    actorCcgid,
+    actorDisplayName,
+    delegationId,
+    canManageDelegation,
     load,
+    reload,
+    actAs,
+    stopActing,
     signOut,
     signIn,
     hasPermission,

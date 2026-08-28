@@ -1,17 +1,44 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { TriangleAlert } from '@lucide/vue'
+import { computed, onMounted, onUnmounted } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 
+import { queryClient } from '@/api/query-client'
+import { DELEGATION_ENDED_EVENT } from '@/auth/delegation'
 import { useSessionStore } from '@/auth/session'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { isMenuItemActive, menuItems } from '@/navigation/menu'
 import UserMenu from './UserMenu.vue'
 
 const route = useRoute()
+const router = useRouter()
 const session = useSessionStore()
+
+async function onDelegationEnded() {
+  await session.stopActing()
+  queryClient.clear()
+  toast.message('Delegation ended. You are back to your own account.')
+  if (route.name === 'settings-delegation' && !session.canManageDelegation) {
+    await router.push(session.homePath)
+  }
+}
 
 onMounted(() => {
   void session.load()
+  window.addEventListener(DELEGATION_ENDED_EVENT, onDelegationEnded)
 })
+
+onUnmounted(() => {
+  window.removeEventListener(DELEGATION_ENDED_EVENT, onDelegationEnded)
+})
+
+async function stopActing() {
+  await session.stopActing()
+  queryClient.clear()
+  await router.push(session.homePath)
+}
 
 const title = computed(() => String(route.meta.title ?? 'Right Sizing Tool'))
 const subtitle = computed(() => String(route.meta.subtitle ?? 'Right Sizing Tool'))
@@ -74,6 +101,23 @@ const copyrightYear = new Date().getFullYear()
           </div>
           <UserMenu />
         </div>
+        <Alert
+          v-if="session.actingAs"
+          variant="warning"
+          role="status"
+          class="rounded-none border-x-0 border-b-0 px-4 py-2.5 sm:px-6"
+        >
+          <TriangleAlert />
+          <AlertTitle>
+            You are acting as {{ session.displayName }} ({{ session.rolesLabel || 'RST' }}).
+          </AlertTitle>
+          <AlertDescription>Signed in as {{ session.actorDisplayName }}.</AlertDescription>
+          <AlertAction>
+            <Button type="button" size="sm" variant="outline" @click="stopActing">
+              Stop acting
+            </Button>
+          </AlertAction>
+        </Alert>
       </header>
 
       <main id="main-content" class="w-full flex-1 px-4 py-5 sm:px-6">

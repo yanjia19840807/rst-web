@@ -202,6 +202,7 @@ export interface CycleTimeChartPoint {
 
 export interface CycleTimeChartView {
   points: CycleTimeChartPoint[]
+  centerSeconds?: number | null
   upperControlLimitSeconds: number | null
   lowerControlLimitSeconds: number | null
   sampleCount: number

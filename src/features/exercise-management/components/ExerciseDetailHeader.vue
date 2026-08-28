@@ -3,6 +3,7 @@ import { Info } from '@lucide/vue'
 import { computed } from 'vue'
 
 import DetailTable from '@/components/DetailTable.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -96,14 +97,14 @@ const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exerc
           </span>
         </template>
       </DetailTable>
-      <div
-        v-if="!locked"
-        class="rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
-      >
-        Associated Data initialized from Toolkit latest state. Volume Input is pre-filled
-        from Toolkit volume when available. Edit below — all scenarios in this exercise share this
-        baseline.
-      </div>
+      <Alert v-if="!locked" variant="info">
+        <Info />
+        <AlertDescription>
+          Associated Data initialized from Toolkit latest state. Volume Input is pre-filled
+          from Toolkit volume when available. Edit below — all scenarios in this exercise share this
+          baseline.
+        </AlertDescription>
+      </Alert>
     </CardContent>
   </Card>
 </template>

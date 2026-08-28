@@ -1,6 +1,7 @@
 import { setupServer } from 'msw/node'
 
 import { approvalHandlers } from './handlers/approval'
+import { delegationHandlers } from './handlers/delegation'
 import { domainHeadHandlers } from './handlers/domain-heads'
 import { governanceHandlers } from './handlers/governance'
 import { meHandlers } from './handlers/me'
@@ -17,5 +18,6 @@ export const server = setupServer(
   ...supportCategoryHandlers,
   ...approvalHandlers,
   ...domainHeadHandlers,
+  ...delegationHandlers,
   ...governanceHandlers,
 )

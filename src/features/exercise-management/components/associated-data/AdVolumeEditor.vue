@@ -4,8 +4,11 @@ import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import { Info } from '@lucide/vue'
+
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
@@ -797,12 +800,10 @@ async function onImportFile(event: Event) {
       </button>
     </div>
 
-    <p
-      v-if="tab !== 'slot'"
-      class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground"
-    >
-      {{ windowHint }}
-    </p>
+    <Alert v-if="tab !== 'slot'" variant="info">
+      <Info />
+      <AlertDescription>{{ windowHint }}</AlertDescription>
+    </Alert>
 
     <div
       v-if="tab === 'slot'"
@@ -897,12 +898,10 @@ async function onImportFile(event: Event) {
       </div>
     </div>
 
-    <p
-      v-if="tab === 'slot'"
-      class="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground"
-    >
-      {{ windowHint }}
-    </p>
+    <Alert v-if="tab === 'slot'" variant="info">
+      <Info />
+      <AlertDescription>{{ windowHint }}</AlertDescription>
+    </Alert>
 
     <div class="overflow-x-auto rounded-md border">
       <Table v-if="tab === 'monthly'">

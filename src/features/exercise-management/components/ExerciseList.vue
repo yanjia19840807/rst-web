@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
@@ -28,12 +28,10 @@ import ExerciseListTable from './ExerciseListTable.vue'
 type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
 
-const route = useRoute()
 const router = useRouter()
 const { withdraw } = useExerciseMutations()
 const activeTab = ref<TabKey>(IN_PROGRESS_TAB)
 const createOpen = ref(false)
-const initialToolkitId = ref<string | undefined>()
 const withdrawOpen = ref(false)
 const withdrawTarget = ref<Exercise | null>(null)
 
@@ -227,16 +225,12 @@ function clearCurrentFilters() {
   advancedOpen.value = null
 }
 
-function openCreate(toolkitId?: string) {
-  initialToolkitId.value = toolkitId
+function openCreate() {
   createOpen.value = true
 }
 
 function onCreated(exercise: Exercise) {
   activeTab.value = IN_PROGRESS_TAB
-  if (route.query.create || route.query.toolkitId) {
-    void router.replace({ name: 'supervisor-exercises' })
-  }
   void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
 }
 
@@ -265,16 +259,6 @@ async function confirmWithdraw() {
     toast.error(error instanceof Error ? error.message : 'Could not withdraw submission.')
   }
 }
-
-watch(
-  () => [route.query.create, route.query.toolkitId] as const,
-  ([create, toolkitId]) => {
-    if (create === '1') {
-      openCreate(typeof toolkitId === 'string' ? toolkitId : undefined)
-    }
-  },
-  { immediate: true },
-)
 
 watch(
   [
@@ -435,7 +419,6 @@ watch(
     <CreateExerciseDialog
       v-model:open="createOpen"
       :toolkits="toolkits"
-      :initial-toolkit-id="initialToolkitId"
       @created="onCreated"
     />
 

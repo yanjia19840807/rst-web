@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { cn } from '@/lib/utils'
 
 const props = withDefaults(
@@ -49,15 +50,16 @@ function next() {
     <div class="flex items-center gap-2" :class="hideSummary ? 'ml-auto' : undefined">
       <label class="flex items-center gap-1.5 text-xs">
         Rows
-        <select
-          :value="pageSize"
-          class="h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground"
-          @change="emit('update:pageSize', Number(($event.target as HTMLSelectElement).value))"
+        <NativeSelect
+          size="sm"
+          :model-value="String(pageSize)"
+          aria-label="Rows per page"
+          @update:model-value="emit('update:pageSize', Number($event))"
         >
-          <option :value="10">10</option>
-          <option :value="25">25</option>
-          <option :value="50">50</option>
-        </select>
+          <NativeSelectOption value="10">10</NativeSelectOption>
+          <NativeSelectOption value="25">25</NativeSelectOption>
+          <NativeSelectOption value="50">50</NativeSelectOption>
+        </NativeSelect>
       </label>
       <Button
         size="sm"

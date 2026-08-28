@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { computed, watch } from 'vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -37,10 +39,17 @@ import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
-const props = defineProps<{
-  toolkits: SupervisorToolkit[]
-  initialToolkitId?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    toolkits: SupervisorToolkit[]
+    initialToolkitId?: string
+    lockToolkit?: boolean
+  }>(),
+  {
+    initialToolkitId: undefined,
+    lockToolkit: false,
+  },
+)
 
 const emit = defineEmits<{
   created: [exercise: Exercise]
@@ -60,6 +69,9 @@ const [sizingMonth] = defineField('sizingMonth')
 const [tmsFrom] = defineField('tmsFrom')
 const [tmsTo] = defineField('tmsTo')
 
+const lockedToolkit = computed(
+  () => props.toolkits.find((toolkit) => toolkit.id === (toolkitId.value || props.initialToolkitId)),
+)
 const createdLabel = computed(() => formatDate(new Date()))
 const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
 const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
@@ -126,19 +138,22 @@ const create = handleSubmit(async (formValues) => {
 
             <Label class="text-muted-foreground">Toolkit</Label>
             <div>
-              <select
-                v-model="toolkitId"
-                class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
-                :aria-invalid="Boolean(errors.toolkitId)"
-              >
-                <option value="">Select toolkit</option>
-                <option v-for="toolkit in toolkits" :key="toolkit.id" :value="toolkit.id">
-                  {{ toolkit.name }}
-                </option>
-              </select>
-              <p v-if="errors.toolkitId" class="mt-1 text-xs text-destructive">
-                {{ errors.toolkitId }}
-              </p>
+              <ReadOnlyField v-if="lockToolkit" :value="lockedToolkit?.name" strong />
+              <template v-else>
+                <select
+                  v-model="toolkitId"
+                  class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
+                  :aria-invalid="Boolean(errors.toolkitId)"
+                >
+                  <option value="">Select toolkit</option>
+                  <option v-for="toolkit in toolkits" :key="toolkit.id" :value="toolkit.id">
+                    {{ toolkit.name }}
+                  </option>
+                </select>
+                <p v-if="errors.toolkitId" class="mt-1 text-xs text-destructive">
+                  {{ errors.toolkitId }}
+                </p>
+              </template>
             </div>
 
             <div class="inline-flex items-center gap-1.5">
@@ -194,14 +209,15 @@ const create = handleSubmit(async (formValues) => {
             </div>
           </div>
 
-          <div
-            class="mt-4 rounded-md bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-foreground"
-          >
-            Associated Data (Team Setup, Support, Calendar) will be initialized from Toolkit
-            latest state when available. Volume Input is pre-filled from Toolkit volume when
-            available. Creating the Exercise freezes the current Toolkit,
-            Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
-          </div>
+          <Alert variant="info" class="mt-4">
+            <Info />
+            <AlertDescription>
+              Associated Data (Team Setup, Support, Calendar) will be initialized from Toolkit
+              latest state when available. Volume Input is pre-filled from Toolkit volume when
+              available. Creating the Exercise freezes the current Toolkit,
+              Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
 

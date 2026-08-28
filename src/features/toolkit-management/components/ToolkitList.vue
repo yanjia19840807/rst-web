@@ -11,6 +11,9 @@ import { DataTable } from '@/components/ui/data-table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 
+import CreateExerciseDialog from '@/features/exercise-management/components/CreateExerciseDialog.vue'
+import type { Exercise } from '@/features/exercise-management/types'
+
 import { toolkitApi } from '../api'
 import { useManagedToolkitsQuery } from '../api/queries'
 import type { SupervisorToolkit, ToolkitListQuery } from '../types'
@@ -39,6 +42,9 @@ const pl3Options = computed(() => [
 ])
 const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.data.value)
 const exportingId = ref<string | null>(null)
+const createOpen = ref(false)
+const createToolkit = ref<SupervisorToolkit | null>(null)
+const createToolkits = computed(() => (createToolkit.value ? [createToolkit.value] : []))
 
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
@@ -95,10 +101,13 @@ const columns = computed(() =>
 )
 
 function createExercise(toolkit: SupervisorToolkit) {
-  void router.push({
-    name: 'supervisor-exercises',
-    query: { create: '1', toolkitId: toolkit.id },
-  })
+  createToolkit.value = toolkit
+  createOpen.value = true
+}
+
+function onCreated(exercise: Exercise) {
+  createOpen.value = false
+  void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
 }
 
 async function exportToolkit(toolkit: SupervisorToolkit) {
@@ -174,6 +183,14 @@ async function exportToolkit(toolkit: SupervisorToolkit) {
         />
       </CardContent>
     </Card>
+
+    <CreateExerciseDialog
+      v-model:open="createOpen"
+      lock-toolkit
+      :toolkits="createToolkits"
+      :initial-toolkit-id="createToolkit?.id"
+      @created="onCreated"
+    />
   </div>
 </template>
 

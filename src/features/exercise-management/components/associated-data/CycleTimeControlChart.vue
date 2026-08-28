@@ -19,7 +19,7 @@ import type {
 } from 'echarts/components'
 
 import ListLoading from '@/components/ListLoading.vue'
-import { floatingTooltip } from '@/lib/chartTooltip'
+import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { useCycleTimeChartQuery } from '../../api/queries'
 
@@ -50,11 +50,20 @@ const loadError = computed(() => {
     : 'Could not load the control chart.'
 })
 
-const destructive = 'hsl(var(--destructive))'
-const foreground = 'hsl(var(--foreground))'
-const rolling = '#0f6b78'
-const border = 'hsl(var(--border))'
-const outlier = 'hsl(32 90% 48%)'
+function themeColor(cssVar: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim()
+  return value || fallback
+}
+
+const palette = computed(() => ({
+  daily: themeColor('--foreground', '#14233a'),
+  rolling: '#0f6b78',
+  limit: themeColor('--destructive', '#da291c'),
+  center: '#315f9b',
+  border: themeColor('--border', '#d4dde9'),
+  outlier: '#d98b16',
+}))
 
 const hasPoints = computed(() => (chart.value?.points.length ?? 0) > 0)
 const hasLimits = computed(
@@ -70,51 +79,86 @@ function num(value: number | string | null | undefined): number {
 
 const option = computed<ChartOption>(() => {
   const data = chart.value
+  const colors = palette.value
   if (!data?.points.length) return {}
 
   const categories = data.points.map((point) => point.date)
   const daily = data.points.map((point) => ({
     value: num(point.dailyMedianSeconds),
-    itemStyle: point.outlier ? { color: outlier } : { color: foreground },
+    itemStyle: point.outlier ? { color: colors.outlier } : undefined,
   }))
-  const rolling = data.points.map((point) => num(point.rollingMedianSeconds))
+  const rollingValues = data.points.map((point) => num(point.rollingMedianSeconds))
+  const center = data.centerSeconds
   const ucl = data.upperControlLimitSeconds
   const lcl = data.lowerControlLimitSeconds
 
-  const markLine: LineSeriesOption['markLine'] =
-    ucl != null && lcl != null
+  const limitLines: NonNullable<LineSeriesOption['markLine']>['data'] = []
+  if (ucl != null) limitLines.push({ yAxis: num(ucl), name: 'UCL' })
+  if (lcl != null) limitLines.push({ yAxis: num(lcl), name: 'LCL' })
+
+  const markLine: LineSeriesOption['markLine'] | undefined =
+    limitLines.length > 0
       ? {
           silent: true,
           symbol: 'none',
-          lineStyle: { type: 'dashed', width: 2, color: destructive },
-          label: { formatter: '{b}', fontSize: 10, color: destructive },
-          data: [
-            { yAxis: num(ucl), name: 'UCL' },
-            { yAxis: num(lcl), name: 'LCL' },
-          ],
+          lineStyle: { type: 'dashed', width: 2, color: colors.limit },
+          label: { formatter: '{b}', fontSize: 10, color: colors.limit },
+          data: limitLines,
+        }
+      : undefined
+
+  const centerLine: LineSeriesOption['markLine'] | undefined =
+    center != null
+      ? {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { type: 'solid', width: 1.5, color: colors.center },
+          label: { formatter: '{b}', fontSize: 10, color: colors.center },
+          data: [{ yAxis: num(center), name: 'CL' }],
         }
       : undefined
 
   return {
-    color: [foreground, rolling],
+    color: [colors.daily, colors.rolling],
     tooltip: floatingTooltip({
-      valueFormatter: (value) => `${Number(value).toFixed(2)}s`,
+      formatter: (params) => {
+        const items = Array.isArray(params) ? params : [params]
+        const date = String(items[0]?.axisValue ?? '')
+        const rows = items
+          .map((item) => {
+            const value = Array.isArray(item.data) ? item.data[1] : item.data
+            const raw =
+              value && typeof value === 'object' && 'value' in value
+                ? (value as { value: unknown }).value
+                : value
+            return `${item.marker ?? ''}${item.seriesName}: ${formatChartNumber(raw)}s`
+          })
+          .join('<br/>')
+        const extras = [
+          center != null ? `CL: ${formatChartNumber(center)}s` : null,
+          ucl != null ? `UCL: ${formatChartNumber(ucl)}s` : null,
+          lcl != null ? `LCL: ${formatChartNumber(lcl)}s` : null,
+        ]
+          .filter(Boolean)
+          .join('<br/>')
+        return extras ? `${date}<br/>${rows}<br/>${extras}` : `${date}<br/>${rows}`
+      },
     }),
     legend: { show: false },
-    grid: { left: 52, right: 24, top: 16, bottom: 16 },
+    grid: { left: 52, right: 28, top: 20, bottom: 16 },
     xAxis: {
       type: 'category',
       data: categories,
-      axisLine: { lineStyle: { color: border } },
-      axisLabel: { color: foreground, fontSize: 11 },
+      axisLine: { lineStyle: { color: colors.border } },
+      axisLabel: { color: colors.daily, fontSize: 11 },
     },
     yAxis: {
       type: 'value',
       min: 0,
       name: 'Seconds',
-      splitLine: { lineStyle: { color: border } },
+      splitLine: { lineStyle: { color: colors.border } },
       axisLabel: {
-        color: foreground,
+        color: colors.daily,
         fontSize: 11,
         formatter: (value: number) => `${value}`,
       },
@@ -126,17 +170,38 @@ const option = computed<ChartOption>(() => {
         data: daily,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { width: 3, color: foreground },
-        itemStyle: { color: foreground },
+        showSymbol: true,
+        lineStyle: { width: 3, color: colors.daily },
+        itemStyle: { color: colors.daily },
+        emphasis: {
+          focus: 'none',
+          scale: true,
+          lineStyle: { width: 3, color: colors.daily },
+          itemStyle: { color: colors.daily },
+        },
+        blur: {
+          lineStyle: { opacity: 1 },
+          itemStyle: { opacity: 1 },
+        },
         markLine,
       },
       {
         name: 'Rolling median',
         type: 'line',
-        data: rolling,
+        data: rollingValues,
         symbol: 'none',
-        lineStyle: { width: 2, color: rolling },
-        itemStyle: { color: rolling },
+        lineStyle: { width: 2, color: colors.rolling },
+        itemStyle: { color: colors.rolling },
+        emphasis: {
+          focus: 'none',
+          lineStyle: { width: 2, color: colors.rolling },
+          itemStyle: { color: colors.rolling },
+        },
+        blur: {
+          lineStyle: { opacity: 1 },
+          itemStyle: { opacity: 1 },
+        },
+        markLine: centerLine,
       },
     ],
   }
@@ -148,23 +213,23 @@ const option = computed<ChartOption>(() => {
     <h3 class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
     <ListLoading
       v-if="loading"
-      class="h-44 rounded-lg border bg-card"
+      class="h-56 rounded-lg border bg-card"
     />
     <div
       v-else-if="loadError"
-      class="flex h-44 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-destructive"
+      class="flex h-56 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-destructive"
     >
       {{ loadError }}
     </div>
     <div
       v-else-if="!hasPoints"
-      class="flex h-44 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-muted-foreground"
+      class="flex h-56 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-muted-foreground"
     >
       No included TMS sessions with a valid cycle time.
     </div>
     <div
       v-else
-      class="h-44 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+      class="h-56 overflow-hidden rounded-lg border bg-card px-1 pt-2"
     >
       <VChart class="h-full w-full" :option="option" autoresize />
     </div>
@@ -180,12 +245,16 @@ const option = computed<ChartOption>(() => {
         <span class="inline-block h-2 w-4 rounded-sm" style="background: #0f6b78" />
         Rolling median (7 days)
       </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-2 w-4 rounded-sm" style="background: #315f9b" />
+        CL (daily-median)
+      </span>
       <span v-if="hasLimits" class="inline-flex items-center gap-1.5">
         <span class="inline-block h-2 w-4 rounded-sm bg-destructive" />
-        Control limit (±2σ)
+        UCL / LCL (±2σ)
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block size-2 rounded-full" style="background: hsl(32 90% 48%)" />
+        <span class="inline-block size-2 rounded-full" style="background: #d98b16" />
         Outside control limit
       </span>
     </div>

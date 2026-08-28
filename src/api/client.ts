@@ -1,3 +1,5 @@
+import { DELEGATION_HEADER, notifyDelegationEnded, readDelegationId } from '@/auth/delegation'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export class ApiError extends Error {
@@ -25,10 +27,12 @@ function problemCode(type?: string) {
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const delegationId = readDelegationId()
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(delegationId ? { [DELEGATION_HEADER]: delegationId } : {}),
       ...init?.headers,
     },
   })
@@ -36,6 +40,9 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ProblemBody | null
     const code = problemCode(body?.type)
+    if (response.status === 403 && code === 'delegation-inactive') {
+      notifyDelegationEnded()
+    }
     const detail = body?.detail || body?.title || 'The request could not be completed.'
     throw new ApiError(code ? `${detail} (${code})` : detail, response.status, code)
   }

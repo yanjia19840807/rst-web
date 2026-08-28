@@ -260,6 +260,15 @@ export const routes: RouteRecordRaw[] = [
     redirect: { name: 'approver-benchmarking' },
   },
   {
+    path: '/settings/delegation',
+    name: 'settings-delegation',
+    component: () => import('@/pages/settings/DelegationPage.vue'),
+    meta: {
+      title: 'Delegation',
+      subtitle: 'Let a colleague act as you, or act on someone else’s behalf.',
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: { render: () => null },

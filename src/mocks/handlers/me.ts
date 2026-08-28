@@ -10,6 +10,8 @@ export const meHandlers = [
       roles: ['SUPERVISOR'],
       scopes: ['TIMESHEET', 'SELF'],
       center: 'Kuala Lumpur',
+      actor: { ccgid: 'S00628182', displayName: 'YANG Brenda' },
+      delegationId: null,
     }),
   ),
 ]

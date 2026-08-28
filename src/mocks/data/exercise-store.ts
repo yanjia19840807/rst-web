@@ -160,6 +160,7 @@ function demoTms(): Pick<ExerciseShell, 'cycleTime' | 'tmsSessions' | 'cycleTime
         { date: '2026-05-05', dailyMedianSeconds: 145, rollingMedianSeconds: 142.5, outlier: false },
         { date: '2026-05-06', dailyMedianSeconds: 142, rollingMedianSeconds: 142, outlier: false },
       ],
+      centerSeconds: 142,
       upperControlLimitSeconds: 148,
       lowerControlLimitSeconds: 136,
       sampleCount: tmsSessions.length,
