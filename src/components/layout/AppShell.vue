@@ -23,6 +23,9 @@ async function onDelegationEnded() {
   if (route.name === 'settings-delegation' && !session.canManageDelegation) {
     await router.push(session.homePath)
   }
+  if (route.name === 'settings-mail' && !session.canManageMailPreferences) {
+    await router.push(session.homePath)
+  }
 }
 
 onMounted(() => {

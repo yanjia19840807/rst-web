@@ -44,6 +44,11 @@ async function goDelegation() {
   await router.push({ name: 'settings-delegation' })
 }
 
+async function goMailPreferences() {
+  open.value = false
+  await router.push({ name: 'settings-mail' })
+}
+
 async function actAs(id: string) {
   open.value = false
   await session.actAs(id)
@@ -137,6 +142,13 @@ async function stopActing() {
             Manage delegation
           </button>
         </template>
+      </section>
+
+      <section v-if="session.canManageMailPreferences" class="grid gap-1 border-t px-2 py-2">
+        <p class="px-2 py-1 text-xs font-medium text-muted-foreground">Settings</p>
+        <button type="button" :class="itemClass" @click="goMailPreferences">
+          Email notifications
+        </button>
       </section>
 
       <section class="border-t px-2 py-2">

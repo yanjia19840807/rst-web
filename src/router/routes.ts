@@ -279,6 +279,15 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/settings/mail',
+    name: 'settings-mail',
+    component: () => import('@/pages/settings/MailPreferencesPage.vue'),
+    meta: {
+      title: 'Email notifications',
+      subtitle: 'Choose which RST mail this role should receive.',
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: { render: () => null },

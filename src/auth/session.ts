@@ -33,6 +33,8 @@ const GRANTABLE_ROLES: readonly AppRole[] = [
   'LTH',
 ]
 
+const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'MANAGER', 'CDH', 'LTH']
+
 /**
  * Client session backed by {@code GET /api/v1/me} (dev-identity or SSO principal).
  */
@@ -70,6 +72,10 @@ export const useSessionStore = defineStore('session', () => {
 
   const canManageDelegation = computed(
     () => !actingAs.value && roles.value.some((role) => GRANTABLE_ROLES.includes(role)),
+  )
+
+  const canManageMailPreferences = computed(
+    () => !actingAs.value && roles.value.some((role) => MAIL_ROLES.includes(role)),
   )
 
   async function load() {
@@ -161,6 +167,7 @@ export const useSessionStore = defineStore('session', () => {
     actorDisplayName,
     delegationId,
     canManageDelegation,
+    canManageMailPreferences,
     load,
     reload,
     actAs,
