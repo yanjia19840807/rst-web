@@ -80,6 +80,11 @@ export const menuItems: readonly MenuItem[] = [
     to: '/approver/benchmarking',
     permission: PERMISSIONS.governanceBenchmarking,
   },
+  {
+    label: 'Support Categories',
+    to: '/admin/support-categories',
+    permission: PERMISSIONS.supportCategoryManage,
+  },
 ]
 
 export function isMenuItemActive(item: MenuItem, path: string) {

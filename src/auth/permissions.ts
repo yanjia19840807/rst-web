@@ -12,12 +12,13 @@ export const PERMISSIONS = {
   governanceValidationWorkflow: 'governance:validation-workflow',
   governanceDashboard: 'governance:dashboard',
   governanceBenchmarking: 'governance:benchmarking',
+  supportCategoryManage: 'support-category:manage',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
 
-/** Six RST product roles (aligned with backend / Role Matrix). */
-export type AppRole = 'AGENT' | 'SUPERVISOR' | 'MANAGER' | 'CDH' | 'LTH' | 'HO'
+/** RST product roles (aligned with backend / Role Matrix). */
+export type AppRole = 'AGENT' | 'SUPERVISOR' | 'MANAGER' | 'CDH' | 'LTH' | 'HO' | 'ADMIN'
 
 const SHARED_REPORTS: readonly Permission[] = [
   PERMISSIONS.governanceRepository,
@@ -43,6 +44,12 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     ...SHARED_REPORTS,
   ],
   HO: [...SHARED_REPORTS],
+  ADMIN: [
+    PERMISSIONS.timesheetSync,
+    PERMISSIONS.governanceValidationWorkflow,
+    PERMISSIONS.supportCategoryManage,
+    ...SHARED_REPORTS,
+  ],
 }
 
 const APP_ROLES = new Set<string>([
@@ -52,6 +59,7 @@ const APP_ROLES = new Set<string>([
   'CDH',
   'LTH',
   'HO',
+  'ADMIN',
 ])
 
 export function isAppRole(value: string): value is AppRole {
@@ -75,4 +83,5 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   CDH: 'CDH',
   LTH: 'LTH',
   HO: 'HO',
+  ADMIN: 'Admin',
 }

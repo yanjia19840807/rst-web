@@ -270,6 +270,16 @@ export const routes: RouteRecordRaw[] = [
     redirect: { name: 'approver-benchmarking' },
   },
   {
+    path: '/admin/support-categories',
+    name: 'admin-support-categories',
+    component: () => import('@/pages/admin/SupportCategoriesPage.vue'),
+    meta: {
+      title: 'Support Categories',
+      subtitle: 'Maintain Standard Production Support categories.',
+      roles: ['admin'],
+    },
+  },
+  {
     path: '/settings/delegation',
     name: 'settings-delegation',
     component: () => import('@/pages/settings/DelegationPage.vue'),

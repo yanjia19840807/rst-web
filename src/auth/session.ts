@@ -33,7 +33,7 @@ const GRANTABLE_ROLES: readonly AppRole[] = [
   'LTH',
 ]
 
-const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'MANAGER', 'CDH', 'LTH']
+const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'MANAGER', 'CDH', 'LTH', 'ADMIN']
 
 /**
  * Client session backed by {@code GET /api/v1/me} (dev-identity or SSO principal).

@@ -8,9 +8,11 @@ export const ROLE_HOME_PATH: Record<AppRole, string> = {
   CDH: '/approver/queue',
   LTH: '/approver/queue',
   HO: '/approver/dashboard',
+  ADMIN: '/approver/dashboard',
 }
 
 const HOME_ROLE_PRIORITY: readonly AppRole[] = [
+  'ADMIN',
   'HO',
   'LTH',
   'CDH',
