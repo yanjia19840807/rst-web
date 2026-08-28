@@ -51,6 +51,11 @@ export const menuItems: readonly MenuItem[] = [
     permission: PERMISSIONS.domainHeadConfig,
   },
   {
+    label: 'Timesheet Sync',
+    to: '/approver/timesheet-sync',
+    permission: PERMISSIONS.timesheetSync,
+  },
+  {
     label: 'RST Repository',
     to: '/approver/repository',
     permission: PERMISSIONS.governanceRepository,

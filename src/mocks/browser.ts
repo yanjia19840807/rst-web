@@ -8,11 +8,13 @@ import { meHandlers } from './handlers/me'
 import { supervisorHandlers } from './handlers/supervisor'
 import { supportCategoryHandlers } from './handlers/support-category'
 import { timesheetHandlers } from './handlers/timesheet'
+import { timesheetSyncHandlers } from './handlers/timesheet-sync'
 import { tmsHandlers } from './handlers/tms'
 
 export const worker = setupWorker(
   ...meHandlers,
   ...timesheetHandlers,
+  ...timesheetSyncHandlers,
   ...tmsHandlers,
   ...supervisorHandlers,
   ...supportCategoryHandlers,

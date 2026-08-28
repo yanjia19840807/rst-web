@@ -179,6 +179,16 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/approver/timesheet-sync',
+    name: 'approver-timesheet-sync',
+    component: () => import('@/pages/approver/TimesheetSyncPage.vue'),
+    meta: {
+      title: 'Timesheet Sync',
+      subtitle: 'Monitor Daily and Monthly snapshots and upload a report.',
+      roles: ['approver'],
+    },
+  },
+  {
     path: '/approver/submissions/:submissionId',
     name: 'approver-review',
     component: () => import('@/pages/approver/ApprovalReviewPage.vue'),

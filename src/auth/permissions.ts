@@ -6,6 +6,7 @@ export const PERMISSIONS = {
   exerciseManage: 'exercise:manage',
   approvalQueue: 'approval:queue',
   domainHeadConfig: 'approver:domain-heads',
+  timesheetSync: 'timesheet:sync',
   governanceRepository: 'governance:repository',
   governanceSupport: 'governance:support',
   governanceValidationWorkflow: 'governance:validation-workflow',
@@ -37,6 +38,7 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   LTH: [
     PERMISSIONS.approvalQueue,
     PERMISSIONS.domainHeadConfig,
+    PERMISSIONS.timesheetSync,
     PERMISSIONS.governanceValidationWorkflow,
     ...SHARED_REPORTS,
   ],

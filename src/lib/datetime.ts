@@ -37,6 +37,16 @@ export function formatDateTime(value?: string | Date | null): string {
 }
 
 /**
+ * Formats a datetime for display as `yyyy-MM-dd HH:mm:ss`.
+ */
+export function formatDateTimeSeconds(value?: string | Date | null): string {
+  if (value == null || value === '') return '—'
+  const d = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(d.getTime())) return '—'
+  return `${formatDateTime(d)}:${pad2(d.getSeconds())}`
+}
+
+/**
  * Formats a month for display as `yyyy-MM`.
  * Accepts `yyyy-MM`, `yyyy-MM-dd`, datetime strings, or Date.
  */
