@@ -81,7 +81,7 @@ const fileName = computed(
         <p v-else-if="!issues.length" class="text-sm text-muted-foreground">
           No issues on this run.
         </p>
-        <div v-else class="overflow-x-auto rounded-lg border bg-card">
+        <div v-else class="min-w-0 overflow-x-auto rounded-lg border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

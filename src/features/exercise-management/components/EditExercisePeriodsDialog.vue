@@ -128,61 +128,54 @@ async function confirmSave() {
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <div class="rounded-lg border bg-card p-4">
-          <div
-            class="grid grid-cols-[minmax(120px,0.35fr)_1fr] items-center gap-x-3 gap-y-3 text-sm"
-          >
+        <div class="grid gap-4 rounded-lg border bg-card p-4">
+          <div class="grid gap-1.5">
             <div class="inline-flex items-center gap-1.5">
-              <Label class="text-muted-foreground">Sizing Month</Label>
+              <Label>Sizing Month</Label>
               <PeriodDerivedHints
                 title="Sizing Month"
                 :description="SIZING_MONTH_HINT_DESCRIPTION"
                 :lines="sizingHints"
               />
             </div>
-            <div>
-              <MonthPicker
-                v-model="sizingMonth"
-                aria-label="Choose sizing month"
-                placeholder="Select sizing month"
-                class="w-[200px]"
-              />
-              <p v-if="errors.sizingMonth" class="mt-1 text-xs text-destructive">
-                {{ errors.sizingMonth }}
-              </p>
-            </div>
+            <MonthPicker
+              v-model="sizingMonth"
+              aria-label="Choose sizing month"
+              placeholder="Select sizing month"
+              class="w-[200px]"
+            />
+            <p v-if="errors.sizingMonth" class="text-xs text-destructive">
+              {{ errors.sizingMonth }}
+            </p>
+          </div>
 
+          <div class="grid gap-1.5">
             <div class="inline-flex items-center gap-1.5">
-              <Label class="text-muted-foreground">TMS period</Label>
+              <Label>TMS period</Label>
               <PeriodDerivedHints
                 title="TMS period"
                 :description="TMS_PERIOD_HINT_DESCRIPTION"
                 :lines="tmsHints"
               />
             </div>
-            <div>
-              <div class="flex flex-wrap items-center gap-2">
-                <DatePicker
-                  v-model="tmsFrom"
-                  aria-label="Choose TMS period start"
-                  placeholder="From"
-                  class="w-[180px]"
-                />
-                <span class="text-muted-foreground">to</span>
-                <DatePicker
-                  v-model="tmsTo"
-                  aria-label="Choose TMS period end"
-                  placeholder="To"
-                  class="w-[180px]"
-                />
-              </div>
-              <p
-                v-if="errors.tmsFrom || errors.tmsTo"
-                class="mt-1 text-xs text-destructive"
-              >
-                {{ errors.tmsFrom || errors.tmsTo }}
-              </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <DatePicker
+                v-model="tmsFrom"
+                aria-label="Choose TMS period start"
+                placeholder="From"
+                class="w-[180px]"
+              />
+              <span class="text-muted-foreground">to</span>
+              <DatePicker
+                v-model="tmsTo"
+                aria-label="Choose TMS period end"
+                placeholder="To"
+                class="w-[180px]"
+              />
             </div>
+            <p v-if="errors.tmsFrom || errors.tmsTo" class="text-xs text-destructive">
+              {{ errors.tmsFrom || errors.tmsTo }}
+            </p>
           </div>
         </div>
       </div>

@@ -5,6 +5,11 @@ import { apiRequest } from '@/api/client'
 
 import { homePathForRoles } from '@/navigation/home'
 
+import {
+  clearDevIdentity,
+  displayNameForCcgid,
+  resolveDevIdentity,
+} from './dev-identity'
 import { readDelegationId, writeDelegationId } from './delegation'
 import {
   isAppRole,
@@ -23,6 +28,8 @@ export type CurrentUser = {
   center?: string | null
   actor?: { ccgid: string; displayName: string } | null
   delegationId?: string | null
+  /** Present on {@code dev}/{@code test} (and MSW) when test-login override is on. */
+  devOverrideEnabled?: boolean | null
 }
 
 const GRANTABLE_ROLES: readonly AppRole[] = [
@@ -35,8 +42,27 @@ const GRANTABLE_ROLES: readonly AppRole[] = [
 
 const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'MANAGER', 'CDH', 'LTH', 'ADMIN']
 
+function userFromDevIdentity(): CurrentUser {
+  const identity = resolveDevIdentity()
+  const ccgid = (identity.ccgid || 'ADMIN001').toUpperCase()
+  const role = (identity.role || 'ADMIN').toUpperCase()
+  const displayName = displayNameForCcgid(ccgid)
+  return {
+    ccgid,
+    displayName,
+    email: `${ccgid.toLowerCase()}@dev.local`,
+    roles: [role],
+    scopes: ['TIMESHEET', 'SELF'],
+    center: identity.center ?? null,
+    actor: { ccgid, displayName },
+    delegationId: null,
+    devOverrideEnabled: true,
+  }
+}
+
 /**
- * Client session backed by {@code GET /api/v1/me} (dev-identity or SSO principal).
+ * Client session. Query-param identity is applied first so the shell has a role
+ * while {@code GET /api/v1/me} is in flight.
  */
 export const useSessionStore = defineStore('session', () => {
   const user = ref<CurrentUser | null>(null)
@@ -78,21 +104,36 @@ export const useSessionStore = defineStore('session', () => {
     () => !actingAs.value && roles.value.some((role) => MAIL_ROLES.includes(role)),
   )
 
+  function applyLocalIdentity() {
+    user.value = userFromDevIdentity()
+    signedOut.value = false
+    error.value = null
+  }
+
   async function load() {
     if (signedOut.value) return
     if (loadPromise) return loadPromise
+    applyLocalIdentity()
     loading.value = true
-    error.value = null
     loadPromise = apiRequest<CurrentUser>('/api/v1/me')
       .then((me) => {
-        user.value = me
+        const local = userFromDevIdentity()
+        user.value = {
+          ...local,
+          displayName: me.ccgid === local.ccgid && me.displayName ? me.displayName : local.displayName,
+          email: me.ccgid === local.ccgid && me.email ? me.email : local.email,
+          scopes: me.scopes?.length ? me.scopes : local.scopes,
+          actor: me.ccgid === local.ccgid && me.actor ? me.actor : local.actor,
+          delegationId: me.delegationId ?? null,
+          devOverrideEnabled: true,
+        }
         signedOut.value = false
         if (!me.delegationId && readDelegationId()) {
           writeDelegationId(null)
         }
       })
       .catch((err: unknown) => {
-        user.value = null
+        applyLocalIdentity()
         error.value = err instanceof Error ? err.message : 'Could not load current user.'
       })
       .finally(() => {
@@ -125,6 +166,7 @@ export const useSessionStore = defineStore('session', () => {
 
   async function signOut() {
     writeDelegationId(null)
+    clearDevIdentity()
     user.value = null
     error.value = null
     loadPromise = null
@@ -168,6 +210,7 @@ export const useSessionStore = defineStore('session', () => {
     delegationId,
     canManageDelegation,
     canManageMailPreferences,
+    applyLocalIdentity,
     load,
     reload,
     actAs,

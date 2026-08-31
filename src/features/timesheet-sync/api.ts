@@ -1,5 +1,4 @@
-import { ApiError, apiRequest } from '@/api/client'
-import { DELEGATION_HEADER, readDelegationId } from '@/auth/delegation'
+import { ApiError, apiHeaders, apiRequest } from '@/api/client'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -34,11 +33,10 @@ export const timesheetSyncApi = {
   upload: async (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    const delegationId = readDelegationId()
     const response = await fetch(`${API_BASE_URL}${base}`, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: delegationId ? { [DELEGATION_HEADER]: delegationId } : undefined,
+      headers: apiHeaders(undefined, { json: false }),
       body: form,
     })
     if (!response.ok) {

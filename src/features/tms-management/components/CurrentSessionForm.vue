@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,7 @@ const props = defineProps<{
   errors: Partial<
     Record<'toolkitId' | 'subtaskId' | 'processedVolume' | 'reference' | 'remarks', string>
   >
-  readOnly?: boolean
+  disabled?: boolean
   pausedCount: number
 }>()
 
@@ -37,52 +37,42 @@ const selectedToolkit = computed(() =>
   props.toolkits.find((toolkit) => toolkit.id === props.toolkitId),
 )
 
-const selectedSubtaskName = computed(
-  () =>
-    selectedToolkit.value?.subtasks.find((item) => item.id === props.subtaskId)?.name ?? '—',
-)
-
-function valueOf(event: Event) {
-  return (event.target as HTMLInputElement | HTMLSelectElement).value
-}
 </script>
 
 <template>
   <Card>
-    <CardHeader class="items-center">
+    <CardHeader>
       <CardTitle>Session</CardTitle>
       <CardAction>
         <Button
           variant="link"
-          class="h-auto px-0 font-semibold"
+          class="px-0 text-sm leading-none font-semibold"
           @click="emit('open-paused')"
         >
           Paused Sessions
-          <span class="text-muted-foreground">({{ pausedCount }})</span>
         </Button>
       </CardAction>
     </CardHeader>
     <CardContent class="grid gap-4">
       <div class="grid gap-1.5">
         <Label for="session-subtask">Subtask <span class="font-normal text-muted-foreground">(optional)</span></Label>
-        <ReadOnlyField v-if="readOnly" :value="selectedSubtaskName" />
-        <select
-          v-else
+        <NativeSelect
           id="session-subtask"
-          :value="subtaskId"
-          class="h-9 w-full rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          class="w-full"
+          :model-value="subtaskId"
+          :disabled="disabled"
           :aria-invalid="Boolean(errors.subtaskId)"
-          @change="emit('update:subtaskId', valueOf($event))"
+          @update:model-value="emit('update:subtaskId', String($event ?? ''))"
         >
-          <option value="">—</option>
-          <option
+          <NativeSelectOption value="">Select a subtask</NativeSelectOption>
+          <NativeSelectOption
             v-for="item in selectedToolkit?.subtasks.filter((subtask) => !subtask.deletedAt) ?? []"
             :key="item.id"
             :value="item.id"
           >
             {{ item.name }}
-          </option>
-        </select>
+          </NativeSelectOption>
+        </NativeSelect>
         <p v-if="errors.subtaskId" class="text-xs text-destructive">{{ errors.subtaskId }}</p>
       </div>
 
@@ -90,14 +80,12 @@ function valueOf(event: Event) {
         <Label for="session-volume"
           >Volume <span class="font-normal text-muted-foreground">(optional)</span></Label
         >
-        <ReadOnlyField
-          v-if="readOnly"
-          :value="processedVolume === '' || processedVolume == null ? '—' : Number(processedVolume).toFixed(2)"
-        />
         <NumberFieldControl
-          v-else
           id="session-volume"
+          class="text-sm"
           :min="0"
+          :disabled="disabled"
+          placeholder="e.g. 12.00"
           :model-value="processedVolume === '' || processedVolume == null ? null : Number(processedVolume)"
           @update:model-value="emit('update:processedVolume', $event ?? '')"
         />
@@ -108,11 +96,11 @@ function valueOf(event: Event) {
 
       <div class="grid gap-1.5">
         <Label for="session-reference">Reference</Label>
-        <ReadOnlyField v-if="readOnly" :value="reference" />
         <Input
-          v-else
           id="session-reference"
+          class="text-sm"
           :model-value="reference"
+          :disabled="disabled"
           placeholder="Invoice / case ID"
           :aria-invalid="Boolean(errors.reference)"
           @update:model-value="emit('update:reference', String($event))"
@@ -122,11 +110,10 @@ function valueOf(event: Event) {
 
       <div class="grid gap-1.5">
         <Label for="session-remarks">Remarks</Label>
-        <ReadOnlyField v-if="readOnly" :value="remarks" />
         <Textarea
-          v-else
           id="session-remarks"
           :model-value="remarks"
+          :disabled="disabled"
           placeholder="Optional note for this timing session"
           :aria-invalid="Boolean(errors.remarks)"
           @update:model-value="emit('update:remarks', String($event))"

@@ -15,13 +15,14 @@ const supervisorPositionId = defineModel<string>('supervisorPositionId', { requi
 const selectedCountries = defineModel<string[]>('selectedCountries', { required: true })
 const combineSubtasksTime = defineModel<boolean>('combineSubtasksTime', { required: true })
 
-defineProps<{
+const props = defineProps<{
   centers: string[]
   domains: string[]
   pl1s: string[]
   pl2s: string[]
   pl3s: HierarchyOption[]
   countries: string[]
+  hasHierarchy?: boolean
   errors: Record<string, string | undefined>
 }>()
 
@@ -53,6 +54,7 @@ const controlClass =
       <div class="grid gap-1.5">
         <Label>GBS Center</Label>
         <select v-model="center" :class="controlClass" :aria-invalid="Boolean(errors.center)">
+          <option value="">Select GBS Center</option>
           <option v-for="item in centers" :key="item" :value="item">{{ item }}</option>
         </select>
         <p v-if="errors.center" class="text-xs text-destructive">{{ errors.center }}</p>
@@ -60,6 +62,7 @@ const controlClass =
       <div class="grid gap-1.5">
         <Label>Domain</Label>
         <select v-model="domain" :class="controlClass" :aria-invalid="Boolean(errors.domain)">
+          <option value="">Select Domain</option>
           <option v-for="item in domains" :key="item" :value="item">{{ item }}</option>
         </select>
         <p v-if="errors.domain" class="text-xs text-destructive">{{ errors.domain }}</p>
@@ -67,6 +70,7 @@ const controlClass =
       <div class="grid gap-1.5">
         <Label>Process Level 1</Label>
         <select v-model="pl1" :class="controlClass" :aria-invalid="Boolean(errors.pl1)">
+          <option value="">Select Process Level 1</option>
           <option v-for="item in pl1s" :key="item" :value="item">{{ item }}</option>
         </select>
         <p v-if="errors.pl1" class="text-xs text-destructive">{{ errors.pl1 }}</p>
@@ -76,10 +80,12 @@ const controlClass =
         <select
           v-model="pl2"
           :class="controlClass"
-          :disabled="!pl2s.length"
+          :disabled="Boolean(hasHierarchy) && !pl2s.length"
           :aria-invalid="Boolean(errors.pl2)"
         >
-          <option v-if="!pl2s.length" value="">— select PL1 first —</option>
+          <option value="">
+            {{ hasHierarchy && !pl2s.length ? 'Select Process Level 1 first' : 'Select Process Level 2' }}
+          </option>
           <option v-for="item in pl2s" :key="item" :value="item">{{ item }}</option>
         </select>
         <p v-if="errors.pl2" class="text-xs text-destructive">{{ errors.pl2 }}</p>
@@ -89,10 +95,12 @@ const controlClass =
         <select
           v-model="supervisorPositionId"
           :class="controlClass"
-          :disabled="!pl3s.length"
+          :disabled="Boolean(hasHierarchy) && !pl3s.length"
           :aria-invalid="Boolean(errors.supervisorPositionId || errors.pl3Code)"
         >
-          <option v-if="!pl3s.length" value="">— select PL2 first —</option>
+          <option value="">
+            {{ hasHierarchy && !pl3s.length ? 'Select Process Level 2 first' : 'Select Process Level 3' }}
+          </option>
           <option
             v-for="item in pl3s"
             :key="`${item.supervisorPositionId}-${item.pl3Code}`"
@@ -112,7 +120,7 @@ const controlClass =
           :options="countries"
           placeholder="Select customer countries…"
           empty-text="Select Process Level 3 to load countries."
-          :disabled="!countries.length"
+          :disabled="Boolean(hasHierarchy) && !countries.length"
         />
       </div>
       <div class="grid gap-1.5">

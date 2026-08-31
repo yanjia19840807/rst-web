@@ -903,7 +903,7 @@ async function onImportFile(event: Event) {
       <AlertDescription>{{ windowHint }}</AlertDescription>
     </Alert>
 
-    <div class="overflow-x-auto rounded-md border">
+    <div class="min-w-0 overflow-x-auto rounded-md border">
       <Table v-if="tab === 'monthly'">
         <TableHeader>
           <TableRow>

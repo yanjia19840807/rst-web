@@ -1,15 +1,26 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+import { clearDevIdentity, writeDevIdentity } from '@/auth/dev-identity'
+
 import App from '../App.vue'
 import { routes } from '../router/routes'
 
 describe('App', () => {
+  afterEach(() => {
+    clearDevIdentity()
+  })
+
   it('renders the application shell and active route', async () => {
+    writeDevIdentity({
+      ccgid: 'S00628182',
+      role: 'SUPERVISOR',
+      center: 'Kuala Lumpur',
+    })
     const router = createRouter({
       history: createMemoryHistory(),
       routes,

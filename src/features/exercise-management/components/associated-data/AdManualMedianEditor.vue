@@ -171,7 +171,7 @@ defineExpose({ toRequest })
           No support files yet.{{ readOnly ? '' : ' Click Add file to upload evidence.' }}
         </div>
 
-        <div v-else class="overflow-x-auto rounded-md border">
+        <div v-else class="min-w-0 overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>

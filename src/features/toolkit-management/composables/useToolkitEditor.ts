@@ -61,6 +61,9 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   )
 
   const hierarchy = computed(() => hierarchyQuery.data.value ?? [])
+  const noTimesheetHierarchy = computed(
+    () => hierarchyQuery.isSuccess.value && hierarchy.value.length === 0,
+  )
   const centers = computed(() => unique(hierarchy.value.map((item) => item.center)))
   const domains = computed(() =>
     unique(hierarchy.value.filter((item) => item.center === values.center).map((item) => item.domain)),
@@ -93,44 +96,6 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
         item.pl2 === values.pl2,
     ),
   )
-
-  function firstHierarchyValues() {
-    const nextCenter = centers.value[0] ?? ''
-    const nextDomain =
-      unique(hierarchy.value.filter((item) => item.center === nextCenter).map((item) => item.domain))[0] ??
-      ''
-    const nextPl1 =
-      unique(
-        hierarchy.value
-          .filter((item) => item.center === nextCenter && item.domain === nextDomain)
-          .map((item) => item.pl1),
-      )[0] ?? ''
-    const nextPl2 =
-      unique(
-        hierarchy.value
-          .filter(
-            (item) =>
-              item.center === nextCenter && item.domain === nextDomain && item.pl1 === nextPl1,
-          )
-          .map((item) => item.pl2),
-      )[0] ?? ''
-    const nextPl3 = hierarchy.value.find(
-      (item) =>
-        item.center === nextCenter &&
-        item.domain === nextDomain &&
-        item.pl1 === nextPl1 &&
-        item.pl2 === nextPl2,
-    )
-    return {
-      center: nextCenter,
-      domain: nextDomain,
-      pl1: nextPl1,
-      pl2: nextPl2,
-      pl3Code: nextPl3?.pl3Code ?? '',
-      pl3Name: nextPl3?.pl3Name ?? '',
-      supervisorPositionId: nextPl3?.supervisorPositionId ?? '',
-    }
-  }
 
   const candidates = computed(() => candidatesQuery.data.value?.items ?? [])
   const countries = computed(() => candidatesQuery.data.value?.customerCountries ?? [])
@@ -220,7 +185,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
       return
     }
     hydrating.value = true
-    resetForm({ values: { ...emptyToolkitForm(), ...firstHierarchyValues() } })
+    resetForm({ values: emptyToolkitForm() })
     selectedCountries.value = []
     initialized.value = true
     await nextTick()
@@ -246,23 +211,22 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
 
   watch(center, () => {
     if (hydrating.value) return
-    if (!domains.value.includes(values.domain)) setFieldValue('domain', domains.value[0] ?? '')
+    if (!domains.value.includes(values.domain)) setFieldValue('domain', '', false)
   })
   watch(domain, () => {
     if (hydrating.value) return
-    if (!pl1s.value.includes(values.pl1)) setFieldValue('pl1', pl1s.value[0] ?? '')
+    if (!pl1s.value.includes(values.pl1)) setFieldValue('pl1', '', false)
   })
   watch(pl1, () => {
     if (hydrating.value) return
-    if (!pl2s.value.includes(values.pl2)) setFieldValue('pl2', pl2s.value[0] ?? '')
+    if (!pl2s.value.includes(values.pl2)) setFieldValue('pl2', '', false)
   })
   watch(pl2, () => {
     if (hydrating.value) return
     if (!pl3s.value.some((item) => item.pl3Code === values.pl3Code)) {
-      const first = pl3s.value[0]
-      setFieldValue('pl3Code', first?.pl3Code ?? '')
-      setFieldValue('pl3Name', first?.pl3Name ?? '')
-      setFieldValue('supervisorPositionId', first?.supervisorPositionId ?? '')
+      setFieldValue('pl3Code', '', false)
+      setFieldValue('pl3Name', '', false)
+      setFieldValue('supervisorPositionId', '', false)
       setFieldValue('sharedKpiSelections', [], false)
       selectedCountries.value = []
     }
@@ -271,9 +235,12 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     if (hydrating.value) return
     const selected = pl3s.value.find((item) => item.supervisorPositionId === positionId)
     if (selected) {
-      setFieldValue('pl3Code', selected.pl3Code)
-      setFieldValue('pl3Name', selected.pl3Name)
+      setFieldValue('pl3Code', selected.pl3Code, false)
+      setFieldValue('pl3Name', selected.pl3Name, false)
+      return
     }
+    setFieldValue('pl3Code', '', false)
+    setFieldValue('pl3Name', '', false)
   })
   watch(selectedCountries, (next) => {
     if (hydrating.value) return
@@ -328,6 +295,9 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     }
   }
 
+  const mappingErrors = computed(() =>
+    submitCount.value > 0 ? errors.value : {},
+  )
   const sharedKpiError = computed(() =>
     submitCount.value > 0 ? errors.value.sharedKpiSelections : undefined,
   )
@@ -341,7 +311,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     supervisorPositionId,
     combineSubtasksTime,
     values,
-    errors,
+    errors: mappingErrors,
     sharedKpiError,
     selectedCountries,
     centers,
@@ -356,6 +326,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     sharedKpiSelections,
     selectedKpiRows,
     totalHc,
+    noTimesheetHierarchy,
     loading,
     busy,
     kpiOpen,

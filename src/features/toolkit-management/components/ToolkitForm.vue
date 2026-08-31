@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { TriangleAlert } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
 import { useToolkitEditor } from '../composables/useToolkitEditor'
@@ -37,6 +39,7 @@ const {
   sharedKpiSelections,
   selectedKpiRows,
   totalHc,
+  noTimesheetHierarchy,
   loading,
   busy,
   kpiOpen,
@@ -52,7 +55,16 @@ const {
 </script>
 
 <template>
-  <div>
+  <div class="grid gap-4">
+    <Alert v-if="noTimesheetHierarchy" variant="warning">
+      <TriangleAlert />
+      <AlertTitle>No Timesheet sync data</AlertTitle>
+      <AlertDescription>
+        No ACTIVE Timesheet hierarchy is available. Process mapping lists will stay empty until a
+        snapshot is synced.
+      </AlertDescription>
+    </Alert>
+
     <PageActions>
       <template #left>
         <Button
@@ -87,6 +99,7 @@ const {
         :pl2s="pl2s"
         :pl3s="pl3s"
         :countries="countries"
+        :has-hierarchy="centers.length > 0"
         :errors="errors"
       />
       <SubtaskEditorCard v-model:subtasks="subtasks" />

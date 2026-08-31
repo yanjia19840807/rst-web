@@ -132,7 +132,7 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="grid min-w-0 gap-4">
     <PageActions>
       <Button @click="exportRepo">Export Repository</Button>
     </PageActions>

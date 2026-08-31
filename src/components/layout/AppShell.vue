@@ -15,6 +15,9 @@ import UserMenu from './UserMenu.vue'
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
+if (!session.user && !session.signedOut) {
+  session.applyLocalIdentity()
+}
 
 async function onDelegationEnded() {
   await session.stopActing()
@@ -123,7 +126,7 @@ const copyrightYear = new Date().getFullYear()
         </Alert>
       </header>
 
-      <main id="main-content" class="w-full flex-1 px-4 py-5 sm:px-6">
+      <main id="main-content" class="min-w-0 w-full flex-1 px-4 py-5 sm:px-6">
         <slot />
       </main>
 

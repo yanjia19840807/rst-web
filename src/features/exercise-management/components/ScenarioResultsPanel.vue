@@ -29,7 +29,7 @@ defineProps<{
     >
       Run Sizing Simulation to populate outcome results.
     </div>
-    <div v-else class="overflow-x-auto">
+    <div v-else class="min-w-0 overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>

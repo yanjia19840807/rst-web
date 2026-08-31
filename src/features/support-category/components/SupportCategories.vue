@@ -209,7 +209,7 @@ async function saveUpdate(
 </script>
 
 <template>
-  <div>
+  <div class="grid gap-4">
     <PageActions>
       <Button :disabled="formLocked || saving" @click="startAdd">Add category</Button>
     </PageActions>
@@ -225,7 +225,7 @@ async function saveUpdate(
     </CardHeader>
     <CardContent>
       <ListLoading v-if="loading" />
-      <div v-else class="overflow-x-auto rounded-md border">
+      <div v-else class="min-w-0 overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

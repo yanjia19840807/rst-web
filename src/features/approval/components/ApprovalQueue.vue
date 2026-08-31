@@ -242,7 +242,7 @@ watch(
 </script>
 
 <template>
-  <div class="grid gap-4">
+  <div class="grid min-w-0 gap-4">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <AdMetric label="Awaiting Me" :value="String(metrics.awaitingMe)" hint="Current approval step" />
       <AdMetric label="Overdue" :value="String(metrics.overdue)" hint="Aging 5 days or more" />

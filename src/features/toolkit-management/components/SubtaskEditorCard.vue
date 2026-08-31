@@ -81,9 +81,9 @@ function confirmAdd() {
     <CardContent class="grid gap-4">
       <div class="grid gap-2">
         <div class="flex justify-end">
-          <Button size="sm" variant="outline" @click="beginAdd">+ Add Subtask</Button>
+          <Button variant="outline" @click="beginAdd">Add Subtask</Button>
         </div>
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>

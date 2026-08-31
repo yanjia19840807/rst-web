@@ -11,6 +11,7 @@ const props = defineProps<{
   session: TmsSession | null
   elapsed: string
   busy?: boolean
+  canStart?: boolean
 }>()
 
 defineEmits<{
@@ -22,14 +23,17 @@ defineEmits<{
 
 const isRunning = computed(() => props.session?.status === 'running')
 const isPaused = computed(() => props.session?.status === 'paused')
+const startDisabled = computed(
+  () => isRunning.value || Boolean(props.busy) || (!isPaused.value && props.canStart === false),
+)
 </script>
 
 <template>
   <Card>
-    <CardHeader class="items-center">
+    <CardHeader>
       <CardTitle>Timer</CardTitle>
       <CardAction>
-        <Badge :variant="isRunning ? 'default' : 'secondary'">
+        <Badge class="h-full py-0" :variant="isRunning ? 'default' : 'secondary'">
           {{ isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready' }}
         </Badge>
       </CardAction>
@@ -50,8 +54,8 @@ const isPaused = computed(() => props.session?.status === 'paused')
 
       <div class="mt-4 grid grid-cols-3 gap-2">
         <Button
-          :disabled="isRunning || busy"
-          :class="isRunning ? 'opacity-50' : undefined"
+          :disabled="startDisabled"
+          :class="startDisabled ? 'opacity-50' : undefined"
           @click="isPaused ? $emit('resume') : $emit('start')"
         >
           {{ isPaused ? 'Resume' : 'Start' }}

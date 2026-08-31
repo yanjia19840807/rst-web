@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TriangleAlert } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { storeToRefs } from 'pinia'
@@ -7,7 +8,9 @@ import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useCurrentSessionQuery, useTmsSummaryQuery, useToolkitsQuery } from '../api/queries'
@@ -27,7 +30,7 @@ const { currentSession } = storeToRefs(sessionStore)
 const { formattedElapsed } = useTmsTimer(currentSession)
 
 const defaultFormValues = (): SessionFormValues => ({
-  toolkitId: toolkitsQuery.data.value?.[0]?.id ?? '',
+  toolkitId: '',
   subtaskId: '',
   processedVolume: '',
   reference: '',
@@ -51,7 +54,7 @@ function resetSessionForm(keepToolkitId?: string) {
   const toolkit =
     keepToolkitId && toolkitsQuery.data.value?.some((item) => item.id === keepToolkitId)
       ? keepToolkitId
-      : (toolkitsQuery.data.value?.[0]?.id ?? '')
+      : ''
   resetForm({
     values: {
       ...defaultFormValues(),
@@ -90,6 +93,10 @@ const toolkitDetailRows = computed(() => {
 })
 
 const sessionReadOnly = computed(() => currentSession.value?.status === 'running')
+const hasSelectedToolkit = computed(() => Boolean(selectedToolkit.value))
+const noMatchingToolkit = computed(
+  () => toolkitsQuery.isSuccess.value && !(toolkitsQuery.data.value?.length),
+)
 
 const busy = computed(
   () =>
@@ -116,18 +123,12 @@ watch(
 )
 
 watch(
-  () => toolkitsQuery.data.value,
-  (toolkits) => {
-    if (!toolkits?.length || toolkitId.value || currentSession.value) return
-    setFieldValue('toolkitId', toolkits[0]?.id ?? '')
-  },
-  { immediate: true },
-)
-
-watch(
   [toolkitId, () => toolkitsQuery.data.value],
   () => {
     if (currentSession.value) return
+    if (toolkitId.value && !selectedToolkit.value) {
+      setFieldValue('toolkitId', '')
+    }
     const availableSubtasks =
       selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt) ?? []
     if (subtaskId.value && !availableSubtasks.some((item) => item.id === subtaskId.value)) {
@@ -193,38 +194,55 @@ async function endSession() {
   }
 }
 
-function onToolkitChange(event: Event) {
+function onToolkitChange(value: unknown) {
   if (sessionReadOnly.value) return
-  setFieldValue('toolkitId', (event.target as HTMLSelectElement).value)
+  setFieldValue('toolkitId', String(value ?? ''))
 }
 </script>
 
 <template>
   <div class="grid gap-4">
-    <div class="grid gap-4 xl:grid-cols-2">
+    <Alert v-if="noMatchingToolkit" variant="warning">
+      <TriangleAlert />
+      <AlertTitle>No matching Toolkit</AlertTitle>
+      <AlertDescription>
+        No active Toolkit matches your current ACTIVE Timesheet assignment.
+      </AlertDescription>
+    </Alert>
+
+    <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <Card>
-        <CardHeader class="items-center">
+        <CardHeader>
           <CardTitle>Current Toolkit</CardTitle>
-          <CardAction>
-            <select
-              :value="toolkitId"
-              :disabled="sessionReadOnly || !(toolkitsQuery.data.value?.length)"
-              class="h-9 min-w-[190px] rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-              @change="onToolkitChange"
-            >
-              <option v-for="toolkit in toolkitsQuery.data.value ?? []" :key="toolkit.id" :value="toolkit.id">
-                {{ toolkit.name }}
-              </option>
-            </select>
-          </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent class="grid gap-4">
+          <div class="grid gap-1.5">
+            <NativeSelect
+              :model-value="toolkitId ?? ''"
+              :disabled="sessionReadOnly"
+              aria-label="Current toolkit"
+              class="w-full"
+              @update:model-value="onToolkitChange"
+            >
+              <NativeSelectOption value="">Select a toolkit</NativeSelectOption>
+              <NativeSelectOption
+                v-for="toolkit in toolkitsQuery.data.value ?? []"
+                :key="toolkit.id"
+                :value="toolkit.id"
+              >
+                {{ toolkit.name }}
+              </NativeSelectOption>
+            </NativeSelect>
+            <p v-if="errors.toolkitId" class="text-xs text-destructive">{{ errors.toolkitId }}</p>
+          </div>
           <DetailTable v-if="selectedToolkit" :rows="toolkitDetailRows" />
           <ListLoading v-else-if="toolkitsQuery.isLoading.value" />
-          <p v-else class="text-sm text-muted-foreground">
-            No active Toolkit matches your current ACTIVE Timesheet assignment.
+          <p v-else-if="toolkitsQuery.isError.value" class="text-sm text-muted-foreground">
+            Could not load toolkits.
           </p>
-          <p v-if="errors.toolkitId" class="mt-2 text-xs text-destructive">{{ errors.toolkitId }}</p>
+          <p v-else class="text-sm text-muted-foreground">
+            Select a toolkit to load its details.
+          </p>
         </CardContent>
       </Card>
 
@@ -260,9 +278,7 @@ function onToolkitChange(event: Event) {
           </div>
         </CardContent>
       </Card>
-    </div>
 
-    <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.9fr)]">
       <CurrentSessionForm
         v-model:subtask-id="subtaskId"
         v-model:processed-volume="processedVolume"
@@ -271,7 +287,7 @@ function onToolkitChange(event: Event) {
         :toolkit-id="toolkitId"
         :toolkits="toolkitsQuery.data.value ?? []"
         :errors="errors"
-        :read-only="sessionReadOnly"
+        :disabled="!hasSelectedToolkit || sessionReadOnly"
         :paused-count="summaryQuery.data.value?.pausedSessions ?? 0"
         @open-paused="pausedDialogOpen = true"
       />
@@ -279,6 +295,7 @@ function onToolkitChange(event: Event) {
         :session="currentSession"
         :elapsed="formattedElapsed"
         :busy="busy"
+        :can-start="hasSelectedToolkit"
         @start="startSession()"
         @pause="pauseSession"
         @resume="resumeSession"

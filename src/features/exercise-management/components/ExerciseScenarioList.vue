@@ -57,13 +57,13 @@ function shiftSetupLabel(scenario: Scenario) {
   <Card>
     <CardHeader class="items-center">
       <CardTitle class="text-base">Scenario Matrix</CardTitle>
-      <CardAction v-if="!locked" class="flex gap-2">
+      <CardAction v-if="!locked" class="flex flex-wrap gap-2">
         <Button variant="outline" @click="emit('openOfficial')">Save Official Scenario</Button>
         <Button variant="outline" @click="emit('newScenario')">New Scenario</Button>
       </CardAction>
     </CardHeader>
     <CardContent>
-      <div class="overflow-x-auto rounded-lg border">
+      <div class="min-w-0 overflow-x-auto rounded-lg border">
         <Table class="min-w-[960px]">
           <TableHeader>
             <TableRow>

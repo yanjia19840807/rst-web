@@ -124,7 +124,7 @@ async function confirmSave() {
 </script>
 
 <template>
-  <div>
+  <div class="grid gap-4">
     <PageActions>
       <Button :disabled="!dirty || saveMutation.isPending.value" @click="askSave">
         Save

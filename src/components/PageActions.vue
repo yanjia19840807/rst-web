@@ -16,7 +16,7 @@ const hasRight = computed(() => Boolean(slots.default))
   <div
     v-if="hasLeft || hasRight"
     :class="
-      cn('mb-4 flex flex-wrap items-center justify-between gap-3', props.class)
+      cn('flex flex-wrap items-center justify-between gap-3', props.class)
     "
   >
     <div v-if="hasLeft" class="flex min-w-0 items-center gap-2">

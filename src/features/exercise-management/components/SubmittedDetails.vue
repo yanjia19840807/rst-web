@@ -570,7 +570,7 @@ function downloadSummary() {
           <CardTitle class="text-base">Shared KPI Line Allocation</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="overflow-x-auto rounded-lg border">
+          <div class="min-w-0 overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>

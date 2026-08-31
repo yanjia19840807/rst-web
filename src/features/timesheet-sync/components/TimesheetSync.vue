@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { TriangleAlert } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
@@ -63,6 +65,20 @@ const snapshots = computed<TimesheetActiveRow[]>(() =>
     : [],
 )
 
+const missingActiveKinds = computed(() => {
+  if (!overviewQuery.isSuccess.value || !overview.value) return []
+  const missing: Array<'Daily' | 'Monthly'> = []
+  if (!overview.value.daily) missing.push('Daily')
+  if (!overview.value.monthly) missing.push('Monthly')
+  return missing
+})
+
+const missingActiveLabel = computed(() => {
+  const kinds = missingActiveKinds.value
+  if (kinds.length === 2) return 'Daily or Monthly'
+  return kinds[0] ?? ''
+})
+
 const activeColumns = computed(() => createTimesheetActiveColumns())
 const runColumns = computed(() => createTimesheetRunColumns({ onViewIssues: openIssues }))
 
@@ -120,7 +136,16 @@ function openIssues(row: TimesheetSyncRunHeader) {
 </script>
 
 <template>
-  <div>
+  <div class="grid min-w-0 gap-4">
+    <Alert v-if="missingActiveKinds.length" variant="warning">
+      <TriangleAlert />
+      <AlertTitle>No ACTIVE Timesheet snapshot</AlertTitle>
+      <AlertDescription>
+        No ACTIVE {{ missingActiveLabel }} Timesheet snapshot is available. Upload a report or wait
+        for SharePoint auto-sync.
+      </AlertDescription>
+    </Alert>
+
     <PageActions>
       <input
         ref="fileInput"

@@ -122,7 +122,7 @@ watch(
               </span>
             </div>
 
-            <div class="overflow-x-auto rounded-lg border">
+            <div class="min-w-0 overflow-x-auto rounded-lg border">
               <Table class="min-w-[700px]">
                 <TableHeader>
                   <TableRow>
@@ -183,7 +183,7 @@ watch(
                 </select>
               </FilterField>
             </div>
-            <div class="overflow-x-auto rounded-lg border">
+            <div class="min-w-0 overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>

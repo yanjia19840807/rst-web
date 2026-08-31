@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from '@/api/client'
+import { ApiError, apiHeaders, apiRequest } from '@/api/client'
 
 import type {
   CalendarRequest,
@@ -59,7 +59,9 @@ async function downloadVolumeBlob(
   suffix: string,
   fallbackName: string,
 ): Promise<{ blob: Blob; filename: string }> {
-  const response = await fetch(`${API_BASE_URL}${exercisePath(exerciseId, suffix)}`)
+  const response = await fetch(`${API_BASE_URL}${exercisePath(exerciseId, suffix)}`, {
+    headers: apiHeaders(undefined, { json: false }),
+  })
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { detail?: string } | null
     throw new ApiError(body?.detail || 'Download failed.', response.status)
@@ -76,6 +78,7 @@ async function uploadVolumeExcel<T>(exerciseId: string, suffix: string, file: Fi
   form.append('file', file)
   const response = await fetch(`${API_BASE_URL}${exercisePath(exerciseId, suffix)}`, {
     method: 'POST',
+    headers: apiHeaders(undefined, { json: false }),
     body: form,
   })
   if (!response.ok) {
@@ -251,7 +254,7 @@ export const exerciseApi = {
     form.append('file', file)
     const response = await fetch(
       `${API_BASE_URL}${exercisePath(exerciseId, '/cycle-time/support-files')}`,
-      { method: 'POST', body: form },
+      { method: 'POST', headers: apiHeaders(undefined, { json: false }), body: form },
     )
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { detail?: string } | null

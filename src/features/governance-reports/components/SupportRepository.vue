@@ -116,95 +116,99 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="grid min-w-0 gap-4">
     <PageActions>
       <Button @click="exportSupport">Export Support Repository</Button>
     </PageActions>
 
-    <div class="mb-3 flex flex-wrap items-end gap-2.5">
-      <FilterField label="GBS Center">
-        <select v-model="gbsFilter" :class="[selectClass, 'w-[180px]']">
-          <option v-for="option in gbsOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </FilterField>
-      <FilterField label="Standard Category">
-        <select v-model="categoryFilter" :class="[selectClass, 'w-[200px]']">
-          <option value="All">All</option>
-          <option
-            v-for="option in categoryOptions"
-            :key="option.id"
-            :value="option.id"
+    <Card>
+      <CardContent class="space-y-3">
+        <div class="flex flex-wrap items-end gap-2.5">
+          <FilterField label="GBS Center">
+            <select v-model="gbsFilter" :class="[selectClass, 'w-[180px]']">
+              <option v-for="option in gbsOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </FilterField>
+          <FilterField label="Standard Category">
+            <select v-model="categoryFilter" :class="[selectClass, 'w-[200px]']">
+              <option value="All">All</option>
+              <option
+                v-for="option in categoryOptions"
+                :key="option.id"
+                :value="option.id"
+              >
+                {{ option.name }}
+              </option>
+            </select>
+          </FilterField>
+          <FilterField label="Toolkit">
+            <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']">
+              <option v-for="option in toolkitOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </FilterField>
+          <Button variant="outline" @click="toggleMoreFilters">
+            More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
+          </Button>
+        </div>
+
+        <div
+          v-if="moreFiltersOpen"
+          class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+        >
+          <FilterField label="Submitted Date From">
+            <DatePicker
+              v-model="draftSubmittedFrom"
+              aria-label="Submitted date from"
+              placeholder="From"
+              class="w-[180px]"
+            />
+          </FilterField>
+          <FilterField label="Submitted Date To">
+            <DatePicker
+              v-model="draftSubmittedTo"
+              aria-label="Submitted date to"
+              placeholder="To"
+              class="w-[180px]"
+            />
+          </FilterField>
+          <Button
+            variant="outline"
+            @click="
+              () => {
+                draftSubmittedFrom = ''
+                draftSubmittedTo = ''
+              }
+            "
           >
-            {{ option.name }}
-          </option>
-        </select>
-      </FilterField>
-      <FilterField label="Toolkit">
-        <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']">
-          <option v-for="option in toolkitOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </FilterField>
-      <Button variant="outline" @click="toggleMoreFilters">
-        More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-      </Button>
-    </div>
+            Clear
+          </Button>
+          <Button @click="applyAdvancedFilters">Apply Filters</Button>
+        </div>
 
-    <div
-      v-if="moreFiltersOpen"
-      class="mb-3 flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
-    >
-      <FilterField label="Submitted Date From">
-        <DatePicker
-          v-model="draftSubmittedFrom"
-          aria-label="Submitted date from"
-          placeholder="From"
-          class="w-[180px]"
-        />
-      </FilterField>
-      <FilterField label="Submitted Date To">
-        <DatePicker
-          v-model="draftSubmittedTo"
-          aria-label="Submitted date to"
-          placeholder="To"
-          class="w-[180px]"
-        />
-      </FilterField>
-      <Button
-        variant="outline"
-        @click="
-          () => {
-            draftSubmittedFrom = ''
-            draftSubmittedTo = ''
-          }
-        "
-      >
-        Clear
-      </Button>
-      <Button @click="applyAdvancedFilters">Apply Filters</Button>
-    </div>
-
-    <div v-if="advancedFilterCount" class="mb-3 flex flex-wrap gap-2">
-      <button
-        v-if="submittedFrom"
-        type="button"
-        class="rounded-full border bg-card px-2.5 py-1 text-xs"
-        @click="submittedFrom = ''"
-      >
-        Submitted after: {{ submittedFrom }} ×
-      </button>
-      <button
-        v-if="submittedTo"
-        type="button"
-        class="rounded-full border bg-card px-2.5 py-1 text-xs"
-        @click="submittedTo = ''"
-      >
-        Submitted before: {{ submittedTo }} ×
-      </button>
-    </div>
+        <div v-if="advancedFilterCount" class="flex flex-wrap gap-2">
+          <button
+            v-if="submittedFrom"
+            type="button"
+            class="rounded-full border bg-card px-2.5 py-1 text-xs"
+            @click="submittedFrom = ''"
+          >
+            Submitted after: {{ submittedFrom }} ×
+          </button>
+          <button
+            v-if="submittedTo"
+            type="button"
+            class="rounded-full border bg-card px-2.5 py-1 text-xs"
+            @click="submittedTo = ''"
+          >
+            Submitted before: {{ submittedTo }} ×
+          </button>
+        </div>
+      </CardContent>
+    </Card>
 
     <ListLoading v-if="loading" class="h-48" />
 
@@ -218,7 +222,7 @@ watch(
         />
       </div>
 
-      <Card class="mt-3.5">
+      <Card>
         <CardHeader>
           <CardTitle class="text-base">Support FTE By Standard Category</CardTitle>
         </CardHeader>
@@ -232,7 +236,7 @@ watch(
         </CardContent>
       </Card>
 
-      <Card class="mt-3.5">
+      <Card>
         <CardHeader>
           <CardTitle class="text-base">Granular Support Rows</CardTitle>
         </CardHeader>

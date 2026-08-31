@@ -47,7 +47,7 @@ const emit = defineEmits<{
             Select KPI Lines
           </Button>
         </div>
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>

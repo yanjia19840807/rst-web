@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { queryClient } from '@/api/query-client'
+import { captureDevIdentityFromQuery, stripDevIdentityQuery } from '@/auth/dev-identity'
 import { useSessionStore } from '@/auth/session'
 
 import { routes } from './routes'
@@ -12,9 +14,16 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  if (captureDevIdentityFromQuery(to.query)) {
+    const session = useSessionStore()
+    session.applyLocalIdentity()
+    queryClient.clear()
+    const query = stripDevIdentityQuery({ ...to.query }) ?? {}
+    return { path: to.path, query, hash: to.hash, replace: true }
+  }
   if (to.name !== 'home' && to.name !== 'not-found') return
   const session = useSessionStore()
-  await session.load()
+  session.applyLocalIdentity()
   return session.homePath
 })
 

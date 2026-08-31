@@ -68,7 +68,7 @@ const colCount = computed(() => {
 </script>
 
 <template>
-  <div class="rounded-md border">
+  <div class="w-0 min-w-full overflow-x-auto rounded-md border">
     <Table :class="tableClass">
       <TableHeader>
         <TableRow v-for="headerGroup in headerGroups" :key="headerGroup.id">

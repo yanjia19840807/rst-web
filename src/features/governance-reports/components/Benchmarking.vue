@@ -118,105 +118,109 @@ watch(
 </script>
 
 <template>
-  <div class="space-y-3.5">
-    <PageActions class="mb-0">
+  <div class="grid min-w-0 gap-4">
+    <PageActions>
       <Button @click="exportBenchmark">Export Benchmark</Button>
     </PageActions>
 
-    <div class="flex flex-wrap items-end gap-2.5">
-      <FilterField label="GBS Center">
-        <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']">
-          <option v-for="option in gbsOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </FilterField>
-      <FilterField label="Domain">
-        <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']">
-          <option v-for="option in domainOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </FilterField>
-      <FilterField label="PL1">
-        <select v-model="pl1Filter" :class="[selectClass, 'w-[170px]']">
-          <option v-for="option in pl1Options" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </FilterField>
-      <FilterField label="PL2">
-        <select v-model="pl2Filter" :class="[selectClass, 'w-[210px]']">
-          <option v-for="option in pl2Options" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </select>
-      </FilterField>
-      <FilterField label="PL3">
-        <select v-model="pl3Filter" :class="[selectClass, 'w-[220px]']">
-          <option value="All">All</option>
-          <option v-for="option in pl3Options" :key="option.code" :value="option.code">
-            {{ option.name }}
-          </option>
-        </select>
-      </FilterField>
-      <Button variant="outline" @click="toggleMoreFilters">
-        More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-      </Button>
-    </div>
+    <Card>
+      <CardContent class="space-y-3">
+        <div class="flex flex-wrap items-end gap-2.5">
+          <FilterField label="GBS Center">
+            <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']">
+              <option v-for="option in gbsOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </FilterField>
+          <FilterField label="Domain">
+            <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']">
+              <option v-for="option in domainOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </FilterField>
+          <FilterField label="PL1">
+            <select v-model="pl1Filter" :class="[selectClass, 'w-[170px]']">
+              <option v-for="option in pl1Options" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </FilterField>
+          <FilterField label="PL2">
+            <select v-model="pl2Filter" :class="[selectClass, 'w-[210px]']">
+              <option v-for="option in pl2Options" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </FilterField>
+          <FilterField label="PL3">
+            <select v-model="pl3Filter" :class="[selectClass, 'w-[220px]']">
+              <option value="All">All</option>
+              <option v-for="option in pl3Options" :key="option.code" :value="option.code">
+                {{ option.name }}
+              </option>
+            </select>
+          </FilterField>
+          <Button variant="outline" @click="toggleMoreFilters">
+            More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
+          </Button>
+        </div>
 
-    <div
-      v-if="moreFiltersOpen"
-      class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
-    >
-      <FilterField label="Submitted Date From">
-        <DatePicker
-          v-model="draftSubmittedFrom"
-          aria-label="Submitted date from"
-          placeholder="From"
-          class="w-[180px]"
-        />
-      </FilterField>
-      <FilterField label="Submitted Date To">
-        <DatePicker
-          v-model="draftSubmittedTo"
-          aria-label="Submitted date to"
-          placeholder="To"
-          class="w-[180px]"
-        />
-      </FilterField>
-      <Button
-        variant="outline"
-        @click="
-          () => {
-            draftSubmittedFrom = ''
-            draftSubmittedTo = ''
-          }
-        "
-      >
-        Clear
-      </Button>
-      <Button @click="applyAdvancedFilters">Apply Filters</Button>
-    </div>
+        <div
+          v-if="moreFiltersOpen"
+          class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+        >
+          <FilterField label="Submitted Date From">
+            <DatePicker
+              v-model="draftSubmittedFrom"
+              aria-label="Submitted date from"
+              placeholder="From"
+              class="w-[180px]"
+            />
+          </FilterField>
+          <FilterField label="Submitted Date To">
+            <DatePicker
+              v-model="draftSubmittedTo"
+              aria-label="Submitted date to"
+              placeholder="To"
+              class="w-[180px]"
+            />
+          </FilterField>
+          <Button
+            variant="outline"
+            @click="
+              () => {
+                draftSubmittedFrom = ''
+                draftSubmittedTo = ''
+              }
+            "
+          >
+            Clear
+          </Button>
+          <Button @click="applyAdvancedFilters">Apply Filters</Button>
+        </div>
 
-    <div v-if="advancedFilterCount" class="flex flex-wrap gap-2">
-      <button
-        v-if="submittedFrom"
-        type="button"
-        class="rounded-full border bg-card px-2.5 py-1 text-xs"
-        @click="submittedFrom = ''"
-      >
-        Submitted after: {{ submittedFrom }} ×
-      </button>
-      <button
-        v-if="submittedTo"
-        type="button"
-        class="rounded-full border bg-card px-2.5 py-1 text-xs"
-        @click="submittedTo = ''"
-      >
-        Submitted before: {{ submittedTo }} ×
-      </button>
-    </div>
+        <div v-if="advancedFilterCount" class="flex flex-wrap gap-2">
+          <button
+            v-if="submittedFrom"
+            type="button"
+            class="rounded-full border bg-card px-2.5 py-1 text-xs"
+            @click="submittedFrom = ''"
+          >
+            Submitted after: {{ submittedFrom }} ×
+          </button>
+          <button
+            v-if="submittedTo"
+            type="button"
+            class="rounded-full border bg-card px-2.5 py-1 text-xs"
+            @click="submittedTo = ''"
+          >
+            Submitted before: {{ submittedTo }} ×
+          </button>
+        </div>
+      </CardContent>
+    </Card>
 
     <ListLoading v-if="loading" class="h-48" />
 

@@ -184,7 +184,7 @@ function mismatchesOf(finding: ValidationFinding) {
                 {{ validationSummary() }}
               </span>
             </div>
-            <div class="overflow-x-auto rounded-lg border">
+            <div class="min-w-0 overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>

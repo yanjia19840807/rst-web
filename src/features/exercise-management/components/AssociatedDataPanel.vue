@@ -153,7 +153,7 @@ const editorActionLabel = computed(() => {
       <ListLoading v-if="loading" />
 
       <template v-else-if="activeTab === 'team'">
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -192,7 +192,7 @@ const editorActionLabel = computed(() => {
       </template>
 
       <template v-else-if="activeTab === 'support'">
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -243,7 +243,7 @@ const editorActionLabel = computed(() => {
       </template>
 
       <template v-else>
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>

@@ -94,7 +94,7 @@ function confirm() {
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>

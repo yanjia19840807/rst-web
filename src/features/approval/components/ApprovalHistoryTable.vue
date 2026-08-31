@@ -25,7 +25,7 @@ function decisionTone(decision?: string | null) {
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-lg border">
+  <div class="w-0 min-w-full overflow-x-auto rounded-lg border">
     <Table>
       <TableHeader>
         <TableRow>

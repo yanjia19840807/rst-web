@@ -132,7 +132,7 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="min-w-0">
     <Card>
       <CardHeader>
         <CardTitle class="text-base">RST Stuck In Validation</CardTitle>

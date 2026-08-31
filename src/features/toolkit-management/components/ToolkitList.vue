@@ -130,7 +130,7 @@ async function exportToolkit(toolkit: SupervisorToolkit) {
 </script>
 
 <template>
-  <div>
+  <div class="grid min-w-0 gap-4">
     <PageActions>
       <Button @click="router.push({ name: 'supervisor-toolkit-new' })">Add Toolkit</Button>
     </PageActions>

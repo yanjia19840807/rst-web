@@ -108,7 +108,7 @@ function formatSize(bytes: number | null | undefined) {
       <h3 class="text-sm font-bold">TMS Metrics</h3>
 
       <template v-if="source === 'manual'">
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableBody>
               <TableRow>
@@ -157,7 +157,7 @@ function formatSize(bytes: number | null | undefined) {
       </template>
 
       <template v-else>
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>

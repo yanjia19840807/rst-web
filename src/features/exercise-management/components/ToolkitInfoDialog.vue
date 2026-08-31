@@ -148,7 +148,7 @@ const subtaskRows = computed(() =>
             >
               No KPI lines selected for this toolkit.
             </div>
-            <div v-else class="overflow-x-auto rounded-lg border">
+            <div v-else class="min-w-0 overflow-x-auto rounded-lg border">
               <Table class="min-w-[720px]">
                 <TableHeader>
                   <TableRow>

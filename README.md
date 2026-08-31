@@ -12,8 +12,10 @@ nvm use
 npm install
 ```
 
-Copy `.env.example` to `.env.local`. Keep `VITE_ENABLE_MSW=true` while developing without
-`rst-api`; set it to `false` when a compatible API is available.
+Copy `.env.example` to `.env.local`. Test login is query-only
+(`?ccgid=&role=`); `/api` still goes to `rst-api`. Keep
+`VITE_ENABLE_MSW=false` unless you are developing without the API.
+Default person is Admin.
 
 ## Commands
 
@@ -91,6 +93,11 @@ server adapter, while production builds always call `VITE_API_BASE_URL`.
   rows and Delivery HC from the ACTIVE Timesheet.
 - Until login integration is available, route metadata drives the role badge while both Agent and
   Supervisor navigation remain visible for development.
+
+When `rst-api` has `app.security.dev-identity.override-enabled: true`, login
+identity comes from `?ccgid=&role=` (optional `&center=`). All other requests
+still go to `rst-api` with `X-Dev-*` headers. Default person is `ADMIN001` /
+Admin. `VITE_ENABLE_MSW` is only for developing without the API.
 
 ### Temporary REST contract
 

@@ -135,17 +135,6 @@ const advancedCount = computed(() => {
   return Number(Boolean(archivedFrom.value || archivedTo.value))
 })
 
-const hasCurrentFilters = computed(() =>
-  Boolean(
-    exerciseCodeFilter.value ||
-      pl3Filter.value !== 'All PL3' ||
-      toolkitFilter.value !== 'All toolkits' ||
-      advancedCount.value ||
-      (activeTab.value === IN_PROGRESS_TAB && reviewStageFilter.value !== 'All stages') ||
-      (activeTab.value === 'Archived' && finalStatusFilter.value !== 'All statuses'),
-  ),
-)
-
 function switchTab(tab: TabKey) {
   activeTab.value = tab
   exerciseCodeFilter.value = ''
@@ -198,28 +187,6 @@ function applyAdvanced() {
   } else {
     archivedFrom.value = draftArchivedFrom.value
     archivedTo.value = draftArchivedTo.value
-  }
-  resetPage()
-  advancedOpen.value = null
-}
-
-function clearCurrentFilters() {
-  exerciseCodeFilter.value = ''
-  appliedExerciseCode.value = ''
-  pl3Filter.value = 'All PL3'
-  toolkitFilter.value = 'All toolkits'
-  if (activeTab.value === IN_PROGRESS_TAB) {
-    createdFrom.value = ''
-    createdTo.value = ''
-    officialScenarioFilter.value = 'All scenarios'
-    reviewStageFilter.value = 'All stages'
-    reviewerFilter.value = 'All reviewers'
-    submittedFrom.value = ''
-    submittedTo.value = ''
-  } else {
-    finalStatusFilter.value = 'All statuses'
-    archivedFrom.value = ''
-    archivedTo.value = ''
   }
   resetPage()
   advancedOpen.value = null
@@ -317,7 +284,7 @@ watch(
 </script>
 
 <template>
-  <div class="grid gap-4">
+  <div class="grid min-w-0 gap-4">
     <PageActions>
       <Button @click="openCreate()">Create New Exercise</Button>
     </PageActions>
@@ -340,17 +307,7 @@ watch(
             {{ tab }}
           </button>
         </div>
-        <div class="flex items-center justify-between gap-2">
-          <CardTitle class="text-base">Exercises</CardTitle>
-          <button
-            v-if="hasCurrentFilters"
-            type="button"
-            class="text-sm font-semibold text-primary"
-            @click="clearCurrentFilters"
-          >
-            Clear All
-          </button>
-        </div>
+        <CardTitle class="text-base">Exercises</CardTitle>
       </CardHeader>
       <CardContent class="space-y-3">
         <ExerciseListFilters

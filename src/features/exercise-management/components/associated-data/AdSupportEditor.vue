@@ -276,7 +276,7 @@ function frequencyLabel(code: string) {
         </Button>
       </div>
 
-      <div class="overflow-x-auto rounded-md border">
+      <div class="min-w-0 overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

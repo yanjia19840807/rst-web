@@ -232,7 +232,7 @@ function selectTab(tab: TabKey) {
           <CardDescription>Open grants. Revoke to end access immediately.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div class="overflow-x-auto rounded-lg border">
+          <div class="min-w-0 overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -280,7 +280,7 @@ function selectTab(tab: TabKey) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -325,7 +325,7 @@ function selectTab(tab: TabKey) {
         <CardDescription>Ended authorizations. Actions taken stay on the documents.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div class="overflow-x-auto rounded-lg border">
+        <div class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
