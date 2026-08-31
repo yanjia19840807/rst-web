@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import ListLoading from '@/components/ListLoading.vue'
+import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,28 +31,64 @@ const props = defineProps<{
   run?: TimesheetSyncRunHeader | null
 }>()
 
-const detailQuery = useTimesheetSyncRunQuery(() => (open.value ? props.runId : null))
+const page = ref(1)
+const pageSize = ref(10)
+
+const issuesQuery = computed(() =>
+  open.value && props.runId
+    ? { id: props.runId, page: page.value, pageSize: pageSize.value }
+    : null,
+)
+
+const detailQuery = useTimesheetSyncRunQuery(issuesQuery)
 
 const issues = computed<TimesheetSyncIssue[]>(() => {
-  const rows = detailQuery.data.value?.issues ?? []
+  const rows = detailQuery.data.value?.issues.items ?? []
   if (rows.length) return rows
   const header = detailQuery.data.value?.run ?? props.run
-  if (!header?.errorCode && !header?.errorMessage) return []
-  return [
-    {
-      id: `${header.id}-run-error`,
-      code: header.errorCode || 'FAILED',
-      message: header.errorMessage || 'Timesheet sync failed.',
-      empCcgid: null,
-      positionId: null,
-      pl3Code: null,
-      sourceRow: null,
-    },
-  ]
+  if (page.value === 1 && (header?.errorCode || header?.errorMessage)) {
+    return [
+      {
+        id: `${header.id}-run-error`,
+        code: header.errorCode || 'FAILED',
+        message: header.errorMessage || 'Timesheet sync failed.',
+        empCcgid: null,
+        positionId: null,
+        pl3Code: null,
+        sourceRow: null,
+      },
+    ]
+  }
+  return []
+})
+
+const total = computed(() => {
+  const fromApi = detailQuery.data.value?.issues.total ?? 0
+  if (fromApi > 0) return fromApi
+  return issues.value.length
 })
 
 const fileName = computed(
   () => detailQuery.data.value?.run.sourceFileName || props.run?.sourceFileName || '',
+)
+
+watch(
+  () => [open.value, props.runId] as const,
+  () => {
+    page.value = 1
+  },
+)
+
+watch(
+  () => ({
+    totalPages: detailQuery.data.value?.issues.totalPages,
+    fetching: detailQuery.isFetching.value,
+  }),
+  ({ totalPages, fetching }) => {
+    if (!fetching && totalPages != null && page.value > totalPages) {
+      page.value = totalPages
+    }
+  },
 )
 </script>
 
@@ -66,8 +103,8 @@ const fileName = computed(
         </DialogDescription>
       </DialogHeader>
 
-      <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <ListLoading v-if="detailQuery.isPending.value" />
+      <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        <ListLoading v-if="detailQuery.isPending.value && !detailQuery.data.value" />
         <p
           v-else-if="detailQuery.isError.value"
           class="text-sm text-destructive"
@@ -99,6 +136,21 @@ const fileName = computed(
             </TableBody>
           </Table>
         </div>
+
+        <TablePager
+          v-if="total > 0"
+          :total="total"
+          :page="page"
+          :page-size="pageSize"
+          label="issues"
+          @update:page="page = $event"
+          @update:page-size="
+            (size) => {
+              pageSize = size
+              page = 1
+            }
+          "
+        />
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">

@@ -45,6 +45,81 @@ const extraRuns: TimesheetSyncRunHeader[] = Array.from({ length: 23 }, (_, index
 
 const allRuns = [daily, monthly, ...extraRuns]
 
+function pageOf<T>(items: T[], request: Request) {
+  const url = new URL(request.url)
+  const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1)
+  const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize') ?? '10') || 10))
+  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase()
+  const filtered = q
+    ? items.filter((item) => JSON.stringify(item).toLowerCase().includes(q))
+    : items
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const from = (safePage - 1) * pageSize
+  return {
+    items: filtered.slice(from, from + pageSize),
+    page: safePage,
+    pageSize,
+    total,
+    totalPages,
+  }
+}
+
+const mockPeople = [
+  {
+    ccgid: 'S00000001',
+    empId: 'EMP-1',
+    name: 'Agent One',
+    email: 's00000001@dev.local',
+    center: 'GBS CHINA',
+    positionId: 'EMP-POS-1',
+  },
+  {
+    ccgid: 'S00000005',
+    empId: 'EMP-2',
+    name: 'Agent Two',
+    email: 's00000005@dev.local',
+    center: 'Kuala Lumpur',
+    positionId: 'EMP-POS-2',
+  },
+]
+
+const mockPositions = [
+  { positionId: 'EMP-POS-1', roleType: 'PRODUCTION', parentPositionId: 'POS-SUP-1' },
+  { positionId: 'POS-SUP-1', roleType: 'SUPERVISOR', parentPositionId: 'POS-SRM-1' },
+  { positionId: 'POS-SRM-1', roleType: 'SR_MANAGER', parentPositionId: 'POS-DH-1' },
+  { positionId: 'POS-DH-1', roleType: 'DOMAIN_HEAD', parentPositionId: null },
+]
+
+const mockScopes = [
+  {
+    supervisorPositionId: 'POS-SUP-1',
+    center: 'GBS CHINA',
+    domain: 'Finance',
+    pl1: 'PL1',
+    pl2: 'PL2',
+    pl3Code: 'PL3',
+    pl3Name: 'PL3 Name',
+  },
+]
+
+const mockAssignments = [
+  { empCcgid: 'S00000001', empId: 'EMP-1', supervisorPositionId: 'POS-SUP-1', pl3Code: 'PL3' },
+  { empCcgid: 'S00000005', empId: 'EMP-2', supervisorPositionId: 'POS-SUP-1', pl3Code: 'PL3' },
+]
+
+const mockKpis = [
+  {
+    supervisorPositionId: 'POS-SUP-1',
+    pl3Code: 'PL3',
+    carrier: 'CMA',
+    site: 'Site A',
+    customerCountry: 'MY',
+    hc: '2.000000',
+  },
+]
+
 let alertConfig = {
   enabled: false,
   recipients: [] as string[],
@@ -95,12 +170,77 @@ export const timesheetSyncHandlers = [
       },
     })
   }),
-  http.get('*/api/v1/timesheet/sync/:id', ({ params }) =>
+  http.get('*/api/v1/timesheet/sync/tables/filters', () =>
     HttpResponse.json({
-      run: allRuns.find((row) => row.id === params.id) ?? daily,
-      issues: [],
+      peopleCenters: ['GBS CHINA', 'Kuala Lumpur'],
+      scopeCenters: ['GBS CHINA'],
+      scopeDomains: ['Finance'],
     }),
   ),
+  http.get('*/api/v1/timesheet/sync/tables/people', ({ request }) => {
+    const url = new URL(request.url)
+    const center = url.searchParams.get('center') ?? ''
+    const rows = mockPeople.filter((row) => !center || row.center === center)
+    return HttpResponse.json(pageOf(rows, request))
+  }),
+  http.get('*/api/v1/timesheet/sync/tables/positions', ({ request }) => {
+    const url = new URL(request.url)
+    const roleType = url.searchParams.get('roleType') ?? ''
+    const rows = mockPositions.filter((row) => !roleType || row.roleType === roleType)
+    return HttpResponse.json(pageOf(rows, request))
+  }),
+  http.get('*/api/v1/timesheet/sync/tables/scopes', ({ request }) => {
+    const url = new URL(request.url)
+    const center = url.searchParams.get('center') ?? ''
+    const domain = url.searchParams.get('domain') ?? ''
+    const rows = mockScopes.filter(
+      (row) => (!center || row.center === center) && (!domain || row.domain === domain),
+    )
+    return HttpResponse.json(pageOf(rows, request))
+  }),
+  http.get('*/api/v1/timesheet/sync/tables/assignments', ({ request }) => {
+    const url = new URL(request.url)
+    const supervisorPositionId = url.searchParams.get('supervisorPositionId') ?? ''
+    const pl3Code = url.searchParams.get('pl3Code') ?? ''
+    const rows = mockAssignments.filter(
+      (row) =>
+        (!supervisorPositionId || row.supervisorPositionId === supervisorPositionId) &&
+        (!pl3Code || row.pl3Code === pl3Code),
+    )
+    return HttpResponse.json(pageOf(rows, request))
+  }),
+  http.get('*/api/v1/timesheet/sync/tables/kpis', ({ request }) => {
+    const url = new URL(request.url)
+    const supervisorPositionId = url.searchParams.get('supervisorPositionId') ?? ''
+    const pl3Code = url.searchParams.get('pl3Code') ?? ''
+    const rows = mockKpis.filter(
+      (row) =>
+        (!supervisorPositionId || row.supervisorPositionId === supervisorPositionId) &&
+        (!pl3Code || row.pl3Code === pl3Code),
+    )
+    return HttpResponse.json(pageOf(rows, request))
+  }),
+  http.get('*/api/v1/timesheet/sync/:id', ({ params, request }) => {
+    const run = allRuns.find((row) => row.id === params.id) ?? daily
+    const issues =
+      run.status === 'FAILED'
+        ? [
+            {
+              id: `${run.id}-issue-1`,
+              code: run.errorCode || 'FAILED',
+              message: run.errorMessage || 'Timesheet sync failed.',
+              empCcgid: null,
+              positionId: null,
+              pl3Code: null,
+              sourceRow: 2,
+            },
+          ]
+        : []
+    return HttpResponse.json({
+      run,
+      issues: pageOf(issues, request),
+    })
+  }),
   http.post('*/api/v1/timesheet/sync', async () => {
     return HttpResponse.json(daily, { status: 200 })
   }),

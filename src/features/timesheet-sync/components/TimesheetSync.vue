@@ -14,6 +14,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { useUploadTimesheetSync } from '../api/mutations'
 import { useTimesheetSyncOverviewQuery } from '../api/queries'
 import type { TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
+import TimesheetSnapshotTables from './TimesheetSnapshotTables.vue'
 import TimesheetSyncAlertDialog from './TimesheetSyncAlertDialog.vue'
 import TimesheetSyncIssuesDialog from './TimesheetSyncIssuesDialog.vue'
 import {
@@ -179,6 +180,8 @@ function openIssues(row: TimesheetSyncRunHeader) {
         />
       </CardContent>
     </Card>
+
+    <TimesheetSnapshotTables />
 
     <Card class="mt-4">
       <CardHeader>
