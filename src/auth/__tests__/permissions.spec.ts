@@ -16,7 +16,7 @@ describe('permissionsForRoles', () => {
         PERMISSIONS.supportCategoryManage,
       ]),
     )
+    expect(permissions).toContain(PERMISSIONS.domainHeadConfig)
     expect(permissions).not.toContain(PERMISSIONS.approvalQueue)
-    expect(permissions).not.toContain(PERMISSIONS.domainHeadConfig)
   })
 })

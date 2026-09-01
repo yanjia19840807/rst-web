@@ -63,10 +63,11 @@ export function useTimesheetSyncAlertQuery(enabled: () => boolean) {
   })
 }
 
-export function useTimesheetSnapshotFiltersQuery() {
+export function useTimesheetSnapshotFiltersQuery(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: timesheetSyncQueryKeys.tableFilters,
     queryFn: () => timesheetSyncApi.tableFilters(),
+    enabled: computed(() => toValue(enabled)),
   })
 }
 

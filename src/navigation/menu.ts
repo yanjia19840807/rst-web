@@ -46,11 +46,6 @@ export const menuItems: readonly MenuItem[] = [
     match: ['/approver/queue', '/approver/submissions'],
   },
   {
-    label: 'Domain Head',
-    to: '/approver/domain-heads',
-    permission: PERMISSIONS.domainHeadConfig,
-  },
-  {
     label: 'Timesheet Sync',
     to: '/approver/timesheet-sync',
     permission: PERMISSIONS.timesheetSync,

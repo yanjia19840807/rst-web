@@ -170,13 +170,7 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: '/approver/domain-heads',
-    name: 'approver-domain-heads',
-    component: () => import('@/pages/approver/DomainHeadsPage.vue'),
-    meta: {
-      title: 'Domain Head',
-      subtitle: 'Assign one CDH approver for each GBS Domain in your Center.',
-      roles: ['approver'],
-    },
+    redirect: '/approver/timesheet-sync',
   },
   {
     path: '/approver/timesheet-sync',

@@ -16,9 +16,12 @@ const people: TimesheetPerson[] = [
   },
 ]
 
+const centers = ['GBS CHINA', 'Kuala Lumpur']
+
 let page: DomainHeadPage = {
   center: 'Kuala Lumpur',
   dailyAvailable: true,
+  monthlyAvailable: true,
   remountedCount: null,
   domains: [
     {
@@ -39,7 +42,15 @@ let page: DomainHeadPage = {
 }
 
 export const domainHeadHandlers = [
-  http.get('*/api/v1/domain-heads', () => HttpResponse.json(page)),
+  http.get('*/api/v1/domain-heads/centers', () => HttpResponse.json(centers)),
+  http.get('*/api/v1/domain-heads', ({ request }) => {
+    const url = new URL(request.url)
+    const center = url.searchParams.get('center')?.trim()
+    if (center) {
+      return HttpResponse.json({ ...page, center })
+    }
+    return HttpResponse.json(page)
+  }),
   http.put('*/api/v1/domain-heads', async ({ request }) => {
     const body = (await request.json()) as SaveDomainHeadsRequest
     const byPosition = new Map(people.map((item) => [item.positionId, item]))
@@ -64,7 +75,12 @@ export const domainHeadHandlers = [
         status: person ? ('CONFIGURED' as const) : ('STALE' as const),
       }
     })
-    page = { ...page, remountedCount: 0, domains: nextDomains }
+    page = {
+      ...page,
+      center: body.center?.trim() || page.center,
+      remountedCount: 0,
+      domains: nextDomains,
+    }
     return HttpResponse.json(page)
   }),
 ]

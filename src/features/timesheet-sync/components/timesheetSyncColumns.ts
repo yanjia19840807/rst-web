@@ -63,6 +63,11 @@ export function createTimesheetActiveColumns(): ColumnDef<TimesheetActiveRow>[] 
       cell: ({ row }) => dash(row.original.run?.syncDate),
     }),
     activeHelper.display({
+      id: 'center',
+      header: 'Center',
+      cell: ({ row }) => dash(row.original.run?.center),
+    }),
+    activeHelper.display({
       id: 'sourceType',
       header: 'Source',
       cell: ({ row }) => dash(row.original.run?.sourceType),

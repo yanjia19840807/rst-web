@@ -3,6 +3,7 @@ export type TimesheetSyncRunHeader = {
   kind: 'DAILY' | 'MONTHLY' | string
   status: string
   syncDate: string
+  center: string | null
   attemptNo: number
   rowCount: number | null
   sourceType: string | null
@@ -99,13 +100,19 @@ export type TimesheetSnapshotPerson = {
 
 export type TimesheetSnapshotPosition = {
   agentPositionId: string
+  agentName: string | null
   supervisorPositionId: string | null
+  supervisorName: string | null
   srManagerPositionId: string | null
+  srManagerName: string | null
   domainHeadPositionId: string | null
+  domainHeadName: string | null
+  center: string | null
 }
 
 export type TimesheetSnapshotScope = {
   supervisorPositionId: string
+  supervisorName: string | null
   center: string
   domain: string | null
   pl1: string | null
@@ -115,15 +122,21 @@ export type TimesheetSnapshotScope = {
 }
 
 export type TimesheetSnapshotAssignment = {
-  empCcgid: string
-  empId: string | null
+  agentPositionId: string
+  agentName: string | null
   supervisorPositionId: string
+  supervisorName: string | null
   pl3Code: string
+  pl3Name: string | null
+  center: string
 }
 
 export type TimesheetSnapshotKpi = {
   supervisorPositionId: string
+  supervisorName: string | null
+  center: string
   pl3Code: string
+  pl3Name: string | null
   carrier: string
   site: string
   customerCountry: string
@@ -138,6 +151,7 @@ export type TimesheetSnapshotPeopleQuery = {
 }
 
 export type TimesheetSnapshotPositionsQuery = {
+  center?: string
   q?: string
   page: number
   pageSize: number
@@ -145,24 +159,25 @@ export type TimesheetSnapshotPositionsQuery = {
 
 export type TimesheetSnapshotScopesQuery = {
   center?: string
-  domain?: string
-  q?: string
+  supervisor?: string
+  pl3Code?: string
   page: number
   pageSize: number
 }
 
 export type TimesheetSnapshotAssignmentsQuery = {
-  supervisorPositionId?: string
+  center?: string
+  agent?: string
+  supervisor?: string
   pl3Code?: string
-  q?: string
   page: number
   pageSize: number
 }
 
 export type TimesheetSnapshotKpisQuery = {
-  supervisorPositionId?: string
+  center?: string
+  supervisor?: string
   pl3Code?: string
-  q?: string
   page: number
   pageSize: number
 }

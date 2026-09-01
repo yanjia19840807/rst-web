@@ -7,9 +7,13 @@ import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
+
+import { PERMISSIONS } from '@/auth/permissions'
+import { useSessionStore } from '@/auth/session'
+import DomainHeadsDialog from '@/features/domain-heads/components/DomainHeadsDialog.vue'
 
 import { useUploadTimesheetSync } from '../api/mutations'
 import { useTimesheetSyncOverviewQuery } from '../api/queries'
@@ -42,12 +46,16 @@ const listQuery = computed<TimesheetSyncOverviewQuery>(() => ({
   pageSize: pageSize.value,
 }))
 
+const session = useSessionStore()
 const overviewQuery = useTimesheetSyncOverviewQuery(listQuery)
 const uploadMutation = useUploadTimesheetSync()
 const selectedRun = ref<TimesheetSyncRunHeader | null>(null)
 const issuesOpen = ref(false)
+const mappedOpen = ref(false)
 const alertOpen = ref(false)
+const domainHeadOpen = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const canConfigureDomainHeads = computed(() => session.hasPermission(PERMISSIONS.domainHeadConfig))
 
 const overview = computed(() => overviewQuery.data.value)
 const runs = computed(() => overview.value?.runs.items ?? [])
@@ -156,18 +164,32 @@ function openIssues(row: TimesheetSyncRunHeader) {
         @change="onFile"
       />
       <Button variant="outline" @click="alertOpen = true">Email alerts</Button>
+      <Button
+        v-if="canConfigureDomainHeads"
+        variant="outline"
+        @click="domainHeadOpen = true"
+      >
+        Domain Head
+      </Button>
       <Button :disabled="uploadMutation.isPending.value" @click="fileInput?.click()">
         {{ uploadMutation.isPending.value ? 'Uploading…' : 'Upload and sync' }}
       </Button>
     </PageActions>
 
     <Card>
-      <CardHeader>
-        <CardTitle>ACTIVE snapshots</CardTitle>
-        <CardDescription>
-          Latest successful Daily and Monthly snapshots. Auto-sync still reads SharePoint;
-          uploads go to Manual.
-        </CardDescription>
+      <CardHeader class="items-center">
+        <div>
+          <CardTitle>ACTIVE snapshots</CardTitle>
+          <CardDescription>
+            Latest successful Daily and Monthly snapshots. Auto-sync still reads SharePoint;
+            uploads go to Manual.
+          </CardDescription>
+        </div>
+        <CardAction>
+          <Button variant="link" size="sm" class="h-auto px-0 font-semibold" @click="mappedOpen = true">
+            Mapped tables
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         <DataTable
@@ -180,8 +202,6 @@ function openIssues(row: TimesheetSyncRunHeader) {
         />
       </CardContent>
     </Card>
-
-    <TimesheetSnapshotTables />
 
     <Card class="mt-4">
       <CardHeader>
@@ -257,11 +277,13 @@ function openIssues(row: TimesheetSyncRunHeader) {
       </CardContent>
     </Card>
 
+    <TimesheetSnapshotTables v-model:open="mappedOpen" />
     <TimesheetSyncIssuesDialog
       v-model:open="issuesOpen"
       :run-id="selectedRun?.id ?? null"
       :run="selectedRun"
     />
     <TimesheetSyncAlertDialog v-model:open="alertOpen" />
+    <DomainHeadsDialog v-model:open="domainHeadOpen" />
   </div>
 </template>

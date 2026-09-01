@@ -11,11 +11,13 @@ export type DomainHeadRow = {
 export type DomainHeadPage = {
   center: string
   dailyAvailable: boolean
+  monthlyAvailable: boolean
   remountedCount: number | null
   domains: DomainHeadRow[]
 }
 
 export type SaveDomainHeadsRequest = {
+  center?: string
   mappings: Array<{
     domain: string
     positionId: string | null

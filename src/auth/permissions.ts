@@ -46,6 +46,7 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   HO: [...SHARED_REPORTS],
   ADMIN: [
     PERMISSIONS.timesheetSync,
+    PERMISSIONS.domainHeadConfig,
     PERMISSIONS.governanceValidationWorkflow,
     PERMISSIONS.supportCategoryManage,
     ...SHARED_REPORTS,

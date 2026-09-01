@@ -9,7 +9,7 @@ export function useSaveDomainHeads() {
   return useMutation({
     mutationFn: (body: SaveDomainHeadsRequest) => domainHeadApi.save(body),
     onSuccess: (page) => {
-      queryClient.setQueryData(domainHeadQueryKeys.page(), page)
+      queryClient.setQueryData(domainHeadQueryKeys.page(page.center), page)
     },
   })
 }
