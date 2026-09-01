@@ -34,11 +34,18 @@ export function createSnapshotPersonColumns(): ColumnDef<TimesheetSnapshotPerson
 
 export function createSnapshotPositionColumns(): ColumnDef<TimesheetSnapshotPosition>[] {
   return [
-    positionHelper.accessor('positionId', { header: 'Position' }),
-    positionHelper.accessor('roleType', { header: 'Role' }),
-    positionHelper.accessor((row) => dash(row.parentPositionId), {
-      id: 'parentPositionId',
-      header: 'Parent position',
+    positionHelper.accessor('agentPositionId', { header: 'Agent position' }),
+    positionHelper.accessor((row) => dash(row.supervisorPositionId), {
+      id: 'supervisorPositionId',
+      header: 'Supervisor position',
+    }),
+    positionHelper.accessor((row) => dash(row.srManagerPositionId), {
+      id: 'srManagerPositionId',
+      header: 'SR Manager position',
+    }),
+    positionHelper.accessor((row) => dash(row.domainHeadPositionId), {
+      id: 'domainHeadPositionId',
+      header: 'Domain Head position',
     }),
   ]
 }

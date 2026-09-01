@@ -86,10 +86,18 @@ const mockPeople = [
 ]
 
 const mockPositions = [
-  { positionId: 'EMP-POS-1', roleType: 'PRODUCTION', parentPositionId: 'POS-SUP-1' },
-  { positionId: 'POS-SUP-1', roleType: 'SUPERVISOR', parentPositionId: 'POS-SRM-1' },
-  { positionId: 'POS-SRM-1', roleType: 'SR_MANAGER', parentPositionId: 'POS-DH-1' },
-  { positionId: 'POS-DH-1', roleType: 'DOMAIN_HEAD', parentPositionId: null },
+  {
+    agentPositionId: 'EMP-POS-1',
+    supervisorPositionId: 'POS-SUP-1',
+    srManagerPositionId: 'POS-SRM-1',
+    domainHeadPositionId: 'POS-DH-1',
+  },
+  {
+    agentPositionId: 'EMP-POS-2',
+    supervisorPositionId: 'POS-SUP-1',
+    srManagerPositionId: 'POS-SRM-1',
+    domainHeadPositionId: 'POS-DH-1',
+  },
 ]
 
 const mockScopes = [
@@ -184,10 +192,7 @@ export const timesheetSyncHandlers = [
     return HttpResponse.json(pageOf(rows, request))
   }),
   http.get('*/api/v1/timesheet/sync/tables/positions', ({ request }) => {
-    const url = new URL(request.url)
-    const roleType = url.searchParams.get('roleType') ?? ''
-    const rows = mockPositions.filter((row) => !roleType || row.roleType === roleType)
-    return HttpResponse.json(pageOf(rows, request))
+    return HttpResponse.json(pageOf(mockPositions, request))
   }),
   http.get('*/api/v1/timesheet/sync/tables/scopes', ({ request }) => {
     const url = new URL(request.url)

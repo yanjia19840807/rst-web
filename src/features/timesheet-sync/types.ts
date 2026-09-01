@@ -98,9 +98,10 @@ export type TimesheetSnapshotPerson = {
 }
 
 export type TimesheetSnapshotPosition = {
-  positionId: string
-  roleType: string
-  parentPositionId: string | null
+  agentPositionId: string
+  supervisorPositionId: string | null
+  srManagerPositionId: string | null
+  domainHeadPositionId: string | null
 }
 
 export type TimesheetSnapshotScope = {
@@ -137,7 +138,6 @@ export type TimesheetSnapshotPeopleQuery = {
 }
 
 export type TimesheetSnapshotPositionsQuery = {
-  roleType?: string
   q?: string
   page: number
   pageSize: number

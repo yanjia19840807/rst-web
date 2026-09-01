@@ -72,6 +72,16 @@ const fileName = computed(
   () => detailQuery.data.value?.run.sourceFileName || props.run?.sourceFileName || '',
 )
 
+function displayIssueMessage(issue: TimesheetSyncIssue) {
+  let text = issue.message.trim()
+  if (issue.sourceRow != null) {
+    text = text.replace(new RegExp(`^Row\\s+${issue.sourceRow}\\s+`, 'i'), '')
+    text = text.replace(/^is missing /i, 'Missing ')
+    text = text.replace(/^date /, 'Date ')
+  }
+  return text
+}
+
 watch(
   () => [open.value, props.runId] as const,
   () => {
@@ -122,16 +132,14 @@ watch(
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Row</TableHead>
-                <TableHead>Error Message</TableHead>
-                <TableHead>CCGID</TableHead>
+                <TableHead class="w-20">Row</TableHead>
+                <TableHead>Error</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="issue in issues" :key="issue.id">
                 <TableCell>{{ issue.sourceRow ?? '—' }}</TableCell>
-                <TableCell>{{ issue.message }}</TableCell>
-                <TableCell>{{ issue.empCcgid || '—' }}</TableCell>
+                <TableCell class="whitespace-normal">{{ displayIssueMessage(issue) }}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

@@ -34,7 +34,7 @@ const tabs: Array<{ key: TimesheetSnapshotTab; label: string; kind: 'Daily' | 'M
 
 const descriptions: Record<TimesheetSnapshotTab, string> = {
   people: 'ACTIVE Daily identities. Search name, CCGID, emp ID or email.',
-  positions: 'ACTIVE Daily org tree. Search position or parent position.',
+  positions: 'ACTIVE Daily org tree. One row per Agent seat with the parent chain.',
   scopes: 'ACTIVE Monthly Toolkit scopes (supervisor × center × PL3).',
   assignments: 'ACTIVE Monthly person-to-scope assignments.',
   kpis: 'ACTIVE Monthly Delivery HC by carrier, site and country.',
@@ -48,7 +48,6 @@ const appliedQ = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 const peopleCenter = ref('')
-const roleType = ref('')
 const scopeCenter = ref('')
 const scopeDomain = ref('')
 const draftSupervisorPositionId = ref('')
@@ -68,7 +67,6 @@ const peopleQuery = computed(() => ({
   pageSize: pageSize.value,
 }))
 const positionsQuery = computed(() => ({
-  roleType: roleType.value || undefined,
   q: appliedQ.value || undefined,
   page: page.value,
   pageSize: pageSize.value,
@@ -133,7 +131,7 @@ const pagerLabels: Record<TimesheetSnapshotTab, string> = {
 
 const searchPlaceholders: Record<TimesheetSnapshotTab, string> = {
   people: 'Name, CCGID, emp ID, email',
-  positions: 'Position or parent ID',
+  positions: 'Agent, supervisor, SR Manager or Domain Head ID',
   scopes: 'PL3, supervisor, PL1, PL2',
   assignments: 'CCGID or emp ID',
   kpis: 'Carrier, site or country',
@@ -141,7 +139,7 @@ const searchPlaceholders: Record<TimesheetSnapshotTab, string> = {
 
 const tableClasses: Record<TimesheetSnapshotTab, string> = {
   people: 'min-w-[960px]',
-  positions: 'min-w-[720px]',
+  positions: 'min-w-[960px]',
   scopes: 'min-w-[1080px]',
   assignments: 'min-w-[800px]',
   kpis: 'min-w-[960px]',
@@ -156,7 +154,6 @@ const loading = computed(
 const hasFilters = computed(() => {
   if (appliedQ.value) return true
   if (activeTab.value === 'people') return Boolean(peopleCenter.value)
-  if (activeTab.value === 'positions') return Boolean(roleType.value)
   if (activeTab.value === 'scopes') return Boolean(scopeCenter.value || scopeDomain.value)
   return Boolean(supervisorPositionId.value || pl3Code.value)
 })
@@ -188,7 +185,7 @@ watchDebounced(
   { debounce: 400 },
 )
 
-watch([peopleCenter, roleType, scopeCenter, scopeDomain], () => {
+watch([peopleCenter, scopeCenter, scopeDomain], () => {
   page.value = 1
 })
 
@@ -197,7 +194,6 @@ watch(activeTab, () => {
   appliedQ.value = ''
   page.value = 1
   peopleCenter.value = ''
-  roleType.value = ''
   scopeCenter.value = ''
   scopeDomain.value = ''
   draftSupervisorPositionId.value = ''
@@ -218,12 +214,28 @@ watch(
   },
 )
 
-function rowId(row: { ccgid?: string; empCcgid?: string; positionId?: string; supervisorPositionId?: string; pl3Code?: string; center?: string; carrier?: string; site?: string; customerCountry?: string }) {
+function rowId(row: {
+  ccgid?: string
+  empCcgid?: string
+  positionId?: string
+  agentPositionId?: string
+  supervisorPositionId?: string
+  srManagerPositionId?: string
+  domainHeadPositionId?: string
+  pl3Code?: string
+  center?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
+}) {
   return [
     row.ccgid,
     row.empCcgid,
     row.positionId,
+    row.agentPositionId,
     row.supervisorPositionId,
+    row.srManagerPositionId,
+    row.domainHeadPositionId,
     row.pl3Code,
     row.center,
     row.carrier,
@@ -274,16 +286,6 @@ function rowId(row: { ccgid?: string; empCcgid?: string; positionId?: string; su
           <select v-model="peopleCenter" :class="[selectClass, 'w-[200px]']">
             <option value="">All centers</option>
             <option v-for="center in peopleCenters" :key="center" :value="center">{{ center }}</option>
-          </select>
-        </label>
-        <label v-if="activeTab === 'positions'" class="grid gap-1.5 text-xs text-muted-foreground">
-          Role
-          <select v-model="roleType" :class="[selectClass, 'w-[200px]']">
-            <option value="">All roles</option>
-            <option value="PRODUCTION">PRODUCTION</option>
-            <option value="SUPERVISOR">SUPERVISOR</option>
-            <option value="SR_MANAGER">SR_MANAGER</option>
-            <option value="DOMAIN_HEAD">DOMAIN_HEAD</option>
           </select>
         </label>
         <template v-if="activeTab === 'scopes'">
