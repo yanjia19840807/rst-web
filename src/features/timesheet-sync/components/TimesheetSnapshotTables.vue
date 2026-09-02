@@ -286,22 +286,24 @@ function rowId(row: {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="flex h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
-      <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
+    <DialogContent
+      class="flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[85vh] sm:max-h-[85vh] sm:max-w-6xl sm:rounded-xl"
+    >
+      <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-4 py-3 sm:px-5 sm:py-4">
         <DialogTitle>Mapped tables</DialogTitle>
         <DialogDescription>
           Rows computed from the current ACTIVE Daily and Monthly snapshots.
         </DialogDescription>
       </DialogHeader>
 
-      <div class="min-h-0 flex-1 overflow-hidden px-5 py-4">
-        <div class="flex h-full min-h-0 flex-col gap-4 rounded-lg border bg-card p-4">
-          <div class="flex shrink-0 gap-1 border-b">
+      <div class="min-h-0 min-w-0 flex-1 overflow-hidden px-4 py-3 sm:px-5 sm:py-4">
+        <div class="flex h-full min-h-0 min-w-0 flex-col gap-3 rounded-lg border bg-card p-3 sm:gap-4 sm:p-4">
+          <div class="-mx-1 flex shrink-0 gap-1 overflow-x-auto border-b px-1">
             <button
               v-for="tab in tabs"
               :key="tab.key"
               type="button"
-              class="border-b-2 px-3.5 py-2 text-sm transition-colors"
+              class="shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors sm:px-3.5"
               :class="
                 activeTab === tab.key
                   ? 'border-primary font-semibold text-primary'
@@ -315,71 +317,103 @@ function rowId(row: {
           </div>
 
           <p class="shrink-0 text-sm text-muted-foreground">{{ descriptions[activeTab] }}</p>
-          <div class="flex shrink-0 flex-wrap items-end gap-2.5">
+          <div class="grid shrink-0 grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-end">
             <label
               v-if="activeTab === 'people' || activeTab === 'positions'"
-              class="grid gap-1.5 text-xs text-muted-foreground"
+              class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Search
-              <Input v-model="draftQ" class="w-[260px]" :placeholder="searchPlaceholders[activeTab]" />
+              <Input
+                v-model="draftQ"
+                class="w-full min-w-0 sm:w-[260px]"
+                :placeholder="searchPlaceholders[activeTab]"
+              />
             </label>
             <label
               v-if="activeTab === 'people' || activeTab === 'positions'"
-              class="grid gap-1.5 text-xs text-muted-foreground"
+              class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <select v-model="peopleCenter" :class="[selectClass, 'w-[200px]']">
+              <select v-model="peopleCenter" :class="[selectClass, 'w-full min-w-0 sm:w-[200px]']">
                 <option value="">All centers</option>
                 <option v-for="center in peopleCenters" :key="center" :value="center">{{ center }}</option>
               </select>
             </label>
             <template v-if="activeTab === 'scopes'">
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 Supervisor
-                <Input v-model="draftSupervisor" class="w-[200px]" placeholder="Position ID or name" />
+                <Input
+                  v-model="draftSupervisor"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="Position ID or name"
+                />
               </label>
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 PL3
-                <Input v-model="draftPl3Code" class="w-[200px]" placeholder="PL3 code or name" />
+                <Input
+                  v-model="draftPl3Code"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="PL3 code or name"
+                />
               </label>
             </template>
             <template v-if="activeTab === 'assignments'">
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 Agent
-                <Input v-model="draftAgent" class="w-[200px]" placeholder="Position ID or name" />
+                <Input
+                  v-model="draftAgent"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="Position ID or name"
+                />
               </label>
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 Supervisor
-                <Input v-model="draftSupervisor" class="w-[200px]" placeholder="Position ID or name" />
+                <Input
+                  v-model="draftSupervisor"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="Position ID or name"
+                />
               </label>
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 PL3
-                <Input v-model="draftPl3Code" class="w-[200px]" placeholder="PL3 code or name" />
+                <Input
+                  v-model="draftPl3Code"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="PL3 code or name"
+                />
               </label>
             </template>
             <template v-if="activeTab === 'kpis'">
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 Supervisor
-                <Input v-model="draftSupervisor" class="w-[200px]" placeholder="Position ID or name" />
+                <Input
+                  v-model="draftSupervisor"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="Position ID or name"
+                />
               </label>
-              <label class="grid gap-1.5 text-xs text-muted-foreground">
+              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 PL3
-                <Input v-model="draftPl3Code" class="w-[200px]" placeholder="PL3 code or name" />
+                <Input
+                  v-model="draftPl3Code"
+                  class="w-full min-w-0 sm:w-[200px]"
+                  placeholder="PL3 code or name"
+                />
               </label>
             </template>
             <label
               v-if="activeTab === 'scopes' || activeTab === 'assignments' || activeTab === 'kpis'"
-              class="grid gap-1.5 text-xs text-muted-foreground"
+              class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <select v-model="scopeCenter" :class="[selectClass, 'w-[200px]']">
+              <select v-model="scopeCenter" :class="[selectClass, 'w-full min-w-0 sm:w-[200px]']">
                 <option value="">All centers</option>
                 <option v-for="center in scopeCenters" :key="center" :value="center">{{ center }}</option>
               </select>
             </label>
           </div>
 
-          <div class="min-h-0 flex-1 overflow-auto">
+          <div class="min-h-0 min-w-0 flex-1 overflow-auto">
             <DataTable
               :key="activeTab"
               :columns="columns[activeTab]"
@@ -412,8 +446,10 @@ function rowId(row: {
         </div>
       </div>
 
-      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3 sm:justify-end">
-        <Button type="button" variant="outline" @click="open = false">Close</Button>
+      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-4 py-3 sm:px-5 sm:justify-end">
+        <Button type="button" variant="outline" class="w-full sm:w-auto" @click="open = false">
+          Close
+        </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
