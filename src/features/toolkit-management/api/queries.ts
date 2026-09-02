@@ -67,5 +67,6 @@ export function useSharedKpiCandidatesQuery(
     queryFn: () =>
       toolkitApi.candidates(resolvedPl3.value, resolvedPosition.value, resolvedCountries.value),
     enabled: computed(() => Boolean(resolvedPl3.value && resolvedPosition.value)),
+    placeholderData: keepPreviousData,
   })
 }

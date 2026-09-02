@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 
+import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
+
 import { useExerciseMutations } from '../api/mutations'
 import { useSubmitPreviewQuery } from '../api/queries'
 import {
@@ -43,6 +45,8 @@ const open = defineModel<boolean>('open', { default: false })
 
 const props = defineProps<{
   exerciseId: string
+  frozenDeliveryHc?: number | string | null
+  frozenSyncDate?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -65,6 +69,8 @@ const loading = computed(() => previewQuery.isPending.value && !previewQuery.dat
 
 const remarksRequired = computed(() => preview.value?.remarksRequired ?? false)
 const submitBlocked = computed(() => preview.value?.submitBlocked ?? false)
+const scopeAckRequired = computed(() => preview.value?.scopeAcknowledgementRequired ?? false)
+const scopeAcknowledged = ref(false)
 const submitting = computed(() => submit.isPending.value)
 
 const findingLabel: Record<ValidationRuleCode, string> = {
@@ -82,6 +88,7 @@ const reasonLabel: Record<string, string> = {
 
 watch(open, (value) => {
   if (!value) return
+  scopeAcknowledged.value = false
   resetForm({ values: emptySubmitRemarks() })
 })
 
@@ -100,6 +107,10 @@ watch(
 
 const submitNow = handleSubmit(async (values) => {
   if (submitBlocked.value) return
+  if (scopeAckRequired.value && !scopeAcknowledged.value) {
+    toast.error('Confirm submitting with the frozen Shared KPI scope.')
+    return
+  }
   if (remarksRequired.value) {
     const required = submitRemarksRequiredSchema().safeParse(values)
     if (!required.success) {
@@ -115,7 +126,11 @@ const submitNow = handleSubmit(async (values) => {
     const key = crypto.randomUUID()
     const details = await submit.mutateAsync({
       id: props.exerciseId,
-      body: { remarks: values.remarks.trim() || null, requestId: key },
+      body: {
+        remarks: values.remarks.trim() || null,
+        requestId: key,
+        scopeAcknowledged: scopeAckRequired.value ? true : undefined,
+      },
       idempotencyKey: key,
     })
     emit('submitted', details)
@@ -162,6 +177,24 @@ function mismatchesOf(finding: ValidationFinding) {
           <ListLoading />
         </div>
         <div v-else class="rounded-lg border bg-card p-4">
+          <TimesheetAlignmentAlert
+            class="mb-4"
+            audience="submit"
+            :alignment="preview?.timesheetAlignment"
+            :frozen-delivery-hc="frozenDeliveryHc"
+            :frozen-sync-date="frozenSyncDate"
+          />
+          <div v-if="scopeAckRequired" class="mb-4 flex items-start gap-2 text-sm">
+            <input
+              id="submit-scope-ack"
+              v-model="scopeAcknowledged"
+              type="checkbox"
+              class="mt-1 size-3.5 accent-primary"
+            />
+            <Label for="submit-scope-ack" class="font-normal leading-5">
+              Submit using the frozen scope anyway.
+            </Label>
+          </div>
           <div>
             <div class="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Submission path
@@ -249,7 +282,10 @@ function mismatchesOf(finding: ValidationFinding) {
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="submitting" @click="open = false">Cancel</Button>
-        <Button :disabled="loading || submitting || submitBlocked" @click="submitNow">
+        <Button
+          :disabled="loading || submitting || submitBlocked || (scopeAckRequired && !scopeAcknowledged)"
+          @click="submitNow"
+        >
           {{ submitting ? 'Submitting…' : 'Confirm Submit' }}
         </Button>
       </DialogFooter>

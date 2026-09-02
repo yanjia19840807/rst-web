@@ -24,6 +24,7 @@ export interface ApprovalQueueItem {
   myDecision?: string | null
   myCompletedAt?: string | null
   completedStep?: string | null
+  scopeChanged?: boolean
 }
 
 export interface ApprovalQueueMetrics {

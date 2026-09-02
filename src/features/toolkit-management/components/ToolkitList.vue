@@ -101,6 +101,7 @@ const columns = computed(() =>
 )
 
 function createExercise(toolkit: SupervisorToolkit) {
+  if (toolkit.outOfSync) return
   createToolkit.value = toolkit
   createOpen.value = true
 }

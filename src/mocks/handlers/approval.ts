@@ -8,7 +8,7 @@ import type {
 } from '@/features/approval/types'
 import type { Exercise, SubmittedDetails } from '@/features/exercise-management/types'
 
-import { exercises } from '../data/supervisor'
+import { exercises, kpiCandidates } from '../data/supervisor'
 import { ensureShell, exerciseShells } from '../data/exercise-store'
 import { buildApprovalWorkspace } from '../approvalWorkspace'
 import { pageOf, pageParams } from '../page'
@@ -157,7 +157,21 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
             : null,
     myCompletedAt: mine?.actionAt ?? null,
     completedStep: mine ? previousStepLabel(mine.actorRoleCode) : null,
+    scopeChanged: isOpenStatus(submitted.submissionStatus) && hasStructuralDrift(exercise),
   }
+}
+
+function hasStructuralDrift(exercise: Exercise) {
+  const candidates = kpiCandidates(exercise.snapshot.toolkit.pl3Code)
+  return exercise.snapshot.sharedKpis.some(
+    (kpi) =>
+      !candidates.some(
+        (candidate) =>
+          candidate.carrier === kpi.carrier &&
+          candidate.site === kpi.site &&
+          candidate.customerCountry === kpi.customerCountry,
+      ),
+  )
 }
 
 function toDetail(exercise: Exercise, submitted: SubmittedDetails): ApprovalDetailView {

@@ -8,6 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
 import { useToolkitEditor } from '../composables/useToolkitEditor'
+import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
+
 import ProcessMappingCard from './ProcessMappingCard.vue'
 import SelectSharedKpiDialog from './SelectSharedKpiDialog.vue'
 import SharedKpiCard from './SharedKpiCard.vue'
@@ -39,6 +41,8 @@ const {
   sharedKpiSelections,
   selectedKpiRows,
   totalHc,
+  hasMissingKpis,
+  alignment,
   noTimesheetHierarchy,
   loading,
   busy,
@@ -56,6 +60,8 @@ const {
 
 <template>
   <div class="grid gap-4">
+    <TimesheetAlignmentAlert v-if="toolkitId" audience="toolkit" :alignment="alignment" />
+
     <Alert v-if="noTimesheetHierarchy" variant="warning">
       <TriangleAlert />
       <AlertTitle>No Timesheet sync data</AlertTitle>
@@ -78,7 +84,7 @@ const {
       <Button v-if="toolkitId" variant="destructive" @click="deleteOpen = true">
         Delete Toolkit
       </Button>
-      <Button :disabled="busy || loading" @click="save">
+      <Button :disabled="busy || loading || hasMissingKpis" @click="save">
         {{ busy ? 'Saving…' : 'Save Toolkit' }}
       </Button>
     </PageActions>
@@ -112,6 +118,7 @@ const {
       :can-select="selectedCountries.length > 0"
       :has-countries="selectedCountries.length > 0"
       :error="sharedKpiError"
+      :show-delivery-hc="Boolean(toolkitId)"
       @select="kpiOpen = true"
       @remove="removeKpi"
     />
@@ -121,6 +128,7 @@ const {
       :candidates="candidates"
       :selected="sharedKpiSelections"
       :countries="selectedCountries"
+      :show-delivery-hc="Boolean(toolkitId)"
       @confirm="applyKpiSelection"
     />
 

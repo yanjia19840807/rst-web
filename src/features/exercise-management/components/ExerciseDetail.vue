@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
 import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
 import { historyFromActions } from '@/features/approval/historyFromActions'
 
@@ -324,6 +325,13 @@ watch(
     </div>
 
     <div v-show="!showApprovalTab || pageTab === 'exercise'" class="grid gap-4">
+      <TimesheetAlignmentAlert
+        audience="exercise"
+        :alignment="exercise.timesheetAlignment"
+        :frozen-delivery-hc="exercise.deliveryHc ?? deliveryHc"
+        :frozen-sync-date="exercise.snapshot.timesheetSyncDate"
+      />
+
       <ExerciseDetailHeader
         :exercise="exercise"
         :locked="locked"
@@ -338,7 +346,11 @@ watch(
         @saved="onPeriodsSaved"
       />
 
-      <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
+      <ToolkitInfoDialog
+        v-model:open="toolkitInfoOpen"
+        :snapshot="exercise.snapshot"
+        :alignment="exercise.timesheetAlignment"
+      />
 
       <AssociatedDataPanel
         :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.tmsFrom}-${exercise.tmsTo}`"
@@ -476,6 +488,12 @@ watch(
       @confirm="confirmDelete"
     />
 
-    <SubmitDialog v-model:open="submitOpen" :exercise-id="exerciseId" @submitted="onSubmitted" />
+    <SubmitDialog
+      v-model:open="submitOpen"
+      :exercise-id="exerciseId"
+      :frozen-delivery-hc="exercise?.deliveryHc ?? deliveryHc"
+      :frozen-sync-date="exercise?.snapshot.timesheetSyncDate"
+      @submitted="onSubmitted"
+    />
   </div>
 </template>

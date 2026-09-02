@@ -669,7 +669,11 @@ const scenarioInfoRows = computed(() => {
       </CardContent>
     </Card>
 
-    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
+    <ToolkitInfoDialog
+      v-model:open="toolkitInfoOpen"
+      :snapshot="exercise.snapshot"
+      :alignment="exercise.timesheetAlignment"
+    />
 
     <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
       <ScenarioAssumptionsSection

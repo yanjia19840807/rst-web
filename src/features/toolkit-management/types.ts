@@ -1,3 +1,5 @@
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
+
 export interface ToolkitSubtask {
   id: string
   name: string
@@ -32,6 +34,8 @@ export interface SupervisorToolkit {
   sharedKpiSelections: SharedKpiKey[]
   version: number
   deletedAt: string | null
+  outOfSync?: boolean
+  alignment?: TimesheetAlignmentView | null
 }
 
 export interface HierarchyOption {

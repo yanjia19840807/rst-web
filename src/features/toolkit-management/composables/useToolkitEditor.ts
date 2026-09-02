@@ -18,6 +18,9 @@ function unique(values: string[]) {
   return [...new Set(values)]
 }
 
+/** Country catalog must not depend on the current selection, or the dropdown remounts. */
+const COUNTRY_CATALOG: string[] = []
+
 export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>) {
   const router = useRouter()
   const mutations = useToolkitMutations()
@@ -54,6 +57,11 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   const [supervisorPositionId] = defineField('supervisorPositionId')
   const [combineSubtasksTime] = defineField('combineSubtasksTime')
 
+  const countryCatalogQuery = useSharedKpiCandidatesQuery(
+    () => values.pl3Code,
+    () => values.supervisorPositionId,
+    COUNTRY_CATALOG,
+  )
   const candidatesQuery = useSharedKpiCandidatesQuery(
     () => values.pl3Code,
     () => values.supervisorPositionId,
@@ -98,8 +106,10 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   )
 
   const candidates = computed(() => candidatesQuery.data.value?.items ?? [])
-  const countries = computed(() => candidatesQuery.data.value?.customerCountries ?? [])
-  const syncDate = computed(() => candidatesQuery.data.value?.syncDate ?? '')
+  const countries = computed(() => countryCatalogQuery.data.value?.customerCountries ?? [])
+  const syncDate = computed(
+    () => countryCatalogQuery.data.value?.syncDate ?? candidatesQuery.data.value?.syncDate ?? '',
+  )
 
   const subtasks = computed({
     get: () => values.subtasks,
@@ -118,13 +128,18 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   const selectedKpiRows = computed(() =>
     sharedKpiSelections.value.map((selection) => {
       const match = candidates.value.find((item) => kpiKey(item) === kpiKey(selection))
-      return { ...selection, deliveryHc: match?.deliveryHc ?? null }
+      return {
+        ...selection,
+        deliveryHc: match?.deliveryHc ?? null,
+        missing: match == null && Boolean(syncDate.value || candidatesQuery.data.value),
+      }
     }),
   )
 
   const totalHc = computed(() =>
     selectedKpiRows.value.reduce((sum, item) => sum + (item.deliveryHc ?? 0), 0).toFixed(2),
   )
+  const hasMissingKpis = computed(() => selectedKpiRows.value.some((item) => item.missing))
 
   const loading = computed(
     () =>
@@ -261,6 +276,10 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
 
   const save = handleSubmit(
     async (payload) => {
+      if (hasMissingKpis.value) {
+        toast.error('Remove or replace Shared KPI lines that are missing from the ACTIVE Monthly Timesheet.')
+        return
+      }
       try {
         if (resolvedId.value) {
           await mutations.update.mutateAsync({ id: resolvedId.value, input: payload })
@@ -326,6 +345,8 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     sharedKpiSelections,
     selectedKpiRows,
     totalHc,
+    hasMissingKpis,
+    alignment: computed(() => toolkitQuery.data.value?.alignment ?? null),
     noTimesheetHierarchy,
     loading,
     busy,

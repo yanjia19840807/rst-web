@@ -99,6 +99,34 @@ export const supervisorToolkits: SupervisorToolkit[] = [
     version: 2,
     deletedAt: null,
   },
+  {
+    id: '7d2c1a0e-4b8f-4f1a-9c3d-2e6a8b0c1d2e',
+    name: 'Invoice Processing',
+    description: 'Includes a Shared KPI line that left the ACTIVE Monthly Timesheet.',
+    supervisorPositionId,
+    center: 'Kuala Lumpur',
+    domain: 'Finance',
+    pl1: 'Accounting',
+    pl2: 'Procure to Pay',
+    pl3Code: 'PL3-INVOICE',
+    pl3Name: 'Invoice Processing',
+    combineSubtasksTime: false,
+    subtasks: [
+      {
+        id: 'a11c0e2f-6d47-4b8a-9e21-3c4f5a6b7c8d',
+        name: 'Invoice capture',
+        description: 'Capture inbound invoices.',
+        displayOrder: 1,
+        deletedAt: null,
+      },
+    ],
+    sharedKpiSelections: [
+      { carrier: 'CMA CGM', site: 'Singapore', customerCountry: 'Singapore' },
+      { carrier: 'ANL', site: 'Jakarta', customerCountry: 'Indonesia' },
+    ],
+    version: 1,
+    deletedAt: null,
+  },
 ]
 
 export const exercises: Exercise[] = []

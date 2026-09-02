@@ -180,6 +180,63 @@ function sameKey(a: SharedKpiKey, b: SharedKpiKey) {
   return a.carrier === b.carrier && a.site === b.site && a.customerCountry === b.customerCountry
 }
 
+function toolkitAlignment(toolkit: SupervisorToolkit) {
+  const candidates = kpiCandidates(toolkit.pl3Code)
+  const lines = toolkit.sharedKpiSelections.map((selection) => {
+    const current = candidates.find((candidate) => sameKey(candidate, selection))
+    return {
+      carrier: selection.carrier,
+      site: selection.site,
+      customerCountry: selection.customerCountry,
+      missing: !current,
+      currentDeliveryHc: current?.deliveryHc ?? null,
+    }
+  })
+  return {
+    structuralDrift: lines.some((line) => line.missing),
+    outOfScope: false,
+    currentMonthlySyncDate: activeTimesheetSyncDate,
+    currentDeliveryHc: lines.reduce((sum, line) => sum + Number(line.currentDeliveryHc || 0), 0),
+    lines,
+  }
+}
+
+function withToolkitAlignment(toolkit: SupervisorToolkit) {
+  const alignment = toolkitAlignment(toolkit)
+  return { ...toolkit, outOfSync: alignment.structuralDrift, alignment }
+}
+
+function exerciseAlignment(exercise: Exercise) {
+  if (exercise.workflowStatus === 'APPROVED' || exercise.workflowStatus === 'REJECTED') {
+    return null
+  }
+  const candidates = kpiCandidates(exercise.snapshot.toolkit.pl3Code)
+  const lines = exercise.snapshot.sharedKpis.map((selection) => {
+    const current = candidates.find((candidate) => sameKey(candidate, selection))
+    return {
+      carrier: selection.carrier,
+      site: selection.site,
+      customerCountry: selection.customerCountry,
+      missing: !current,
+      currentDeliveryHc: current?.deliveryHc ?? null,
+    }
+  })
+  return {
+    structuralDrift: lines.some((line) => line.missing),
+    outOfScope: false,
+    currentMonthlySyncDate: activeTimesheetSyncDate,
+    currentDeliveryHc: lines.reduce((sum, line) => sum + Number(line.currentDeliveryHc || 0), 0),
+    lines,
+  }
+}
+
+function withExerciseAlignment(exercise: Exercise) {
+  const deliveryHc =
+    exercise.deliveryHc ??
+    exercise.snapshot.sharedKpis.reduce((sum, item) => sum + Number(item.deliveryHc || 0), 0)
+  return { ...exercise, deliveryHc, timesheetAlignment: exerciseAlignment(exercise) }
+}
+
 function resolvedKpis(toolkit: SupervisorToolkit) {
   const candidates = kpiCandidates(toolkit.pl3Code)
   return toolkit.sharedKpiSelections.map((selection) => {
@@ -375,7 +432,11 @@ export const supervisorHandlers = [
       const matchesPl3 = !pl3Name || item.pl3Name === pl3Name
       return matchesName && matchesPl3
     })
-    const paged = pageOf(items, pageParams(url).page, pageParams(url).pageSize)
+    const paged = pageOf(
+      items.map(withToolkitAlignment),
+      pageParams(url).page,
+      pageParams(url).pageSize,
+    )
     return HttpResponse.json({ ...paged, pl3Names })
   }),
 
@@ -395,7 +456,7 @@ export const supervisorHandlers = [
 
   http.get('*/api/v1/toolkits/:id', ({ params }) => {
     const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
-    return toolkit ? HttpResponse.json(toolkit) : problem(404, 'Toolkit not found.')
+    return toolkit ? HttpResponse.json(withToolkitAlignment(toolkit)) : problem(404, 'Toolkit not found.')
   }),
 
   http.post('*/api/v1/toolkits', async ({ request }) => {
@@ -420,7 +481,7 @@ export const supervisorHandlers = [
       deletedAt: null,
     }
     supervisorToolkits.unshift(toolkit)
-    return HttpResponse.json(toolkit, { status: 201 })
+    return HttpResponse.json(withToolkitAlignment(toolkit), { status: 201 })
   }),
 
   http.put('*/api/v1/toolkits/:id', async ({ params, request }) => {
@@ -442,7 +503,7 @@ export const supervisorHandlers = [
       version: current.version + 1,
     }
     supervisorToolkits[index] = updated
-    return HttpResponse.json(updated)
+    return HttpResponse.json(withToolkitAlignment(updated))
   }),
 
   http.delete('*/api/v1/toolkits/:id', ({ params }) => {
@@ -465,7 +526,11 @@ export const supervisorHandlers = [
       : new Set(['IN_PROGRESS', 'UNDER_REVIEW'])
     const source = exercises.filter((item) => tabStatuses.has(item.workflowStatus))
     const items = source.filter((item) => matchesExerciseList(item, params))
-    const paged = pageOf(items, Number(params.get('page') ?? 1), Number(params.get('pageSize') ?? 10))
+    const paged = pageOf(
+      items.map(withExerciseAlignment),
+      Number(params.get('page') ?? 1),
+      Number(params.get('pageSize') ?? 10),
+    )
     return HttpResponse.json({
       ...paged,
       toolkitNames: uniqueSorted(source.map((item) => item.snapshot.toolkit.name)),
@@ -510,7 +575,7 @@ export const supervisorHandlers = [
     ensureShell(exercise)
     return HttpResponse.json(
       {
-        exercise,
+        exercise: withExerciseAlignment(exercise),
         notices: [
           'Associated Data seeded from Toolkit latest state (mock).',
           'Volume Input pre-filled from Toolkit volume when available.',
@@ -525,7 +590,7 @@ export const supervisorHandlers = [
     const exercise = findExercise(params.id)
     if (!exercise) return problem(404, 'Exercise not found.')
     syncFlags(exercise)
-    return HttpResponse.json(exercise)
+    return HttpResponse.json(withExerciseAlignment(exercise))
   }),
 
   http.put('*/api/v1/exercises/:id/periods', async ({ params, request }) => {
@@ -564,7 +629,7 @@ export const supervisorHandlers = [
         `Cleared saved Forecast and Simulation results for ${cleared} scenario(s). Re-run Preview / Save sizing on each scenario.`,
       )
     }
-    return HttpResponse.json({ exercise, notices })
+    return HttpResponse.json({ exercise: withExerciseAlignment(exercise), notices })
   }),
 
   http.put('*/api/v1/exercises/:id/slot-period', async ({ params, request }) => {
@@ -586,7 +651,7 @@ export const supervisorHandlers = [
     shell.latestSlotByScenario = {}
     shell.stubRuns = shell.stubRuns.filter((run) => run.runType !== 'SLOT')
     return HttpResponse.json({
-      exercise,
+      exercise: withExerciseAlignment(exercise),
       volumes: shell.slotVolumes,
       notices: ['Per-slot Volume grid generated for the selected Slot Period.'],
     })
@@ -1831,6 +1896,7 @@ export const supervisorHandlers = [
       ctx.shell.monthlyVolumes,
       ctx.shell.dailyVolumes,
     )
+    const timesheetAlignment = exerciseAlignment(ctx.exercise)
     return HttpResponse.json({
       scenarioId: official?.id ?? ctx.exercise.officialScenarioId ?? '',
       findings: [
@@ -1842,6 +1908,8 @@ export const supervisorHandlers = [
       ],
       remarksRequired: dailyVsMonthly.severity === 'WARNING',
       submitBlocked: false,
+      timesheetAlignment,
+      scopeAcknowledgementRequired: Boolean(timesheetAlignment?.structuralDrift),
     })
   }),
 
@@ -1856,6 +1924,9 @@ export const supervisorHandlers = [
       return HttpResponse.json(ctx.shell.submitted, { status: 201 })
     }
     const body = ((await request.json().catch(() => ({}))) ?? {}) as SubmitRequest
+    if (exerciseAlignment(ctx.exercise)?.structuralDrift && body.scopeAcknowledged !== true) {
+      return problem(422, 'Confirm submitting with the frozen Shared KPI scope.')
+    }
     const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
     const previous = ctx.shell.submitted
     const reopenable = previous

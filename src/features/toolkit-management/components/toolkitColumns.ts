@@ -2,6 +2,7 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
+import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 
 import type { SupervisorToolkit } from '../types'
 import ToolkitRowActions from './ToolkitRowActions.vue'
@@ -30,6 +31,11 @@ export function createToolkitColumns(
   return [
     columnHelper.accessor('name', {
       header: 'Toolkit Name',
+      cell: ({ row }) =>
+        h('span', { class: 'inline-flex flex-wrap items-center gap-1.5' }, [
+          h('span', row.original.name),
+          row.original.outOfSync ? h(ScopeChangedBadge) : null,
+        ]),
     }),
     columnHelper.accessor('center', {
       header: 'GBS Center',
@@ -59,6 +65,7 @@ export function createToolkitColumns(
           h(ToolkitRowActions, {
             exporting: options.exportingId === row.original.id,
             exportDisabled: Boolean(options.exportingId),
+            createDisabled: Boolean(row.original.outOfSync),
             onCreate: () => options.onCreate?.(row.original),
             onEdit: () => options.onEdit?.(row.original.id),
             onExport: () => options.onExport?.(row.original),

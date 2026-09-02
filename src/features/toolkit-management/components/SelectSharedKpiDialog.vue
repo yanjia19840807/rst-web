@@ -24,11 +24,17 @@ import { kpiKey } from '../kpiKey'
 
 const open = defineModel<boolean>('open', { default: false })
 
-const props = defineProps<{
-  candidates: SharedKpiCandidate[]
-  selected: SharedKpiKey[]
-  countries: string[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    candidates: SharedKpiCandidate[]
+    selected: SharedKpiKey[]
+    countries: string[]
+    showDeliveryHc?: boolean
+  }>(),
+  {
+    showDeliveryHc: true,
+  },
+)
 
 const emit = defineEmits<{
   confirm: [items: SharedKpiKey[]]
@@ -113,7 +119,7 @@ function confirm() {
                 <TableHead>Carrier</TableHead>
                 <TableHead>GBS Site</TableHead>
                 <TableHead>Customer Country</TableHead>
-                <TableHead>Delivery HC</TableHead>
+                <TableHead v-if="showDeliveryHc">Delivery HC</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -136,10 +142,10 @@ function confirm() {
                 <TableCell>{{ item.carrier }}</TableCell>
                 <TableCell>{{ item.site }}</TableCell>
                 <TableCell>{{ item.customerCountry }}</TableCell>
-                <TableCell>{{ item.deliveryHc }}</TableCell>
+                <TableCell v-if="showDeliveryHc">{{ item.deliveryHc }}</TableCell>
               </TableRow>
               <TableRow v-if="!candidates.length">
-                <TableCell colspan="5" class="h-20 text-center text-muted-foreground italic">
+                <TableCell :colspan="showDeliveryHc ? 5 : 4" class="h-20 text-center text-muted-foreground italic">
                   No KPI lines available for the selected countries.
                 </TableCell>
               </TableRow>

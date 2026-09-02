@@ -1,3 +1,4 @@
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 import type { SupervisorToolkit, ToolkitSubtask } from '@/features/toolkit-management/types'
 
 import type { SlotVolume } from './associatedData'
@@ -73,6 +74,7 @@ export interface Exercise {
     sharedKpis: ExerciseKpiLine[]
     timesheetSyncDate: string
   }
+  timesheetAlignment?: TimesheetAlignmentView | null
 }
 
 export interface CommittedResultsStatus {

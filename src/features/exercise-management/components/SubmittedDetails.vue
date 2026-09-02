@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
 import { formatDate, formatDateTime, formatMonth } from '@/lib/datetime'
 import { measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
@@ -497,6 +498,13 @@ function downloadSummary() {
       </Button>
     </PageActions>
 
+    <TimesheetAlignmentAlert
+      :audience="isApprover ? 'approval' : 'exercise'"
+      :alignment="exercise.timesheetAlignment"
+      :frozen-delivery-hc="exercise.deliveryHc ?? deliveryHc"
+      :frozen-sync-date="exercise.snapshot.timesheetSyncDate"
+    />
+
     <div class="flex gap-1 border-b">
       <button
         type="button"
@@ -820,7 +828,11 @@ function downloadSummary() {
       <ApprovalCompletedPanel v-else :workspace="workspace" />
     </div>
 
-    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="exercise.snapshot" />
+    <ToolkitInfoDialog
+      v-model:open="toolkitInfoOpen"
+      :snapshot="exercise.snapshot"
+      :alignment="exercise.timesheetAlignment"
+    />
   </div>
   <div v-else class="py-16 text-center text-sm text-muted-foreground">
     Submitted details are unavailable for this exercise.

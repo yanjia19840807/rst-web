@@ -11,6 +11,8 @@ import {
   measuredCapacityTone,
 } from '@/lib/hcFormat'
 
+import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
+
 import type { ApprovalQueueItem } from '../types'
 import ApprovalDecisionBadge from './ApprovalDecisionBadge.vue'
 import ApprovalQueueRowActions from './ApprovalQueueRowActions.vue'
@@ -38,7 +40,11 @@ export function createApprovalQueueColumns(
   return [
     columnHelper.accessor('exerciseCode', {
       header: 'Exercise code',
-      cell: ({ row }) => h('span', { class: 'font-semibold' }, row.original.exerciseCode),
+      cell: ({ row }) =>
+        h('span', { class: 'inline-flex flex-wrap items-center gap-1.5 font-semibold' }, [
+          row.original.exerciseCode,
+          row.original.scopeChanged ? h(ScopeChangedBadge) : null,
+        ]),
     }),
     columnHelper.accessor((row) => row.center || '—', {
       id: 'center',

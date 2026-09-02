@@ -6,6 +6,7 @@ export type {
   StepView as WorkflowStepView,
 } from '@/features/approval/types'
 
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 import type { ActionView, ScopeView, StepView } from '@/features/approval/types'
 
 export interface MonthMismatch {
@@ -39,11 +40,14 @@ export interface SubmitPreview {
   findings: ValidationFinding[]
   remarksRequired: boolean
   submitBlocked: boolean
+  timesheetAlignment?: TimesheetAlignmentView | null
+  scopeAcknowledgementRequired?: boolean
 }
 
 export interface SubmitRequest {
   remarks?: string | null
   requestId?: string | null
+  scopeAcknowledged?: boolean | null
 }
 
 /** @deprecated Prefer ScopeView from approval/types; kept for existing exercise callers. */

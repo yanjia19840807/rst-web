@@ -15,7 +15,7 @@ describe('supervisor mock contract', () => {
   })
 
   it('creates an Exercise with an immutable frozen snapshot', async () => {
-    const [toolkit] = (await toolkitApi.list()).items
+    const toolkit = (await toolkitApi.list()).items.find((item) => !item.outOfSync)
     expect(toolkit).toBeDefined()
 
     const result = await exerciseApi.create({
@@ -32,6 +32,18 @@ describe('supervisor mock contract', () => {
     expect(result.exercise.snapshot.subtasks.every((item) => item.deletedAt === null)).toBe(true)
     expect(result.exercise.snapshot.sharedKpis.every((item) => item.valid)).toBe(true)
     expect(result.notices.length).toBeGreaterThan(0)
+  })
+
+  it('marks a Toolkit out of sync when a Shared KPI line left Monthly', async () => {
+    const all = await toolkitApi.list()
+    const invoice = all.items.find((item) => item.pl3Code === 'PL3-INVOICE')
+
+    expect(invoice?.outOfSync).toBe(true)
+    expect(invoice?.alignment?.structuralDrift).toBe(true)
+    expect(invoice?.alignment?.lines.some((line) => line.missing)).toBe(true)
+
+    const bank = all.items.find((item) => item.pl3Code === 'PL3-BANK-REC')
+    expect(bank?.outOfSync).toBe(false)
   })
 
   it('filters supervisor toolkits by name on the server', async () => {

@@ -20,12 +20,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { Badge } from '@/components/ui/badge'
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
+import { formatHc } from '@/lib/hcFormat'
+
 import type { Exercise } from '../types'
 
 const open = defineModel<boolean>('open', { default: false })
 
 const props = defineProps<{
   snapshot: Exercise['snapshot'] | null
+  alignment?: TimesheetAlignmentView | null
 }>()
 
 const toolkit = computed(() => props.snapshot?.toolkit ?? null)
@@ -40,6 +45,31 @@ const activeSubtasks = computed(() =>
 )
 
 const kpiRows = computed(() => props.snapshot?.sharedKpis ?? [])
+
+const showCurrentMonthly = computed(() => Boolean(props.alignment))
+
+function currentHcFor(line: Exercise['snapshot']['sharedKpis'][number]) {
+  const match = props.alignment?.lines.find(
+    (item) =>
+      item.carrier === line.carrier &&
+      item.site === line.site &&
+      item.customerCountry === line.customerCountry,
+  )
+  if (!match || match.missing) return '—'
+  return formatHc(match.currentDeliveryHc, 2)
+}
+
+function lineMissing(line: Exercise['snapshot']['sharedKpis'][number]) {
+  return Boolean(
+    props.alignment?.lines.some(
+      (item) =>
+        item.missing &&
+        item.carrier === line.carrier &&
+        item.site === line.site &&
+        item.customerCountry === line.customerCountry,
+    ),
+  )
+}
 
 const totalDeliveryHc = computed(() =>
   kpiRows.value.reduce((sum, item) => sum + Number(item.deliveryHc || 0), 0),
@@ -156,6 +186,8 @@ const subtaskRows = computed(() =>
                     <TableHead>GBS Site</TableHead>
                     <TableHead>Customer Country</TableHead>
                     <TableHead>Delivery HC</TableHead>
+                    <TableHead v-if="showCurrentMonthly">Current Monthly</TableHead>
+                    <TableHead v-if="showCurrentMonthly">Line</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -164,12 +196,20 @@ const subtaskRows = computed(() =>
                     <TableCell>{{ item.site }}</TableCell>
                     <TableCell>{{ item.customerCountry }}</TableCell>
                     <TableCell>{{ Number(item.deliveryHc).toFixed(2) }}</TableCell>
+                    <TableCell v-if="showCurrentMonthly">{{ currentHcFor(item) }}</TableCell>
+                    <TableCell v-if="showCurrentMonthly">
+                      <Badge v-if="lineMissing(item)" variant="destructive">Missing</Badge>
+                    </TableCell>
                   </TableRow>
                   <TableRow class="bg-muted/40">
                     <TableCell>Total</TableCell>
                     <TableCell />
                     <TableCell />
                     <TableCell>{{ totalDeliveryHc.toFixed(2) }}</TableCell>
+                    <TableCell v-if="showCurrentMonthly">
+                      {{ formatHc(alignment?.currentDeliveryHc, 2) }}
+                    </TableCell>
+                    <TableCell v-if="showCurrentMonthly" />
                   </TableRow>
                 </TableBody>
               </Table>

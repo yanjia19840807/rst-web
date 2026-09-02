@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
+import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
+import { formatHc } from '@/lib/hcFormat'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 import { showOperationNotices } from '@/composables/useOperationNotices'
 import { formatDate } from '@/lib/datetime'
@@ -73,6 +75,16 @@ const [tmsTo] = defineField('tmsTo')
 const lockedToolkit = computed(
   () => props.toolkits.find((toolkit) => toolkit.id === (toolkitId.value || props.initialToolkitId)),
 )
+const selectedToolkit = computed(
+  () => props.toolkits.find((toolkit) => toolkit.id === toolkitId.value) ?? lockedToolkit.value,
+)
+const toolkitBlocked = computed(() => Boolean(selectedToolkit.value?.outOfSync))
+const freezeHc = computed(() =>
+  formatHc(selectedToolkit.value?.alignment?.currentDeliveryHc, 2),
+)
+const freezeSyncDate = computed(
+  () => selectedToolkit.value?.alignment?.currentMonthlySyncDate || '',
+)
 const createdLabel = computed(() => formatDate(new Date()))
 const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
 const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
@@ -86,6 +98,10 @@ watch(open, (value) => {
 
 const create = handleSubmit(
   async (formValues) => {
+    if (toolkitBlocked.value) {
+      toast.error('Reconfigure this Toolkit before creating an Exercise.')
+      return
+    }
     try {
       const result = await createMutation.mutateAsync({
         toolkitId: formValues.toolkitId,
@@ -139,8 +155,16 @@ const create = handleSubmit(
               latest state when available. Volume Input is pre-filled from Toolkit volume when
               available. Creating the Exercise freezes the current Toolkit,
               Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
+              <template v-if="selectedToolkit && !toolkitBlocked">
+                Delivery HC to freeze: {{ freezeHc }}
+                <template v-if="freezeSyncDate">
+                  (ACTIVE Monthly sync {{ freezeSyncDate }}).
+                </template>
+              </template>
             </AlertDescription>
           </Alert>
+
+          <TimesheetAlignmentAlert audience="create" :alignment="selectedToolkit?.alignment" />
 
           <DetailTable
             :rows="[
@@ -160,8 +184,13 @@ const create = handleSubmit(
                 :aria-invalid="Boolean(errors.toolkitId)"
               >
                 <option value="">Select toolkit</option>
-                <option v-for="toolkit in toolkits" :key="toolkit.id" :value="toolkit.id">
-                  {{ toolkit.name }}
+                <option
+                  v-for="toolkit in toolkits"
+                  :key="toolkit.id"
+                  :value="toolkit.id"
+                  :disabled="toolkit.outOfSync"
+                >
+                  {{ toolkit.name }}{{ toolkit.outOfSync ? ' (scope changed)' : '' }}
                 </option>
               </select>
               <p v-if="errors.toolkitId" class="text-xs text-destructive">
@@ -223,7 +252,7 @@ const create = handleSubmit(
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="busy" @click="open = false">Cancel</Button>
-        <Button :disabled="busy" @click="create">
+        <Button :disabled="busy || toolkitBlocked" @click="create">
           {{ busy ? 'Creating…' : 'Confirm' }}
         </Button>
       </DialogFooter>

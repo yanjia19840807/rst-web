@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 
-defineProps<{
+const props = defineProps<{
   exporting?: boolean
   exportDisabled?: boolean
+  createDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +20,12 @@ const emit = defineEmits<{
       size="sm"
       variant="link"
       class="h-auto px-0 font-semibold"
+      :disabled="createDisabled"
+      :title="
+        createDisabled
+          ? 'Reconfigure Shared KPI scope before creating an Exercise.'
+          : undefined
+      "
       @click="emit('create')"
     >
       Create Exercise

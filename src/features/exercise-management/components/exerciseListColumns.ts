@@ -11,6 +11,8 @@ import {
   measuredCapacityTone,
 } from '@/lib/hcFormat'
 
+import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
+
 import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
 import ExerciseCurrentStepCell from './ExerciseCurrentStepCell.vue'
@@ -43,6 +45,11 @@ export function createExerciseListColumns(
   return [
     columnHelper.accessor('exerciseCode', {
       header: 'Exercise Code',
+      cell: ({ row }) =>
+        h('span', { class: 'inline-flex flex-wrap items-center gap-1.5' }, [
+          h('span', row.original.exerciseCode),
+          row.original.timesheetAlignment?.structuralDrift ? h(ScopeChangedBadge) : null,
+        ]),
     }),
     columnHelper.accessor((row) => row.snapshot.toolkit.name, {
       id: 'toolkitName',

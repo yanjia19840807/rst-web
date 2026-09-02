@@ -16,6 +16,7 @@ import ToolkitInfoDialog from '@/features/exercise-management/components/Toolkit
 import { exerciseApi } from '@/features/exercise-management/api'
 import { exerciseQueryKeys } from '@/features/exercise-management/api/queries'
 import type { Exercise } from '@/features/exercise-management/types'
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 
 import { useApprovalQueueQuery } from '../api/queries'
 import type { ApprovalQueueItem, ApprovalQueueQuery } from '../types'
@@ -48,6 +49,7 @@ const page = ref(1)
 const pageSize = ref(10)
 const toolkitInfoOpen = ref(false)
 const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
+const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
 
 const tabs: TabKey[] = ['Awaiting Review', 'Completed Task']
 const selectClass =
@@ -166,6 +168,7 @@ async function openToolkit(item: ApprovalQueueItem) {
       queryFn: () => exerciseApi.detail(item.exerciseId),
     })
     toolkitSnapshot.value = exercise.snapshot
+    toolkitAlignment.value = exercise.timesheetAlignment ?? null
     toolkitInfoOpen.value = true
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
@@ -431,6 +434,10 @@ watch(
       </CardContent>
     </Card>
 
-    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
+    <ToolkitInfoDialog
+      v-model:open="toolkitInfoOpen"
+      :snapshot="toolkitSnapshot"
+      :alignment="toolkitAlignment"
+    />
   </div>
 </template>
