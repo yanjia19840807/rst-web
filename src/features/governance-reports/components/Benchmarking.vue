@@ -169,7 +169,7 @@ watch(
 
         <div
           v-if="moreFiltersOpen"
-          class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+          class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
         >
           <FilterField label="Submitted Date From">
             <DatePicker

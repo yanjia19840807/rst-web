@@ -2,7 +2,7 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
-import { formatDate } from '@/lib/datetime'
+import { formatDateTime } from '@/lib/datetime'
 
 import { formatDuration } from '../composables/useTmsTimer'
 import TmsSessionRowActions from './TmsSessionRowActions.vue'
@@ -60,11 +60,11 @@ export function createTmsSessionColumns(
       id: 'subtaskName',
       header: 'Subtask',
     }),
-    columnHelper.accessor((row) => formatDate(row.startedAt), {
+    columnHelper.accessor((row) => formatDateTime(row.startedAt), {
       id: 'startedAt',
       header: 'Start',
     }),
-    columnHelper.accessor((row) => formatDate(row.endedAt), {
+    columnHelper.accessor((row) => formatDateTime(row.endedAt), {
       id: 'endedAt',
       header: 'End',
     }),

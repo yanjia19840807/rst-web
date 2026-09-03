@@ -6,6 +6,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 
 import type { Pl3Option, TeamAgentOption, Toolkit } from '../types'
+import TeamAgentPicker from './TeamAgentPicker.vue'
 
 const props = defineProps<{
   sessionNo: string
@@ -103,16 +104,11 @@ function onPl3Change(value: string) {
         class="grid gap-1.5 text-xs text-muted-foreground"
       >
         Agent
-        <select
-          :class="[selectClass, 'w-[200px]']"
-          :value="agentCcgid ?? ''"
-          @change="emit('update:agentCcgid', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">All agents</option>
-          <option v-for="agent in agents ?? []" :key="agent.ccgid" :value="agent.ccgid">
-            {{ agent.name }}
-          </option>
-        </select>
+        <TeamAgentPicker
+          :model-value="agentCcgid || null"
+          :agents="agents ?? []"
+          @update:model-value="emit('update:agentCcgid', $event ?? '')"
+        />
       </label>
       <label
         v-if="showTeamFilters"
@@ -159,7 +155,7 @@ function onPl3Change(value: string) {
       </Button>
     </div>
 
-    <div v-if="moreOpen" class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3">
+    <div v-if="moreOpen" class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3">
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Session Date From
         <DatePicker

@@ -32,7 +32,7 @@ const { formattedElapsed } = useTmsTimer(currentSession)
 const defaultFormValues = (): SessionFormValues => ({
   toolkitId: '',
   subtaskId: '',
-  processedVolume: '',
+  processedVolume: 1,
   reference: '',
   remarks: '',
 })
@@ -43,7 +43,7 @@ const { defineField, errors, handleSubmit, setFieldValue, resetForm } = useForm<
     initialValues: {
       toolkitId: '',
       subtaskId: '',
-      processedVolume: '',
+      processedVolume: 1,
       reference: '',
       remarks: '',
     },
@@ -92,7 +92,7 @@ const toolkitDetailRows = computed(() => {
   ]
 })
 
-const sessionReadOnly = computed(() => currentSession.value?.status === 'running')
+const toolkitLocked = computed(() => currentSession.value?.status === 'running')
 const hasSelectedToolkit = computed(() => Boolean(selectedToolkit.value))
 const noMatchingToolkit = computed(
   () => toolkitsQuery.isSuccess.value && !(toolkitsQuery.data.value?.length),
@@ -110,12 +110,22 @@ const busy = computed(
 watch(
   currentQuery.data,
   (session) => {
-    const running = session?.status === 'running' ? session : null
-    sessionStore.setCurrentSession(running)
-    if (!running) return
+    sessionStore.setCurrentSession(session?.status === 'running' ? session : null)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => {
+    const session = currentQuery.data.value
+    return session?.status === 'running' ? session.id : ''
+  },
+  (sessionId) => {
+    const running = currentQuery.data.value
+    if (!sessionId || !running) return
     setFieldValue('toolkitId', running.toolkitId)
     setFieldValue('subtaskId', running.subtaskId ?? '')
-    setFieldValue('processedVolume', running.processedVolume ?? '')
+    setFieldValue('processedVolume', running.processedVolume ?? 1)
     setFieldValue('reference', running.reference)
     setFieldValue('remarks', running.remarks)
   },
@@ -138,17 +148,20 @@ watch(
   { immediate: true },
 )
 
+function sessionDetails(values: SessionFormValues) {
+  return {
+    subtaskId: values.subtaskId?.trim() ? values.subtaskId : null,
+    processedVolume: Number(values.processedVolume),
+    reference: values.reference,
+    remarks: values.remarks,
+  }
+}
+
 const startSession = handleSubmit(async (values) => {
   try {
     const session = await mutations.start.mutateAsync({
       toolkitId: values.toolkitId,
-      subtaskId: values.subtaskId?.trim() ? values.subtaskId : null,
-      processedVolume:
-        values.processedVolume === '' || values.processedVolume == null
-          ? null
-          : Number(values.processedVolume),
-      reference: values.reference,
-      remarks: values.remarks,
+      ...sessionDetails(values),
     })
     sessionStore.setCurrentSession(session)
     toast.success('New session started.')
@@ -157,18 +170,21 @@ const startSession = handleSubmit(async (values) => {
   }
 })
 
-async function pauseSession() {
+const pauseSession = handleSubmit(async (values) => {
   if (!currentSession.value) return
   const pausedToolkitId = currentSession.value.toolkitId
   try {
-    await mutations.pause.mutateAsync(currentSession.value.id)
+    await mutations.pause.mutateAsync({
+      id: currentSession.value.id,
+      ...sessionDetails(values),
+    })
     sessionStore.setCurrentSession(null)
     resetSessionForm(pausedToolkitId)
     toast.success('Session paused. Start a new session, or resume it from Paused Sessions.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not pause the session.')
   }
-}
+})
 
 async function resumeSession() {
   if (!currentSession.value) return
@@ -181,21 +197,24 @@ async function resumeSession() {
   }
 }
 
-async function endSession() {
+const endSession = handleSubmit(async (values) => {
   if (!currentSession.value) return
   const endedToolkitId = currentSession.value.toolkitId
   try {
-    await mutations.end.mutateAsync(currentSession.value.id)
+    await mutations.end.mutateAsync({
+      id: currentSession.value.id,
+      ...sessionDetails(values),
+    })
     sessionStore.setCurrentSession(null)
     resetSessionForm(endedToolkitId)
     toast.success('Session ended and saved to the TMS list.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not end the session.')
   }
-}
+})
 
 function onToolkitChange(value: unknown) {
-  if (sessionReadOnly.value) return
+  if (toolkitLocked.value) return
   setFieldValue('toolkitId', String(value ?? ''))
 }
 </script>
@@ -219,7 +238,7 @@ function onToolkitChange(value: unknown) {
           <div class="grid gap-1.5">
             <NativeSelect
               :model-value="toolkitId ?? ''"
-              :disabled="sessionReadOnly"
+              :disabled="toolkitLocked"
               aria-label="Current toolkit"
               class="w-full"
               @update:model-value="onToolkitChange"
@@ -287,7 +306,7 @@ function onToolkitChange(value: unknown) {
         :toolkit-id="toolkitId"
         :toolkits="toolkitsQuery.data.value ?? []"
         :errors="errors"
-        :disabled="!hasSelectedToolkit || sessionReadOnly"
+        :disabled="!hasSelectedToolkit"
         :paused-count="summaryQuery.data.value?.pausedSessions ?? 0"
         @open-paused="pausedDialogOpen = true"
       />

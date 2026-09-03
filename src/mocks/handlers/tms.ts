@@ -1,6 +1,11 @@
 import { delay, http, HttpResponse } from 'msw'
 
-import type { PageResult, StartSessionInput, TmsSession } from '@/features/tms-management/types'
+import type {
+  PageResult,
+  SessionDetailsInput,
+  StartSessionInput,
+  TmsSession,
+} from '@/features/tms-management/types'
 
 import { getAgentToolkits, readSessions, writeSessions } from '../data/tms'
 
@@ -21,6 +26,38 @@ function problem(status: number, detail: string) {
     },
     { status },
   )
+}
+
+async function readSessionDetails(request: Request): Promise<SessionDetailsInput | null> {
+  const text = await request.text()
+  if (!text.trim()) return null
+  return JSON.parse(text) as SessionDetailsInput
+}
+
+function applySessionDetails(
+  session: TmsSession,
+  details: SessionDetailsInput | null,
+): Pick<TmsSession, 'subtaskId' | 'subtaskName' | 'processedVolume' | 'reference' | 'remarks'> {
+  if (!details) {
+    return {
+      subtaskId: session.subtaskId,
+      subtaskName: session.subtaskName,
+      processedVolume: session.processedVolume ?? 1,
+      reference: session.reference,
+      remarks: session.remarks,
+    }
+  }
+  const toolkit = getAgentToolkits().find((item) => item.id === session.toolkitId)
+  const subtask = details.subtaskId
+    ? toolkit?.subtasks.find((item) => item.id === details.subtaskId)
+    : undefined
+  return {
+    subtaskId: details.subtaskId ?? null,
+    subtaskName: subtask?.name ?? (details.subtaskId ? session.subtaskName : '—'),
+    processedVolume: details.processedVolume ?? 1,
+    reference: details.reference ?? '',
+    remarks: details.remarks ?? '',
+  }
 }
 
 function pageOf(items: TmsSession[], page: number, pageSize: number): PageResult<TmsSession> {
@@ -111,7 +148,7 @@ export const tmsHandlers = [
       toolkitName: toolkit.name,
       subtaskId: subtask?.id ?? null,
       subtaskName: subtask?.name ?? '—',
-      processedVolume: input.processedVolume ?? null,
+      processedVolume: input.processedVolume ?? 1,
       reference: input.reference,
       remarks: input.remarks,
       status: 'running',
@@ -124,7 +161,7 @@ export const tmsHandlers = [
     return HttpResponse.json(session, { status: 201 })
   }),
 
-  http.post('*/api/v1/tms/sessions/:id/pause', async ({ params }) => {
+  http.post('*/api/v1/tms/sessions/:id/pause', async ({ params, request }) => {
     await delay(140)
     const session = sessions.find((item) => item.id === params.id)
     if (!session || session.status !== 'running') {
@@ -134,6 +171,7 @@ export const tmsHandlers = [
     const now = new Date()
     const updated: TmsSession = {
       ...session,
+      ...applySessionDetails(session, await readSessionDetails(request)),
       status: 'paused',
       pausedAt: now.toISOString(),
       netDurationSeconds:
@@ -164,7 +202,7 @@ export const tmsHandlers = [
     return HttpResponse.json(updated)
   }),
 
-  http.post('*/api/v1/tms/sessions/:id/end', async ({ params }) => {
+  http.post('*/api/v1/tms/sessions/:id/end', async ({ params, request }) => {
     await delay(140)
     const session = sessions.find((item) => item.id === params.id)
     if (!session || session.status !== 'running') {
@@ -174,6 +212,7 @@ export const tmsHandlers = [
     const now = new Date()
     const updated: TmsSession = {
       ...session,
+      ...applySessionDetails(session, await readSessionDetails(request)),
       status: 'completed',
       endedAt: now.toISOString(),
       netDurationSeconds:
@@ -194,8 +233,8 @@ export const tmsHandlers = [
   http.get('*/api/v1/tms/team/agents', async () => {
     await delay(80)
     return HttpResponse.json([
-      { ccgid: 'AGENT010', name: 'Test Agent AGENT010' },
-      { ccgid: 'AGENT011', name: 'Test Agent AGENT011' },
+      { ccgid: 'AGENT010', name: 'Test Agent AGENT010', email: 'agent010@cma-cgm.com' },
+      { ccgid: 'AGENT011', name: 'Test Agent AGENT011', email: 'agent011@cma-cgm.com' },
     ])
   }),
 

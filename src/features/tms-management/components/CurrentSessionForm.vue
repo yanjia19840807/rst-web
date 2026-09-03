@@ -77,14 +77,13 @@ const selectedToolkit = computed(() =>
       </div>
 
       <div class="grid gap-1.5">
-        <Label for="session-volume"
-          >Volume <span class="font-normal text-muted-foreground">(optional)</span></Label
-        >
+        <Label for="session-volume">Volume</Label>
         <NumberFieldControl
           id="session-volume"
           class="text-sm"
-          :min="0"
+          :min="1"
           :disabled="disabled"
+          :invalid="Boolean(errors.processedVolume)"
           placeholder="e.g. 12.00"
           :model-value="processedVolume === '' || processedVolume == null ? null : Number(processedVolume)"
           @update:model-value="emit('update:processedVolume', $event ?? '')"

@@ -10,6 +10,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -630,11 +631,11 @@ const scenarioInfoRows = computed(() => {
               <span>{{ row.value || '—' }}</span>
               <button
                 type="button"
-                class="inline-flex size-5 items-center justify-center rounded text-primary hover:bg-primary/10"
+                :class="infoHintButtonClass"
                 title="Toolkit info"
                 @click="toolkitInfoOpen = true"
               >
-                <Info class="size-3.5" />
+                <Info :class="infoHintIconClass" />
                 <span class="sr-only">Toolkit info</span>
               </button>
             </span>

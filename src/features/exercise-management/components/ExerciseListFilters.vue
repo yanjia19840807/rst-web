@@ -115,7 +115,7 @@ const emit = defineEmits<{
     </div>
     <div
       v-if="advancedOpen === IN_PROGRESS_TAB"
-      class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+      class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
     >
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Created Date From
@@ -245,7 +245,7 @@ const emit = defineEmits<{
     </div>
     <div
       v-if="advancedOpen === 'Archived'"
-      class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+      class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
     >
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Archived Date From

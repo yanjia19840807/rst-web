@@ -26,3 +26,9 @@ export const alertVariants = cva(
 )
 
 export type AlertVariants = VariantProps<typeof alertVariants>
+
+/** Label-adjacent Info button — same size and color as Alert variant="info". */
+export const infoHintButtonClass =
+  'inline-flex size-5 shrink-0 items-center justify-center rounded text-sky-700 hover:bg-sky-100 dark:text-sky-400 dark:hover:bg-sky-900/40'
+
+export const infoHintIconClass = 'size-4'

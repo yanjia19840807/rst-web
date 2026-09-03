@@ -14,10 +14,12 @@ const props = withDefaults(
     class?: string
     hideSummary?: boolean
     linkButtons?: boolean
+    size?: 'xs' | 'sm' | 'default'
   }>(),
   {
     hideSummary: false,
     linkButtons: false,
+    size: 'sm',
   },
 )
 
@@ -51,7 +53,7 @@ function next() {
       <label class="flex items-center gap-1.5 text-xs">
         Rows
         <NativeSelect
-          size="sm"
+          :size="size"
           :model-value="String(pageSize)"
           aria-label="Rows per page"
           @update:model-value="emit('update:pageSize', Number($event))"
@@ -62,9 +64,8 @@ function next() {
         </NativeSelect>
       </label>
       <Button
-        size="sm"
+        :size="size"
         :variant="linkButtons ? 'link' : 'outline'"
-        :class="linkButtons ? 'h-auto px-0' : undefined"
         :disabled="page <= 1"
         @click="prev"
       >
@@ -72,9 +73,8 @@ function next() {
       </Button>
       <span class="text-xs">{{ page }} / {{ totalPages }}</span>
       <Button
-        size="sm"
+        :size="size"
         :variant="linkButtons ? 'link' : 'outline'"
-        :class="linkButtons ? 'h-auto px-0' : undefined"
         :disabled="page >= totalPages"
         @click="next"
       >

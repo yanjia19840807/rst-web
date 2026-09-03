@@ -29,9 +29,24 @@ export const delegationHandlers = [
     const url = new URL(request.url)
     const q = (url.searchParams.get('q') ?? '').toLowerCase()
     const items = [
-      { ccgid: 'AGENT010', name: 'Test Agent AGENT010', center: 'Kuala Lumpur' },
-      { ccgid: 'S00813982', name: 'Demo Manager', center: 'Kuala Lumpur' },
-    ].filter((item) => !q || item.name.toLowerCase().includes(q) || item.ccgid.toLowerCase().includes(q))
+      {
+        ccgid: 'AGENT010',
+        name: 'Test Agent AGENT010',
+        center: 'Kuala Lumpur',
+        email: 'agent010@cma-cgm.com',
+      },
+      {
+        ccgid: 'S00813982',
+        name: 'Demo Manager',
+        center: 'Kuala Lumpur',
+        email: 'demo.manager@cma-cgm.com',
+      },
+    ].filter(
+      (item) =>
+        !q ||
+        item.name.toLowerCase().includes(q) ||
+        (item.email ?? '').toLowerCase().includes(q),
+    )
     return HttpResponse.json({
       items,
       page: 1,

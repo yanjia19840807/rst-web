@@ -3,7 +3,7 @@ import { Info } from '@lucide/vue'
 import { computed } from 'vue'
 
 import DetailTable from '@/components/DetailTable.vue'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -61,11 +61,11 @@ const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exerc
             <span>{{ row.value || '—' }}</span>
             <button
               type="button"
-              class="inline-flex size-5 items-center justify-center rounded text-primary hover:bg-primary/10"
+              :class="infoHintButtonClass"
               title="Toolkit info"
               @click="emit('toolkitInfo')"
             >
-              <Info class="size-3.5" />
+              <Info :class="infoHintIconClass" />
               <span class="sr-only">Toolkit info</span>
             </button>
           </span>

@@ -39,6 +39,7 @@ export interface TmsSession {
 export interface TeamAgentOption {
   ccgid: string
   name: string
+  email?: string | null
 }
 
 export type TmsListMode = 'agent' | 'supervisor'
@@ -70,10 +71,17 @@ export interface SessionFilters {
   pageSize: number
 }
 
-export interface StartSessionInput {
-  toolkitId: string
+export interface SessionDetailsInput {
   subtaskId: string | null
   processedVolume: number | null
   reference: string
   remarks: string
+}
+
+export interface StartSessionInput extends SessionDetailsInput {
+  toolkitId: string
+}
+
+export interface UpdateSessionInput extends SessionDetailsInput {
+  id: string
 }

@@ -6,11 +6,15 @@ import { Button } from '@/components/ui/button'
 import '@/components/ui/data-table/types'
 import { formatDateTimeSeconds } from '@/lib/datetime'
 
-import type { TimesheetSyncRunHeader } from '../types'
+import type { TimesheetSnapshotTab, TimesheetSyncRunHeader } from '../types'
 
 export type TimesheetActiveRow = {
   kind: 'DAILY' | 'MONTHLY'
   run: TimesheetSyncRunHeader | null
+}
+
+export type TimesheetActiveColumnOptions = {
+  onViewTables?: (row: TimesheetActiveRow, tab: TimesheetSnapshotTab) => void
 }
 
 export type TimesheetSyncColumnOptions = {
@@ -46,8 +50,48 @@ function viewIssuesButton(row: TimesheetSyncRunHeader | null, onViewIssues?: (ro
   )
 }
 
-export function createTimesheetActiveColumns(): ColumnDef<TimesheetActiveRow>[] {
+function mappedTableLinks(
+  row: TimesheetActiveRow,
+  onViewTables?: (row: TimesheetActiveRow, tab: TimesheetSnapshotTab) => void,
+) {
+  if (!row.run) return '—'
+  const tabs =
+    row.kind === 'DAILY'
+      ? ([
+          { key: 'people', label: 'People' },
+          { key: 'positions', label: 'Positions' },
+        ] as const)
+      : ([
+          { key: 'scopes', label: 'Process' },
+          { key: 'kpis', label: 'Delivery HC' },
+        ] as const)
+  return h(
+    'div',
+    { class: 'flex flex-wrap justify-end gap-x-3' },
+    tabs.map((tab) =>
+      h(
+        Button,
+        {
+          size: 'sm',
+          variant: 'link',
+          class: 'h-auto px-0 font-semibold',
+          onClick: () => onViewTables?.(row, tab.key),
+        },
+        () => tab.label,
+      ),
+    ),
+  )
+}
+
+export function createTimesheetActiveColumns(
+  options: TimesheetActiveColumnOptions = {},
+): ColumnDef<TimesheetActiveRow>[] {
   return [
+    activeHelper.display({
+      id: 'center',
+      header: 'Center',
+      cell: ({ row }) => dash(row.original.run?.center),
+    }),
     activeHelper.accessor('kind', {
       header: 'Kind',
       cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.kind),
@@ -61,11 +105,6 @@ export function createTimesheetActiveColumns(): ColumnDef<TimesheetActiveRow>[] 
       id: 'syncDate',
       header: 'Date',
       cell: ({ row }) => dash(row.original.run?.syncDate),
-    }),
-    activeHelper.display({
-      id: 'center',
-      header: 'Center',
-      cell: ({ row }) => dash(row.original.run?.center),
     }),
     activeHelper.display({
       id: 'sourceType',
@@ -87,6 +126,12 @@ export function createTimesheetActiveColumns(): ColumnDef<TimesheetActiveRow>[] 
       header: 'Triggered by',
       cell: ({ row }) => dash(row.original.run?.triggeredByCcgid),
     }),
+    activeHelper.display({
+      id: 'mappedTables',
+      header: 'Mapped tables',
+      meta: { headerClass: 'text-right', cellClass: 'text-right' },
+      cell: ({ row }) => mappedTableLinks(row.original, options.onViewTables),
+    }),
   ]
 }
 
@@ -94,6 +139,10 @@ export function createTimesheetRunColumns(
   options: TimesheetSyncColumnOptions = {},
 ): ColumnDef<TimesheetSyncRunHeader>[] {
   return [
+    runHelper.accessor((row) => dash(row.center), {
+      id: 'center',
+      header: 'Center',
+    }),
     runHelper.accessor('kind', {
       header: 'Kind',
       cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.kind),

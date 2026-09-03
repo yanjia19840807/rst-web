@@ -19,6 +19,7 @@ export type DelegationCandidate = {
   ccgid: string
   name: string
   center: string | null
+  email?: string | null
 }
 
 export type DelegationCandidatePage = {

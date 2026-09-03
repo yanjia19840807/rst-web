@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
 
+import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
+
 defineProps<{
   name: string
   canInfo?: boolean
@@ -17,11 +19,11 @@ const emit = defineEmits<{
     <button
       v-if="canInfo"
       type="button"
-      class="inline-flex size-5 shrink-0 items-center justify-center rounded text-primary hover:bg-primary/10"
+      :class="infoHintButtonClass"
       title="Toolkit info"
       @click="emit('info')"
     >
-      <Info class="size-3.5" />
+      <Info :class="infoHintIconClass" />
       <span class="sr-only">Toolkit info</span>
     </button>
   </span>

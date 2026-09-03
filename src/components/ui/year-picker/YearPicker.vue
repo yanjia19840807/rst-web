@@ -3,7 +3,13 @@ import { computed, ref, watch } from 'vue'
 import { getLocalTimeZone, today } from '@internationalized/date'
 import { CalendarIcon, ChevronLeft, ChevronRight } from '@lucide/vue'
 
-import { Button } from '@/components/ui/button'
+import { Button, type ButtonVariants } from '@/components/ui/button'
+import {
+  pickerNavButtonClass,
+  pickerPanelClass,
+  pickerPopoverClass,
+  pickerTriggerClass,
+} from '@/components/ui/picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
@@ -12,6 +18,9 @@ const props = withDefaults(
     modelValue: number | null
     placeholder?: string
     ariaLabel?: string
+    disabled?: boolean
+    invalid?: boolean
+    size?: ButtonVariants['size']
     class?: string
     minYear?: number
     maxYear?: number
@@ -19,6 +28,9 @@ const props = withDefaults(
   {
     placeholder: 'Pick a year',
     ariaLabel: 'Choose year',
+    disabled: false,
+    invalid: false,
+    size: 'default',
     class: undefined,
     minYear: 2000,
     maxYear: 2100,
@@ -69,10 +81,13 @@ function shiftDecade(delta: number) {
       <Button
         type="button"
         variant="outline"
+        :size="size"
+        :disabled="disabled"
         :aria-label="ariaLabel"
+        :aria-invalid="invalid || undefined"
         :class="
           cn(
-            'w-36 justify-start text-left font-normal',
+            pickerTriggerClass,
             selected == null && 'text-muted-foreground',
             props.class,
           )
@@ -82,42 +97,52 @@ function shiftDecade(delta: number) {
         {{ selected != null ? selected : placeholder }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent class="w-64 p-3" align="start">
-      <div class="mb-3 flex items-center justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Previous decade"
-          @click="shiftDecade(-1)"
-        >
-          <ChevronLeft />
-        </Button>
-        <span class="text-sm font-medium">
-          {{ decadeStart }} – {{ decadeStart + 9 }}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Next decade"
-          @click="shiftDecade(1)"
-        >
-          <ChevronRight />
-        </Button>
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <Button
-          v-for="year in years"
-          :key="year"
-          type="button"
-          size="sm"
-          :variant="selected === year ? 'default' : 'ghost'"
-          :class="year < decadeStart || year > decadeStart + 9 ? 'text-muted-foreground' : undefined"
-          @click="selectYear(year)"
-        >
-          {{ year }}
-        </Button>
+    <PopoverContent :class="cn(pickerPopoverClass, 'min-w-64')" align="start">
+      <div :class="pickerPanelClass">
+        <div class="flex w-full items-center justify-between gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            :class="pickerNavButtonClass"
+            aria-label="Previous decade"
+            @click="shiftDecade(-1)"
+          >
+            <ChevronLeft class="cn-rtl-flip size-4" />
+          </Button>
+          <span class="text-sm font-medium">
+            {{ decadeStart }} – {{ decadeStart + 9 }}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            :class="pickerNavButtonClass"
+            aria-label="Next decade"
+            @click="shiftDecade(1)"
+          >
+            <ChevronRight class="cn-rtl-flip size-4" />
+          </Button>
+        </div>
+        <div class="mt-4 grid grid-cols-3 gap-2">
+          <Button
+            v-for="year in years"
+            :key="year"
+            type="button"
+            variant="ghost"
+            :class="
+              cn(
+                'h-8 font-normal',
+                selected === year &&
+                  'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                (year < decadeStart || year > decadeStart + 9) &&
+                  selected !== year &&
+                  'text-muted-foreground',
+              )
+            "
+            @click="selectYear(year)"
+          >
+            {{ year }}
+          </Button>
+        </div>
       </div>
     </PopoverContent>
   </Popover>

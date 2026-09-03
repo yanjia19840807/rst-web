@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
 
+import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import {
   Popover,
   PopoverContent,
@@ -24,10 +25,10 @@ defineProps<{
     <PopoverTrigger as-child>
       <button
         type="button"
-        class="inline-flex size-5 shrink-0 items-center justify-center rounded text-primary hover:bg-primary/10"
+        :class="infoHintButtonClass"
         :aria-label="`${title} info`"
       >
-        <Info class="size-3.5" />
+        <Info :class="infoHintIconClass" />
         <span class="sr-only">{{ title }} info</span>
       </button>
     </PopoverTrigger>

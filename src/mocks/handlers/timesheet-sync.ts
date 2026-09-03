@@ -99,8 +99,6 @@ const mockPositions = [
     supervisorName: 'Supervisor One',
     srManagerPositionId: 'POS-SRM-1',
     srManagerName: 'SR Manager One',
-    domainHeadPositionId: 'POS-DH-1',
-    domainHeadName: 'Domain Head One',
     center: 'GBS CHINA',
   },
   {
@@ -110,8 +108,6 @@ const mockPositions = [
     supervisorName: 'Supervisor One',
     srManagerPositionId: 'POS-SRM-1',
     srManagerName: 'SR Manager One',
-    domainHeadPositionId: 'POS-DH-1',
-    domainHeadName: 'Domain Head One',
     center: 'Kuala Lumpur',
   },
 ]
@@ -247,8 +243,7 @@ export const timesheetSyncHandlers = [
         (!q
           || matchesPosition(row.agentPositionId, row.agentName, q)
           || matchesPosition(row.supervisorPositionId, row.supervisorName, q)
-          || matchesPosition(row.srManagerPositionId, row.srManagerName, q)
-          || matchesPosition(row.domainHeadPositionId, row.domainHeadName, q)),
+          || matchesPosition(row.srManagerPositionId, row.srManagerName, q)),
     )
     return HttpResponse.json(pageOf(rows, request))
   }),

@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
+import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
@@ -39,7 +40,13 @@ const filters = reactive({
   page: 1,
   pageSize: 10,
 })
-const queryFilters = computed(() => ({ ...filters }))
+const appliedSessionNo = ref('')
+const appliedReference = ref('')
+const queryFilters = computed(() => ({
+  ...filters,
+  sessionNo: appliedSessionNo.value,
+  reference: appliedReference.value,
+}))
 const sessionsQuery = useTmsSessionsQuery(queryFilters, () => props.mode)
 const teamAgentsQuery = useTeamAgentsQuery(isSupervisor)
 const toolkitsQuery = useManagedToolkitsQuery(isSupervisor)
@@ -62,18 +69,28 @@ const pl3Options = computed(() => {
 })
 
 watch(
-  () => [
-    filters.sessionNo,
-    filters.reference,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.agentCcgid,
-    filters.toolkitId,
-    filters.pl3Code,
-  ],
+  () => [filters.dateFrom, filters.dateTo, filters.agentCcgid, filters.toolkitId, filters.pl3Code],
   () => {
     filters.page = 1
   },
+)
+
+watchDebounced(
+  () => filters.sessionNo,
+  (value) => {
+    appliedSessionNo.value = value
+    filters.page = 1
+  },
+  { debounce: 400 },
+)
+
+watchDebounced(
+  () => filters.reference,
+  (value) => {
+    appliedReference.value = value
+    filters.page = 1
+  },
+  { debounce: 400 },
 )
 
 function openDelete(id: string) {

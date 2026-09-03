@@ -185,7 +185,8 @@ function formatShiftTime(value?: string | null) {
                   <div v-else class="grid gap-1">
                     <TimePicker
                       v-model="row.startTime"
-                      class="h-8"
+                      size="sm"
+                      class="w-[140px]"
                       :disabled="busy"
                       :invalid="Boolean(shiftFieldErrors?.[index]?.startTime)"
                       :aria-label="`Shift ${row.shiftNo} start`"

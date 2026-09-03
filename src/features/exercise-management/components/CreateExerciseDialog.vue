@@ -6,7 +6,6 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
-import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -86,6 +85,16 @@ const freezeSyncDate = computed(
   () => selectedToolkit.value?.alignment?.currentMonthlySyncDate || '',
 )
 const createdLabel = computed(() => formatDate(new Date()))
+const infoRows = computed(() => {
+  const rows = [
+    { label: 'Exercise No', value: 'Assigned on create' },
+    { label: 'Created', value: createdLabel.value },
+  ]
+  if (props.lockToolkit) {
+    rows.push({ label: 'Toolkit', value: lockedToolkit.value?.name ?? '' })
+  }
+  return rows
+})
 const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
 const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
 
@@ -166,37 +175,29 @@ const create = handleSubmit(
 
           <TimesheetAlignmentAlert audience="create" :alignment="selectedToolkit?.alignment" />
 
-          <DetailTable
-            :rows="[
-              { label: 'Exercise No', value: 'Assigned on create' },
-              { label: 'Created', value: createdLabel },
-            ]"
-          />
+          <DetailTable :rows="infoRows" />
 
-          <div class="grid gap-1.5">
-            <Label :for="lockToolkit ? undefined : 'create-exercise-toolkit'">Toolkit</Label>
-            <ReadOnlyField v-if="lockToolkit" :value="lockedToolkit?.name" strong />
-            <template v-else>
-              <select
-                id="create-exercise-toolkit"
-                v-model="toolkitId"
-                class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
-                :aria-invalid="Boolean(errors.toolkitId)"
+          <div v-if="!lockToolkit" class="grid gap-1.5">
+            <Label for="create-exercise-toolkit">Toolkit</Label>
+            <select
+              id="create-exercise-toolkit"
+              v-model="toolkitId"
+              class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
+              :aria-invalid="Boolean(errors.toolkitId)"
+            >
+              <option value="">Select toolkit</option>
+              <option
+                v-for="toolkit in toolkits"
+                :key="toolkit.id"
+                :value="toolkit.id"
+                :disabled="toolkit.outOfSync"
               >
-                <option value="">Select toolkit</option>
-                <option
-                  v-for="toolkit in toolkits"
-                  :key="toolkit.id"
-                  :value="toolkit.id"
-                  :disabled="toolkit.outOfSync"
-                >
-                  {{ toolkit.name }}{{ toolkit.outOfSync ? ' (scope changed)' : '' }}
-                </option>
-              </select>
-              <p v-if="errors.toolkitId" class="text-xs text-destructive">
-                {{ errors.toolkitId }}
-              </p>
-            </template>
+                {{ toolkit.name }}{{ toolkit.outOfSync ? ' (scope changed)' : '' }}
+              </option>
+            </select>
+            <p v-if="errors.toolkitId" class="text-xs text-destructive">
+              {{ errors.toolkitId }}
+            </p>
           </div>
 
           <div class="grid gap-1.5">

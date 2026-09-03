@@ -29,22 +29,22 @@ function positionWithName(id: string | null | undefined, name: string | null | u
 
 export function createSnapshotPersonColumns(): ColumnDef<TimesheetSnapshotPerson>[] {
   return [
+    personHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     personHelper.accessor('ccgid', { header: 'CCGID' }),
     personHelper.accessor((row) => dash(row.empId), { id: 'empId', header: 'Emp ID' }),
     personHelper.accessor('name', { header: 'Name' }),
     personHelper.accessor((row) => dash(row.email), { id: 'email', header: 'Email' }),
-    personHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     personHelper.accessor((row) => dash(row.positionId), { id: 'positionId', header: 'Position' }),
   ]
 }
 
 export function createSnapshotPositionColumns(): ColumnDef<TimesheetSnapshotPosition>[] {
   return [
+    positionHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     positionHelper.accessor((row) => positionWithName(row.agentPositionId, row.agentName), {
       id: 'agentPositionId',
       header: 'Agent position',
     }),
-    positionHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     positionHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
       id: 'supervisorPositionId',
       header: 'Supervisor position',
@@ -53,20 +53,16 @@ export function createSnapshotPositionColumns(): ColumnDef<TimesheetSnapshotPosi
       id: 'srManagerPositionId',
       header: 'SR Manager position',
     }),
-    positionHelper.accessor((row) => positionWithName(row.domainHeadPositionId, row.domainHeadName), {
-      id: 'domainHeadPositionId',
-      header: 'Domain Head position',
-    }),
   ]
 }
 
 export function createSnapshotScopeColumns(): ColumnDef<TimesheetSnapshotScope>[] {
   return [
+    scopeHelper.accessor('center', { header: 'Center' }),
     scopeHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
       id: 'supervisorPositionId',
       header: 'Supervisor position',
     }),
-    scopeHelper.accessor('center', { header: 'Center' }),
     scopeHelper.accessor((row) => dash(row.domain), { id: 'domain', header: 'Domain' }),
     scopeHelper.accessor((row) => dash(row.pl1), { id: 'pl1', header: 'PL1' }),
     scopeHelper.accessor((row) => dash(row.pl2), { id: 'pl2', header: 'PL2' }),
@@ -77,6 +73,7 @@ export function createSnapshotScopeColumns(): ColumnDef<TimesheetSnapshotScope>[
 
 export function createSnapshotAssignmentColumns(): ColumnDef<TimesheetSnapshotAssignment>[] {
   return [
+    assignmentHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     assignmentHelper.accessor((row) => positionWithName(row.agentPositionId, row.agentName), {
       id: 'agentPositionId',
       header: 'Agent position',
@@ -87,17 +84,16 @@ export function createSnapshotAssignmentColumns(): ColumnDef<TimesheetSnapshotAs
     }),
     assignmentHelper.accessor('pl3Code', { header: 'PL3 code' }),
     assignmentHelper.accessor((row) => dash(row.pl3Name), { id: 'pl3Name', header: 'PL3' }),
-    assignmentHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
   ]
 }
 
 export function createSnapshotKpiColumns(): ColumnDef<TimesheetSnapshotKpi>[] {
   return [
+    kpiHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     kpiHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
       id: 'supervisorPositionId',
       header: 'Supervisor position',
     }),
-    kpiHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     kpiHelper.accessor('pl3Code', { header: 'PL3 code' }),
     kpiHelper.accessor((row) => dash(row.pl3Name), { id: 'pl3Name', header: 'PL3' }),
     kpiHelper.accessor('carrier', { header: 'Carrier' }),

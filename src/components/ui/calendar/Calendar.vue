@@ -8,6 +8,7 @@ import { CalendarRoot, useDateFormatter, useForwardPropsEmits } from 'reka-ui'
 import { createYear, createYearRange, toDate } from 'reka-ui/date'
 import { computed, toRaw } from 'vue'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { pickerSelectClass, pickerSelectIconWrapClass } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
 import {
   CalendarCell,
@@ -66,10 +67,15 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
 <template>
   <!-- Official shadcn-vue month/year NativeSelect pattern -->
   <DefineMonthTemplate v-slot="{ date }">
-    <div class="**:data-[slot=native-select-icon]:right-1">
+    <div :class="pickerSelectIconWrapClass">
       <div class="relative">
+        <div
+          class="pointer-events-none absolute inset-0 flex h-full items-center pl-2 text-sm"
+        >
+          {{ formatter.custom(toDate(date), { month: 'short' }) }}
+        </div>
         <NativeSelect
-          class="relative h-8 bg-transparent pr-6 pl-2 text-xs text-transparent dark:bg-transparent"
+          :class="pickerSelectClass"
           :model-value="String(date.month)"
           aria-label="Month"
           @change="
@@ -89,20 +95,20 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
             {{ formatter.custom(toDate(month), { month: 'short' }) }}
           </NativeSelectOption>
         </NativeSelect>
-        <div
-          class="pointer-events-none absolute inset-0 z-10 flex h-full items-center pl-2 text-sm"
-        >
-          {{ formatter.custom(toDate(date), { month: 'short' }) }}
-        </div>
       </div>
     </div>
   </DefineMonthTemplate>
 
   <DefineYearTemplate v-slot="{ date }">
-    <div class="**:data-[slot=native-select-icon]:right-1">
+    <div :class="pickerSelectIconWrapClass">
       <div class="relative">
+        <div
+          class="pointer-events-none absolute inset-0 flex h-full items-center pl-2 text-sm"
+        >
+          {{ formatter.custom(toDate(date), { year: 'numeric' }) }}
+        </div>
         <NativeSelect
-          class="relative h-8 bg-transparent pr-6 pl-2 text-xs text-transparent dark:bg-transparent"
+          :class="pickerSelectClass"
           :model-value="String(date.year)"
           aria-label="Year"
           @change="
@@ -122,11 +128,6 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
             {{ formatter.custom(toDate(year), { year: 'numeric' }) }}
           </NativeSelectOption>
         </NativeSelect>
-        <div
-          class="pointer-events-none absolute inset-0 z-10 flex h-full items-center pl-2 text-sm"
-        >
-          {{ formatter.custom(toDate(date), { year: 'numeric' }) }}
-        </div>
       </div>
     </div>
   </DefineYearTemplate>

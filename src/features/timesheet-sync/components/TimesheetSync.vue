@@ -7,7 +7,7 @@ import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 
@@ -17,7 +17,7 @@ import DomainHeadsDialog from '@/features/domain-heads/components/DomainHeadsDia
 
 import { useUploadTimesheetSync } from '../api/mutations'
 import { useTimesheetSyncOverviewQuery } from '../api/queries'
-import type { TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
+import type { TimesheetSnapshotTab, TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
 import TimesheetSnapshotTables from './TimesheetSnapshotTables.vue'
 import TimesheetSyncAlertDialog from './TimesheetSyncAlertDialog.vue'
 import TimesheetSyncIssuesDialog from './TimesheetSyncIssuesDialog.vue'
@@ -52,6 +52,8 @@ const uploadMutation = useUploadTimesheetSync()
 const selectedRun = ref<TimesheetSyncRunHeader | null>(null)
 const issuesOpen = ref(false)
 const mappedOpen = ref(false)
+const mappedKind = ref<'DAILY' | 'MONTHLY'>('DAILY')
+const mappedTab = ref<TimesheetSnapshotTab>('people')
 const alertOpen = ref(false)
 const domainHeadOpen = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -88,7 +90,7 @@ const missingActiveLabel = computed(() => {
   return kinds[0] ?? ''
 })
 
-const activeColumns = computed(() => createTimesheetActiveColumns())
+const activeColumns = computed(() => createTimesheetActiveColumns({ onViewTables: openMapped }))
 const runColumns = computed(() => createTimesheetRunColumns({ onViewIssues: openIssues }))
 
 watch([kindFilter, statusFilter, dateFrom, dateTo], () => {
@@ -142,6 +144,13 @@ function openIssues(row: TimesheetSyncRunHeader) {
   selectedRun.value = row
   issuesOpen.value = true
 }
+
+function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
+  if (!row.run) return
+  mappedKind.value = row.kind
+  mappedTab.value = tab
+  mappedOpen.value = true
+}
 </script>
 
 <template>
@@ -177,7 +186,7 @@ function openIssues(row: TimesheetSyncRunHeader) {
     </PageActions>
 
     <Card>
-      <CardHeader class="items-center">
+      <CardHeader>
         <div>
           <CardTitle>ACTIVE snapshots</CardTitle>
           <CardDescription>
@@ -185,11 +194,6 @@ function openIssues(row: TimesheetSyncRunHeader) {
             uploads go to Manual.
           </CardDescription>
         </div>
-        <CardAction>
-          <Button variant="link" size="sm" class="h-auto px-0 font-semibold" @click="mappedOpen = true">
-            Mapped tables
-          </Button>
-        </CardAction>
       </CardHeader>
       <CardContent>
         <DataTable
@@ -197,7 +201,7 @@ function openIssues(row: TimesheetSyncRunHeader) {
           :data="snapshots"
           :pending="loading"
           empty-text="No ACTIVE snapshots."
-          table-class="min-w-[960px]"
+          table-class="min-w-[1180px]"
           :get-row-id="(row) => row.kind"
         />
       </CardContent>
@@ -257,7 +261,7 @@ function openIssues(row: TimesheetSyncRunHeader) {
           :empty-text="
             hasFilters ? 'No matching Timesheet sync runs.' : 'No Timesheet sync runs yet.'
           "
-          table-class="min-w-[1080px]"
+          table-class="min-w-[1180px]"
           :get-row-id="(row) => row.id"
         />
 
@@ -277,7 +281,11 @@ function openIssues(row: TimesheetSyncRunHeader) {
       </CardContent>
     </Card>
 
-    <TimesheetSnapshotTables v-model:open="mappedOpen" />
+    <TimesheetSnapshotTables
+      v-model:open="mappedOpen"
+      :kind="mappedKind"
+      :initial-tab="mappedTab"
+    />
     <TimesheetSyncIssuesDialog
       v-model:open="issuesOpen"
       :run-id="selectedRun?.id ?? null"

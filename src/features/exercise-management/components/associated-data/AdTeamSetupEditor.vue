@@ -459,6 +459,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="slaStartTime"
               aria-label="SLA clock start"
+              class="w-full"
               :invalid="Boolean(errors.slaStartTime)"
             />
             <ReadOnlyField v-else :value="slaStartTime" />
@@ -470,6 +471,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="slaEndTime"
               aria-label="SLA clock end"
+              class="w-full"
               :invalid="Boolean(errors.slaEndTime)"
             />
             <ReadOnlyField v-else :value="slaEndTime" />

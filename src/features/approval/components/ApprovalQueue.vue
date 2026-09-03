@@ -313,7 +313,7 @@ watch(
           </div>
           <div
             v-if="moreFiltersOpen"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
           >
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Submitted Date From
@@ -379,7 +379,7 @@ watch(
           </div>
           <div
             v-if="moreFiltersOpen"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted p-3"
+            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
           >
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Completed Date From

@@ -2,6 +2,7 @@ export type TimesheetPerson = {
   positionId: string
   ccgid: string
   name: string
+  email?: string | null
 }
 
 export type TimesheetPeoplePage = {

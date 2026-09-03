@@ -1,27 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { watchDebounced } from '@vueuse/core'
+import { computed, ref } from 'vue'
 
-import ListLoading from '@/components/ListLoading.vue'
-import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-
+import PersonPicker, {
+  type PersonPickerQuery,
+  type PersonPickerRow,
+} from '@/components/PersonPicker.vue'
 import { useTimesheetPeopleQuery } from '@/features/timesheet/api/queries'
-import type { TimesheetPerson } from '@/features/timesheet/types'
 
 const props = defineProps<{
   modelValue: string | null
@@ -35,165 +19,57 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | null]
 }>()
 
-const open = ref(false)
-const queryInput = ref('')
-const appliedQuery = ref('')
-const page = ref(1)
-const pageSize = ref(10)
-const picked = ref<TimesheetPerson | null>(null)
+const pickerQuery = ref<PersonPickerQuery>({
+  q: '',
+  page: 1,
+  pageSize: 10,
+  open: false,
+})
 
 const listQuery = computed(() => ({
   center: props.center,
-  q: appliedQuery.value || undefined,
-  page: page.value,
-  pageSize: pageSize.value,
+  q: pickerQuery.value.q || undefined,
+  page: pickerQuery.value.page,
+  pageSize: pickerQuery.value.pageSize,
 }))
 
-const peopleQuery = useTimesheetPeopleQuery(listQuery, () => open.value && Boolean(props.center.trim()))
-
-const items = computed(() => peopleQuery.data.value?.items ?? [])
+const peopleQuery = useTimesheetPeopleQuery(
+  listQuery,
+  () => pickerQuery.value.open && Boolean(props.center.trim()),
+)
+const items = computed(() =>
+  (peopleQuery.data.value?.items ?? []).map((item) => ({
+    id: item.positionId,
+    ccgid: item.ccgid,
+    name: item.name,
+    email: item.email,
+  })),
+)
 const total = computed(() => peopleQuery.data.value?.total ?? 0)
 const loading = computed(() => peopleQuery.isFetching.value)
-
-const selected = computed(() => {
-  const match = items.value.find((item) => item.positionId === props.modelValue)
-  if (match) return match
-  if (picked.value && picked.value.positionId === props.modelValue) return picked.value
-  if (props.modelValue && props.fallbackPositionId === props.modelValue) {
-    return {
-      positionId: props.fallbackPositionId,
-      ccgid: '',
-      name: props.fallbackName ?? '',
-    } satisfies TimesheetPerson
-  }
-  return null
-})
-
-function labelOf(candidate: TimesheetPerson | null) {
-  if (!candidate) return 'Select approver'
-  return candidate.name.trim() || 'Select approver'
-}
-
-function choose(candidate: TimesheetPerson | null) {
-  picked.value = candidate
-  emit('update:modelValue', candidate?.positionId ?? null)
-  open.value = false
-}
-
-watchDebounced(
-  queryInput,
-  (value) => {
-    appliedQuery.value = value.trim()
-    page.value = 1
-  },
-  { debounce: 300 },
+const emptyText = computed(() =>
+  pickerQuery.value.q ? 'No matching people' : 'No people in this Center',
 )
 
-watch(open, (isOpen) => {
-  if (isOpen) return
-  queryInput.value = ''
-  appliedQuery.value = ''
-  page.value = 1
-})
-
-watch(
-  () => ({
-    totalPages: peopleQuery.data.value?.totalPages,
-    fetching: peopleQuery.isFetching.value,
-  }),
-  ({ totalPages: pages, fetching }) => {
-    if (!fetching && pages != null && page.value > pages) {
-      page.value = pages
-    }
-  },
-)
+function formatLabel(row: PersonPickerRow) {
+  const fallback =
+    row.id === props.fallbackPositionId ? (props.fallbackName ?? '').trim() : ''
+  return row.name.trim() || fallback || 'Select approver'
+}
 </script>
 
 <template>
-  <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        variant="outline"
-        class="w-full justify-between font-normal"
-        :disabled="disabled"
-      >
-        <span class="truncate">{{ labelOf(selected) }}</span>
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent class="w-96 gap-2 p-2" align="start">
-      <div class="flex items-center gap-2">
-        <div class="min-w-0 flex-1">
-          <Input
-            v-model="queryInput"
-            placeholder="Search name"
-            class="h-8 text-sm"
-          />
-        </div>
-        <Button
-          size="sm"
-          variant="link"
-          class="h-auto shrink-0 px-0"
-          :disabled="!modelValue"
-          @click="choose(null)"
-        >
-          Clear
-        </Button>
-      </div>
-
-      <div class="relative h-72 overflow-hidden rounded-md border">
-        <div class="h-full overflow-y-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead class="h-8">CCGID</TableHead>
-                <TableHead class="h-8">Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="candidate in items"
-                :key="candidate.positionId"
-                class="cursor-pointer"
-                :class="candidate.positionId === modelValue ? 'bg-muted' : undefined"
-                @click="choose(candidate)"
-              >
-                <TableCell class="py-1.5 font-mono text-xs">{{ candidate.ccgid }}</TableCell>
-                <TableCell class="py-1.5">{{ candidate.name }}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-        <div
-          v-if="loading"
-          class="absolute inset-0 z-10 flex items-center justify-center bg-background/70"
-        >
-          <ListLoading class="h-auto" />
-        </div>
-        <div
-          v-else-if="!items.length"
-          class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
-        >
-          {{ appliedQuery ? 'No matching people' : 'No people in this Center' }}
-        </div>
-      </div>
-
-      <TablePager
-        class="mt-0"
-        hide-summary
-        link-buttons
-        :total="total"
-        :page="page"
-        :page-size="pageSize"
-        label="people"
-        @update:page="page = $event"
-        @update:page-size="
-          (size) => {
-            pageSize = size
-            page = 1
-          }
-        "
-      />
-    </PopoverContent>
-  </Popover>
+  <PersonPicker
+    :model-value="props.modelValue"
+    empty-label="Select approver"
+    allow-clear
+    :items="items"
+    :total="total"
+    :loading="loading"
+    :empty-text="emptyText"
+    :disabled="disabled"
+    :format-label="formatLabel"
+    @update:model-value="emit('update:modelValue', $event)"
+    @query="pickerQuery = $event"
+  />
 </template>

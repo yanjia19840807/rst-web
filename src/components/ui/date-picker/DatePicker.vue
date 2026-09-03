@@ -7,6 +7,7 @@ import { CalendarIcon } from '@lucide/vue'
 import { Button, type ButtonVariants } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { pickerPopoverClass, pickerTriggerClass } from '@/components/ui/picker'
 import { formatDate } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
@@ -65,7 +66,7 @@ watch(open, (isOpen) => {
 </script>
 
 <template>
-  <Popover v-model:open="open">
+  <Popover v-model:open="open" v-slot="{ close }">
     <PopoverTrigger as-child>
       <Button
         type="button"
@@ -76,7 +77,7 @@ watch(open, (isOpen) => {
         :aria-invalid="invalid || undefined"
         :class="
           cn(
-            'w-44 justify-start text-left font-normal',
+            pickerTriggerClass,
             !date && 'text-muted-foreground',
             props.class,
           )
@@ -86,14 +87,14 @@ watch(open, (isOpen) => {
         {{ date ? formatDate(date.toString()) : placeholder }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent class="w-auto p-0" align="start">
+    <PopoverContent :class="pickerPopoverClass" align="start">
       <Calendar
         v-model="date"
         v-model:placeholder="calendarPlaceholder"
         :default-placeholder="calendarPlaceholder"
         layout="month-and-year"
         initial-focus
-        @update:model-value="open = false"
+        @update:model-value="close"
       />
     </PopoverContent>
   </Popover>

@@ -73,7 +73,7 @@ export type TimesheetSyncAlertConfig = {
   recipients: string[]
 }
 
-export type TimesheetSnapshotTab = 'people' | 'positions' | 'scopes' | 'assignments' | 'kpis'
+export type TimesheetSnapshotTab = 'people' | 'positions' | 'scopes' | 'kpis'
 
 export type TimesheetSnapshotPage<T> = {
   items: T[]
@@ -105,8 +105,6 @@ export type TimesheetSnapshotPosition = {
   supervisorName: string | null
   srManagerPositionId: string | null
   srManagerName: string | null
-  domainHeadPositionId: string | null
-  domainHeadName: string | null
   center: string | null
 }
 

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 
 import { apiRequest } from '@/api/client'
 
-import type { StartSessionInput, TmsSession } from '../types'
+import type { StartSessionInput, TmsSession, UpdateSessionInput } from '../types'
 import { tmsQueryKeys } from './queries'
 
 export function useTmsSessionMutations() {
@@ -28,8 +28,11 @@ export function useTmsSessionMutations() {
   })
 
   const pause = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/pause`, { method: 'POST' }),
+    mutationFn: ({ id, ...details }: UpdateSessionInput) =>
+      apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/pause`, {
+        method: 'POST',
+        body: JSON.stringify(details),
+      }),
     onSuccess: () => {
       queryClient.setQueryData(tmsQueryKeys.current(), null)
       invalidateSessionState()
@@ -46,8 +49,11 @@ export function useTmsSessionMutations() {
   })
 
   const end = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/end`, { method: 'POST' }),
+    mutationFn: ({ id, ...details }: UpdateSessionInput) =>
+      apiRequest<TmsSession>(`/api/v1/tms/sessions/${id}/end`, {
+        method: 'POST',
+        body: JSON.stringify(details),
+      }),
     onSuccess: () => {
       queryClient.setQueryData(tmsQueryKeys.current(), null)
       invalidateSessionState()
