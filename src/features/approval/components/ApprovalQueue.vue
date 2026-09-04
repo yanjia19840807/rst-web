@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
 import TablePager from '@/components/TablePager.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
@@ -263,22 +264,11 @@ watch(
 
     <Card>
       <CardHeader class="gap-3">
-        <div class="flex gap-1 border-b">
-          <button
-            v-for="tab in tabs"
-            :key="tab"
-            type="button"
-            class="border-b-2 px-3.5 py-2 text-sm transition-colors"
-            :class="
-              activeTab === tab
-                ? 'border-primary font-semibold text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            "
-            @click="onTabChange(tab)"
-          >
-            {{ tab }}
-          </button>
-        </div>
+        <TabStrip
+          :tabs="tabs.map((tab) => ({ key: tab, label: tab }))"
+          :model-value="activeTab"
+          @update:model-value="onTabChange"
+        />
       </CardHeader>
       <CardContent class="space-y-3">
         <template v-if="activeTab === 'Awaiting Review'">

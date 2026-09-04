@@ -9,6 +9,7 @@ import { toast } from 'vue-sonner'
 import { queryClient } from '@/api/query-client'
 import { useSessionStore } from '@/auth/session'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -148,22 +149,7 @@ function selectTab(tab: TabKey) {
 
 <template>
   <div class="grid gap-4">
-    <div class="flex gap-1 border-b">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        class="border-b-2 px-3.5 py-2 text-sm transition-colors"
-        :class="
-          activeTab === tab.key
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
-        "
-        @click="selectTab(tab.key)"
-      >
-        {{ tab.label }}
-      </button>
-    </div>
+    <TabStrip :tabs="tabs" :model-value="activeTab" @update:model-value="selectTab" />
 
     <div
       v-if="activeTab === 'granted' && session.canManageDelegation"

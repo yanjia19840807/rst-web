@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner'
 import { Info } from '@lucide/vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -780,27 +781,16 @@ async function onImportFile(event: Event) {
 
 <template>
   <div class="space-y-4 rounded-lg border bg-card p-4">
-    <div class="flex gap-1 border-b">
-      <button
-        v-for="item in [
-          { id: 'monthly' as const, label: 'Monthly' },
-          { id: 'daily' as const, label: 'Daily' },
-          { id: 'slot' as const, label: 'Per-slot' },
-        ]"
-        :key="item.id"
-        type="button"
-        class="border-b-2 px-3.5 py-2 text-sm"
-        :disabled="busy"
-        :class="
-          tab === item.id
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground'
-        "
-        @click="tab = item.id"
-      >
-        {{ item.label }}
-      </button>
-    </div>
+    <TabStrip
+      :tabs="[
+        { key: 'monthly', label: 'Monthly' },
+        { key: 'daily', label: 'Daily' },
+        { key: 'slot', label: 'Per-slot' },
+      ]"
+      :model-value="tab"
+      :disabled="busy"
+      @update:model-value="tab = $event"
+    />
 
     <Alert v-if="tab !== 'slot'" variant="info">
       <Info />

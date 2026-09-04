@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
@@ -297,32 +298,15 @@ watch(
       </Button>
     </PageActions>
 
-    <div v-if="showApprovalTab" class="flex gap-1 border-b">
-      <button
-        type="button"
-        class="border-b-2 px-4 py-2.5 text-sm"
-        :class="
-          pageTab === 'exercise'
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground'
-        "
-        @click="pageTab = 'exercise'"
-      >
-        Exercise
-      </button>
-      <button
-        type="button"
-        class="border-b-2 px-4 py-2.5 text-sm"
-        :class="
-          pageTab === 'approval'
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground'
-        "
-        @click="pageTab = 'approval'"
-      >
-        Approval
-      </button>
-    </div>
+    <TabStrip
+      v-if="showApprovalTab"
+      :tabs="[
+        { key: 'exercise', label: 'Exercise' },
+        { key: 'approval', label: 'Approval' },
+      ]"
+      :model-value="pageTab"
+      @update:model-value="pageTab = $event"
+    />
 
     <div v-show="!showApprovalTab || pageTab === 'exercise'" class="grid gap-4">
       <TimesheetAlignmentAlert

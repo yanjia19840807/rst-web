@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 
 import TablePager from '@/components/TablePager.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import {
@@ -284,22 +285,12 @@ function rowId(row: {
 
       <div class="min-h-0 min-w-0 flex-1 overflow-hidden px-4 py-3 sm:px-5 sm:py-4">
         <div class="flex h-full min-h-0 min-w-0 flex-col gap-3 rounded-lg border bg-card p-3 sm:gap-4 sm:p-4">
-          <div class="-mx-1 flex shrink-0 gap-1 overflow-x-auto border-b px-1">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              type="button"
-              class="shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors sm:px-3.5"
-              :class="
-                resolvedTab === tab.key
-                  ? 'border-primary font-semibold text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              "
-              @click="activeTab = tab.key"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
+          <TabStrip
+            class="shrink-0"
+            :tabs="tabs"
+            :model-value="resolvedTab"
+            @update:model-value="activeTab = $event"
+          />
 
           <p class="shrink-0 text-sm text-muted-foreground">{{ descriptions[resolvedTab] }}</p>
           <div class="grid shrink-0 grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-end">

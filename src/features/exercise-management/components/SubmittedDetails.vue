@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
@@ -506,32 +507,14 @@ function downloadSummary() {
       :frozen-sync-date="exercise.snapshot.timesheetSyncDate"
     />
 
-    <div class="flex gap-1 border-b">
-      <button
-        type="button"
-        class="border-b-2 px-4 py-2.5 text-sm"
-        :class="
-          pageTab === 'exercise'
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground'
-        "
-        @click="pageTab = 'exercise'"
-      >
-        Submitted Exercise
-      </button>
-      <button
-        type="button"
-        class="border-b-2 px-4 py-2.5 text-sm"
-        :class="
-          pageTab === 'approval'
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground'
-        "
-        @click="pageTab = 'approval'"
-      >
-        Approval
-      </button>
-    </div>
+    <TabStrip
+      :tabs="[
+        { key: 'exercise', label: 'Submitted Exercise' },
+        { key: 'approval', label: 'Approval' },
+      ]"
+      :model-value="pageTab"
+      @update:model-value="pageTab = $event"
+    />
 
     <div v-if="pageTab === 'exercise'" class="grid gap-4">
       <Card>
@@ -702,32 +685,14 @@ function downloadSummary() {
             <CardTitle class="text-base">Forecast &amp; Simulation</CardTitle>
           </CardHeader>
           <CardContent class="grid gap-4">
-            <div class="flex gap-1 border-b">
-              <button
-                type="button"
-                class="border-b-2 px-3 py-2 text-sm"
-                :class="
-                  simulationTab === 'sizing'
-                    ? 'border-primary font-semibold text-primary'
-                    : 'border-transparent text-muted-foreground'
-                "
-                @click="simulationTab = 'sizing'"
-              >
-                Sizing Simulation
-              </button>
-              <button
-                type="button"
-                class="border-b-2 px-3 py-2 text-sm"
-                :class="
-                  simulationTab === 'slot'
-                    ? 'border-primary font-semibold text-primary'
-                    : 'border-transparent text-muted-foreground'
-                "
-                @click="simulationTab = 'slot'"
-              >
-                Slot Simulation
-              </button>
-            </div>
+            <TabStrip
+              :tabs="[
+                { key: 'sizing', label: 'Sizing Simulation' },
+                { key: 'slot', label: 'Slot Simulation' },
+              ]"
+              :model-value="simulationTab"
+              @update:model-value="simulationTab = $event"
+            />
 
             <SizingSimulationCharts
               v-if="simulationTab === 'sizing' && hasSizing"

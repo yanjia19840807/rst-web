@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import ListLoading from '@/components/ListLoading.vue'
+import TabStrip from '@/components/TabStrip.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -132,22 +133,12 @@ const editorActionLabel = computed(() => {
       </CardAction>
     </CardHeader>
 
-    <div class="flex gap-1 border-b px-4">
-      <button
-        v-for="tab in tabs"
-        :key="tab"
-        type="button"
-        class="border-b-2 px-3.5 py-2 text-sm transition-colors"
-        :class="
-          activeTab === tab
-            ? 'border-primary font-semibold text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
-        "
-        @click="activeTab = tab"
-      >
-        {{ AD_TAB_LABELS[tab] }}
-      </button>
-    </div>
+    <TabStrip
+      class="px-4"
+      :tabs="tabs.map((tab) => ({ key: tab, label: AD_TAB_LABELS[tab] }))"
+      :model-value="activeTab"
+      @update:model-value="activeTab = $event"
+    />
 
     <CardContent>
       <ListLoading v-if="loading" />

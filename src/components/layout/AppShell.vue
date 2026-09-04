@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { TriangleAlert } from '@lucide/vue'
-import { computed, onMounted, onUnmounted } from 'vue'
+import { Menu, TriangleAlert, X } from '@lucide/vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
@@ -48,8 +48,16 @@ async function stopActing() {
   await router.push(session.homePath)
 }
 
+const menuOpen = ref(false)
 const title = computed(() => String(route.meta.title ?? 'Right Sizing Tool'))
 const subtitle = computed(() => String(route.meta.subtitle ?? 'Right Sizing Tool'))
+
+watch(
+  () => route.fullPath,
+  () => {
+    menuOpen.value = false
+  },
+)
 
 const visibleMenu = computed(() =>
   menuItems.filter((item) => session.hasPermission(item.permission)),
@@ -72,32 +80,48 @@ const copyrightYear = new Date().getFullYear()
     </a>
 
     <aside class="shrink-0 bg-sidebar text-sidebar-foreground lg:h-full lg:overflow-y-auto">
-      <div class="flex h-16 items-center border-b border-sidebar-border px-5">
-        <RouterLink :to="session.homePath" class="flex items-center gap-3 font-semibold">
+      <div class="flex h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4 lg:px-5">
+        <RouterLink :to="session.homePath" class="flex min-w-0 items-center gap-3 font-semibold">
           <span
-            class="relative grid size-9 place-items-center rounded-md bg-white text-sm text-brand-navy after:absolute after:right-0 after:bottom-0 after:left-0 after:h-1 after:rounded-b-md after:bg-brand-red"
+            class="relative grid size-9 shrink-0 place-items-center rounded-md bg-white text-sm text-brand-navy after:absolute after:right-0 after:bottom-0 after:left-0 after:h-1 after:rounded-b-md after:bg-brand-red"
             aria-hidden="true"
           >
             RST
           </span>
-          <span>Right Sizing Tool</span>
+          <span class="truncate">Right Sizing Tool</span>
         </RouterLink>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
+          :aria-expanded="menuOpen"
+          aria-controls="app-navigation"
+          :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+          @click="menuOpen = !menuOpen"
+        >
+          <X v-if="menuOpen" />
+          <Menu v-else />
+        </Button>
       </div>
 
-      <div class="px-3 py-5">
-        <nav aria-label="Application">
-          <ul class="flex gap-1 overflow-x-auto lg:flex-col">
-            <li v-for="item in visibleMenu" :key="item.to" class="shrink-0">
-              <RouterLink
-                :to="item.to"
-                :class="[linkClass, isMenuItemActive(item, route.path) ? activeLinkClass : '']"
-              >
-                {{ item.label }}
-              </RouterLink>
-            </li>
-          </ul>
-        </nav>
-      </div>
+      <nav
+        id="app-navigation"
+        aria-label="Application"
+        class="border-sidebar-border px-3 py-3 lg:block lg:border-t-0 lg:py-5"
+        :class="menuOpen ? 'block border-t' : 'hidden lg:block'"
+      >
+        <ul class="flex flex-col gap-1">
+          <li v-for="item in visibleMenu" :key="item.to">
+            <RouterLink
+              :to="item.to"
+              :class="[linkClass, isMenuItemActive(item, route.path) ? activeLinkClass : '']"
+            >
+              {{ item.label }}
+            </RouterLink>
+          </li>
+        </ul>
+      </nav>
     </aside>
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
