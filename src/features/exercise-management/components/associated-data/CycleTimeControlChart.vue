@@ -19,6 +19,7 @@ import type {
 } from 'echarts/components'
 
 import ListLoading from '@/components/ListLoading.vue'
+import { useTheme } from '@/composables/useTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { useCycleTimeChartQuery } from '../../api/queries'
@@ -56,14 +57,19 @@ function themeColor(cssVar: string, fallback: string): string {
   return value || fallback
 }
 
-const palette = computed(() => ({
-  daily: themeColor('--foreground', '#14233a'),
-  rolling: '#0f6b78',
-  limit: themeColor('--destructive', '#da291c'),
-  center: '#315f9b',
-  border: themeColor('--border', '#d4dde9'),
-  outlier: '#d98b16',
-}))
+const { theme } = useTheme()
+
+const palette = computed(() => {
+  void theme.value
+  return {
+    daily: themeColor('--foreground', '#14233a'),
+    rolling: '#0f6b78',
+    limit: themeColor('--destructive', '#da291c'),
+    center: '#315f9b',
+    border: themeColor('--border', '#d4dde9'),
+    outlier: '#d98b16',
+  }
+})
 
 const hasPoints = computed(() => (chart.value?.points.length ?? 0) > 0)
 const hasLimits = computed(

@@ -52,6 +52,7 @@
 }
 
 :root {
+  color-scheme: light;
   /* CMA CGM Pantone 2768 C and 485 C digital equivalents. */
   --brand-navy: #071d49;
   --brand-red: #da291c;
@@ -90,6 +91,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --brand-navy: #071d49;
   --brand-red: #ff675e;
   --background: #081527;

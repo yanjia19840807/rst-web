@@ -10,6 +10,7 @@ import { useSessionStore } from '@/auth/session'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isMenuItemActive, menuItems } from '@/navigation/menu'
+import ThemeToggle from './ThemeToggle.vue'
 import UserMenu from './UserMenu.vue'
 
 const route = useRoute()
@@ -105,7 +106,10 @@ const copyrightYear = new Date().getFullYear()
             <h1 class="text-lg font-semibold">{{ title }}</h1>
             <p class="text-sm text-muted-foreground">{{ subtitle }}</p>
           </div>
-          <UserMenu />
+          <div class="flex items-center gap-2">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </div>
         <Alert
           v-if="session.actingAs"

@@ -51,6 +51,15 @@ describe('App', () => {
     expect(wrapper.text()).toContain('YANG Brenda')
     expect(wrapper.text()).toContain('Supervisor')
 
+    const themeToggle = wrapper.get('button[aria-label="Switch to dark mode"]')
+    await themeToggle.trigger('click')
+    await flushPromises()
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(wrapper.get('button[aria-label="Switch to light mode"]').exists()).toBe(true)
+    await wrapper.get('button[aria-label="Switch to light mode"]').trigger('click')
+    await flushPromises()
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+
     await wrapper.get('button[aria-label="Open account menu"]').trigger('click')
     await flushPromises()
     expect(document.body.textContent).toContain('S00628182')

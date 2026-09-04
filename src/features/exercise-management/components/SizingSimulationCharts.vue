@@ -17,6 +17,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import { useTheme } from '@/composables/useTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { useDailyVolumesQuery, useMonthlyVolumesQuery } from '../api/queries'
@@ -66,16 +67,21 @@ function themeColor(cssVar: string, fallback: string): string {
   return value || fallback
 }
 
-const palette = computed(() => ({
-  volume: themeColor('--chart-1', '#071d49'),
-  forecast: themeColor('--chart-3', '#79a6d2'),
-  overtime: themeColor('--chart-5', '#4e7d69'),
-  overcapacity: themeColor('--chart-4', '#da291c'),
-  maxOt: themeColor('--chart-2', '#315f9b'),
-  minHc: themeColor('--chart-2', '#315f9b'),
-  axis: themeColor('--foreground', '#14233a'),
-  border: themeColor('--border', '#d4dde9'),
-}))
+const { theme } = useTheme()
+
+const palette = computed(() => {
+  void theme.value
+  return {
+    volume: themeColor('--chart-1', '#071d49'),
+    forecast: themeColor('--chart-3', '#79a6d2'),
+    overtime: themeColor('--chart-5', '#4e7d69'),
+    overcapacity: themeColor('--chart-4', '#da291c'),
+    maxOt: themeColor('--chart-2', '#315f9b'),
+    minHc: themeColor('--chart-2', '#315f9b'),
+    axis: themeColor('--foreground', '#14233a'),
+    border: themeColor('--border', '#d4dde9'),
+  }
+})
 
 const hasMonthly = computed(
   () =>

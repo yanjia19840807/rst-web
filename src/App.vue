@@ -4,7 +4,10 @@ import { Toaster } from 'vue-sonner'
 
 import AppShell from '@/components/layout/AppShell.vue'
 import OperationNoticesDialog from '@/components/OperationNoticesDialog.vue'
+import { useTheme } from '@/composables/useTheme'
 import 'vue-sonner/style.css'
+
+const { theme } = useTheme()
 </script>
 
 <template>
@@ -12,5 +15,5 @@ import 'vue-sonner/style.css'
     <RouterView />
   </AppShell>
   <OperationNoticesDialog />
-  <Toaster rich-colors position="top-center" />
+  <Toaster rich-colors position="top-center" :theme="theme" />
 </template>

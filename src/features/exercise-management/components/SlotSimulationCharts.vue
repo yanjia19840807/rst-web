@@ -17,6 +17,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import { useTheme } from '@/composables/useTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { n } from '../sizingChartMath'
@@ -57,13 +58,18 @@ function themeColor(cssVar: string, fallback: string): string {
   return value || fallback
 }
 
-const palette = computed(() => ({
-  theoretical: themeColor('--foreground', '#14233a'),
-  target: '#A6A6A6',
-  cumulative: '#548235',
-  axis: themeColor('--foreground', '#14233a'),
-  border: themeColor('--border', '#d4dde9'),
-}))
+const { theme } = useTheme()
+
+const palette = computed(() => {
+  void theme.value
+  return {
+    theoretical: themeColor('--foreground', '#14233a'),
+    target: '#A6A6A6',
+    cumulative: '#548235',
+    axis: themeColor('--foreground', '#14233a'),
+    border: themeColor('--border', '#d4dde9'),
+  }
+})
 
 const hasData = computed(() => (props.simulation?.chart?.labels?.length ?? 0) > 0)
 
