@@ -14,6 +14,8 @@ export const governanceQueryKeys = {
   dashboard: () => [...governanceQueryKeys.all, 'dashboard'] as const,
   repository: (query: RepositoryListQuery = {}) =>
     [...governanceQueryKeys.all, 'repository', query] as const,
+  repositoryToolkit: (exerciseId: string) =>
+    [...governanceQueryKeys.all, 'repository-toolkit', exerciseId] as const,
   supportRepository: (query: SupportRepositoryQuery = {}) =>
     [...governanceQueryKeys.all, 'support-repository', query] as const,
   validationWorkflow: (query: ValidationWorkflowQuery = {}) =>

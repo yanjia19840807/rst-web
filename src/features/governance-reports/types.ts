@@ -35,6 +35,7 @@ export type DashboardResponse = {
 
 export type RepositoryRow = {
   exerciseId: string
+  exerciseUuid: string
   carrier: string
   site: string
   country: string

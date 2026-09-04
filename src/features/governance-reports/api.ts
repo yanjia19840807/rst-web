@@ -1,5 +1,6 @@
 import { apiRequest } from '@/api/client'
 import { downloadExcel } from '@/api/download'
+import type { Exercise } from '@/features/exercise-management/types'
 
 import type {
   BenchmarkingQuery,
@@ -110,6 +111,8 @@ export const governanceApi = {
     apiRequest<ValidationWorkflowView>(
       `${base}/validation-workflow${validationWorkflowQuery(params)}`,
     ),
+  repositoryToolkitInfo: (exerciseId: string) =>
+    apiRequest<Exercise['snapshot']>(`${base}/repository/${exerciseId}/toolkit-info`),
   exportRepository: (params?: RepositoryListQuery) =>
     downloadExcel(
       `${base}/repository/export?${repositoryFilters(params).toString()}`,

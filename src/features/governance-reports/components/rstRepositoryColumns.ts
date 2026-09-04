@@ -8,7 +8,7 @@ import type { RepositoryRow } from '../types'
 import CapacityCell from './CapacityCell.vue'
 
 export type RstRepositoryColumnOptions = {
-  onToolkitClick?: (name: string) => void
+  onToolkitClick?: (row: RepositoryRow) => void
 }
 
 const columnHelper = createColumnHelper<RepositoryRow>()
@@ -33,7 +33,7 @@ export function createRstRepositoryColumns(
           {
             type: 'button',
             class: 'font-semibold text-primary',
-            onClick: () => options.onToolkitClick?.(row.original.toolkit),
+            onClick: () => options.onToolkitClick?.(row.original),
           },
           row.original.toolkit,
         ),

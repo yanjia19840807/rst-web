@@ -138,6 +138,7 @@ export const dashboardData: DashboardResponse = {
 export const repositoryRows: RepositoryRow[] = [
   {
     exerciseId: 'RST-Q3-CHN-001',
+    exerciseUuid: '11111111-1111-1111-1111-111111111111',
     carrier: 'CMA CGM',
     site: 'MUMBAI-2',
     country: 'GBS India',
@@ -157,6 +158,7 @@ export const repositoryRows: RepositoryRow[] = [
   },
   {
     exerciseId: 'RST-Q3-CHN-001',
+    exerciseUuid: '11111111-1111-1111-1111-111111111111',
     carrier: 'CMA CGM',
     site: 'CHENNAI-1',
     country: 'GBS India',
@@ -176,6 +178,7 @@ export const repositoryRows: RepositoryRow[] = [
   },
   {
     exerciseId: 'RST-Q3-CHN-001',
+    exerciseUuid: '11111111-1111-1111-1111-111111111111',
     carrier: 'ANL',
     site: 'MUMBAI-2',
     country: 'GBS India',
@@ -195,6 +198,7 @@ export const repositoryRows: RepositoryRow[] = [
   },
   {
     exerciseId: 'RST-Q3-IND-018',
+    exerciseUuid: '22222222-2222-2222-2222-222222222222',
     carrier: 'CMA CGM',
     site: 'CHONGQING',
     country: 'China',
@@ -214,6 +218,7 @@ export const repositoryRows: RepositoryRow[] = [
   },
   {
     exerciseId: 'RST-Q3-PHL-006',
+    exerciseUuid: '33333333-3333-3333-3333-333333333333',
     carrier: 'CMA CGM',
     site: 'BEIRUT',
     country: 'Lebanon',

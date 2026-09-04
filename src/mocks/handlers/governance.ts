@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 
 import type { BenchmarkPl3Option, BenchmarkRow } from '@/features/governance-reports/types'
 
-import { benchmarkingRows, dashboardData } from '../data/governance'
+import { benchmarkingRows, dashboardData, repositoryRows } from '../data/governance'
 import { pageOf, pageParams } from '../page'
 
 function distinct(rows: BenchmarkRow[], getter: (row: BenchmarkRow) => string | undefined) {
@@ -61,8 +61,55 @@ function summarize(selectedPl3: string, items: BenchmarkRow[]) {
   }
 }
 
+function repositoryToolkitSnapshot(exerciseId: string) {
+  const lines = repositoryRows.filter((row) => row.exerciseUuid === exerciseId)
+  const first = lines[0]
+  if (!first) return null
+  return {
+    toolkit: {
+      id: exerciseId,
+      name: first.toolkit,
+      center: first.country,
+      domain: first.domain,
+      pl1: first.pl1,
+      pl2: first.pl2,
+      pl3Code: first.pl3,
+      pl3Name: first.pl3,
+      combineSubtasksTime: false,
+      version: 1,
+    },
+    subtasks: [
+      {
+        id: `${exerciseId}-st-1`,
+        sourceToolkitSubtaskId: `${exerciseId}-src-1`,
+        name: 'Process incoming volume',
+        description: null,
+        displayOrder: 1,
+        deletedAt: null,
+      },
+    ],
+    sharedKpis: lines.map((row, index) => ({
+      id: `${exerciseId}-kpi-${index}`,
+      sourceSelectionId: `${exerciseId}-sel-${index}`,
+      carrier: row.carrier,
+      site: row.site,
+      customerCountry: row.kpi,
+      deliveryHc: Number(row.deliveryHc) || 0,
+      valid: true,
+    })),
+    timesheetSyncDate: first.submittedDate,
+  }
+}
+
 export const governanceHandlers = [
   http.get('*/api/v1/governance/dashboard', () => HttpResponse.json(dashboardData)),
+  http.get('*/api/v1/governance/repository/:exerciseId/toolkit-info', ({ params }) => {
+    const snapshot = repositoryToolkitSnapshot(String(params.exerciseId))
+    if (!snapshot) {
+      return HttpResponse.json({ detail: 'The Exercise was not found.' }, { status: 404 })
+    }
+    return HttpResponse.json(snapshot)
+  }),
   http.get('*/api/v1/governance/benchmarking', ({ request }) => {
     const url = new URL(request.url)
     const center = url.searchParams.get('center')

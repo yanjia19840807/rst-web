@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
@@ -12,11 +13,13 @@ import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 
+import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
+import type { Exercise } from '@/features/exercise-management/types'
 
 import { governanceApi } from '../api'
-import { useRepositoryQuery } from '../api/queries'
-import type { RepositoryListQuery } from '../types'
+import { governanceQueryKeys, useRepositoryQuery } from '../api/queries'
+import type { RepositoryListQuery, RepositoryRow } from '../types'
 import FilterField from './FilterField.vue'
 import { createRstRepositoryColumns } from './rstRepositoryColumns'
 
@@ -35,6 +38,9 @@ const page = ref(1)
 const pageSize = ref(10)
 const exportOpen = ref(false)
 const exporting = ref(false)
+const queryClient = useQueryClient()
+const toolkitInfoOpen = ref(false)
+const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
 
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
@@ -102,8 +108,20 @@ async function confirmExport() {
   }
 }
 
-function onToolkitClick(name: string) {
-  toast.message(name, { description: 'Toolkit info dialog (prototype)' })
+async function onToolkitClick(row: RepositoryRow) {
+  if (!row.exerciseUuid) {
+    toast.error('Could not load toolkit info.')
+    return
+  }
+  try {
+    toolkitSnapshot.value = await queryClient.fetchQuery({
+      queryKey: governanceQueryKeys.repositoryToolkit(row.exerciseUuid),
+      queryFn: () => governanceApi.repositoryToolkitInfo(row.exerciseUuid),
+    })
+    toolkitInfoOpen.value = true
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
+  }
 }
 
 watch(
@@ -290,5 +308,7 @@ watch(
       :pending="exporting"
       @confirm="confirmExport"
     />
+
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
   </div>
 </template>
