@@ -62,7 +62,7 @@ const copyrightYear = new Date().getFullYear()
 </script>
 
 <template>
-  <div class="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[240px_1fr]">
+  <div class="flex h-svh flex-col overflow-hidden bg-background text-foreground lg:grid lg:grid-cols-[240px_1fr]">
     <a
       href="#main-content"
       class="sr-only z-50 rounded-md bg-background px-4 py-2 focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
@@ -70,7 +70,7 @@ const copyrightYear = new Date().getFullYear()
       Skip to content
     </a>
 
-    <aside class="bg-sidebar text-sidebar-foreground lg:min-h-screen">
+    <aside class="shrink-0 bg-sidebar text-sidebar-foreground lg:h-full lg:overflow-y-auto">
       <div class="flex h-16 items-center border-b border-sidebar-border px-5">
         <RouterLink :to="session.homePath" class="flex items-center gap-3 font-semibold">
           <span
@@ -99,8 +99,8 @@ const copyrightYear = new Date().getFullYear()
       </div>
     </aside>
 
-    <div class="flex min-h-screen min-w-0 flex-col">
-      <header class="border-b bg-card">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+      <header class="sticky top-0 z-10 border-b bg-card">
         <div class="flex min-h-16 items-center justify-between gap-6 px-4 py-3 sm:px-6">
           <div>
             <h1 class="text-lg font-semibold">{{ title }}</h1>
