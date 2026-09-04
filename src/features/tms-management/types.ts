@@ -82,6 +82,11 @@ export interface StartSessionInput extends SessionDetailsInput {
   toolkitId: string
 }
 
+export interface PausedSessionMatch {
+  latest: TmsSession | null
+  matchCount: number
+}
+
 export interface UpdateSessionInput extends SessionDetailsInput {
   id: string
 }

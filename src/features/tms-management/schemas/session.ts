@@ -13,6 +13,7 @@ export function createSessionSchema(subtaskRequired: boolean) {
           required_error: 'Volume is required.',
           invalid_type_error: 'Volume must be a number.',
         })
+        .int('Volume must be a whole number.')
         .min(1, 'Volume must be at least 1.'),
     ),
     reference: z.string().trim().max(100, 'Reference must be 100 characters or fewer.'),

@@ -86,9 +86,11 @@ const selectedToolkit = computed(() =>
           id="session-volume"
           class="text-sm"
           :min="1"
+          :decimals="0"
+          :step="1"
           :disabled="disabled"
           :invalid="Boolean(errors.processedVolume)"
-          placeholder="e.g. 12.00"
+          placeholder="e.g. 12"
           :model-value="processedVolume === '' || processedVolume == null ? null : Number(processedVolume)"
           @update:model-value="emit('update:processedVolume', $event ?? '')"
         />

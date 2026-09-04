@@ -1,6 +1,7 @@
+import { apiRequest } from '@/api/client'
 import { downloadExcel } from '@/api/download'
 
-import type { SessionFilters, TmsListMode } from './types'
+import type { PausedSessionMatch, SessionFilters, TmsListMode } from './types'
 
 function sessionExportQuery(filters: SessionFilters & { status: 'paused' | 'completed' }) {
   const params = new URLSearchParams({ status: filters.status })
@@ -19,6 +20,10 @@ function sessionExportQuery(filters: SessionFilters & { status: 'paused' | 'comp
 }
 
 export const tmsApi = {
+  pausedMatch: (toolkitId: string, reference: string) => {
+    const params = new URLSearchParams({ toolkitId, reference })
+    return apiRequest<PausedSessionMatch>(`/api/v1/tms/sessions/paused-match?${params}`)
+  },
   exportSessions: (
     filters: SessionFilters & { status: 'paused' | 'completed' },
     mode: TmsListMode = 'agent',

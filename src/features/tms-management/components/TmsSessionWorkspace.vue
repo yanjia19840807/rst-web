@@ -12,12 +12,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
+import { tmsApi } from '../api'
 import { useTmsSessionMutations } from '../api/mutations'
 import { useCurrentSessionQuery, useTmsSummaryQuery, useToolkitsQuery } from '../api/queries'
 import { useTmsTimer } from '../composables/useTmsTimer'
 import { createSessionSchema, type SessionFormValues } from '../schemas/session'
 import { useTmsSessionStore } from '../stores/session'
+import type { PausedSessionMatch } from '../types'
+import { formatSessionVolume } from './tmsSessionColumns'
 import CurrentSessionForm from './CurrentSessionForm.vue'
+import PausedMatchDialog from './PausedMatchDialog.vue'
 import PausedSessionsDialog from './PausedSessionsDialog.vue'
 import SessionTimer from './SessionTimer.vue'
 
@@ -71,6 +75,10 @@ const [processedVolume] = defineField('processedVolume')
 const [reference] = defineField('reference')
 const [remarks] = defineField('remarks')
 const pausedDialogOpen = ref(false)
+const matchOpen = ref(false)
+const matchPending = ref(false)
+const pausedMatch = ref<PausedSessionMatch | null>(null)
+const pendingStart = ref<SessionFormValues | null>(null)
 
 const selectedToolkit = computed(() =>
   toolkitsQuery.data.value?.find((toolkit) => toolkit.id === toolkitId.value),
@@ -100,8 +108,11 @@ const noMatchingToolkit = computed(
   () => toolkitsQuery.isSuccess.value && !(toolkitsQuery.data.value?.length),
 )
 
+const checkingMatch = ref(false)
 const busy = computed(
   () =>
+    checkingMatch.value ||
+    matchPending.value ||
     mutations.start.isPending.value ||
     mutations.pause.isPending.value ||
     mutations.resume.isPending.value ||
@@ -160,18 +171,65 @@ function sessionDetails(values: SessionFormValues) {
   }
 }
 
+async function createSession(values: SessionFormValues) {
+  const session = await mutations.start.mutateAsync({
+    toolkitId: values.toolkitId,
+    ...sessionDetails(values),
+  })
+  sessionStore.setCurrentSession(session)
+  toast.success('New session started.')
+}
+
 const startSession = handleSubmit(async (values) => {
+  const reference = values.reference.trim()
+  checkingMatch.value = true
   try {
-    const session = await mutations.start.mutateAsync({
-      toolkitId: values.toolkitId,
-      ...sessionDetails(values),
-    })
-    sessionStore.setCurrentSession(session)
-    toast.success('New session started.')
+    if (reference && values.toolkitId) {
+      const match = await tmsApi.pausedMatch(values.toolkitId, reference)
+      if (match.latest) {
+        pendingStart.value = values
+        pausedMatch.value = match
+        matchOpen.value = true
+        return
+      }
+    }
+    await createSession(values)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not start the session.')
+  } finally {
+    checkingMatch.value = false
   }
 })
+
+async function confirmResumeMatch() {
+  const sessionNo = pausedMatch.value?.latest?.id
+  if (!sessionNo) return
+  matchPending.value = true
+  try {
+    const session = await mutations.resume.mutateAsync(sessionNo)
+    sessionStore.setCurrentSession(session)
+    matchOpen.value = false
+    toast.success('Session resumed.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not resume the session.')
+  } finally {
+    matchPending.value = false
+  }
+}
+
+async function confirmStartNewMatch() {
+  const values = pendingStart.value
+  if (!values) return
+  matchPending.value = true
+  try {
+    await createSession(values)
+    matchOpen.value = false
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not start the session.')
+  } finally {
+    matchPending.value = false
+  }
+}
 
 const pauseSession = handleSubmit(async (values) => {
   if (!currentSession.value) return
@@ -284,9 +342,7 @@ function onToolkitChange(value: unknown) {
             <p class="text-xs text-muted-foreground">Total volume</p>
             <p class="mt-2 text-3xl font-bold">
               {{
-                summaryQuery.data.value?.totalVolume == null
-                  ? '—'
-                  : Number(summaryQuery.data.value.totalVolume).toFixed(2)
+                formatSessionVolume(summaryQuery.data.value?.totalVolume)
               }}
             </p>
             <p class="mt-1 text-xs text-muted-foreground">Across all sessions</p>
@@ -329,6 +385,15 @@ function onToolkitChange(value: unknown) {
     <PausedSessionsDialog
       v-model:open="pausedDialogOpen"
       :has-running-session="currentSession?.status === 'running'"
+    />
+
+    <PausedMatchDialog
+      v-model:open="matchOpen"
+      :session="pausedMatch?.latest ?? null"
+      :match-count="pausedMatch?.matchCount ?? 0"
+      :pending="matchPending"
+      @resume="confirmResumeMatch"
+      @start-new="confirmStartNewMatch"
     />
   </div>
 </template>

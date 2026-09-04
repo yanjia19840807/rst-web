@@ -33,6 +33,12 @@ export type TmsSessionColumnOptions = {
 
 const columnHelper = createColumnHelper<TmsSessionTableRow>()
 
+export function formatSessionVolume(processedVolume: number | null | undefined) {
+  if (processedVolume == null) return '—'
+  const volume = Number(processedVolume)
+  return Number.isFinite(volume) ? String(volume) : '—'
+}
+
 export function cycleTimeVolume(processedVolume: number | null | undefined) {
   const volume = Number(processedVolume)
   return Number.isFinite(volume) && volume > 0 ? volume : 1
@@ -85,7 +91,7 @@ export function createTmsSessionColumns(
       header: 'Reference',
     }),
     columnHelper.accessor((row) =>
-      row.processedVolume == null ? '—' : Number(row.processedVolume).toFixed(2),
+      formatSessionVolume(row.processedVolume),
     {
       id: 'volume',
       header: 'Volume',

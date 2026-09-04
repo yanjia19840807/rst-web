@@ -25,6 +25,10 @@ function excel(filename: string) {
   })
 }
 
+function isInvalidVolume(volume: number | null | undefined) {
+  return volume != null && (!Number.isInteger(volume) || volume < 1)
+}
+
 function problem(status: number, detail: string) {
   return HttpResponse.json(
     {
@@ -55,6 +59,9 @@ function applySessionDetails(
     : undefined
   if (activeSubtasks.length > 0 && !subtask) {
     return problem(422, 'Select a TASK. This Toolkit has at least one TASK.')
+  }
+  if (details && isInvalidVolume(details.processedVolume)) {
+    return problem(422, 'Volume must be a whole number of at least 1.')
   }
   if (!details) {
     return {
@@ -138,6 +145,28 @@ export const tmsHandlers = [
 
   http.get('*/api/v1/tms/sessions/export', () => excel('tms-sessions.xlsx')),
 
+  http.get('*/api/v1/tms/sessions/paused-match', async ({ request }) => {
+    const url = new URL(request.url)
+    const toolkitId = url.searchParams.get('toolkitId')
+    const reference = url.searchParams.get('reference')?.trim() ?? ''
+    if (!toolkitId || !reference) {
+      return HttpResponse.json({ latest: null, matchCount: 0 })
+    }
+    const matches = sessions.filter(
+      (session) =>
+        session.status === 'paused' &&
+        session.toolkitId === toolkitId &&
+        session.reference.trim().toLowerCase() === reference.toLowerCase(),
+    )
+    const latest = [...matches].sort((a, b) =>
+      (b.pausedAt || b.startedAt).localeCompare(a.pausedAt || a.startedAt),
+    )[0]
+    return HttpResponse.json({
+      latest: latest ?? null,
+      matchCount: matches.length,
+    })
+  }),
+
   http.post('*/api/v1/tms/sessions', async ({ request }) => {
     await delay(180)
     if (sessions.some((session) => session.status === 'running')) {
@@ -150,8 +179,11 @@ export const tmsHandlers = [
     const subtask = input.subtaskId
       ? activeSubtasks.find((item) => item.id === input.subtaskId)
       : undefined
-    if (!toolkit || (input.processedVolume != null && input.processedVolume <= 0)) {
+    if (!toolkit) {
       return problem(422, 'The session details are invalid.')
+    }
+    if (isInvalidVolume(input.processedVolume)) {
+      return problem(422, 'Volume must be a whole number of at least 1.')
     }
     if (activeSubtasks.length > 0 && !subtask) {
       return problem(422, 'Select a TASK. This Toolkit has at least one TASK.')

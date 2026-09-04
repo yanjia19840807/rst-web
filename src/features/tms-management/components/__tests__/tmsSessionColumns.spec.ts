@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cycleTime, cycleTimeVolume } from '../tmsSessionColumns'
+import { cycleTime, cycleTimeVolume, formatSessionVolume } from '../tmsSessionColumns'
 
 describe('cycleTime', () => {
   it('treats empty volume as 1', () => {
@@ -9,6 +9,11 @@ describe('cycleTime', () => {
     expect(cycleTime({ id: '1', startedAt: '', netDurationSeconds: 120, processedVolume: null })).toBe(
       '120s',
     )
+  })
+
+  it('renders volume without decimals', () => {
+    expect(formatSessionVolume(12)).toBe('12')
+    expect(formatSessionVolume(null)).toBe('—')
   })
 
   it('divides net duration by a positive volume', () => {

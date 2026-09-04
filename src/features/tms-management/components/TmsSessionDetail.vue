@@ -21,6 +21,7 @@ import { formatDate } from '@/lib/datetime'
 
 import { useTmsSessionDetailQuery } from '../api/queries'
 import { formatDuration } from '../composables/useTmsTimer'
+import { formatSessionVolume } from './tmsSessionColumns'
 import type { TmsListMode } from '../types'
 
 const props = withDefaults(
@@ -77,7 +78,7 @@ const rows = computed(() => {
     { label: 'End', value: formatDate(item.endedAt) },
     { label: 'Duration', value: formatDuration(item.netDurationSeconds) },
     { label: 'Cycle Time', value: cycleTimeLabel() },
-    { label: 'Volume', value: item.processedVolume == null ? '—' : Number(item.processedVolume).toFixed(2) },
+    { label: 'Volume', value: formatSessionVolume(item.processedVolume) },
     { label: 'Reference', value: item.reference || '—' },
     { label: 'Remarks', value: item.remarks || '—' },
   )
