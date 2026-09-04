@@ -47,8 +47,10 @@ const toolkitInfoPending = ref(false)
 
 function cycleTimeLabel() {
   const item = session.value
-  if (!item?.processedVolume) return '—'
-  return `${Math.round(item.netDurationSeconds / item.processedVolume)}s`
+  if (!item) return '—'
+  const volume = Number(item.processedVolume)
+  const divisor = Number.isFinite(volume) && volume > 0 ? volume : 1
+  return `${Math.round(item.netDurationSeconds / divisor)}s`
 }
 
 const rows = computed(() => {

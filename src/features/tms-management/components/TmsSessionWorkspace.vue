@@ -15,7 +15,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useTmsSessionMutations } from '../api/mutations'
 import { useCurrentSessionQuery, useTmsSummaryQuery, useToolkitsQuery } from '../api/queries'
 import { useTmsTimer } from '../composables/useTmsTimer'
-import { sessionSchema, type SessionFormValues } from '../schemas/session'
+import { createSessionSchema, type SessionFormValues } from '../schemas/session'
 import { useTmsSessionStore } from '../stores/session'
 import CurrentSessionForm from './CurrentSessionForm.vue'
 import PausedSessionsDialog from './PausedSessionsDialog.vue'
@@ -37,9 +37,11 @@ const defaultFormValues = (): SessionFormValues => ({
   remarks: '',
 })
 
+const subtaskRequired = ref(false)
+
 const { defineField, errors, handleSubmit, setFieldValue, resetForm } = useForm<SessionFormValues>(
   {
-    validationSchema: toTypedSchema(sessionSchema),
+    validationSchema: computed(() => toTypedSchema(createSessionSchema(subtaskRequired.value))),
     initialValues: {
       toolkitId: '',
       subtaskId: '',
@@ -135,12 +137,13 @@ watch(
 watch(
   [toolkitId, () => toolkitsQuery.data.value],
   () => {
+    const availableSubtasks =
+      selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt) ?? []
+    subtaskRequired.value = availableSubtasks.length > 0
     if (currentSession.value) return
     if (toolkitId.value && !selectedToolkit.value) {
       setFieldValue('toolkitId', '')
     }
-    const availableSubtasks =
-      selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt) ?? []
     if (subtaskId.value && !availableSubtasks.some((item) => item.id === subtaskId.value)) {
       setFieldValue('subtaskId', '')
     }
@@ -307,6 +310,7 @@ function onToolkitChange(value: unknown) {
         :toolkits="toolkitsQuery.data.value ?? []"
         :errors="errors"
         :disabled="!hasSelectedToolkit"
+        :subtask-required="subtaskRequired"
         :paused-count="summaryQuery.data.value?.pausedSessions ?? 0"
         @open-paused="pausedDialogOpen = true"
       />

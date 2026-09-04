@@ -20,8 +20,10 @@ import {
 import { useSupportCategoryQuery } from '@/features/support-category/api/queries'
 import { categoriesForSelect } from '@/features/support-category/options'
 
+import { exerciseApi } from '../../api'
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { useBeforeAssociatedDataWrite } from '../../composables/useAssociatedDataSaveGuard'
+import { triggerDownload } from '../../downloadBlob'
 import {
   emptySupportItemForm,
   supportItemFormSchema,
@@ -57,7 +59,8 @@ const emit = defineEmits<{
 const controlClass =
   'flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm'
 
-const { createSupport, updateSupport, deleteSupport } = useExerciseAssociatedDataMutations()
+const { createSupport, updateSupport, deleteSupport, importSupport } =
+  useExerciseAssociatedDataMutations()
 const beforeAssociatedDataWrite = useBeforeAssociatedDataWrite()
 const categoryQuery = useSupportCategoryQuery()
 const adding = ref(false)
@@ -65,6 +68,10 @@ const editingId = ref<string | null>(null)
 const busy = ref(false)
 const deleteTarget = ref<SupportItem | null>(null)
 const deleteOpen = ref(false)
+const exportOpen = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+type ExcelAction = 'template' | 'export' | 'import'
+const excelAction = ref<ExcelAction | null>(null)
 const { defineField, errors, resetForm, validate, values } = useForm<SupportItemFormValues>({
   validationSchema: toTypedSchema(supportItemFormSchema),
   initialValues: emptySupportItemForm(),
@@ -245,6 +252,67 @@ async function confirmDelete() {
 function frequencyLabel(code: string) {
   return SUPPORT_FREQUENCIES.find((item) => item.value === code)?.label ?? code
 }
+
+const excelBusy = computed(() => excelAction.value != null)
+
+async function withExcel<T>(action: ExcelAction, work: () => Promise<T>) {
+  excelAction.value = action
+  try {
+    return await work()
+  } finally {
+    excelAction.value = null
+  }
+}
+
+async function downloadTemplate() {
+  try {
+    await withExcel('template', async () => {
+      const result = await exerciseApi.exportSupportTemplate(props.exerciseId)
+      triggerDownload(result.blob, result.filename)
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Download failed.')
+  }
+}
+
+async function downloadCurrent() {
+  try {
+    await withExcel('export', async () => {
+      const result = await exerciseApi.exportSupport(props.exerciseId)
+      triggerDownload(result.blob, result.filename)
+      exportOpen.value = false
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Export failed.')
+  }
+}
+
+function triggerImport() {
+  if (busy.value || excelBusy.value || formLocked.value) return
+  fileInput.value?.click()
+}
+
+async function onImportFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || props.readOnly) return
+  if (!(await beforeAssociatedDataWrite())) return
+  try {
+    await withExcel('import', async () => {
+      const saved = await importSupport.mutateAsync({
+        exerciseId: props.exerciseId,
+        file,
+      })
+      emit('update:items', saved)
+      adding.value = false
+      editingId.value = null
+      toast.success('Excel imported. Existing rows were updated or added; other rows were kept.')
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Import failed.')
+  }
+}
 </script>
 
 <template>
@@ -263,17 +331,46 @@ function frequencyLabel(code: string) {
     </div>
 
     <section class="rounded-lg border bg-card p-4">
-      <div class="mb-3 flex items-center justify-between gap-2">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-sm font-bold">Workload Registry</h3>
-        <Button
-          v-if="!readOnly"
-          size="sm"
-          variant="outline"
-          :disabled="formLocked"
-          @click="startAdd"
-        >
-          Add Workload
-        </Button>
+        <div v-if="!readOnly" class="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" :disabled="formLocked || excelBusy" @click="startAdd">
+            Add Workload
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            :disabled="busy || excelBusy"
+            :loading="excelAction === 'template'"
+            @click="downloadTemplate"
+          >
+            {{ excelAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            :disabled="busy || excelBusy"
+            :loading="excelAction === 'export'"
+            @click="exportOpen = true"
+          >
+            {{ excelAction === 'export' ? 'Exporting…' : 'Export Current' }}
+          </Button>
+          <Button
+            size="sm"
+            :disabled="busy || excelBusy || formLocked"
+            :loading="excelAction === 'import'"
+            @click="triggerImport"
+          >
+            {{ excelAction === 'import' ? 'Importing…' : 'Import Excel' }}
+          </Button>
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            class="hidden"
+            @change="onImportFile"
+          />
+        </div>
       </div>
 
       <div class="min-w-0 overflow-x-auto rounded-md border">
@@ -560,6 +657,16 @@ function frequencyLabel(code: string) {
         </Table>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="exportOpen"
+      title="Export Production Support"
+      description="Download the current workload registry as an Excel file?"
+      confirm-label="Export"
+      confirm-variant="default"
+      :pending="excelAction === 'export'"
+      @confirm="downloadCurrent"
+    />
 
     <ConfirmDialog
       v-model:open="deleteOpen"

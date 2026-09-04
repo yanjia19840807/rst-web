@@ -5,9 +5,13 @@ import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 
+import { tmsApi } from '../api'
 import { useTmsSessionMutations } from '../api/mutations'
 import {
   useManagedToolkitsQuery,
@@ -54,6 +58,8 @@ const { discard } = useTmsSessionMutations()
 const deletingId = ref('')
 const deleteTargetId = ref('')
 const deleteOpen = ref(false)
+const exportOpen = ref(false)
+const exporting = ref(false)
 
 const pl3Options = computed(() => {
   const map = new Map<string, string>()
@@ -111,6 +117,20 @@ async function confirmDelete() {
   }
 }
 
+async function confirmExport() {
+  exporting.value = true
+  try {
+    const result = await tmsApi.exportSessions(queryFilters.value, props.mode)
+    triggerDownload(result.blob, result.filename)
+    exportOpen.value = false
+    toast.success('Export downloaded.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Export failed.')
+  } finally {
+    exporting.value = false
+  }
+}
+
 function openDetail(id: string) {
   void router.push({
     name: isSupervisor.value ? 'supervisor-session-detail' : 'agent-session-detail',
@@ -120,6 +140,9 @@ function openDetail(id: string) {
 </script>
 
 <template>
+  <PageActions>
+    <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
+  </PageActions>
   <Card>
     <CardHeader class="items-baseline">
       <CardTitle>{{ isSupervisor ? 'Team TMS Sessions' : 'My TMS Sessions' }}</CardTitle>
@@ -164,6 +187,16 @@ function openDetail(id: string) {
       />
     </CardContent>
   </Card>
+
+  <ConfirmDialog
+    v-model:open="exportOpen"
+    title="Export TMS Sessions"
+    description="Download all sessions matching the current filters as an Excel file. Pagination is not applied."
+    confirm-label="Export"
+    confirm-variant="default"
+    :pending="exporting"
+    @confirm="confirmExport"
+  />
 
   <ConfirmDialog
     v-if="!isSupervisor"

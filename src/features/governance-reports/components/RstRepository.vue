@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,9 @@ import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 
+import { triggerDownload } from '@/features/exercise-management/downloadBlob'
+
+import { governanceApi } from '../api'
 import { useRepositoryQuery } from '../api/queries'
 import type { RepositoryListQuery } from '../types'
 import FilterField from './FilterField.vue'
@@ -29,6 +33,8 @@ const draftSubmittedTo = ref('')
 const moreFiltersOpen = ref(false)
 const page = ref(1)
 const pageSize = ref(10)
+const exportOpen = ref(false)
+const exporting = ref(false)
 
 const selectClass =
   'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
@@ -81,8 +87,19 @@ function applyAdvancedFilters() {
   moreFiltersOpen.value = false
 }
 
-function exportRepo() {
-  toast.success('Export prepared (prototype)')
+async function confirmExport() {
+  exporting.value = true
+  try {
+    const { page: _page, pageSize: _pageSize, ...filters } = listQuery.value
+    const result = await governanceApi.exportRepository(filters)
+    triggerDownload(result.blob, result.filename)
+    exportOpen.value = false
+    toast.success('Export downloaded.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Export failed.')
+  } finally {
+    exporting.value = false
+  }
 }
 
 function onToolkitClick(name: string) {
@@ -134,7 +151,7 @@ watch(
 <template>
   <div class="grid min-w-0 gap-4">
     <PageActions>
-      <Button @click="exportRepo">Export Repository</Button>
+      <Button :disabled="exporting" @click="exportOpen = true">Export Repository</Button>
     </PageActions>
 
     <Card>
@@ -263,5 +280,15 @@ watch(
         />
       </CardContent>
     </Card>
+
+    <ConfirmDialog
+      v-model:open="exportOpen"
+      title="Export Repository"
+      description="Download all repository rows matching the current filters as an Excel file. Pagination is not applied."
+      confirm-label="Export"
+      confirm-variant="default"
+      :pending="exporting"
+      @confirm="confirmExport"
+    />
   </div>
 </template>

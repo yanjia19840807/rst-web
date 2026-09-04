@@ -182,6 +182,12 @@ export const exerciseApi = {
     apiRequest<void>(exercisePath(exerciseId, `/production-support/${itemId}`), {
       method: 'DELETE',
     }),
+  exportSupportTemplate: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/production-support/export-template', 'support-template.xlsx'),
+  exportSupport: (exerciseId: string) =>
+    downloadVolumeBlob(exerciseId, '/production-support/export', 'production-support.xlsx'),
+  importSupport: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<SupportItem[]>(exerciseId, '/production-support/import', file),
 
   getCalendar: (exerciseId: string) =>
     apiRequest<CalendarView>(exercisePath(exerciseId, '/calendar')),

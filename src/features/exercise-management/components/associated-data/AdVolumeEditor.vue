@@ -116,6 +116,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const draftSlotStartDate = ref('')
 const draftSlotWeeks = ref<number | ''>('')
 const confirmPeriodOpen = ref(false)
+const exportOpen = ref(false)
 
 const periodSet = computed(() => Boolean(props.slotStartDate && props.slotWeeks))
 const periodReady = computed(() => Boolean(draftSlotStartDate.value && draftSlotWeeks.value))
@@ -726,6 +727,7 @@ async function downloadCurrent() {
             ? await exerciseApi.exportDailyVolumes(props.exerciseId)
             : await exerciseApi.exportSlotVolumes(props.exerciseId)
       triggerDownload(result.blob, result.filename)
+      exportOpen.value = false
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Export failed.')
@@ -876,7 +878,7 @@ async function onImportFile(event: Event) {
           variant="outline"
           :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'export'"
-          @click="downloadCurrent"
+          @click="exportOpen = true"
         >
           {{ busyAction === 'export' ? 'Exporting…' : 'Export Current' }}
         </Button>
@@ -1185,6 +1187,16 @@ async function onImportFile(event: Event) {
           page = 1
         }
       "
+    />
+
+    <ConfirmDialog
+      v-model:open="exportOpen"
+      title="Export Volume"
+      description="Download the current volume sheet as an Excel file?"
+      confirm-label="Export"
+      confirm-variant="default"
+      :pending="busyAction === 'export'"
+      @confirm="downloadCurrent"
     />
 
     <ConfirmDialog

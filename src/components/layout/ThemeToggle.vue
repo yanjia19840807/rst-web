@@ -16,7 +16,7 @@ const { theme, toggleTheme } = useTheme()
     :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
     @click="toggleTheme"
   >
-    <Sun v-if="theme === 'dark'" />
-    <Moon v-else />
+    <Moon v-if="theme === 'dark'" />
+    <Sun v-else />
   </Button>
 </template>

@@ -1,4 +1,5 @@
 import { apiRequest } from '@/api/client'
+import { downloadExcel } from '@/api/download'
 
 import type {
   BenchmarkingQuery,
@@ -19,7 +20,7 @@ function appendPaging(search: URLSearchParams, params?: { page?: number; pageSiz
   search.set('pageSize', String(params?.pageSize ?? 10))
 }
 
-function repositoryListQuery(params?: RepositoryListQuery) {
+function repositoryFilters(params?: RepositoryListQuery) {
   const search = new URLSearchParams()
   if (params) {
     const exerciseCode = params.exerciseCode?.trim()
@@ -31,11 +32,16 @@ function repositoryListQuery(params?: RepositoryListQuery) {
     if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
     if (params.submittedTo) search.set('submittedTo', params.submittedTo)
   }
+  return search
+}
+
+function repositoryListQuery(params?: RepositoryListQuery) {
+  const search = repositoryFilters(params)
   appendPaging(search, params)
   return `?${search.toString()}`
 }
 
-function supportRepositoryQuery(params?: SupportRepositoryQuery) {
+function supportRepositoryFilters(params?: SupportRepositoryQuery) {
   const search = new URLSearchParams()
   if (params) {
     if (params.center) search.set('center', params.center)
@@ -44,6 +50,11 @@ function supportRepositoryQuery(params?: SupportRepositoryQuery) {
     if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
     if (params.submittedTo) search.set('submittedTo', params.submittedTo)
   }
+  return search
+}
+
+function supportRepositoryQuery(params?: SupportRepositoryQuery) {
+  const search = supportRepositoryFilters(params)
   appendPaging(search, params)
   return `?${search.toString()}`
 }
@@ -65,7 +76,7 @@ function validationWorkflowQuery(params?: ValidationWorkflowQuery) {
   return `?${search.toString()}`
 }
 
-function benchmarkingQuery(params?: BenchmarkingQuery) {
+function benchmarkingFilters(params?: BenchmarkingQuery) {
   const search = new URLSearchParams()
   if (params) {
     if (params.center) search.set('center', params.center)
@@ -76,6 +87,11 @@ function benchmarkingQuery(params?: BenchmarkingQuery) {
     if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
     if (params.submittedTo) search.set('submittedTo', params.submittedTo)
   }
+  return search
+}
+
+function benchmarkingQuery(params?: BenchmarkingQuery) {
+  const search = benchmarkingFilters(params)
   appendPaging(search, params)
   return `?${search.toString()}`
 }
@@ -93,5 +109,20 @@ export const governanceApi = {
   validationWorkflow: (params?: ValidationWorkflowQuery) =>
     apiRequest<ValidationWorkflowView>(
       `${base}/validation-workflow${validationWorkflowQuery(params)}`,
+    ),
+  exportRepository: (params?: RepositoryListQuery) =>
+    downloadExcel(
+      `${base}/repository/export?${repositoryFilters(params).toString()}`,
+      'rst-repository.xlsx',
+    ),
+  exportSupportRepository: (params?: SupportRepositoryQuery) =>
+    downloadExcel(
+      `${base}/support-repository/export?${supportRepositoryFilters(params).toString()}`,
+      'support-repository.xlsx',
+    ),
+  exportBenchmarking: (params?: BenchmarkingQuery) =>
+    downloadExcel(
+      `${base}/benchmarking/export?${benchmarkingFilters(params).toString()}`,
+      'benchmarking.xlsx',
     ),
 }

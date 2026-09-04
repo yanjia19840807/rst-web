@@ -99,4 +99,31 @@ export const governanceHandlers = [
       pl3Options: options,
     })
   }),
+  http.get('*/api/v1/governance/repository/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="rst-repository.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/governance/support-repository/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="support-repository.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/governance/benchmarking/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="benchmarking.xlsx"',
+      },
+    }),
+  ),
 ]

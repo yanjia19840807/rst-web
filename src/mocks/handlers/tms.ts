@@ -16,6 +16,15 @@ function save(next: TmsSession[]) {
   writeSessions(sessions)
 }
 
+function excel(filename: string) {
+  return HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
+}
+
 function problem(status: number, detail: string) {
   return HttpResponse.json(
     {
@@ -37,7 +46,16 @@ async function readSessionDetails(request: Request): Promise<SessionDetailsInput
 function applySessionDetails(
   session: TmsSession,
   details: SessionDetailsInput | null,
-): Pick<TmsSession, 'subtaskId' | 'subtaskName' | 'processedVolume' | 'reference' | 'remarks'> {
+): Pick<TmsSession, 'subtaskId' | 'subtaskName' | 'processedVolume' | 'reference' | 'remarks'> | Response {
+  const toolkit = getAgentToolkits().find((item) => item.id === session.toolkitId)
+  const activeSubtasks = toolkit?.subtasks.filter((item) => !item.deletedAt) ?? []
+  const requestedId = details ? details.subtaskId : session.subtaskId
+  const subtask = requestedId
+    ? activeSubtasks.find((item) => item.id === requestedId)
+    : undefined
+  if (activeSubtasks.length > 0 && !subtask) {
+    return problem(422, 'Select a TASK. This Toolkit has at least one TASK.')
+  }
   if (!details) {
     return {
       subtaskId: session.subtaskId,
@@ -47,13 +65,9 @@ function applySessionDetails(
       remarks: session.remarks,
     }
   }
-  const toolkit = getAgentToolkits().find((item) => item.id === session.toolkitId)
-  const subtask = details.subtaskId
-    ? toolkit?.subtasks.find((item) => item.id === details.subtaskId)
-    : undefined
   return {
-    subtaskId: details.subtaskId ?? null,
-    subtaskName: subtask?.name ?? (details.subtaskId ? session.subtaskName : '—'),
+    subtaskId: subtask?.id ?? null,
+    subtaskName: subtask?.name ?? '—',
     processedVolume: details.processedVolume ?? 1,
     reference: details.reference ?? '',
     remarks: details.remarks ?? '',
@@ -122,6 +136,8 @@ export const tmsHandlers = [
     return HttpResponse.json(pageOf(filtered, page, pageSize))
   }),
 
+  http.get('*/api/v1/tms/sessions/export', () => excel('tms-sessions.xlsx')),
+
   http.post('*/api/v1/tms/sessions', async ({ request }) => {
     await delay(180)
     if (sessions.some((session) => session.status === 'running')) {
@@ -130,15 +146,15 @@ export const tmsHandlers = [
 
     const input = (await request.json()) as StartSessionInput
     const toolkit = getAgentToolkits().find((item) => item.id === input.toolkitId)
+    const activeSubtasks = toolkit?.subtasks.filter((item) => !item.deletedAt) ?? []
     const subtask = input.subtaskId
-      ? toolkit?.subtasks.find((item) => item.id === input.subtaskId)
+      ? activeSubtasks.find((item) => item.id === input.subtaskId)
       : undefined
-    if (
-      !toolkit ||
-      (input.subtaskId && !subtask) ||
-      (input.processedVolume != null && input.processedVolume <= 0)
-    ) {
+    if (!toolkit || (input.processedVolume != null && input.processedVolume <= 0)) {
       return problem(422, 'The session details are invalid.')
+    }
+    if (activeSubtasks.length > 0 && !subtask) {
+      return problem(422, 'Select a TASK. This Toolkit has at least one TASK.')
     }
 
     const now = new Date()
@@ -169,9 +185,11 @@ export const tmsHandlers = [
     }
 
     const now = new Date()
+    const details = applySessionDetails(session, await readSessionDetails(request))
+    if (details instanceof Response) return details
     const updated: TmsSession = {
       ...session,
-      ...applySessionDetails(session, await readSessionDetails(request)),
+      ...details,
       status: 'paused',
       pausedAt: now.toISOString(),
       netDurationSeconds:
@@ -210,9 +228,11 @@ export const tmsHandlers = [
     }
 
     const now = new Date()
+    const details = applySessionDetails(session, await readSessionDetails(request))
+    if (details instanceof Response) return details
     const updated: TmsSession = {
       ...session,
-      ...applySessionDetails(session, await readSessionDetails(request)),
+      ...details,
       status: 'completed',
       endedAt: now.toISOString(),
       netDurationSeconds:
@@ -270,6 +290,8 @@ export const tmsHandlers = [
       .filter((session) => !dateTo || session.startedAt.slice(0, 10) <= dateTo)
     return HttpResponse.json(pageOf(filtered, page, pageSize))
   }),
+
+  http.get('*/api/v1/tms/team/sessions/export', () => excel('tms-team-sessions.xlsx')),
 
   http.get('*/api/v1/tms/team/sessions/:id', async ({ params }) => {
     await delay(80)

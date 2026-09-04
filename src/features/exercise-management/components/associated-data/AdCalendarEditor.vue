@@ -59,6 +59,7 @@ const adding = ref(false)
 const editingId = ref<string | null>(null)
 const deleteTarget = ref<Holiday | null>(null)
 const deleteOpen = ref(false)
+const exportOpen = ref(false)
 const page = ref(1)
 const pageSize = ref(10)
 const busyAction = ref<BusyAction | null>(null)
@@ -270,6 +271,7 @@ async function downloadCurrent() {
     await withBusy('export', async () => {
       const result = await exerciseApi.exportCalendar(exerciseId)
       triggerDownload(result.blob, result.filename)
+      exportOpen.value = false
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Export failed.')
@@ -336,7 +338,7 @@ async function onImportFile(event: Event) {
           variant="outline"
           :disabled="busy"
           :loading="busyAction === 'export'"
-          @click="downloadCurrent"
+          @click="exportOpen = true"
         >
           {{ busyAction === 'export' ? 'Exporting…' : 'Export Current' }}
         </Button>
@@ -540,6 +542,16 @@ async function onImportFile(event: Event) {
           page = 1
         }
       "
+    />
+
+    <ConfirmDialog
+      v-model:open="exportOpen"
+      title="Export Calendar"
+      description="Download the current holiday list as an Excel file?"
+      confirm-label="Export"
+      confirm-variant="default"
+      :pending="busyAction === 'export'"
+      @confirm="downloadCurrent"
     />
 
     <ConfirmDialog

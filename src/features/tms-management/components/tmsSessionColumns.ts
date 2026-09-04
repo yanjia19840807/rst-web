@@ -33,11 +33,15 @@ export type TmsSessionColumnOptions = {
 
 const columnHelper = createColumnHelper<TmsSessionTableRow>()
 
+export function cycleTimeVolume(processedVolume: number | null | undefined) {
+  const volume = Number(processedVolume)
+  return Number.isFinite(volume) && volume > 0 ? volume : 1
+}
+
 export function cycleTime(row: TmsSessionTableRow, withUnit = true) {
   const suffix = withUnit ? 's' : ''
   if (row.cycleTimeSeconds != null) return `${row.cycleTimeSeconds}${suffix}`
-  if (!row.processedVolume) return '—'
-  return `${Math.round(row.netDurationSeconds / row.processedVolume)}${suffix}`
+  return `${Math.round(row.netDurationSeconds / cycleTimeVolume(row.processedVolume))}${suffix}`
 }
 
 export function createTmsSessionColumns(

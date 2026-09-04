@@ -23,6 +23,7 @@ const props = defineProps<{
   >
   disabled?: boolean
   pausedCount: number
+  subtaskRequired?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -55,7 +56,10 @@ const selectedToolkit = computed(() =>
     </CardHeader>
     <CardContent class="grid gap-4">
       <div class="grid gap-1.5">
-        <Label for="session-subtask">Subtask <span class="font-normal text-muted-foreground">(optional)</span></Label>
+        <Label for="session-subtask">
+          Subtask
+          <span v-if="!subtaskRequired" class="font-normal text-muted-foreground">(optional)</span>
+        </Label>
         <NativeSelect
           id="session-subtask"
           class="w-full"

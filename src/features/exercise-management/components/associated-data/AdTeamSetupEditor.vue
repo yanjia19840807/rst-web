@@ -318,7 +318,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="agentsLt6m"
               :min="0"
-              :decimals="0"
+              :decimals="2"
               :invalid="Boolean(errors.agentsLt6m)"
             />
             <ReadOnlyField v-else :value="agentsLt6m" />
@@ -330,7 +330,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="agents6To24m"
               :min="0"
-              :decimals="0"
+              :decimals="2"
               :invalid="Boolean(errors.agents6To24m)"
             />
             <ReadOnlyField v-else :value="agents6To24m" />
@@ -342,7 +342,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="agents24To48m"
               :min="0"
-              :decimals="0"
+              :decimals="2"
               :invalid="Boolean(errors.agents24To48m)"
             />
             <ReadOnlyField v-else :value="agents24To48m" />
@@ -354,7 +354,7 @@ defineExpose({ toRequest })
               v-if="!readOnly"
               v-model="agentsGt48m"
               :min="0"
-              :decimals="0"
+              :decimals="2"
               :invalid="Boolean(errors.agentsGt48m)"
             />
             <ReadOnlyField v-else :value="agentsGt48m" />

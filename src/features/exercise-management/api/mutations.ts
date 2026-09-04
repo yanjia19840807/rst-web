@@ -212,6 +212,12 @@ export function useExerciseAssociatedDataMutations() {
     onSuccess: (_data, { exerciseId }) => invalidateSupportDerived(queryClient, exerciseId),
   })
 
+  const importSupport = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.importSupport(exerciseId, file),
+    onSuccess: (_data, { exerciseId }) => invalidateSupportDerived(queryClient, exerciseId),
+  })
+
   const putCalendar = useMutation({
     mutationFn: ({ exerciseId, body }: { exerciseId: string; body: CalendarRequest }) =>
       exerciseApi.putCalendar(exerciseId, body),
@@ -347,6 +353,7 @@ export function useExerciseAssociatedDataMutations() {
     createSupport,
     updateSupport,
     deleteSupport,
+    importSupport,
     putCalendar,
     importCalendar,
     putMonthlyVolumes,

@@ -771,6 +771,31 @@ export const supervisorHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
+  http.get('*/api/v1/exercises/:id/production-support/export-template', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="support-template.xlsx"',
+      },
+    }),
+  ),
+  http.get('*/api/v1/exercises/:id/production-support/export', () =>
+    HttpResponse.arrayBuffer(new ArrayBuffer(0), {
+      headers: {
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="production-support.xlsx"',
+      },
+    }),
+  ),
+  http.post('*/api/v1/exercises/:id/production-support/import', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(ctx.shell.support.map((item) => ({ ...item, ...derivedSupport(ctx, item) })))
+  }),
+
   http.get('*/api/v1/exercises/:id/calendar', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')

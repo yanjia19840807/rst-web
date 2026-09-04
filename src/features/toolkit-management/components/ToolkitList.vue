@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,8 @@ const pl3Options = computed(() => [
 ])
 const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.data.value)
 const exportingId = ref<string | null>(null)
+const exportTarget = ref<SupervisorToolkit | null>(null)
+const exportOpen = ref(false)
 const createOpen = ref(false)
 const createToolkit = ref<SupervisorToolkit | null>(null)
 const createToolkits = computed(() => (createToolkit.value ? [createToolkit.value] : []))
@@ -91,7 +94,7 @@ const columns = computed(() =>
   createToolkitColumns({
     exportingId: exportingId.value,
     onCreate: createExercise,
-    onExport: exportToolkit,
+    onExport: requestExport,
     onEdit: (id) =>
       void router.push({
         name: 'supervisor-toolkit-edit',
@@ -111,8 +114,15 @@ function onCreated(exercise: Exercise) {
   void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
 }
 
-async function exportToolkit(toolkit: SupervisorToolkit) {
+function requestExport(toolkit: SupervisorToolkit) {
   if (exportingId.value) return
+  exportTarget.value = toolkit
+  exportOpen.value = true
+}
+
+async function confirmExport() {
+  const toolkit = exportTarget.value
+  if (!toolkit || exportingId.value) return
   exportingId.value = toolkit.id
   try {
     const result = await toolkitApi.exportWorkbook(toolkit.id)
@@ -122,6 +132,7 @@ async function exportToolkit(toolkit: SupervisorToolkit) {
     anchor.download = result.filename
     anchor.click()
     URL.revokeObjectURL(url)
+    exportOpen.value = false
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Export failed.')
   } finally {
@@ -191,6 +202,20 @@ async function exportToolkit(toolkit: SupervisorToolkit) {
       :toolkits="createToolkits"
       :initial-toolkit-id="createToolkit?.id"
       @created="onCreated"
+    />
+
+    <ConfirmDialog
+      v-model:open="exportOpen"
+      title="Export Toolkit"
+      :description="
+        exportTarget
+          ? `Download the Excel workbook for ${exportTarget.name}?`
+          : 'Download the Excel workbook?'
+      "
+      confirm-label="Export"
+      confirm-variant="default"
+      :pending="Boolean(exportingId)"
+      @confirm="confirmExport"
     />
   </div>
 </template>

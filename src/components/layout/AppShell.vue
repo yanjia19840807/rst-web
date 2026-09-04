@@ -10,6 +10,7 @@ import { useSessionStore } from '@/auth/session'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isMenuItemActive, menuItems } from '@/navigation/menu'
+import { PAGE_ACTIONS_TARGET_ID } from '@/components/page-actions'
 import ThemeToggle from './ThemeToggle.vue'
 import UserMenu from './UserMenu.vue'
 
@@ -99,8 +100,8 @@ const copyrightYear = new Date().getFullYear()
       </div>
     </aside>
 
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-      <header class="sticky top-0 z-10 border-b bg-card">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <header class="shrink-0 border-b bg-card">
         <div class="flex min-h-16 items-center justify-between gap-6 px-4 py-3 sm:px-6">
           <div>
             <h1 class="text-lg font-semibold">{{ title }}</h1>
@@ -128,13 +129,19 @@ const copyrightYear = new Date().getFullYear()
             </Button>
           </AlertAction>
         </Alert>
+        <div :id="PAGE_ACTIONS_TARGET_ID" class="empty:hidden" />
       </header>
 
-      <main id="main-content" class="min-w-0 w-full flex-1 px-4 py-5 sm:px-6">
+      <main
+        id="main-content"
+        class="min-h-0 min-w-0 w-full flex-1 overflow-y-auto px-4 py-5 sm:px-6"
+      >
         <slot />
       </main>
 
-      <footer class="border-t bg-card px-4 py-3 text-center text-xs text-muted-foreground sm:px-6">
+      <footer
+        class="shrink-0 border-t bg-card px-4 py-3 text-center text-xs text-muted-foreground sm:px-6"
+      >
         © {{ copyrightYear }} CMA CGM Group
       </footer>
     </div>
