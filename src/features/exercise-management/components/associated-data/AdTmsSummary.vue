@@ -181,8 +181,7 @@ function formatSize(bytes: number | null | undefined) {
           </Table>
         </div>
         <p v-if="!isSystemBaseline" class="text-xs text-muted-foreground">
-          No SYSTEM baseline yet. Empty processed volume is treated as 1 when cycle time is
-          calculated. Open Edit to review the session list.
+          No SYSTEM baseline yet. Open Edit to review the session list.
         </p>
       </template>
 

@@ -43,6 +43,7 @@ import {
   useTeamSetupQuery,
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
+import { slaMinutesToHours } from '../schemas/teamSetup'
 import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
 import { actualHeadcount } from '../sizingChartMath'
 import type { ForecastTrainingObservation, SubmittedDetails } from '../types'
@@ -255,9 +256,9 @@ const slaTargetLabel = computed(() => {
 })
 
 const slaTurntimeLabel = computed(() => {
-  const minutes = teamSetup.value?.slaTurnaroundMinutes
-  if (minutes == null) return '—'
-  return Number(minutes).toFixed(2)
+  const hours = slaMinutesToHours(teamSetup.value?.slaTurnaroundMinutes)
+  if (hours == null) return '—'
+  return hours.toFixed(2)
 })
 
 function formatSigned(value: number | null) {
@@ -303,7 +304,7 @@ const packageRows = computed(() => {
     },
     { label: 'TMS period', value: `${formatDate(ex.tmsFrom)} – ${formatDate(ex.tmsTo)}` },
     { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
-    { label: withUnit('SLA Turntime', FieldUnit.minutes), value: slaTurntimeLabel.value },
+    { label: withUnit('SLA Turntime', FieldUnit.hours), value: slaTurntimeLabel.value },
     { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
     { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
     { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
@@ -340,7 +341,7 @@ const kpiAllocationRows = computed(() => {
 
 const resultRows = computed(() => [
   { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
-  { label: withUnit('SLA Turntime', FieldUnit.minutes), value: slaTurntimeLabel.value },
+  { label: withUnit('SLA Turntime', FieldUnit.hours), value: slaTurntimeLabel.value },
   { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
   { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
   { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },

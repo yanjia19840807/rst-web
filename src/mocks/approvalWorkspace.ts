@@ -116,10 +116,26 @@ function historyRows(submitted: SubmittedDetails, mineStepNo?: number | null): A
 }
 
 function nextFor(role?: string | null) {
-  if (role === 'MANAGER') return { step: 'Center Delivery Head Review', reviewer: null as string | null }
-  if (role === 'CDH') return { step: 'Local Transformation Head Review', reviewer: null }
-  if (role === 'LTH') return { step: 'Archive', reviewer: null }
-  return { step: null, reviewer: null }
+  if (role === 'MANAGER') {
+    return {
+      step: 'Center Delivery Head Review',
+      positionId: null as string | null,
+      reviewer: null as string | null,
+      handlerCcgid: null as string | null,
+    }
+  }
+  if (role === 'CDH') {
+    return {
+      step: 'Local Transformation Head Review',
+      positionId: 'LTH',
+      reviewer: null,
+      handlerCcgid: null,
+    }
+  }
+  if (role === 'LTH') {
+    return { step: 'Archive', positionId: null, reviewer: null, handlerCcgid: null }
+  }
+  return { step: null, positionId: null, reviewer: null, handlerCcgid: null }
 }
 
 export function buildApprovalWorkspace(
@@ -140,7 +156,9 @@ export function buildApprovalWorkspace(
       },
       currentHop: { step: hop.step, reviewer: hop.reviewer },
       nextStep: next.step,
+      nextPositionId: next.positionId,
       nextReviewer: next.reviewer,
+      nextHandlerCcgid: next.handlerCcgid,
       history,
     }
   }
@@ -161,7 +179,9 @@ export function buildApprovalWorkspace(
       : { state: 'NOW', label: 'Now', step: hop.step, reviewer: hop.reviewer },
     currentHop: null,
     nextStep: null,
+    nextPositionId: null,
     nextReviewer: null,
+    nextHandlerCcgid: null,
     history,
   }
 }

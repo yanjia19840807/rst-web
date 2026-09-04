@@ -1935,6 +1935,10 @@ export const supervisorHandlers = [
       submitBlocked: false,
       timesheetAlignment,
       scopeAcknowledgementRequired: Boolean(timesheetAlignment?.structuralDrift),
+      nextStep: 'Manager Review',
+      nextPositionId: null,
+      nextHandlerName: null,
+      nextHandlerCcgid: null,
     })
   }),
 

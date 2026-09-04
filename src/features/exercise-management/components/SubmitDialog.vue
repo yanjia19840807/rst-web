@@ -156,6 +156,18 @@ function findingDetail(finding: ValidationFinding): string {
 function mismatchesOf(finding: ValidationFinding) {
   return finding.detail?.mismatches ?? []
 }
+
+const submissionPathRows = computed(() => {
+  const path = preview.value
+  const handler = [path?.nextHandlerName, path?.nextHandlerCcgid]
+    .filter((part) => Boolean(part && String(part).trim()))
+    .join(' · ')
+  return [
+    { label: 'Next step', value: path?.nextStep || 'Manager Review' },
+    { label: 'Position', value: path?.nextPositionId || '—' },
+    { label: 'Handler', value: handler || '—' },
+  ]
+})
 </script>
 
 <template>
@@ -199,13 +211,7 @@ function mismatchesOf(finding: ValidationFinding) {
             <div class="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Submission path
             </div>
-            <DetailTable
-              :rows="[
-                { label: 'Next step', value: 'Manager Review' },
-                { label: 'Current owner', value: 'Manager queue' },
-                { label: 'Notification', value: 'HO Transformation Team after validation' },
-              ]"
-            />
+            <DetailTable :rows="submissionPathRows" />
           </div>
 
           <div class="mt-4">

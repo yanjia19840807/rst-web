@@ -51,7 +51,7 @@ export const teamSetupFormSchema = z
     maxOvertimeMinutes: optionalNonNegative,
     slaType: slaTypeSchema,
     slaTargetRatio: optionalRatio,
-    slaTurnaroundMinutes: optionalNonNegative,
+    slaTurnaroundHours: optionalNonNegative,
     slaStartTime: clockSchema,
     slaEndTime: clockSchema,
     slaWeekendEnabled: z.boolean().nullable(),
@@ -85,6 +85,16 @@ export const teamSetupRequestSchema = teamSetupFormSchema.transform((value) =>
 
 export type TeamSetupFormValues = z.input<typeof teamSetupFormSchema>
 
+export function slaMinutesToHours(minutes: number | null | undefined): number | null {
+  if (minutes == null || !Number.isFinite(Number(minutes))) return null
+  return Number(minutes) / 60
+}
+
+export function slaHoursToMinutes(hours: number | null | undefined): number | null {
+  if (hours == null || !Number.isFinite(Number(hours))) return null
+  return Number(hours) * 60
+}
+
 export function emptyTeamSetupForm(): TeamSetupFormValues {
   return {
     agentsLt6m: null,
@@ -98,7 +108,7 @@ export function emptyTeamSetupForm(): TeamSetupFormValues {
     maxOvertimeMinutes: null,
     slaType: '',
     slaTargetRatio: null,
-    slaTurnaroundMinutes: null,
+    slaTurnaroundHours: null,
     slaStartTime: '',
     slaEndTime: '',
     slaWeekendEnabled: null,
@@ -121,7 +131,7 @@ export function teamSetupToForm(setup: TeamSetup): TeamSetupFormValues {
     maxOvertimeMinutes: setup.maxOvertimeMinutes ?? null,
     slaType: setup.slaType ?? '',
     slaTargetRatio: setup.slaTargetRatio ?? null,
-    slaTurnaroundMinutes: setup.slaTurnaroundMinutes ?? null,
+    slaTurnaroundHours: slaMinutesToHours(setup.slaTurnaroundMinutes),
     slaStartTime: setup.slaStartTime ?? '',
     slaEndTime: setup.slaEndTime ?? '',
     slaWeekendEnabled: setup.slaWeekendEnabled ?? null,
@@ -144,7 +154,7 @@ export function toTeamSetupRequest(values: TeamSetupFormValues): TeamSetupReques
     maxOvertimeMinutes: values.maxOvertimeMinutes,
     slaType: values.slaType || null,
     slaTargetRatio: values.slaTargetRatio,
-    slaTurnaroundMinutes: values.slaTurnaroundMinutes,
+    slaTurnaroundMinutes: slaHoursToMinutes(values.slaTurnaroundHours),
     slaStartTime: values.slaStartTime || null,
     slaEndTime: values.slaEndTime || null,
     slaWeekendEnabled: values.slaWeekendEnabled,

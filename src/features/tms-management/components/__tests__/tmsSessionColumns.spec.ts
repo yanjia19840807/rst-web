@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { cycleTime, cycleTimeVolume, formatSessionVolume } from '../tmsSessionColumns'
 
 describe('cycleTime', () => {
-  it('treats empty volume as 1', () => {
-    expect(cycleTimeVolume(null)).toBe(1)
-    expect(cycleTimeVolume(0)).toBe(1)
+  it('does not invent a volume when it is missing', () => {
+    expect(cycleTimeVolume(null)).toBeNull()
+    expect(cycleTimeVolume(0)).toBeNull()
     expect(cycleTime({ id: '1', startedAt: '', netDurationSeconds: 120, processedVolume: null })).toBe(
-      '120s',
+      '—',
     )
   })
 

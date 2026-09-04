@@ -4,7 +4,7 @@ import { FieldUnit, withUnit } from '../fieldUnits'
 
 describe('withUnit', () => {
   it('appends the unit in parentheses', () => {
-    expect(withUnit('SLA turntime', FieldUnit.minutes)).toBe('SLA turntime (min)')
+    expect(withUnit('SLA turntime', FieldUnit.hours)).toBe('SLA turntime (hours)')
     expect(withUnit('Median Cycle Time', FieldUnit.seconds)).toBe('Median Cycle Time (s)')
   })
 

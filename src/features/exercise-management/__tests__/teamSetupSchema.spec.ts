@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { emptyTeamSetupForm, teamSetupFormSchema } from '../schemas/teamSetup'
+import {
+  emptyTeamSetupForm,
+  slaHoursToMinutes,
+  slaMinutesToHours,
+  teamSetupFormSchema,
+  toTeamSetupRequest,
+} from '../schemas/teamSetup'
 
 describe('teamSetupFormSchema', () => {
   it('accepts an empty draft', () => {
@@ -37,6 +43,14 @@ describe('teamSetupFormSchema', () => {
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error.issues.some((issue) => issue.path.join('.') === 'slaEndTime')).toBe(true)
+  })
+
+  it('converts SLA turntime between hours and minutes', () => {
+    expect(slaMinutesToHours(480)).toBe(8)
+    expect(slaHoursToMinutes(8)).toBe(480)
+    expect(
+      toTeamSetupRequest({ ...emptyTeamSetupForm(), slaTurnaroundHours: 8 }).slaTurnaroundMinutes,
+    ).toBe(480)
   })
 
   it('accepts a complete working draft', () => {

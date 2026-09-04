@@ -34,11 +34,15 @@ import {
   type CalendarHolidayRowValues,
 } from '../../schemas/calendar'
 import type { CalendarView, Holiday, HolidayRequest } from '../../types'
+import { FieldUnit, withUnit } from '../../fieldUnits'
 import {
   HOLIDAY_TYPE_OPTIONS,
+  countHolidayTypes,
   holidayTypeLabel,
   normalizeHolidayType,
 } from '../../weekendCodes'
+import AdMetric from './AdMetric.vue'
+import { formatNumber } from './adTypes'
 
 type BusyAction = 'template' | 'export' | 'import' | 'save' | 'delete'
 
@@ -78,6 +82,7 @@ const busy = computed(() => busyAction.value != null)
 const formLocked = computed(() => adding.value || editingId.value != null)
 
 const holidays = computed(() => props.modelValue?.holidays ?? [])
+const holidayCounts = computed(() => countHolidayTypes(holidays.value))
 
 const sortedRows = computed(() =>
   [...holidays.value].sort((a, b) => a.holidayDate.localeCompare(b.holidayDate)),
@@ -310,7 +315,26 @@ async function onImportFile(event: Event) {
 </script>
 
 <template>
-  <div class="space-y-4 rounded-lg border bg-card p-4">
+  <div class="space-y-4">
+    <div class="grid gap-3 sm:grid-cols-3">
+      <AdMetric
+        :label="withUnit('Holiday / Weekend days', FieldUnit.days)"
+        :value="formatNumber(holidayCounts.rest)"
+        hint="Rest days for volume"
+      />
+      <AdMetric
+        :label="withUnit('Makeup (Normal) days', FieldUnit.days)"
+        :value="formatNumber(holidayCounts.makeup)"
+        hint="Listed working days"
+      />
+      <AdMetric
+        label="Listed dates"
+        :value="formatNumber(holidayCounts.total)"
+        hint="Rows in this calendar"
+      />
+    </div>
+
+    <section class="space-y-4 rounded-lg border bg-card p-4">
     <Alert variant="info">
       <Info />
       <AlertDescription>
@@ -543,6 +567,7 @@ async function onImportFile(event: Event) {
         }
       "
     />
+    </section>
 
     <ConfirmDialog
       v-model:open="exportOpen"

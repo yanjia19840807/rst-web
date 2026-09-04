@@ -30,6 +30,20 @@ describe('createSessionSchema volume', () => {
     )
   })
 
+  it('rejects a missing volume', () => {
+    const result = schema.safeParse({
+      toolkitId: 'tk-1',
+      processedVolume: '',
+      reference: '',
+      remarks: '',
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues.some((issue) => issue.path.join('.') === 'processedVolume')).toBe(
+      true,
+    )
+  })
+
   it('rejects a volume below 1', () => {
     const result = schema.safeParse({
       toolkitId: 'tk-1',

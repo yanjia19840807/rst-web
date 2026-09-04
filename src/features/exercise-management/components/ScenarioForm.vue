@@ -3,7 +3,7 @@ import { Info } from '@lucide/vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -20,17 +20,24 @@ import { measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { useScenarioMutations } from '../api/mutations'
 import {
+  useCalendarQuery,
   useCycleTimeActiveQuery,
+  useDailyVolumesQuery,
   useExerciseQuery,
   useLatestDailySimulationQuery,
   useLatestForecastQuery,
   useLatestMonthlySizingQuery,
   useLatestSlotSimulationQuery,
+  useMonthlyVolumesQuery,
   useScenarioQuery,
+  useSlotVolumesQuery,
   useSupportQuery,
   useTeamSetupQuery,
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
+import { deriveSlotPeriodLabel } from '../periodWindows'
+import { countHolidayTypes, weekendCodeLabel } from '../weekendCodes'
+import { slaMinutesToHours } from '../schemas/teamSetup'
 import { sumSupportFte } from './associated-data/supportOptions'
 import {
   emptyScenarioForm,
@@ -76,6 +83,10 @@ const exerciseQuery = useExerciseQuery(() => props.exerciseId)
 const scenarioQuery = useScenarioQuery(() => props.exerciseId, () => props.scenarioId)
 const teamSetupQuery = useTeamSetupQuery(() => props.exerciseId)
 const supportQuery = useSupportQuery(() => props.exerciseId)
+const calendarQuery = useCalendarQuery(() => props.exerciseId)
+const monthlyVolumesQuery = useMonthlyVolumesQuery(() => props.exerciseId)
+const dailyVolumesQuery = useDailyVolumesQuery(() => props.exerciseId)
+const slotVolumesQuery = useSlotVolumesQuery(() => props.exerciseId)
 const cycleTimeQuery = useCycleTimeActiveQuery(() => props.exerciseId)
 const monthlyQuery = useLatestMonthlySizingQuery(() => props.exerciseId, () => props.scenarioId)
 const dailyQuery = useLatestDailySimulationQuery(() => props.exerciseId, () => props.scenarioId)
@@ -95,6 +106,10 @@ const exercise = computed(() => exerciseQuery.data.value ?? null)
 const scenario = computed(() => scenarioQuery.data.value ?? null)
 const teamSetup = computed(() => teamSetupQuery.data.value ?? null)
 const support = computed(() => supportQuery.data.value ?? [])
+const calendar = computed(() => calendarQuery.data.value ?? null)
+const monthlyVolumes = computed(() => monthlyVolumesQuery.data.value ?? [])
+const dailyVolumes = computed(() => dailyVolumesQuery.data.value ?? [])
+const slotVolumes = computed(() => slotVolumesQuery.data.value ?? [])
 const cycleTime = computed(() => cycleTimeQuery.data.value ?? null)
 
 const sizingCompleted = ref(false)
@@ -196,9 +211,34 @@ function slaTypeLabel(value: string | null | undefined) {
   return value || '—'
 }
 
+function monthKey(value: string | null | undefined) {
+  return (value ?? '').slice(0, 7)
+}
+
+function coverageLabel(
+  count: number,
+  first: string | undefined,
+  last: string | undefined,
+  unit: string,
+) {
+  if (!count || !first || !last) return '—'
+  const period = first === last ? first : `${first} – ${last}`
+  return `${period} · ${count} ${unit}`
+}
+
 /** Exercise AD / snapshot inputs used by simulation (read-only on this page). */
 const baselineInputRows = computed(() => {
   const setup = teamSetup.value
+  const holidays = countHolidayTypes(calendar.value?.holidays ?? [])
+  const months = [...monthlyVolumes.value].sort((a, b) => a.month.localeCompare(b.month))
+  const days = [...dailyVolumes.value].sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
+  const sizingMonth = monthKey(exercise.value?.sizingMonth)
+  const sizingMonthRow = months.find((row) => monthKey(row.month) === sizingMonth)
+  const slotPeriod =
+    exercise.value?.slotStartDate && exercise.value.slotWeeks
+      ? deriveSlotPeriodLabel(exercise.value.slotStartDate, exercise.value.slotWeeks)
+      : null
+  const slotCount = slotVolumes.value.length
   return [
     {
       label:
@@ -215,8 +255,8 @@ const baselineInputRows = computed(() => {
     },
     { label: 'SLA type', value: slaTypeLabel(setup?.slaType) },
     {
-      label: withUnit('SLA Turntime', FieldUnit.minutes),
-      value: formatNumber(setup?.slaTurnaroundMinutes, 2),
+      label: withUnit('SLA Turntime', FieldUnit.hours),
+      value: formatNumber(slaMinutesToHours(setup?.slaTurnaroundMinutes), 2),
     },
     { label: withUnit('SLA Target', FieldUnit.percent), value: formatRatioPercent(setup?.slaTargetRatio) },
     {
@@ -250,6 +290,47 @@ const baselineInputRows = computed(() => {
     {
       label: withUnit('Weekend shift', FieldUnit.fte),
       value: formatNumber(setup?.weekendShiftHc, 2),
+    },
+    { label: 'Weekend code', value: weekendCodeLabel(setup?.weekendCode) },
+    {
+      label: withUnit('Skeleton coverage', FieldUnit.percent),
+      value: formatRatioPercent(setup?.skeletonRatio),
+    },
+    { label: 'Holiday / Weekend days', value: String(holidays.rest) },
+    { label: 'Makeup (Normal) days', value: String(holidays.makeup) },
+    { label: 'Listed dates', value: String(holidays.total) },
+    {
+      label: withUnit('Sizing month actual', FieldUnit.transactions),
+      value:
+        sizingMonthRow?.actualVolume != null
+          ? formatNumber(sizingMonthRow.actualVolume, 2)
+          : '—',
+    },
+    {
+      label: 'Monthly volume',
+      value: coverageLabel(
+        months.length,
+        months[0]?.month,
+        months[months.length - 1]?.month,
+        months.length === 1 ? 'month' : 'months',
+      ),
+    },
+    {
+      label: 'Daily volume',
+      value: coverageLabel(
+        days.length,
+        days[0]?.volumeDate,
+        days[days.length - 1]?.volumeDate,
+        days.length === 1 ? 'day' : 'days',
+      ),
+    },
+    {
+      label: 'Slot volume',
+      value: slotPeriod
+        ? `${slotPeriod} · ${slotCount} ${slotCount === 1 ? 'slot' : 'slots'}`
+        : slotCount
+          ? `${slotCount} ${slotCount === 1 ? 'slot' : 'slots'}`
+          : 'Not set',
     },
   ]
 })
@@ -572,11 +653,13 @@ async function confirmDelete() {
   }
 }
 
+const exerciseBackTo = computed(() => ({
+  name: snapshotMode.value ? 'supervisor-exercise-snapshot' : 'supervisor-exercise-detail',
+  params: { id: props.exerciseId },
+}))
+
 function goBack() {
-  void router.push({
-    name: snapshotMode.value ? 'supervisor-exercise-snapshot' : 'supervisor-exercise-detail',
-    params: { id: props.exerciseId },
-  })
+  void router.push(exerciseBackTo.value)
 }
 
 const scenarioInfoRows = computed(() => {
@@ -657,9 +740,14 @@ const scenarioInfoRows = computed(() => {
         <div class="rounded-lg border bg-card p-3.5">
           <div class="mb-2 flex items-baseline justify-between gap-2">
             <h3 class="text-sm font-bold">Baseline inputs (from Exercise)</h3>
-            <span class="text-xs text-muted-foreground">Read-only · edit on Exercise</span>
+            <RouterLink
+              :to="exerciseBackTo"
+              class="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Read-only · {{ snapshotMode ? 'view' : 'edit' }} on Exercise
+            </RouterLink>
           </div>
-          <DetailTable :rows="baselineInputRows" />
+          <DetailTable :rows="baselineInputRows" :columns="2" />
         </div>
 
         <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">

@@ -17,7 +17,7 @@ import {
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { useAssociatedDataPanel } from '../composables/useAssociatedDataPanel'
 import { deriveSlotPeriodLabel } from '../periodWindows'
-import { normalizeHolidayType } from '../weekendCodes'
+import { countHolidayTypes } from '../weekendCodes'
 import { AD_TAB_LABELS, formatNumber } from './associated-data/adTypes'
 import { sumSupportFte } from './associated-data/supportOptions'
 import AdTmsSummary from './associated-data/AdTmsSummary.vue'
@@ -56,16 +56,7 @@ const supportAnnualHours = computed(() => {
   return support.value.reduce((sum, item) => sum + (Number(item.workloadPerYearHours) || 0), 0)
 })
 
-const holidayCounts = computed(() => {
-  const holidays = calendar.value?.holidays ?? []
-  let rest = 0
-  let makeup = 0
-  for (const row of holidays) {
-    if (normalizeHolidayType(row.holidayType) === 'NORMAL') makeup += 1
-    else rest += 1
-  }
-  return { rest, makeup, total: holidays.length }
-})
+const holidayCounts = computed(() => countHolidayTypes(calendar.value?.holidays ?? []))
 
 const volumeSummary = computed(() => {
   const months = [...monthly.value].sort((a, b) => a.month.localeCompare(b.month))

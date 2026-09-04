@@ -112,7 +112,7 @@ watch(
       <AdMetric
         label="Sessions"
         :value="sessionTotalLabel"
-        hint="Included sessions used for the SYSTEM median. Blank volume counts as one unit. When Combine subtask time is Yes, each subtask's median is summed."
+        hint="Included sessions used for the SYSTEM median. When Combine subtask time is Yes, each subtask's median is summed."
       />
       <AdMetric
         :label="withUnit('Median cycle time', FieldUnit.seconds)"

@@ -42,6 +42,10 @@ export interface SubmitPreview {
   submitBlocked: boolean
   timesheetAlignment?: TimesheetAlignmentView | null
   scopeAcknowledgementRequired?: boolean
+  nextStep?: string | null
+  nextPositionId?: string | null
+  nextHandlerName?: string | null
+  nextHandlerCcgid?: string | null
 }
 
 export interface SubmitRequest {

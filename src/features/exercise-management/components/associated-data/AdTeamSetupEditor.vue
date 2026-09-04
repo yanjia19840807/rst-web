@@ -60,7 +60,7 @@ const [automationRatio] = defineField('automationRatio')
 const [maxOvertimeMinutes] = defineField('maxOvertimeMinutes')
 const [slaType] = defineField('slaType')
 const [slaTargetRatio] = defineField('slaTargetRatio')
-const [slaTurnaroundMinutes] = defineField('slaTurnaroundMinutes')
+const [slaTurnaroundHours] = defineField('slaTurnaroundHours')
 const [slaStartTime] = defineField('slaStartTime')
 const [slaEndTime] = defineField('slaEndTime')
 const [weekendShiftHc] = defineField('weekendShiftHc')
@@ -224,7 +224,7 @@ const headcountRows = computed(() => [
 ])
 
 const slaRows = computed(() => [
-  { label: withUnit('SLA turntime', FieldUnit.minutes), value: formatNumber(values.slaTurnaroundMinutes, 2) },
+  { label: withUnit('SLA turntime', FieldUnit.hours), value: formatNumber(values.slaTurnaroundHours, 2) },
   { label: withUnit('SLA target', FieldUnit.percent), value: formatPercent(values.slaTargetRatio) },
   { label: 'SLA type', value: slaTypeLabel(values.slaType) },
   { label: 'Weekend code', value: weekendCodeLabel(values.weekendCode) },
@@ -239,6 +239,7 @@ const slaRows = computed(() => [
         ? formatNumber(draftWorkingHoursPerDay.value, 2)
         : '—',
   },
+  { label: withUnit('Working days / year', FieldUnit.days), value: formatNumber(workingDaysPerYear.value, 2) },
 ])
 
 const capacityRows = computed(() => [
@@ -247,7 +248,6 @@ const capacityRows = computed(() => [
   { label: withUnit('Max daily overtime', FieldUnit.minutes), value: formatNumber(values.maxOvertimeMinutes, 2) },
   { label: withUnit('Weekend shift', FieldUnit.fte), value: formatNumber(values.weekendShiftHc, 2) },
   { label: withUnit('Automation ratio', FieldUnit.percent), value: formatPercent(values.automationRatio) },
-  { label: withUnit('Working days / year', FieldUnit.days), value: formatNumber(workingDaysPerYear.value, 2) },
   { label: withUnit('Max capacity days', FieldUnit.days), value: formatNumber(draftMaxCapacityDays.value, 2) },
   {
     label: withUnit('Production support', FieldUnit.fte),
@@ -393,16 +393,17 @@ defineExpose({ toRequest })
         <h3 class="mb-3 text-sm font-bold">SLA And Working Hours</h3>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1 text-sm"
-            >{{ withUnit('SLA turntime', FieldUnit.minutes) }}
+            >{{ withUnit('SLA turntime', FieldUnit.hours) }}
             <NumberFieldControl
               v-if="!readOnly"
-              v-model="slaTurnaroundMinutes"
+              v-model="slaTurnaroundHours"
               :min="0"
-              :invalid="Boolean(errors.slaTurnaroundMinutes)"
+              :decimals="2"
+              :invalid="Boolean(errors.slaTurnaroundHours)"
             />
-            <ReadOnlyField v-else :value="formatNumber(slaTurnaroundMinutes, 2)" />
-            <p v-if="errors.slaTurnaroundMinutes" class="text-xs text-destructive">
-              {{ errors.slaTurnaroundMinutes }}
+            <ReadOnlyField v-else :value="formatNumber(slaTurnaroundHours, 2)" />
+            <p v-if="errors.slaTurnaroundHours" class="text-xs text-destructive">
+              {{ errors.slaTurnaroundHours }}
             </p>
           </label>
           <label class="grid gap-1 text-sm"
@@ -525,6 +526,10 @@ defineExpose({ toRequest })
                   }}
                 </TableCell>
               </TableRow>
+              <TableRow>
+                <TableCell>{{ withUnit('Working days / year', FieldUnit.days) }}</TableCell>
+                <TableCell>{{ formatNumber(workingDaysPerYear, 2) }}</TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
@@ -605,10 +610,6 @@ defineExpose({ toRequest })
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell>{{ withUnit('Working days / year', FieldUnit.days) }}</TableCell>
-                <TableCell>{{ formatNumber(workingDaysPerYear, 2) }}</TableCell>
-              </TableRow>
               <TableRow>
                 <TableCell>{{ withUnit('Max capacity days', FieldUnit.days) }}</TableCell>
                 <TableCell>{{ formatNumber(draftMaxCapacityDays, 2) }}</TableCell>

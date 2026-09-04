@@ -41,13 +41,15 @@ export function formatSessionVolume(processedVolume: number | null | undefined) 
 
 export function cycleTimeVolume(processedVolume: number | null | undefined) {
   const volume = Number(processedVolume)
-  return Number.isFinite(volume) && volume > 0 ? volume : 1
+  return Number.isFinite(volume) && volume > 0 ? volume : null
 }
 
 export function cycleTime(row: TmsSessionTableRow, withUnit = true) {
   const suffix = withUnit ? 's' : ''
   if (row.cycleTimeSeconds != null) return `${row.cycleTimeSeconds}${suffix}`
-  return `${Math.round(row.netDurationSeconds / cycleTimeVolume(row.processedVolume))}${suffix}`
+  const volume = cycleTimeVolume(row.processedVolume)
+  if (volume == null) return '—'
+  return `${Math.round(row.netDurationSeconds / volume)}${suffix}`
 }
 
 export function createTmsSessionColumns(

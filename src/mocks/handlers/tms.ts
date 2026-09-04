@@ -26,7 +26,7 @@ function excel(filename: string) {
 }
 
 function isInvalidVolume(volume: number | null | undefined) {
-  return volume != null && (!Number.isInteger(volume) || volume < 1)
+  return volume == null || !Number.isInteger(volume) || volume < 1
 }
 
 function problem(status: number, detail: string) {
@@ -67,7 +67,7 @@ function applySessionDetails(
     return {
       subtaskId: session.subtaskId,
       subtaskName: session.subtaskName,
-      processedVolume: session.processedVolume ?? 1,
+      processedVolume: session.processedVolume,
       reference: session.reference,
       remarks: session.remarks,
     }
@@ -75,7 +75,7 @@ function applySessionDetails(
   return {
     subtaskId: subtask?.id ?? null,
     subtaskName: subtask?.name ?? '—',
-    processedVolume: details.processedVolume ?? 1,
+    processedVolume: details.processedVolume,
     reference: details.reference ?? '',
     remarks: details.remarks ?? '',
   }
@@ -196,7 +196,7 @@ export const tmsHandlers = [
       toolkitName: toolkit.name,
       subtaskId: subtask?.id ?? null,
       subtaskName: subtask?.name ?? '—',
-      processedVolume: input.processedVolume ?? 1,
+      processedVolume: input.processedVolume,
       reference: input.reference,
       remarks: input.remarks,
       status: 'running',

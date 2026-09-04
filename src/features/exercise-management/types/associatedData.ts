@@ -1,3 +1,5 @@
+import type { HolidayTypeValue } from '../weekendCodes'
+
 export interface TeamSetup {
   agentsLt6m: number | null
   agents6To24m: number | null
@@ -88,13 +90,13 @@ export interface Holiday {
   id: string
   holidayDate: string
   holidayName: string
-  holidayType: string
+  holidayType: HolidayTypeValue
 }
 
 export interface HolidayRequest {
   holidayDate: string
   holidayName: string
-  holidayType: string
+  holidayType: HolidayTypeValue
 }
 
 export interface CalendarView {

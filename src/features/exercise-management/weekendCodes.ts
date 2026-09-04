@@ -102,3 +102,15 @@ export function normalizeHolidayType(type: string | null | undefined): HolidayTy
   if (token === 'NORMAL') return 'NORMAL'
   return 'HOLIDAY'
 }
+
+export function countHolidayTypes(
+  holidays: ReadonlyArray<{ holidayType?: string | null }>,
+) {
+  let rest = 0
+  let makeup = 0
+  for (const row of holidays) {
+    if (normalizeHolidayType(row.holidayType) === 'NORMAL') makeup += 1
+    else rest += 1
+  }
+  return { rest, makeup, total: holidays.length }
+}

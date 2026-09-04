@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -90,6 +90,23 @@ function confirmReject() {
   rejectOpen.value = false
   emit('reject')
 }
+
+function handlerLabel(name?: string | null, ccgid?: string | null) {
+  return [name, ccgid].filter((part) => Boolean(part && String(part).trim())).join(' · ')
+}
+
+const approveRows = computed(() => {
+  const next = props.workspace
+  return [
+    { label: 'Current step', value: next.currentHop?.step || '—' },
+    { label: 'Next step', value: next.nextStep || '—' },
+    { label: 'Position', value: next.nextPositionId || '—' },
+    {
+      label: 'Handler',
+      value: handlerLabel(next.nextReviewer, next.nextHandlerCcgid) || '—',
+    },
+  ]
+})
 </script>
 
 <template>
@@ -125,7 +142,9 @@ function confirmReject() {
         </div>
         <p v-if="workspace.nextStep" class="text-sm text-muted-foreground">
           After approve → {{ workspace.nextStep }}
-          <template v-if="workspace.nextReviewer"> · {{ workspace.nextReviewer }}</template>
+          <template v-if="handlerLabel(workspace.nextReviewer, workspace.nextHandlerCcgid)">
+            · {{ handlerLabel(workspace.nextReviewer, workspace.nextHandlerCcgid) }}
+          </template>
         </p>
       </CardContent>
     </Card>
@@ -145,10 +164,7 @@ function confirmReject() {
       description="This records your approval and moves the workflow to the next step. You cannot undo this decision."
       confirm-label="Approve"
       confirm-variant="default"
-      :rows="[
-        { label: 'Current step', value: workspace.currentHop?.step || '—' },
-        { label: 'Next step', value: workspace.nextStep || '—' },
-      ]"
+      :rows="approveRows"
       :pending="pending"
       @confirm="confirmApprove"
     />

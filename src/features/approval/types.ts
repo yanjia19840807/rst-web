@@ -119,7 +119,9 @@ export interface ApprovalWorkspaceView {
   statusBar: ApprovalStatusBar
   currentHop?: ApprovalCurrentHop | null
   nextStep?: string | null
+  nextPositionId?: string | null
   nextReviewer?: string | null
+  nextHandlerCcgid?: string | null
   history: ApprovalHistoryRow[]
 }
 

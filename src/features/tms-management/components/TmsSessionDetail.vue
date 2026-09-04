@@ -21,7 +21,7 @@ import { formatDate } from '@/lib/datetime'
 
 import { useTmsSessionDetailQuery } from '../api/queries'
 import { formatDuration } from '../composables/useTmsTimer'
-import { formatSessionVolume } from './tmsSessionColumns'
+import { cycleTime, formatSessionVolume } from './tmsSessionColumns'
 import type { TmsListMode } from '../types'
 
 const props = withDefaults(
@@ -49,9 +49,7 @@ const toolkitInfoPending = ref(false)
 function cycleTimeLabel() {
   const item = session.value
   if (!item) return '—'
-  const volume = Number(item.processedVolume)
-  const divisor = Number.isFinite(volume) && volume > 0 ? volume : 1
-  return `${Math.round(item.netDurationSeconds / divisor)}s`
+  return cycleTime(item)
 }
 
 const rows = computed(() => {
