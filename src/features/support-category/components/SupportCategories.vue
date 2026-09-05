@@ -261,7 +261,7 @@ async function saveUpdate(
                     size="sm"
                     variant="link"
                     class="h-auto px-0 font-semibold"
-                    :disabled="saving"
+                    :loading="saving"
                     @click="confirmAdd"
                   >
                     Confirm
@@ -334,7 +334,7 @@ async function saveUpdate(
                       size="sm"
                       variant="link"
                       class="h-auto px-0 font-semibold"
-                      :disabled="saving"
+                      :loading="saving"
                       @click="confirmEdit"
                     >
                       Confirm

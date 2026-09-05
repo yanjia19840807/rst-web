@@ -3,6 +3,7 @@ import { TriangleAlert } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,7 @@ const {
   pl3s,
   countries,
   candidates,
+  candidatesLoading,
   syncDate,
   subtasks,
   sharedKpiSelections,
@@ -84,12 +86,13 @@ const {
       <Button v-if="toolkitId" variant="destructive" @click="deleteOpen = true">
         Delete Toolkit
       </Button>
-      <Button :disabled="busy || loading || hasMissingKpis" @click="save">
+      <Button :loading="busy" :disabled="loading || hasMissingKpis" @click="save">
         {{ busy ? 'Saving…' : 'Save Toolkit' }}
       </Button>
     </PageActions>
 
-    <div class="grid gap-4 xl:grid-cols-2">
+    <ListLoading v-if="loading" class="h-48" />
+    <div v-else class="grid gap-4 xl:grid-cols-2">
       <ProcessMappingCard
         v-model:name="name"
         v-model:center="center"
@@ -112,6 +115,7 @@ const {
     </div>
 
     <SharedKpiCard
+      v-if="!loading"
       :rows="selectedKpiRows"
       :total-hc="totalHc"
       :sync-date="syncDate"
@@ -126,6 +130,7 @@ const {
     <SelectSharedKpiDialog
       v-model:open="kpiOpen"
       :candidates="candidates"
+      :pending="candidatesLoading"
       :selected="sharedKpiSelections"
       :countries="selectedCountries"
       :show-delivery-hc="Boolean(toolkitId)"

@@ -301,7 +301,8 @@ async function confirmSave() {
         </Button>
         <Button
           type="button"
-          :disabled="!dirty || saveMutation.isPending.value || !center"
+          :loading="saveMutation.isPending.value"
+          :disabled="!dirty || !center"
           @click="askSave"
         >
           {{ saveMutation.isPending.value ? 'Saving…' : 'Save' }}

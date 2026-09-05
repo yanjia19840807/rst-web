@@ -53,8 +53,14 @@ async function stopActing() {
 }
 
 const menuOpen = ref(false)
-const title = computed(() => String(route.meta.title ?? 'Right Sizing Tool'))
-const subtitle = computed(() => String(route.meta.subtitle ?? 'Right Sizing Tool'))
+const title = computed(() => {
+  const value = route.meta.title
+  return typeof value === 'string' ? value.trim() : ''
+})
+const subtitle = computed(() => {
+  const value = route.meta.subtitle
+  return typeof value === 'string' ? value.trim() : ''
+})
 
 watch(
   () => route.fullPath,
@@ -155,8 +161,8 @@ const copyrightYear = new Date().getFullYear()
       <header class="shrink-0 border-b bg-card">
         <div class="flex min-h-16 items-center justify-between gap-6 px-4 py-3 sm:px-6">
           <div>
-            <h1 class="text-lg font-semibold">{{ title }}</h1>
-            <p class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
+            <h1 v-if="title" class="text-lg font-semibold">{{ title }}</h1>
+            <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
           </div>
           <div class="flex items-center gap-2">
             <ThemeToggle />

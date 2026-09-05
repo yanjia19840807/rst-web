@@ -11,6 +11,6 @@ const props = defineProps<{
 
 <template>
   <div :class="cn('flex h-24 w-full items-center justify-center', props.class)">
-    <Spinner class="size-6 text-primary" />
+    <Spinner class="size-6" />
   </div>
 </template>

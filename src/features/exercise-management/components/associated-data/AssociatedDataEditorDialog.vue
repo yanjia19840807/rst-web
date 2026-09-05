@@ -280,7 +280,7 @@ async function save() {
         <Button
           v-if="!closeOnly && !readOnly"
           type="button"
-          :disabled="busy"
+          :loading="busy"
           @click="save"
         >
           {{ busy ? 'Saving…' : 'Save' }}

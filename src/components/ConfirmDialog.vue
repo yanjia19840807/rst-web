@@ -14,6 +14,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
+import { Spinner } from '@/components/ui/spinner'
+
 import DetailTable, { type DetailRow } from './DetailTable.vue'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -109,8 +111,10 @@ function onConfirmAction(event: Event) {
         <AlertDialogAction
           :variant="confirmVariant"
           :disabled="pending || (requireReason && !reason.trim())"
+          :aria-busy="pending || undefined"
           @click="onConfirmAction"
         >
+          <Spinner v-if="pending" />
           {{ confirmLabel }}
         </AlertDialogAction>
       </AlertDialogFooter>

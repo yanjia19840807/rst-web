@@ -13,6 +13,6 @@ const props = defineProps<{
   <Loader2
     role="status"
     aria-label="Loading"
-    :class="cn('size-4 animate-spin', props.class)"
+    :class="cn('size-4 animate-spin text-brand-red', props.class)"
   />
 </template>

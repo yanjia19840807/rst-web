@@ -7,7 +7,7 @@ import { useSessionStore } from '@/auth/session'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Spinner } from '@/components/ui/spinner'
+import ListLoading from '@/components/ListLoading.vue'
 import { Switch } from '@/components/ui/switch'
 
 import { useSaveMailPreferences } from '../api/mutations'
@@ -46,9 +46,7 @@ async function onToggle(row: MailPreferenceType, enabled: boolean) {
       </CardDescription>
     </CardHeader>
     <CardContent class="grid gap-4 py-4">
-      <div v-if="query.isPending.value" class="flex min-h-24 items-center justify-center">
-        <Spinner class="size-5 text-primary" />
-      </div>
+      <ListLoading v-if="query.isPending.value" />
       <template v-else>
         <Alert v-if="emailMissing" variant="warning">
           <TriangleAlert />

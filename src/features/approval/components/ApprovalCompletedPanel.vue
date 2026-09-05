@@ -7,6 +7,7 @@ import ApprovalHistoryTable from './ApprovalHistoryTable.vue'
 defineProps<{
   workspace?: ApprovalWorkspaceView | null
   emptyMessage?: string
+  pending?: boolean
 }>()
 
 function statusCaption(workspace: ApprovalWorkspaceView) {
@@ -28,6 +29,7 @@ function statusCaption(workspace: ApprovalWorkspaceView) {
       <ApprovalHistoryTable
         :rows="workspace?.history ?? []"
         :empty-message="emptyMessage"
+        :pending="pending"
       />
     </CardContent>
   </Card>

@@ -119,7 +119,7 @@ function formatShiftTime(value?: string | null) {
         v-else-if="runningSizing"
         class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-3 py-10 text-sm text-muted-foreground"
       >
-        <Spinner class="size-6 text-primary" />
+        <Spinner class="size-6" />
         <span>Running sizing…</span>
       </div>
       <div
@@ -321,7 +321,7 @@ function formatShiftTime(value?: string | null) {
         v-else-if="showShiftInputs && runningSlot"
         class="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed px-3 py-10 text-sm text-muted-foreground"
       >
-        <Spinner class="size-6 text-primary" />
+        <Spinner class="size-6" />
         <span>Running slot simulation…</span>
       </div>
     </section>

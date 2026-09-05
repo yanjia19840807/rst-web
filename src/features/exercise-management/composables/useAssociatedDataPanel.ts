@@ -69,7 +69,10 @@ export function useAssociatedDataPanel(exerciseId: MaybeRefOrGetter<string>) {
       (teamSetupQuery.isPending.value && teamSetupQuery.data.value === undefined) ||
       (supportQuery.isPending.value && supportQuery.data.value === undefined) ||
       (calendarQuery.isPending.value && calendarQuery.data.value === undefined) ||
-      (cycleTimeQuery.isPending.value && cycleTimeQuery.data.value === undefined),
+      (cycleTimeQuery.isPending.value && cycleTimeQuery.data.value === undefined) ||
+      (monthlyQuery.isPending.value && monthlyQuery.data.value === undefined) ||
+      (dailyQuery.isPending.value && dailyQuery.data.value === undefined) ||
+      (slotQuery.isPending.value && slotQuery.data.value === undefined),
   )
 
   const anyError = computed(

@@ -93,6 +93,9 @@ const submitted = computed(() => submittedQuery.data.value ?? null)
 const historyError = computed(
   () => hasApprovalHistory.value && submittedQuery.isError.value,
 )
+const historyLoading = computed(
+  () => hasApprovalHistory.value && submittedQuery.isPending.value && !submittedQuery.data.value,
+)
 
 const deletePending = computed(() => remove.isPending.value)
 const createPending = computed(() => createScenarioMutation.isPending.value)
@@ -367,6 +370,7 @@ watch(
     <div v-if="showApprovalTab && pageTab === 'approval'">
       <ApprovalCompletedPanel
         :workspace="workspace"
+        :pending="historyLoading"
         :empty-message="historyError ? 'Approval history is unavailable.' : 'No approval history yet.'"
       />
     </div>
@@ -397,7 +401,7 @@ watch(
           <Button variant="outline" :disabled="createPending" @click="newScenarioOpen = false">
             Cancel
           </Button>
-          <Button :disabled="createPending" @click="createScenario">
+          <Button :loading="createPending" @click="createScenario">
             {{ createPending ? 'Creating…' : 'Confirm' }}
           </Button>
         </DialogFooter>
@@ -447,7 +451,7 @@ watch(
           <Button variant="outline" :disabled="officialPending" @click="officialOpen = false">
             Cancel
           </Button>
-          <Button :disabled="officialPending" @click="confirmOfficial">
+          <Button :loading="officialPending" @click="confirmOfficial">
             {{ officialPending ? 'Saving…' : 'Confirm as Official' }}
           </Button>
         </DialogFooter>

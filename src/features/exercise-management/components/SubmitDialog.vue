@@ -289,7 +289,8 @@ const submissionPathRows = computed(() => {
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" :disabled="submitting" @click="open = false">Cancel</Button>
         <Button
-          :disabled="loading || submitting || submitBlocked || (scopeAckRequired && !scopeAcknowledged)"
+          :loading="submitting"
+          :disabled="loading || submitBlocked || (scopeAckRequired && !scopeAcknowledged)"
           @click="submitNow"
         >
           {{ submitting ? 'Submitting…' : 'Confirm Submit' }}

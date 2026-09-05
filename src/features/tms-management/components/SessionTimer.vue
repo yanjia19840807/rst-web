@@ -54,14 +54,16 @@ const startDisabled = computed(
 
       <div class="mt-4 grid grid-cols-3 gap-2">
         <Button
+          :loading="busy && !isRunning"
           :disabled="startDisabled"
-          :class="startDisabled ? 'opacity-50' : undefined"
+          :class="startDisabled && !busy ? 'opacity-50' : undefined"
           @click="isPaused ? $emit('resume') : $emit('start')"
         >
           {{ isPaused ? 'Resume' : 'Start' }}
         </Button>
         <Button
           variant="outline"
+          :loading="busy && isRunning"
           :disabled="!isRunning || busy"
           :class="!isRunning ? 'opacity-50' : undefined"
           @click="$emit('pause')"
@@ -70,6 +72,7 @@ const startDisabled = computed(
         </Button>
         <Button
           variant="secondary"
+          :loading="busy && isRunning"
           :disabled="!isRunning || busy"
           :class="!isRunning ? 'opacity-50' : undefined"
           @click="$emit('end')"

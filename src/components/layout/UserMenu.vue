@@ -66,7 +66,7 @@ async function stopActing() {
 
 <template>
   <div v-if="session.loading && !session.user" class="flex min-h-10 items-center justify-end">
-    <Spinner class="size-4 text-primary" />
+    <Spinner class="size-4" />
   </div>
 
   <div v-else-if="session.signedOut" class="min-w-0 text-right">

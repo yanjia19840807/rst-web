@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListLoading from '@/components/ListLoading.vue'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -15,6 +16,7 @@ import type { ApprovalHistoryRow } from '../types'
 defineProps<{
   rows?: ApprovalHistoryRow[] | null
   emptyMessage?: string
+  pending?: boolean
 }>()
 
 function decisionTone(decision?: string | null) {
@@ -38,33 +40,40 @@ function decisionTone(decision?: string | null) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow
-          v-for="row in rows ?? []"
-          :key="row.actionId"
-          :class="row.mine ? 'bg-primary/5' : undefined"
-        >
-          <TableCell class="font-medium">{{ row.step }}</TableCell>
-          <TableCell>{{ row.role || '—' }}</TableCell>
-          <TableCell>{{ row.actor || '—' }}</TableCell>
-          <TableCell>
-            <Badge
-              :variant="decisionTone(row.decision) === 'bad' ? 'destructive' : 'outline'"
-              :class="{
-                'border-emerald-200 bg-emerald-50 text-emerald-700':
-                  decisionTone(row.decision) === 'good',
-              }"
-            >
-              {{ row.decision }}
-            </Badge>
-          </TableCell>
-          <TableCell class="max-w-xs wrap-break-word">{{ row.comments?.trim() || '—' }}</TableCell>
-          <TableCell>{{ formatDateTime(row.completedAt) }}</TableCell>
-        </TableRow>
-        <TableRow v-if="!(rows ?? []).length">
-          <TableCell colspan="6" class="h-24 text-center text-muted-foreground">
-            {{ emptyMessage || 'No approval history yet.' }}
+        <TableRow v-if="pending && !(rows ?? []).length">
+          <TableCell colspan="6" class="p-0">
+            <ListLoading />
           </TableCell>
         </TableRow>
+        <template v-else>
+          <TableRow
+            v-for="row in rows ?? []"
+            :key="row.actionId"
+            :class="row.mine ? 'bg-primary/5' : undefined"
+          >
+            <TableCell class="font-medium">{{ row.step }}</TableCell>
+            <TableCell>{{ row.role || '—' }}</TableCell>
+            <TableCell>{{ row.actor || '—' }}</TableCell>
+            <TableCell>
+              <Badge
+                :variant="decisionTone(row.decision) === 'bad' ? 'destructive' : 'outline'"
+                :class="{
+                  'border-emerald-200 bg-emerald-50 text-emerald-700':
+                    decisionTone(row.decision) === 'good',
+                }"
+              >
+                {{ row.decision }}
+              </Badge>
+            </TableCell>
+            <TableCell class="max-w-xs wrap-break-word">{{ row.comments?.trim() || '—' }}</TableCell>
+            <TableCell>{{ formatDateTime(row.completedAt) }}</TableCell>
+          </TableRow>
+          <TableRow v-if="!(rows ?? []).length">
+            <TableCell colspan="6" class="h-24 text-center text-muted-foreground">
+              {{ emptyMessage || 'No approval history yet.' }}
+            </TableCell>
+          </TableRow>
+        </template>
       </TableBody>
     </Table>
   </div>

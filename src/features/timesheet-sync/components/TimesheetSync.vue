@@ -180,7 +180,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
       >
         Domain Head
       </Button>
-      <Button :disabled="uploadMutation.isPending.value" @click="fileInput?.click()">
+      <Button :loading="uploadMutation.isPending.value" @click="fileInput?.click()">
         {{ uploadMutation.isPending.value ? 'Uploading…' : 'Upload and sync' }}
       </Button>
     </PageActions>

@@ -132,11 +132,11 @@ const approveRows = computed(() => {
         />
         <p v-if="errors.comments" class="text-xs text-destructive">{{ errors.comments }}</p>
         <div class="flex flex-wrap gap-2">
-          <Button :disabled="pending" @click="askApprove">Approve Submission</Button>
-          <Button variant="outline" :disabled="pending" @click="askReturn">
+          <Button :loading="pending" @click="askApprove">Approve Submission</Button>
+          <Button variant="outline" :loading="pending" @click="askReturn">
             Return To Supervisor
           </Button>
-          <Button variant="destructive" :disabled="pending" @click="askReject">
+          <Button variant="destructive" :loading="pending" @click="askReject">
             Reject Submission
           </Button>
         </div>

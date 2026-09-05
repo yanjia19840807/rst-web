@@ -340,6 +340,9 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     pl3s,
     countries,
     candidates,
+    candidatesLoading: computed(
+      () => candidatesQuery.isFetching.value && !candidatesQuery.data.value,
+    ),
     syncDate,
     subtasks,
     sharedKpiSelections,

@@ -104,7 +104,8 @@ async function onSave() {
         </Button>
         <Button
           type="button"
-          :disabled="saveMutation.isPending.value || alertQuery.isPending.value"
+          :loading="saveMutation.isPending.value"
+          :disabled="alertQuery.isPending.value"
           @click="onSave"
         >
           {{ saveMutation.isPending.value ? 'Saving…' : 'Save' }}

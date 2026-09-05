@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import DetailTable from '@/components/DetailTable.vue'
+import { Spinner } from '@/components/ui/spinner'
 import { formatDateTime } from '@/lib/datetime'
 
 import { formatDuration } from '../composables/useTmsTimer'
@@ -75,10 +76,23 @@ function onStartNew(event: Event) {
 
       <AlertDialogFooter>
         <AlertDialogCancel :disabled="pending">Cancel</AlertDialogCancel>
-        <AlertDialogAction variant="outline" :disabled="pending" @click="onStartNew">
+        <AlertDialogAction
+          variant="outline"
+          :disabled="pending"
+          :aria-busy="pending || undefined"
+          @click="onStartNew"
+        >
+          <Spinner v-if="pending" />
           Start New
         </AlertDialogAction>
-        <AlertDialogAction :disabled="pending" @click="onResume">Resume</AlertDialogAction>
+        <AlertDialogAction
+          :disabled="pending"
+          :aria-busy="pending || undefined"
+          @click="onResume"
+        >
+          <Spinner v-if="pending" />
+          Resume
+        </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>

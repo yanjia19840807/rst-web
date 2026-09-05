@@ -9,6 +9,7 @@ import { toast } from 'vue-sonner'
 import { queryClient } from '@/api/query-client'
 import { useSessionStore } from '@/auth/session'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ListLoading from '@/components/ListLoading.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -56,6 +57,14 @@ const [validFrom] = defineField('validFrom')
 const [validUntil] = defineField('validUntil')
 const revokeOpen = ref(false)
 const revokeTarget = ref<Delegation | null>(null)
+
+const grantedLoading = computed(
+  () => grantedQuery.isPending.value && !grantedQuery.data.value,
+)
+const receivedLoading = computed(
+  () => receivedQuery.isPending.value && !receivedQuery.data.value,
+)
+const historyLoading = computed(() => grantedLoading.value || receivedLoading.value)
 
 const grantedOpen = computed(() => (grantedQuery.data.value ?? []).filter(isOpenDelegation))
 const grantedHistory = computed(() =>
@@ -204,7 +213,7 @@ function selectTab(tab: TabKey) {
               </p>
             </div>
             <div>
-              <Button type="submit" :disabled="createDelegation.isPending.value">
+              <Button type="submit" :loading="createDelegation.isPending.value">
                 Grant access
               </Button>
             </div>
@@ -218,7 +227,8 @@ function selectTab(tab: TabKey) {
           <CardDescription>Open grants. Revoke to end access immediately.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div class="min-w-0 overflow-x-auto rounded-lg border">
+          <ListLoading v-if="grantedLoading" />
+          <div v-else class="min-w-0 overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -265,8 +275,9 @@ function selectTab(tab: TabKey) {
           People who granted you access. You stay signed in as yourself.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
+        <CardContent>
+        <ListLoading v-if="receivedLoading" />
+        <div v-else class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -310,8 +321,9 @@ function selectTab(tab: TabKey) {
         <CardTitle>History</CardTitle>
         <CardDescription>Ended authorizations. Actions taken stay on the documents.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
+        <CardContent>
+        <ListLoading v-if="historyLoading" />
+        <div v-else class="min-w-0 overflow-x-auto rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>

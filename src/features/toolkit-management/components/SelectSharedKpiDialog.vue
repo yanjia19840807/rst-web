@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
+import ListLoading from '@/components/ListLoading.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,9 +31,11 @@ const props = withDefaults(
     selected: SharedKpiKey[]
     countries: string[]
     showDeliveryHc?: boolean
+    pending?: boolean
   }>(),
   {
     showDeliveryHc: true,
+    pending: false,
   },
 )
 
@@ -123,32 +126,39 @@ function confirm() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow
-                v-for="item in candidates"
-                :key="kpiKey(item)"
-                class="cursor-pointer"
-                :class="draft.has(kpiKey(item)) ? 'bg-muted/60' : undefined"
-                @click="toggle(item)"
-              >
-                <TableCell>
-                  <input
-                    type="checkbox"
-                    class="size-3.5 accent-primary"
-                    :checked="draft.has(kpiKey(item))"
-                    @click.stop
-                    @change="toggle(item)"
-                  />
-                </TableCell>
-                <TableCell>{{ item.carrier }}</TableCell>
-                <TableCell>{{ item.site }}</TableCell>
-                <TableCell>{{ item.customerCountry }}</TableCell>
-                <TableCell v-if="showDeliveryHc">{{ item.deliveryHc }}</TableCell>
-              </TableRow>
-              <TableRow v-if="!candidates.length">
-                <TableCell :colspan="showDeliveryHc ? 5 : 4" class="h-20 text-center text-muted-foreground italic">
-                  No KPI lines available for the selected countries.
+              <TableRow v-if="pending && !candidates.length">
+                <TableCell :colspan="showDeliveryHc ? 5 : 4" class="p-0">
+                  <ListLoading />
                 </TableCell>
               </TableRow>
+              <template v-else>
+                <TableRow
+                  v-for="item in candidates"
+                  :key="kpiKey(item)"
+                  class="cursor-pointer"
+                  :class="draft.has(kpiKey(item)) ? 'bg-muted/60' : undefined"
+                  @click="toggle(item)"
+                >
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      class="size-3.5 accent-primary"
+                      :checked="draft.has(kpiKey(item))"
+                      @click.stop
+                      @change="toggle(item)"
+                    />
+                  </TableCell>
+                  <TableCell>{{ item.carrier }}</TableCell>
+                  <TableCell>{{ item.site }}</TableCell>
+                  <TableCell>{{ item.customerCountry }}</TableCell>
+                  <TableCell v-if="showDeliveryHc">{{ item.deliveryHc }}</TableCell>
+                </TableRow>
+                <TableRow v-if="!candidates.length">
+                  <TableCell :colspan="showDeliveryHc ? 5 : 4" class="h-20 text-center text-muted-foreground italic">
+                    No KPI lines available for the selected countries.
+                  </TableCell>
+                </TableRow>
+              </template>
             </TableBody>
           </Table>
         </div>
@@ -156,7 +166,7 @@ function confirm() {
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
         <Button variant="outline" @click="open = false">Cancel</Button>
-        <Button @click="confirm">Confirm Selection</Button>
+        <Button :disabled="pending" @click="confirm">Confirm Selection</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
