@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { queryClient } from '@/api/query-client'
 import { captureDevIdentityFromQuery, stripDevIdentityQuery } from '@/auth/dev-identity'
 import { useSessionStore } from '@/auth/session'
+import { installRouteLoading } from '@/composables/useRouteLoading'
 
 import { routes } from './routes'
 
@@ -31,5 +32,7 @@ router.afterEach((to) => {
   const pageTitle = typeof to.meta.title === 'string' ? to.meta.title.trim() : ''
   document.title = pageTitle && pageTitle !== APP_TITLE ? `${pageTitle} · ${APP_TITLE}` : APP_TITLE
 })
+
+installRouteLoading(router)
 
 export default router

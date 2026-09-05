@@ -55,10 +55,12 @@ describe('App', () => {
     await themeToggle.trigger('click')
     await flushPromises()
     expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(document.documentElement.style.colorScheme).toBe('dark')
     expect(wrapper.get('button[aria-label="Switch to light mode"]').exists()).toBe(true)
     await wrapper.get('button[aria-label="Switch to light mode"]').trigger('click')
     await flushPromises()
     expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(document.documentElement.style.colorScheme).toBe('light')
 
     await wrapper.get('button[aria-label="Open account menu"]').trigger('click')
     await flushPromises()

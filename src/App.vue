@@ -4,14 +4,16 @@ import { Toaster } from 'vue-sonner'
 
 import AppShell from '@/components/layout/AppShell.vue'
 import OperationNoticesDialog from '@/components/OperationNoticesDialog.vue'
+import { useRouteLoading } from '@/composables/useRouteLoading'
 import { useTheme } from '@/composables/useTheme'
 import 'vue-sonner/style.css'
 
 const { theme } = useTheme()
+const { routeLoading } = useRouteLoading()
 </script>
 
 <template>
-  <AppShell>
+  <AppShell :busy="routeLoading">
     <RouterView />
   </AppShell>
   <OperationNoticesDialog />

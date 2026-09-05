@@ -14,6 +14,10 @@ import { PAGE_ACTIONS_TARGET_ID } from '@/components/page-actions'
 import ThemeToggle from './ThemeToggle.vue'
 import UserMenu from './UserMenu.vue'
 
+defineProps<{
+  busy?: boolean
+}>()
+
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
@@ -72,6 +76,17 @@ const copyrightYear = new Date().getFullYear()
 
 <template>
   <div class="flex h-svh flex-col overflow-hidden bg-background text-foreground lg:grid lg:grid-cols-[240px_1fr]">
+    <div
+      v-if="busy"
+      class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 overflow-hidden bg-brand-red/35"
+      role="progressbar"
+      aria-label="Loading page"
+    >
+      <div
+        class="h-full w-1/3 bg-brand-red shadow-[0_0_8px_var(--brand-red)]"
+        style="animation: route-progress 1.1s ease-in-out infinite"
+      />
+    </div>
     <a
       href="#main-content"
       class="sr-only z-50 rounded-md bg-background px-4 py-2 focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
@@ -79,7 +94,7 @@ const copyrightYear = new Date().getFullYear()
       Skip to content
     </a>
 
-    <aside class="shrink-0 bg-sidebar text-sidebar-foreground lg:h-full lg:overflow-y-auto">
+    <aside class="relative z-40 shrink-0 bg-sidebar text-sidebar-foreground lg:z-auto lg:h-full lg:overflow-y-auto">
       <div class="flex h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4 lg:px-5">
         <RouterLink :to="session.homePath" class="flex min-w-0 items-center gap-3 font-semibold">
           <span
@@ -105,11 +120,23 @@ const copyrightYear = new Date().getFullYear()
         </Button>
       </div>
 
+      <button
+        v-if="menuOpen"
+        type="button"
+        class="fixed inset-0 top-16 z-30 cursor-default bg-black/40 lg:hidden"
+        aria-label="Close menu"
+        @click="menuOpen = false"
+      />
+
       <nav
         id="app-navigation"
         aria-label="Application"
-        class="border-sidebar-border px-3 py-3 lg:block lg:border-t-0 lg:py-5"
-        :class="menuOpen ? 'block border-t' : 'hidden lg:block'"
+        class="border-sidebar-border px-3 py-3 lg:static lg:z-auto lg:block lg:max-h-none lg:overflow-visible lg:border-t-0 lg:py-5 lg:shadow-none"
+        :class="
+          menuOpen
+            ? 'absolute inset-x-0 top-16 z-40 block max-h-[calc(100svh-4rem)] overflow-y-auto border-t bg-sidebar shadow-lg'
+            : 'hidden lg:block'
+        "
       >
         <ul class="flex flex-col gap-1">
           <li v-for="item in visibleMenu" :key="item.to">
@@ -129,7 +156,7 @@ const copyrightYear = new Date().getFullYear()
         <div class="flex min-h-16 items-center justify-between gap-6 px-4 py-3 sm:px-6">
           <div>
             <h1 class="text-lg font-semibold">{{ title }}</h1>
-            <p class="text-sm text-muted-foreground">{{ subtitle }}</p>
+            <p class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
           </div>
           <div class="flex items-center gap-2">
             <ThemeToggle />
@@ -159,6 +186,7 @@ const copyrightYear = new Date().getFullYear()
       <main
         id="main-content"
         class="min-h-0 min-w-0 w-full flex-1 overflow-y-auto px-4 py-5 sm:px-6"
+        :aria-busy="busy ? 'true' : undefined"
       >
         <slot />
       </main>
