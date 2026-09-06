@@ -56,6 +56,25 @@ export function isReturned(exercise: {
 }
 
 /** Maps the Current Step filter label to the list API `reviewStage` value. */
+export type ExerciseListTabQuery = 'IN_PROGRESS' | 'ARCHIVED'
+
+export function exerciseListTabQuery(status?: string | null): ExerciseListTabQuery {
+  return status === 'APPROVED' || status === 'REJECTED' ? 'ARCHIVED' : 'IN_PROGRESS'
+}
+
+export function exerciseListLocation(status?: string | null) {
+  return {
+    name: 'supervisor-exercises' as const,
+    query: { tab: exerciseListTabQuery(status) },
+  }
+}
+
+export function exerciseListBackLabel(status?: string | null) {
+  return exerciseListTabQuery(status) === 'ARCHIVED'
+    ? '← Back to Archived'
+    : '← Back to In Progress'
+}
+
 export function reviewStageQueryValue(label: CurrentStepFilter): string | undefined {
   switch (label) {
     case SUPERVISOR_SIZING_STEP:

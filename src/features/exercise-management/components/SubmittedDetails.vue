@@ -33,7 +33,6 @@ import type { ApprovalDetailView } from '@/features/approval/types'
 import {
   useCycleTimeActiveQuery,
   useExerciseQuery,
-  useForecastTrainingQuery,
   useLatestDailySimulationQuery,
   useLatestMonthlySizingQuery,
   useLatestSlotSimulationQuery,
@@ -46,8 +45,8 @@ import { FieldUnit, withUnit } from '../fieldUnits'
 import { slaMinutesToHours } from '../schemas/teamSetup'
 import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
 import { actualHeadcount } from '../sizingChartMath'
-import type { ForecastTrainingObservation, SubmittedDetails } from '../types'
-import { formatNumber } from './associated-data/adTypes'
+import type { SubmittedDetails } from '../types'
+import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
 import { sumSupportFte } from './associated-data/supportOptions'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
@@ -134,18 +133,6 @@ const cycleTime = computed(() => cycleTimeQuery.data.value ?? null)
 const latestMonthlySizing = computed(() => monthlyQuery.data.value ?? null)
 const latestDailySizing = computed(() => dailyQuery.data.value ?? null)
 const latestSlotSimulation = computed(() => slotQuery.data.value ?? null)
-const trainingQuery = useForecastTrainingQuery(resolvedExerciseId, scenarioId)
-const trainingBundle = computed(() => trainingQuery.data.value ?? null)
-const hasTrainingObservations = computed(
-  () =>
-    (trainingBundle.value?.monthly.length ?? 0) > 0 ||
-    (trainingBundle.value?.daily.length ?? 0) > 0,
-)
-
-function trainingPeriodLabel(row: ForecastTrainingObservation) {
-  if (row.grain === 'MONTH') return formatMonth(row.periodStart)
-  return formatDate(row.periodStart)
-}
 const pending = computed(
   () =>
     approve.isPending.value || returnToSupervisor.isPending.value || reject.isPending.value,
@@ -475,12 +462,18 @@ function downloadSummary() {
           variant="link"
           class="h-auto px-0 font-semibold"
           @click="
-            router.push({
-              name: isApprover ? 'approver-queue' : 'supervisor-exercises',
-            })
+            router.push(
+              isApprover
+                ? { name: 'approver-queue' }
+                : exerciseListLocation(exercise?.workflowStatus ?? details?.workflowStatus),
+            )
           "
         >
-          {{ isApprover ? '← Back to Approval Queue' : '← Back to Exercise List' }}
+          {{
+            isApprover
+              ? '← Back to Approval Queue'
+              : exerciseListBackLabel(exercise?.workflowStatus ?? details?.workflowStatus)
+          }}
         </Button>
       </template>
       <Button v-if="isApprover" variant="outline" @click="downloadSummary">
@@ -523,7 +516,7 @@ function downloadSummary() {
           <CardTitle class="text-base">Official Scenario</CardTitle>
         </CardHeader>
         <CardContent>
-          <DetailTable :rows="packageRows">
+          <DetailTable :rows="packageRows" :columns="2">
             <template #toolkit="{ row }">
               <span class="inline-flex items-center gap-1.5">
                 <span>{{ row.value || '—' }}</span>
@@ -611,74 +604,6 @@ function downloadSummary() {
         :slot-weeks="exercise.slotWeeks"
         read-only
       />
-
-      <Card v-if="hasTrainingObservations">
-        <CardHeader>
-          <CardTitle class="text-base">Training data used</CardTitle>
-        </CardHeader>
-        <CardContent class="grid gap-4">
-          <p class="text-xs leading-relaxed text-muted-foreground">
-            Frozen actuals that fed the official scenario forecast when this exercise was approved.
-          </p>
-          <div class="grid gap-4 lg:grid-cols-2">
-            <div class="space-y-2">
-              <h4 class="text-sm font-semibold">Monthly</h4>
-              <div class="max-h-80 overflow-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Actual Volume</TableHead>
-                      <TableHead>Source</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow
-                      v-for="row in trainingBundle?.monthly ?? []"
-                      :key="row.periodStart"
-                    >
-                      <TableCell>{{ trainingPeriodLabel(row) }}</TableCell>
-                      <TableCell>{{ formatNumber(row.actualVolume, 2) }}</TableCell>
-                      <TableCell>{{ row.source }}</TableCell>
-                    </TableRow>
-                    <TableRow v-if="!(trainingBundle?.monthly.length ?? 0)">
-                      <TableCell colspan="3" class="h-16 text-center text-muted-foreground">
-                        No monthly training observations.
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-            <div class="space-y-2">
-              <h4 class="text-sm font-semibold">Daily</h4>
-              <div class="max-h-80 overflow-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Actual Volume</TableHead>
-                      <TableHead>Source</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow v-for="row in trainingBundle?.daily ?? []" :key="row.periodStart">
-                      <TableCell>{{ trainingPeriodLabel(row) }}</TableCell>
-                      <TableCell>{{ formatNumber(row.actualVolume, 2) }}</TableCell>
-                      <TableCell>{{ row.source }}</TableCell>
-                    </TableRow>
-                    <TableRow v-if="!(trainingBundle?.daily.length ?? 0)">
-                      <TableCell colspan="3" class="h-16 text-center text-muted-foreground">
-                        No daily training observations.
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
         <Card class="min-w-0">

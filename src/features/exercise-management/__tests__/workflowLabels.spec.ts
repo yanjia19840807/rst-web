@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   currentStepLabel,
+  exerciseListBackLabel,
+  exerciseListLocation,
+  exerciseListTabQuery,
   isReturned,
   reviewStageQueryValue,
   SUPERVISOR_SIZING_STEP,
@@ -38,6 +41,24 @@ describe('isReturned', () => {
     expect(isReturned({ submissionStatus: 'RETURNED' })).toBe(true)
     expect(isReturned({ submissionStatus: 'OPEN' })).toBe(false)
     expect(isReturned({ workflowStatus: 'IN_PROGRESS' })).toBe(false)
+  })
+})
+
+describe('exerciseListTabQuery', () => {
+  it('keeps In Progress work and Under Review on the In Progress list', () => {
+    expect(exerciseListTabQuery('IN_PROGRESS')).toBe('IN_PROGRESS')
+    expect(exerciseListTabQuery('UNDER_REVIEW')).toBe('IN_PROGRESS')
+    expect(exerciseListBackLabel('UNDER_REVIEW')).toBe('← Back to In Progress')
+  })
+
+  it('sends approved and rejected exercises back to Archived', () => {
+    expect(exerciseListTabQuery('APPROVED')).toBe('ARCHIVED')
+    expect(exerciseListTabQuery('REJECTED')).toBe('ARCHIVED')
+    expect(exerciseListLocation('APPROVED')).toEqual({
+      name: 'supervisor-exercises',
+      query: { tab: 'ARCHIVED' },
+    })
+    expect(exerciseListBackLabel('APPROVED')).toBe('← Back to Archived')
   })
 })
 

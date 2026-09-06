@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { watchDebounced } from '@vueuse/core'
 
@@ -19,6 +19,7 @@ import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
 import {
   IN_PROGRESS_TAB,
+  exerciseListTabQuery,
   reviewStageQueryValue,
   type CurrentStepFilter,
 } from '../workflowLabels'
@@ -29,9 +30,17 @@ import ExerciseListTable from './ExerciseListTable.vue'
 type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
 
+const route = useRoute()
 const router = useRouter()
 const { withdraw } = useExerciseMutations()
-const activeTab = ref<TabKey>(IN_PROGRESS_TAB)
+
+function tabFromQuery(value: unknown): TabKey {
+  return exerciseListTabQuery(typeof value === 'string' ? value : null) === 'ARCHIVED'
+    ? 'Archived'
+    : IN_PROGRESS_TAB
+}
+
+const activeTab = ref<TabKey>(tabFromQuery(route.query.tab))
 const createOpen = ref(false)
 const withdrawOpen = ref(false)
 const withdrawTarget = ref<Exercise | null>(null)
@@ -136,12 +145,26 @@ const advancedCount = computed(() => {
   return Number(Boolean(archivedFrom.value || archivedTo.value))
 })
 
+function persistTab(tab: TabKey) {
+  const next = tab === 'Archived' ? 'ARCHIVED' : 'IN_PROGRESS'
+  if (route.query.tab === next) return
+  void router.replace({
+    name: 'supervisor-exercises',
+    query: { ...route.query, tab: next },
+  })
+}
+
 function switchTab(tab: TabKey) {
+  if (tab === activeTab.value) {
+    persistTab(tab)
+    return
+  }
   activeTab.value = tab
   exerciseCodeFilter.value = ''
   appliedExerciseCode.value = ''
   advancedOpen.value = null
   resetPage()
+  persistTab(tab)
 }
 
 function toggleAdvanced() {
@@ -227,6 +250,19 @@ async function confirmWithdraw() {
     toast.error(error instanceof Error ? error.message : 'Could not withdraw submission.')
   }
 }
+
+watch(
+  () => route.query.tab,
+  (value) => {
+    const next = tabFromQuery(value)
+    if (next === activeTab.value) return
+    activeTab.value = next
+    exerciseCodeFilter.value = ''
+    appliedExerciseCode.value = ''
+    advancedOpen.value = null
+    resetPage()
+  },
+)
 
 watch(
   [

@@ -34,6 +34,7 @@ import {
 import { measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { FieldUnit, withUnit } from '../fieldUnits'
+import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
 import type { Scenario } from '../types'
 import { actualHeadcount } from '../sizingChartMath'
 import { sumSupportFte } from './associated-data/supportOptions'
@@ -169,7 +170,7 @@ async function confirmDelete() {
     const id = props.exerciseId
     await remove.mutateAsync(id)
     deleteOpen.value = false
-    await router.replace({ name: 'supervisor-exercises' })
+    await router.replace(exerciseListLocation(exercise.value?.workflowStatus))
     // Drop caches after leaving the detail page so observers are gone.
     queryClient.removeQueries({
       predicate: (query) =>
@@ -258,7 +259,7 @@ watch(
         ? exerciseQuery.error.value.message
         : 'Could not load exercise.',
     )
-    void router.push({ name: 'supervisor-exercises' })
+    void router.push(exerciseListLocation(exercise.value?.workflowStatus))
   },
 )
 </script>
@@ -274,10 +275,14 @@ watch(
           @click="
             snapshotMode
               ? router.push({ name: 'supervisor-submission', params: { id: exerciseId } })
-              : router.push({ name: 'supervisor-exercises' })
+              : router.push(exerciseListLocation(exercise.workflowStatus))
           "
         >
-          {{ snapshotMode ? '← Back to Submitted Exercise Details' : '← Back to Exercise List' }}
+          {{
+            snapshotMode
+              ? '← Back to Submitted Exercise Details'
+              : exerciseListBackLabel(exercise.workflowStatus)
+          }}
         </Button>
       </template>
       <Button
