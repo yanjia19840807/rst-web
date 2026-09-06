@@ -28,8 +28,9 @@ const props = withDefaults(
   defineProps<{
     sessionId: string
     mode?: TmsListMode
+    embedded?: boolean
   }>(),
-  { mode: 'agent' },
+  { mode: 'agent', embedded: false },
 )
 
 const router = useRouter()
@@ -111,7 +112,7 @@ function goBack() {
 
 <template>
   <div class="grid gap-4">
-    <PageActions>
+    <PageActions v-if="!embedded">
       <template #left>
         <Button
           variant="link"
@@ -123,11 +124,11 @@ function goBack() {
       </template>
     </PageActions>
 
-    <Card>
-      <CardHeader>
+    <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
+      <CardHeader v-if="!embedded">
         <CardTitle class="text-base">TMS Session Detail</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent :class="embedded ? 'px-0' : undefined">
         <ListLoading v-if="detailQuery.isPending.value" />
         <p
           v-else-if="detailQuery.isError.value"

@@ -30,6 +30,10 @@ const props = withDefaults(
   { mode: 'agent', embedded: false },
 )
 
+const emit = defineEmits<{
+  open: [id: string]
+}>()
+
 const router = useRouter()
 const isSupervisor = computed(() => props.mode === 'supervisor')
 
@@ -133,6 +137,10 @@ async function confirmExport() {
 }
 
 function openDetail(id: string) {
+  if (props.embedded) {
+    emit('open', id)
+    return
+  }
   void router.push({
     name: isSupervisor.value ? 'supervisor-session-detail' : 'agent-session-detail',
     params: { id },
@@ -141,77 +149,79 @@ function openDetail(id: string) {
 </script>
 
 <template>
-  <PageActions v-if="!embedded">
-    <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
-  </PageActions>
-  <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
-    <CardHeader v-if="!embedded" class="items-baseline">
-      <CardTitle>{{ isSupervisor ? 'Team TMS Sessions' : 'My TMS Sessions' }}</CardTitle>
-    </CardHeader>
-    <CardContent :class="embedded ? 'grid gap-4 px-0' : 'grid gap-4'">
-      <TmsSessionFilters
-        v-model:session-no="filters.sessionNo"
-        v-model:reference="filters.reference"
-        v-model:date-from="filters.dateFrom"
-        v-model:date-to="filters.dateTo"
-        v-model:agent-ccgid="filters.agentCcgid"
-        v-model:toolkit-id="filters.toolkitId"
-        v-model:pl3-code="filters.pl3Code"
-        :show-team-filters="isSupervisor"
-        :compact="embedded"
-        :agents="teamAgentsQuery.data.value ?? []"
-        :toolkits="toolkitsQuery.data.value ?? []"
-        :pl3-options="pl3Options"
-      >
-        <template v-if="embedded" #actions>
-          <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
-        </template>
-      </TmsSessionFilters>
+  <div>
+    <PageActions v-if="!embedded">
+      <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
+    </PageActions>
+    <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
+      <CardHeader v-if="!embedded" class="items-baseline">
+        <CardTitle>{{ isSupervisor ? 'Team TMS Sessions' : 'My TMS Sessions' }}</CardTitle>
+      </CardHeader>
+      <CardContent :class="embedded ? 'grid gap-4 px-0' : 'grid gap-4'">
+        <TmsSessionFilters
+          v-model:session-no="filters.sessionNo"
+          v-model:reference="filters.reference"
+          v-model:date-from="filters.dateFrom"
+          v-model:date-to="filters.dateTo"
+          v-model:agent-ccgid="filters.agentCcgid"
+          v-model:toolkit-id="filters.toolkitId"
+          v-model:pl3-code="filters.pl3Code"
+          :show-team-filters="isSupervisor"
+          :compact="embedded"
+          :agents="teamAgentsQuery.data.value ?? []"
+          :toolkits="toolkitsQuery.data.value ?? []"
+          :pl3-options="pl3Options"
+        >
+          <template v-if="embedded" #actions>
+            <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
+          </template>
+        </TmsSessionFilters>
 
-      <TmsSessionsTable
-        :sessions="sessionsQuery.data.value?.items ?? []"
-        :pending="sessionsQuery.isPending.value"
-        :deleting-id="deletingId"
-        :show-agent="isSupervisor"
-        :can-delete="!isSupervisor"
-        @delete="openDelete"
-        @open="openDetail"
-      />
+        <TmsSessionsTable
+          :sessions="sessionsQuery.data.value?.items ?? []"
+          :pending="sessionsQuery.isPending.value"
+          :deleting-id="deletingId"
+          :show-agent="isSupervisor"
+          :can-delete="!isSupervisor"
+          @delete="openDelete"
+          @open="openDetail"
+        />
 
-      <TablePager
-        :total="sessionsQuery.data.value?.total ?? 0"
-        :page="filters.page"
-        :page-size="filters.pageSize"
-        label="sessions"
-        @update:page="filters.page = $event"
-        @update:page-size="
-          (size) => {
-            filters.pageSize = size
-            filters.page = 1
-          }
-        "
-      />
-    </CardContent>
-  </Card>
+        <TablePager
+          :total="sessionsQuery.data.value?.total ?? 0"
+          :page="filters.page"
+          :page-size="filters.pageSize"
+          label="sessions"
+          @update:page="filters.page = $event"
+          @update:page-size="
+            (size) => {
+              filters.pageSize = size
+              filters.page = 1
+            }
+          "
+        />
+      </CardContent>
+    </Card>
 
-  <ConfirmDialog
-    v-model:open="exportOpen"
-    title="Export TMS Sessions"
-    description="Download all sessions matching the current filters as an Excel file. Pagination is not applied."
-    confirm-label="Export"
-    confirm-variant="default"
-    :pending="exporting"
-    @confirm="confirmExport"
-  />
+    <ConfirmDialog
+      v-model:open="exportOpen"
+      title="Export TMS Sessions"
+      description="Download all sessions matching the current filters as an Excel file. Pagination is not applied."
+      confirm-label="Export"
+      confirm-variant="default"
+      :pending="exporting"
+      @confirm="confirmExport"
+    />
 
-  <ConfirmDialog
-    v-if="!isSupervisor"
-    v-model:open="deleteOpen"
-    title="Delete Session"
-    warning="This will discard the completed timing session from the list."
-    :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
-    confirm-label="Delete"
-    :pending="Boolean(deletingId)"
-    @confirm="confirmDelete"
-  />
+    <ConfirmDialog
+      v-if="!isSupervisor"
+      v-model:open="deleteOpen"
+      title="Delete Session"
+      warning="This will discard the completed timing session from the list."
+      :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
+      confirm-label="Delete"
+      :pending="Boolean(deletingId)"
+      @confirm="confirmDelete"
+    />
+  </div>
 </template>
