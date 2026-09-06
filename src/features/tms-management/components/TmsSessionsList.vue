@@ -25,8 +25,9 @@ import TmsSessionsTable from './TmsSessionsTable.vue'
 const props = withDefaults(
   defineProps<{
     mode?: TmsListMode
+    embedded?: boolean
   }>(),
-  { mode: 'agent' },
+  { mode: 'agent', embedded: false },
 )
 
 const router = useRouter()
@@ -140,14 +141,14 @@ function openDetail(id: string) {
 </script>
 
 <template>
-  <PageActions>
+  <PageActions v-if="!embedded">
     <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
   </PageActions>
-  <Card>
-    <CardHeader class="items-baseline">
+  <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
+    <CardHeader v-if="!embedded" class="items-baseline">
       <CardTitle>{{ isSupervisor ? 'Team TMS Sessions' : 'My TMS Sessions' }}</CardTitle>
     </CardHeader>
-    <CardContent class="grid gap-4">
+    <CardContent :class="embedded ? 'grid gap-4 px-0' : 'grid gap-4'">
       <TmsSessionFilters
         v-model:session-no="filters.sessionNo"
         v-model:reference="filters.reference"
@@ -157,10 +158,15 @@ function openDetail(id: string) {
         v-model:toolkit-id="filters.toolkitId"
         v-model:pl3-code="filters.pl3Code"
         :show-team-filters="isSupervisor"
+        :compact="embedded"
         :agents="teamAgentsQuery.data.value ?? []"
         :toolkits="toolkitsQuery.data.value ?? []"
         :pl3-options="pl3Options"
-      />
+      >
+        <template v-if="embedded" #actions>
+          <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
+        </template>
+      </TmsSessionFilters>
 
       <TmsSessionsTable
         :sessions="sessionsQuery.data.value?.items ?? []"

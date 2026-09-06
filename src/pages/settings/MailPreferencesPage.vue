@@ -3,6 +3,7 @@ import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useSessionStore } from '@/auth/session'
+import SettingsBackActions from '@/components/SettingsBackActions.vue'
 import MailPreferencesSettings from '@/features/mail-preference/components/MailPreferencesSettings.vue'
 
 const session = useSessionStore()
@@ -20,5 +21,6 @@ watch(
 </script>
 
 <template>
+  <SettingsBackActions />
   <MailPreferencesSettings />
 </template>

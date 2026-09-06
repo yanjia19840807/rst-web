@@ -71,4 +71,39 @@ describe('App', () => {
     wrapper.unmount()
     queryClient.clear()
   }, 10_000)
+
+  it('hides the side menu for agent-only users and keeps the logo in the header', async () => {
+    writeDevIdentity({
+      ccgid: 'S00661142',
+      role: 'AGENT',
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes,
+    })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    await router.push('/agent/session')
+    await router.isReady()
+
+    const wrapper = mount(App, {
+      attachTo: document.body,
+      global: {
+        plugins: [createPinia(), router, [VueQueryPlugin, { queryClient }]],
+        stubs: { RouterView: true },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.find('nav[aria-label="Application"]').exists()).toBe(false)
+    expect(wrapper.get('a[aria-label="Right Sizing Tool"]').exists()).toBe(true)
+    expect(wrapper.get('h1').text()).toBe('TMS Session')
+    expect(wrapper.text()).toContain('WU Rongchan')
+
+    wrapper.unmount()
+    queryClient.clear()
+  }, 10_000)
 })

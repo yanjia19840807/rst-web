@@ -6,11 +6,7 @@ import { storeToRefs } from 'pinia'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
-import DetailTable from '@/components/DetailTable.vue'
-import ListLoading from '@/components/ListLoading.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 import { tmsApi } from '../api'
 import { useTmsSessionMutations } from '../api/mutations'
@@ -19,8 +15,8 @@ import { useTmsTimer } from '../composables/useTmsTimer'
 import { createSessionSchema, type SessionFormValues } from '../schemas/session'
 import { useTmsSessionStore } from '../stores/session'
 import type { PausedSessionMatch } from '../types'
-import { formatSessionVolume } from './tmsSessionColumns'
 import CurrentSessionForm from './CurrentSessionForm.vue'
+import AllSessionsDialog from './AllSessionsDialog.vue'
 import PausedMatchDialog from './PausedMatchDialog.vue'
 import PausedSessionsDialog from './PausedSessionsDialog.vue'
 import SessionTimer from './SessionTimer.vue'
@@ -75,6 +71,7 @@ const [processedVolume] = defineField('processedVolume')
 const [reference] = defineField('reference')
 const [remarks] = defineField('remarks')
 const pausedDialogOpen = ref(false)
+const sessionsDialogOpen = ref(false)
 const matchOpen = ref(false)
 const matchPending = ref(false)
 const pausedMatch = ref<PausedSessionMatch | null>(null)
@@ -83,24 +80,6 @@ const pendingStart = ref<SessionFormValues | null>(null)
 const selectedToolkit = computed(() =>
   toolkitsQuery.data.value?.find((toolkit) => toolkit.id === toolkitId.value),
 )
-
-const toolkitDetailRows = computed(() => {
-  if (!selectedToolkit.value) return []
-  return [
-    { label: 'Toolkit', value: selectedToolkit.value.name, strong: true },
-    { label: 'GBS Center', value: selectedToolkit.value.center },
-    { label: 'Domain', value: selectedToolkit.value.domain },
-    { label: 'Process Level 1', value: selectedToolkit.value.pl1 },
-    { label: 'Process Level 2', value: selectedToolkit.value.pl2 },
-    { label: 'Process Level 3', value: selectedToolkit.value.pl3Name },
-    {
-      label: 'Timing mode',
-      value: selectedToolkit.value.combineSubtasksTime
-        ? 'Combine subtask time'
-        : 'Per session',
-    },
-  ]
-})
 
 const toolkitLocked = computed(() => currentSession.value?.status === 'running')
 const hasSelectedToolkit = computed(() => Boolean(selectedToolkit.value))
@@ -274,10 +253,6 @@ const endSession = handleSubmit(async (values) => {
   }
 })
 
-function onToolkitChange(value: unknown) {
-  if (toolkitLocked.value) return
-  setFieldValue('toolkitId', String(value ?? ''))
-}
 </script>
 
 <template>
@@ -290,97 +265,36 @@ function onToolkitChange(value: unknown) {
       </AlertDescription>
     </Alert>
 
-    <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Toolkit</CardTitle>
-        </CardHeader>
-        <CardContent class="grid gap-4">
-          <div class="grid gap-1.5">
-            <NativeSelect
-              :model-value="toolkitId ?? ''"
-              :disabled="toolkitLocked"
-              aria-label="Current toolkit"
-              class="w-full"
-              @update:model-value="onToolkitChange"
-            >
-              <NativeSelectOption value="">Select a toolkit</NativeSelectOption>
-              <NativeSelectOption
-                v-for="toolkit in toolkitsQuery.data.value ?? []"
-                :key="toolkit.id"
-                :value="toolkit.id"
-              >
-                {{ toolkit.name }}
-              </NativeSelectOption>
-            </NativeSelect>
-            <p v-if="errors.toolkitId" class="text-xs text-destructive">{{ errors.toolkitId }}</p>
-          </div>
-          <DetailTable v-if="selectedToolkit" :rows="toolkitDetailRows" />
-          <ListLoading v-else-if="toolkitsQuery.isLoading.value" />
-          <p v-else-if="toolkitsQuery.isError.value" class="text-sm text-muted-foreground">
-            Could not load toolkits.
-          </p>
-          <p v-else class="text-sm text-muted-foreground">
-            Select a toolkit to load its details.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Summary</CardTitle>
-        </CardHeader>
-        <CardContent class="grid gap-3 sm:grid-cols-3">
-          <div class="rounded-lg border p-4">
-            <p class="text-xs text-muted-foreground">Sessions today</p>
-            <p class="mt-2 text-3xl font-bold">
-              {{ summaryQuery.data.value?.sessionsToday ?? '—' }}
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground">Completed timing entries</p>
-          </div>
-          <div class="rounded-lg border p-4">
-            <p class="text-xs text-muted-foreground">Total volume</p>
-            <p class="mt-2 text-3xl font-bold">
-              {{
-                formatSessionVolume(summaryQuery.data.value?.totalVolume)
-              }}
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground">Across all sessions</p>
-          </div>
-          <div class="rounded-lg border p-4">
-            <p class="text-xs text-muted-foreground">Paused Sessions</p>
-            <p class="mt-2 text-3xl font-bold">
-              {{ summaryQuery.data.value?.pausedSessions ?? '—' }}
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground">Currently paused by you</p>
-          </div>
-        </CardContent>
-      </Card>
-
+    <div class="grid items-stretch gap-4 xl:grid-cols-2">
       <CurrentSessionForm
+        v-model:toolkit-id="toolkitId"
         v-model:subtask-id="subtaskId"
         v-model:processed-volume="processedVolume"
         v-model:reference="reference"
         v-model:remarks="remarks"
-        :toolkit-id="toolkitId"
         :toolkits="toolkitsQuery.data.value ?? []"
         :errors="errors"
         :disabled="!hasSelectedToolkit"
+        :toolkit-locked="toolkitLocked"
         :subtask-required="subtaskRequired"
         :paused-count="summaryQuery.data.value?.pausedSessions ?? 0"
         @open-paused="pausedDialogOpen = true"
+        @open-sessions="sessionsDialogOpen = true"
       />
       <SessionTimer
         :session="currentSession"
         :elapsed="formattedElapsed"
         :busy="busy"
         :can-start="hasSelectedToolkit"
+        :summary="summaryQuery.data.value"
         @start="startSession()"
         @pause="pauseSession"
         @resume="resumeSession"
         @end="endSession"
       />
     </div>
+
+    <AllSessionsDialog v-model:open="sessionsDialogOpen" />
 
     <PausedSessionsDialog
       v-model:open="pausedDialogOpen"

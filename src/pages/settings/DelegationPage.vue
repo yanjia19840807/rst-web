@@ -3,6 +3,7 @@ import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useSessionStore } from '@/auth/session'
+import SettingsBackActions from '@/components/SettingsBackActions.vue'
 import DelegationSettings from '@/features/delegation/components/DelegationSettings.vue'
 
 const session = useSessionStore()
@@ -18,5 +19,6 @@ watch(
 </script>
 
 <template>
+  <SettingsBackActions />
   <DelegationSettings />
 </template>

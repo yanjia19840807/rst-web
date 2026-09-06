@@ -9,7 +9,7 @@ import { DELEGATION_ENDED_EVENT } from '@/auth/delegation'
 import { useSessionStore } from '@/auth/session'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { isMenuItemActive, menuItems } from '@/navigation/menu'
+import { isAgentWorkspace, isMenuItemActive, menuItems } from '@/navigation/menu'
 import { PAGE_ACTIONS_TARGET_ID } from '@/components/page-actions'
 import ThemeToggle from './ThemeToggle.vue'
 import UserMenu from './UserMenu.vue'
@@ -72,6 +72,7 @@ watch(
 const visibleMenu = computed(() =>
   menuItems.filter((item) => session.hasPermission(item.permission)),
 )
+const compactWorkspace = computed(() => isAgentWorkspace(visibleMenu.value))
 
 const linkClass =
   'block rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -81,7 +82,10 @@ const copyrightYear = new Date().getFullYear()
 </script>
 
 <template>
-  <div class="flex h-svh flex-col overflow-hidden bg-background text-foreground lg:grid lg:grid-cols-[240px_1fr]">
+  <div
+    class="flex h-svh flex-col overflow-hidden bg-background text-foreground"
+    :class="compactWorkspace ? undefined : 'lg:grid lg:grid-cols-[240px_1fr]'"
+  >
     <div
       v-if="busy"
       class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 overflow-hidden bg-brand-red/35"
@@ -100,16 +104,23 @@ const copyrightYear = new Date().getFullYear()
       Skip to content
     </a>
 
-    <aside class="relative z-40 shrink-0 bg-sidebar text-sidebar-foreground lg:z-auto lg:h-full lg:overflow-y-auto">
+    <aside
+      v-if="!compactWorkspace"
+      class="relative z-40 shrink-0 bg-sidebar text-sidebar-foreground lg:z-auto lg:h-full lg:overflow-y-auto"
+    >
       <div class="flex h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4 lg:px-5">
-        <RouterLink :to="session.homePath" class="flex min-w-0 items-center gap-3 font-semibold">
+        <RouterLink
+          :to="session.homePath"
+          aria-label="Right Sizing Tool"
+          class="flex min-w-0 items-center gap-3 font-semibold"
+        >
           <span
             class="relative grid size-9 shrink-0 place-items-center rounded-md bg-white text-sm text-brand-navy after:absolute after:right-0 after:bottom-0 after:left-0 after:h-1 after:rounded-b-md after:bg-brand-red"
             aria-hidden="true"
           >
             RST
           </span>
-          <span class="truncate">Right Sizing Tool</span>
+          <span class="hidden truncate lg:inline">Right Sizing Tool</span>
         </RouterLink>
         <Button
           type="button"
@@ -159,12 +170,27 @@ const copyrightYear = new Date().getFullYear()
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header class="shrink-0 border-b bg-card">
-        <div class="flex min-h-16 items-center justify-between gap-6 px-4 py-3 sm:px-6">
-          <div>
-            <h1 v-if="title" class="text-lg font-semibold">{{ title }}</h1>
-            <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
+        <div class="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:gap-6 sm:px-6">
+          <div class="flex min-w-0 items-center gap-4 sm:gap-6">
+            <RouterLink
+              v-if="compactWorkspace"
+              :to="session.homePath"
+              aria-label="Right Sizing Tool"
+              class="flex shrink-0 items-center"
+            >
+              <span
+                class="relative grid size-9 place-items-center rounded-md bg-white text-sm text-brand-navy ring-1 ring-foreground/10 after:absolute after:right-0 after:bottom-0 after:left-0 after:h-1 after:rounded-b-md after:bg-brand-red"
+                aria-hidden="true"
+              >
+                RST
+              </span>
+            </RouterLink>
+            <div class="min-w-0">
+              <h1 v-if="title" class="text-lg font-semibold">{{ title }}</h1>
+              <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex shrink-0 items-center gap-2">
             <ThemeToggle />
             <UserMenu />
           </div>

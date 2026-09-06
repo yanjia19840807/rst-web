@@ -86,3 +86,8 @@ export function isMenuItemActive(item: MenuItem, path: string) {
   const prefixes = item.match ?? [item.to]
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 }
+
+/** Agent-only users just time sessions — no sidebar of two TMS links. */
+export function isAgentWorkspace(items: readonly Pick<MenuItem, 'to'>[]) {
+  return items.length > 0 && items.every((item) => item.to.startsWith('/agent/'))
+}

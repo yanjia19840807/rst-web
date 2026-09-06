@@ -20,6 +20,8 @@ const props = defineProps<{
   agents?: TeamAgentOption[]
   toolkits?: Toolkit[]
   pl3Options?: Pl3Option[]
+  /** Show date range on the same row and query immediately — no More Filters. */
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -150,12 +152,38 @@ function onPl3Change(value: string) {
           </option>
         </select>
       </label>
-      <Button variant="outline" @click="moreOpen = !moreOpen">
+      <template v-if="compact">
+        <label class="grid gap-1.5 text-xs text-muted-foreground">
+          Session Date From
+          <DatePicker
+            :model-value="dateFrom"
+            aria-label="Choose session start date"
+            placeholder="Select start date"
+            @update:model-value="emit('update:dateFrom', $event)"
+          />
+        </label>
+        <label class="grid gap-1.5 text-xs text-muted-foreground">
+          Session Date To
+          <DatePicker
+            :model-value="dateTo"
+            aria-label="Choose session end date"
+            placeholder="Select end date"
+            @update:model-value="emit('update:dateTo', $event)"
+          />
+        </label>
+      </template>
+      <Button v-else variant="outline" @click="moreOpen = !moreOpen">
         More Filters{{ dateFrom || dateTo ? ' (1)' : '' }}
       </Button>
+      <div v-if="$slots.actions" class="ml-auto flex items-end">
+        <slot name="actions" />
+      </div>
     </div>
 
-    <div v-if="moreOpen" class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3">
+    <div
+      v-if="!compact && moreOpen"
+      class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
+    >
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Session Date From
         <DatePicker
@@ -176,7 +204,7 @@ function onPl3Change(value: string) {
       <Button @click="applyDates">Apply Filters</Button>
     </div>
 
-    <div v-if="dateFrom || dateTo" class="flex flex-wrap gap-2">
+    <div v-if="!compact && (dateFrom || dateTo)" class="flex flex-wrap gap-2">
       <button
         v-if="dateFrom"
         class="rounded-full border bg-card px-3 py-1 text-xs"

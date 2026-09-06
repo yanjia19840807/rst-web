@@ -5,13 +5,15 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-import type { TmsSession } from '../types'
+import type { TmsSession, TmsSummary } from '../types'
+import { formatSessionVolume } from './tmsSessionColumns'
 
 const props = defineProps<{
   session: TmsSession | null
   elapsed: string
   busy?: boolean
   canStart?: boolean
+  summary?: TmsSummary | null
 }>()
 
 defineEmits<{
@@ -38,7 +40,7 @@ const startDisabled = computed(
         </Badge>
       </CardAction>
     </CardHeader>
-    <CardContent>
+    <CardContent class="flex flex-1 flex-col">
       <div class="rounded-lg border bg-muted/40 px-4 py-5 text-center">
         <p class="mb-1 text-xs font-medium tracking-widest text-muted-foreground uppercase">
           Elapsed
@@ -79,6 +81,33 @@ const startDisabled = computed(
         >
           End
         </Button>
+      </div>
+
+      <div class="mt-auto grid gap-3 border-t pt-5">
+        <h3 class="text-sm font-semibold">Today's Summary</h3>
+        <div class="grid gap-2 sm:grid-cols-3">
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-muted-foreground">Sessions today</p>
+            <p class="mt-1 text-xl font-bold">
+              {{ summary?.sessionsToday ?? '—' }}
+            </p>
+            <p class="mt-0.5 text-xs text-muted-foreground">Completed timing entries</p>
+          </div>
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-muted-foreground">Total volume</p>
+            <p class="mt-1 text-xl font-bold">
+              {{ formatSessionVolume(summary?.totalVolume) }}
+            </p>
+            <p class="mt-0.5 text-xs text-muted-foreground">Across all sessions</p>
+          </div>
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-muted-foreground">Paused Sessions</p>
+            <p class="mt-1 text-xl font-bold">
+              {{ summary?.pausedSessions ?? '—' }}
+            </p>
+            <p class="mt-0.5 text-xs text-muted-foreground">Currently paused by you</p>
+          </div>
+        </div>
       </div>
     </CardContent>
   </Card>

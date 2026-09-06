@@ -12,11 +12,11 @@ import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
+import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
 import type { Exercise } from '@/features/exercise-management/types'
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 import { toolkitApi } from '@/features/toolkit-management/api'
 import { toolkitQueryKeys } from '@/features/toolkit-management/api/queries'
-import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 import { formatDate } from '@/lib/datetime'
 
 import { useTmsSessionDetailQuery } from '../api/queries'
@@ -83,42 +83,6 @@ const rows = computed(() => {
   return base
 })
 
-function snapshotFromToolkit(toolkit: SupervisorToolkit): Exercise['snapshot'] {
-  return {
-    toolkit: {
-      id: toolkit.id,
-      name: toolkit.name,
-      center: toolkit.center,
-      domain: toolkit.domain,
-      pl1: toolkit.pl1,
-      pl2: toolkit.pl2,
-      pl3Code: toolkit.pl3Code,
-      pl3Name: toolkit.pl3Name,
-      combineSubtasksTime: toolkit.combineSubtasksTime,
-      version: toolkit.version,
-    },
-    subtasks: toolkit.subtasks,
-    sharedKpis: toolkit.sharedKpiSelections.map((selection, index) => {
-      const match = toolkit.alignment?.lines.find(
-        (line) =>
-          line.carrier === selection.carrier &&
-          line.site === selection.site &&
-          line.customerCountry === selection.customerCountry,
-      )
-      return {
-        id: `${selection.carrier}-${selection.site}-${selection.customerCountry}-${index}`,
-        sourceSelectionId: null,
-        carrier: selection.carrier,
-        site: selection.site,
-        customerCountry: selection.customerCountry,
-        deliveryHc: Number(match?.currentDeliveryHc ?? 0),
-        valid: !match?.missing,
-      }
-    }),
-    timesheetSyncDate: toolkit.alignment?.currentMonthlySyncDate ?? '',
-  }
-}
-
 async function openToolkitInfo() {
   const toolkitId = session.value?.toolkitId
   if (!toolkitId || toolkitInfoPending.value) return
@@ -140,7 +104,7 @@ async function openToolkitInfo() {
 
 function goBack() {
   void router.push({
-    name: isSupervisor.value ? 'supervisor-sessions' : 'agent-sessions',
+    name: isSupervisor.value ? 'supervisor-sessions' : 'agent-session',
   })
 }
 </script>
@@ -154,7 +118,7 @@ function goBack() {
           class="h-auto px-0 font-semibold"
           @click="goBack"
         >
-          ← Back to TMS List
+          {{ isSupervisor ? '← Back to TMS List' : '← Back to TMS Session' }}
         </Button>
       </template>
     </PageActions>
