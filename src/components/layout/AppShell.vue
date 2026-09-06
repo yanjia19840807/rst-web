@@ -108,7 +108,9 @@ const copyrightYear = new Date().getFullYear()
       v-if="!compactWorkspace"
       class="relative z-40 shrink-0 bg-sidebar text-sidebar-foreground lg:z-auto lg:h-full lg:overflow-y-auto"
     >
-      <div class="flex h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4 lg:px-5">
+      <div
+        class="hidden h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4 lg:flex lg:px-5"
+      >
         <RouterLink
           :to="session.homePath"
           aria-label="Right Sizing Tool"
@@ -120,21 +122,8 @@ const copyrightYear = new Date().getFullYear()
           >
             RST
           </span>
-          <span class="hidden truncate lg:inline">Right Sizing Tool</span>
+          <span class="truncate">Right Sizing Tool</span>
         </RouterLink>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          class="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
-          :aria-expanded="menuOpen"
-          aria-controls="app-navigation"
-          :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
-          @click="menuOpen = !menuOpen"
-        >
-          <X v-if="menuOpen" />
-          <Menu v-else />
-        </Button>
       </div>
 
       <button
@@ -170,13 +159,27 @@ const copyrightYear = new Date().getFullYear()
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header class="shrink-0 border-b bg-card">
-        <div class="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:gap-6 sm:px-6">
-          <div class="flex min-w-0 items-center gap-4 sm:gap-6">
+        <div class="flex min-h-16 items-center justify-between gap-3 px-4 py-3 sm:gap-6 sm:px-6">
+          <div class="flex min-w-0 items-center gap-2 sm:gap-3 lg:gap-6">
+            <Button
+              v-if="!compactWorkspace"
+              type="button"
+              variant="ghost"
+              size="icon"
+              class="shrink-0 lg:hidden"
+              :aria-expanded="menuOpen"
+              aria-controls="app-navigation"
+              :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+              @click="menuOpen = !menuOpen"
+            >
+              <X v-if="menuOpen" />
+              <Menu v-else />
+            </Button>
             <RouterLink
-              v-if="compactWorkspace"
               :to="session.homePath"
               aria-label="Right Sizing Tool"
               class="flex shrink-0 items-center"
+              :class="compactWorkspace ? undefined : 'lg:hidden'"
             >
               <span
                 class="relative grid size-9 place-items-center rounded-md bg-white text-sm text-brand-navy ring-1 ring-foreground/10 after:absolute after:right-0 after:bottom-0 after:left-0 after:h-1 after:rounded-b-md after:bg-brand-red"
@@ -186,7 +189,7 @@ const copyrightYear = new Date().getFullYear()
               </span>
             </RouterLink>
             <div class="min-w-0">
-              <h1 v-if="title" class="text-lg font-semibold">{{ title }}</h1>
+              <h1 v-if="title" class="truncate text-lg font-semibold">{{ title }}</h1>
               <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
             </div>
           </div>

@@ -46,9 +46,9 @@ export const menuItems: readonly MenuItem[] = [
     match: ['/approver/queue', '/approver/submissions'],
   },
   {
-    label: 'Timesheet Sync',
-    to: '/approver/timesheet-sync',
-    permission: PERMISSIONS.timesheetSync,
+    label: 'Global Dashboard',
+    to: '/approver/dashboard',
+    permission: PERMISSIONS.governanceDashboard,
   },
   {
     label: 'RST Repository',
@@ -66,14 +66,14 @@ export const menuItems: readonly MenuItem[] = [
     permission: PERMISSIONS.governanceValidationWorkflow,
   },
   {
-    label: 'Global Dashboard',
-    to: '/approver/dashboard',
-    permission: PERMISSIONS.governanceDashboard,
-  },
-  {
     label: 'Benchmarking',
     to: '/approver/benchmarking',
     permission: PERMISSIONS.governanceBenchmarking,
+  },
+  {
+    label: 'Timesheet Sync',
+    to: '/approver/timesheet-sync',
+    permission: PERMISSIONS.timesheetSync,
   },
   {
     label: 'Support Categories',
