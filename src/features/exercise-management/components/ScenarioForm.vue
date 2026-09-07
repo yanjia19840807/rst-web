@@ -36,12 +36,13 @@ import {
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { deriveSlotPeriodLabel } from '../periodWindows'
-import { countHolidayTypes, weekendCodeLabel } from '../weekendCodes'
+import { countHolidayTypes, DEFAULT_WEEKEND_CODE, normalizeWeekendCode, weekendCodeLabel } from '../weekendCodes'
 import { slaMinutesToHours } from '../schemas/teamSetup'
 import { sumSupportFte } from './associated-data/supportOptions'
 import {
   emptyScenarioForm,
   emptyShiftDraft,
+  MAX_SCENARIO_SHIFTS,
   scenarioFormSchema,
   scenarioSlotSchema,
   toShiftRequests,
@@ -186,6 +187,7 @@ const shiftFieldErrors = computed(() =>
     startTime: fieldError(`shifts.${index}.startTime`),
     durationHours: fieldError(`shifts.${index}.durationHours`),
     headcount: fieldError(`shifts.${index}.headcount`),
+    weekendCode: fieldError(`shifts.${index}.weekendCode`),
   })),
 )
 
@@ -467,7 +469,7 @@ function applyScenarioToForm(value: Scenario) {
             durationHours:
               shift.durationMinutes == null ? null : Number(shift.durationMinutes) / 60,
             headcount: Number(shift.headcount),
-            worksOnWeekend: shift.worksOnWeekend,
+            weekendCode: normalizeWeekendCode(shift.weekendCode) || DEFAULT_WEEKEND_CODE,
           }))
         : [emptyShiftDraft()],
     },
@@ -525,6 +527,7 @@ watch(
 function addShift() {
   if (slotLocked.value || readOnly.value) return
   const rows = [...(shiftRows.value ?? [])]
+  if (rows.length >= MAX_SCENARIO_SHIFTS) return
   rows.push(emptyShiftDraft(rows.length + 1))
   shiftRows.value = rows
 }
@@ -684,7 +687,7 @@ const scenarioInfoRows = computed(() => {
 
 <template>
   <ListLoading v-if="loading" class="h-48" />
-  <div v-else-if="exercise && scenario" class="grid gap-4">
+  <div v-else-if="exercise && scenario" class="grid min-w-0 gap-4">
     <PageActions>
       <template #left>
         <Button
@@ -764,7 +767,7 @@ const scenarioInfoRows = computed(() => {
       :alignment="exercise.timesheetAlignment"
     />
 
-    <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
+    <div class="grid min-w-0 items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
       <ScenarioAssumptionsSection
         :exercise-id="exerciseId"
         :sizing-month="exercise.sizingMonth"

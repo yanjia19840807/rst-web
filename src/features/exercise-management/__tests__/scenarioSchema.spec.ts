@@ -62,10 +62,27 @@ describe('scenarioSlotSchema', () => {
           startTime: '08:00:00',
           durationHours: 8,
           headcount: 2,
-          worksOnWeekend: false,
+          weekendCode: '1',
         },
       ],
     })
     expect(result.success).toBe(true)
+  })
+
+  it('rejects more than five shifts', () => {
+    const shift = {
+      shiftNo: 1,
+      startTime: '08:00:00',
+      durationHours: 8,
+      headcount: 2,
+      weekendCode: '1',
+    }
+    const result = scenarioFormSchema.safeParse({
+      ...validForm(),
+      shifts: Array.from({ length: 6 }, (_, index) => ({ ...shift, shiftNo: index + 1 })),
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues.some((issue) => issue.path.join('.') === 'shifts')).toBe(true)
   })
 })

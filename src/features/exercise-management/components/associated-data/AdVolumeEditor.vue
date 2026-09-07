@@ -45,6 +45,7 @@ import {
   type MonthlyVolumeRowValues,
   type SlotVolumeRowValues,
 } from '../../schemas/volume'
+import { FieldUnit, withUnit } from '../../fieldUnits'
 import { slotPeriodSchema } from '../../schemas/exercisePeriods'
 import type {
   DailyVolume,
@@ -54,10 +55,10 @@ import type {
   SlotVolume,
   SlotVolumeRequest,
 } from '../../types'
-import { formatNumber, numOrNull } from './adTypes'
+import { formatNumber, formatPercent, numOrNull, percentToRatio, ratioToPercent } from './adTypes'
 
 type VolumeTab = 'monthly' | 'daily' | 'slot'
-type BusyAction = 'template' | 'export' | 'import' | 'save' | 'delete' | 'period'
+type BusyAction = 'template' | 'export' | 'import' | 'save' | 'delete' | 'period' | 'clear-period'
 
 type DraftMonthly = {
   key: string
@@ -95,6 +96,7 @@ const {
   putDailyVolumes,
   putSlotVolumes,
   updateSlotPeriod,
+  clearSlotPeriod,
   importMonthlyVolumes,
   importDailyVolumes,
   importSlotVolumes,
@@ -117,6 +119,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const draftSlotStartDate = ref('')
 const draftSlotWeeks = ref<number | ''>('')
 const confirmPeriodOpen = ref(false)
+const confirmClearPeriodOpen = ref(false)
 const exportOpen = ref(false)
 
 const periodSet = computed(() => Boolean(props.slotStartDate && props.slotWeeks))
@@ -140,6 +143,12 @@ const [month] = monthlyForm.defineField('month')
 const [monthlyActualVolume] = monthlyForm.defineField('actualVolume')
 const [commercialRatio] = monthlyForm.defineField('commercialRatio')
 const monthlyErrors = monthlyForm.errors
+const commercialPercent = computed({
+  get: () => ratioToPercent(monthlyForm.values.commercialRatio),
+  set: (value: number | null) => {
+    commercialRatio.value = percentToRatio(value)
+  },
+})
 
 const dailyForm = useForm<DailyVolumeRowValues>({
   validationSchema: toTypedSchema(dailyVolumeRowSchema),
@@ -150,6 +159,12 @@ const [volumeDate] = dailyForm.defineField('volumeDate')
 const [dailyActualVolume] = dailyForm.defineField('actualVolume')
 const [dailyAdjustmentRatio] = dailyForm.defineField('dailyAdjustmentRatio')
 const dailyErrors = dailyForm.errors
+const dailyAdjPercent = computed({
+  get: () => ratioToPercent(dailyForm.values.dailyAdjustmentRatio),
+  set: (value: number | null) => {
+    dailyAdjustmentRatio.value = percentToRatio(value)
+  },
+})
 
 const slotForm = useForm<SlotVolumeRowValues>({
   validationSchema: toTypedSchema(slotVolumeRowSchema),
@@ -423,7 +438,6 @@ function requestApplyPeriod() {
 
 async function applyPeriod() {
   if (props.readOnly || busy.value) return
-  if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('period', async () => {
       const result = await updateSlotPeriod.mutateAsync({
@@ -444,6 +458,32 @@ async function applyPeriod() {
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not apply Slot Period.')
+  }
+}
+
+function requestClearPeriod() {
+  if (props.readOnly || busy.value || !periodSet.value) return
+  confirmClearPeriodOpen.value = true
+}
+
+async function clearPeriod() {
+  if (props.readOnly || busy.value || !periodSet.value) return
+  try {
+    await withBusy('clear-period', async () => {
+      const result = await clearSlotPeriod.mutateAsync(props.exerciseId)
+      emit('update:slot', result.volumes)
+      draftSlotStartDate.value = ''
+      draftSlotWeeks.value = ''
+      confirmClearPeriodOpen.value = false
+      const summary = 'Slot Period cleared.'
+      const shown = showOperationNotices({
+        summary,
+        notices: result.notices ?? [],
+      })
+      if (!shown) toast.success(summary)
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not clear Slot Period.')
   }
 }
 
@@ -832,6 +872,16 @@ async function onImportFile(event: Event) {
       >
         {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
       </Button>
+      <Button
+        v-if="!readOnly"
+        size="sm"
+        variant="outline"
+        :disabled="busy || !periodSet"
+        :loading="busyAction === 'clear-period'"
+        @click="requestClearPeriod"
+      >
+        {{ busyAction === 'clear-period' ? 'Clearing…' : 'Clear' }}
+      </Button>
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -900,8 +950,8 @@ async function onImportFile(event: Event) {
         <TableHeader>
           <TableRow>
             <TableHead>Month</TableHead>
-            <TableHead>Actual Volume</TableHead>
-            <TableHead>Commercial Ratio</TableHead>
+            <TableHead>{{ withUnit('Actual Volume', FieldUnit.transactions) }}</TableHead>
+            <TableHead>{{ withUnit('Commercial Ratio', FieldUnit.percent) }}</TableHead>
             <TableHead v-if="!readOnly">Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -932,11 +982,11 @@ async function onImportFile(event: Event) {
             <TableCell>
               <NumberFieldControl
                 v-if="editKey === row.key"
-                v-model="commercialRatio"
+                v-model="commercialPercent"
                 class="max-w-36"
                 :invalid="Boolean(monthlyErrors.commercialRatio)"
               />
-              <span v-else>{{ formatNumber(row.commercialRatio, 4) }}</span>
+              <span v-else>{{ formatPercent(row.commercialRatio) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <div class="flex gap-3">
@@ -998,8 +1048,8 @@ async function onImportFile(event: Event) {
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead>Day</TableHead>
-            <TableHead>Actual Volume</TableHead>
-            <TableHead>Daily Adj. Ratio</TableHead>
+            <TableHead>{{ withUnit('Actual Volume', FieldUnit.transactions) }}</TableHead>
+            <TableHead>{{ withUnit('Daily Adj. Ratio', FieldUnit.percent) }}</TableHead>
             <TableHead v-if="!readOnly">Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -1033,11 +1083,11 @@ async function onImportFile(event: Event) {
             <TableCell>
               <NumberFieldControl
                 v-if="editKey === row.key"
-                v-model="dailyAdjustmentRatio"
+                v-model="dailyAdjPercent"
                 class="max-w-36"
                 :invalid="Boolean(dailyErrors.dailyAdjustmentRatio)"
               />
-              <span v-else>{{ formatNumber(row.dailyAdjustmentRatio, 4) }}</span>
+              <span v-else>{{ formatPercent(row.dailyAdjustmentRatio) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <div class="flex gap-3">
@@ -1099,7 +1149,7 @@ async function onImportFile(event: Event) {
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead>Slot</TableHead>
-            <TableHead>Actual Volume</TableHead>
+            <TableHead>{{ withUnit('Actual Volume', FieldUnit.transactions) }}</TableHead>
             <TableHead v-if="!readOnly">Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -1192,11 +1242,20 @@ async function onImportFile(event: Event) {
     <ConfirmDialog
       v-model:open="confirmPeriodOpen"
       title="Change Slot Period"
-      description="Changing the period rebuilds the grid. Existing slot values will be cleared."
+      description="Changing the period rebuilds the Per-slot grid and clears saved Slot Simulation. Forecast and Sizing results are kept."
       confirm-label="Apply Period"
       confirm-variant="default"
       :pending="busyAction === 'period'"
       @confirm="applyPeriod"
+    />
+
+    <ConfirmDialog
+      v-model:open="confirmClearPeriodOpen"
+      title="Clear Slot Period"
+      description="Clearing the period removes the Per-slot grid and saved Slot Simulation. Forecast and Sizing results are kept."
+      confirm-label="Clear"
+      :pending="busyAction === 'clear-period'"
+      @confirm="clearPeriod"
     />
   </div>
 </template>

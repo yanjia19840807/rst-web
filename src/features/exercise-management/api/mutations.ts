@@ -25,8 +25,8 @@ import type {
   TeamSetup,
   TeamSetupRequest,
   UpdateExercisePeriodsInput,
-  UpdateScenarioRequest,
   UpdateSlotPeriodInput,
+  UpdateSlotPeriodResult,
 } from '../types'
 import { exerciseQueryKeys } from './queries'
 
@@ -51,6 +51,19 @@ function invalidateDetailAndList(queryClient: QueryClient, exerciseId: string) {
 
 function invalidateSubmitPreview(queryClient: QueryClient, exerciseId: string) {
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.submitPreview(exerciseId) })
+}
+
+function writeSlotPeriodResult(
+  queryClient: QueryClient,
+  exerciseId: string,
+  result: UpdateSlotPeriodResult,
+) {
+  queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
+  queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
+  void queryClient.invalidateQueries({
+    predicate: (query) => exerciseQueryKeys.isSimKind(query.queryKey, exerciseId, 'slot'),
+  })
+  invalidateSubmitPreview(queryClient, exerciseId)
 }
 
 function invalidateSupportDerived(queryClient: QueryClient, exerciseId: string) {
@@ -110,9 +123,6 @@ function invalidateAfterPeriodsChange(queryClient: QueryClient, exerciseId: stri
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.cycleTimeChart(exerciseId) })
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.tmsSessionsPrefix(exerciseId) })
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.simPrefix(exerciseId) })
-  void queryClient.invalidateQueries({
-    queryKey: exerciseQueryKeys.forecastTrainingPrefix(exerciseId),
-  })
   invalidateSubmitPreview(queryClient, exerciseId)
 }
 
@@ -274,10 +284,14 @@ export function useExerciseAssociatedDataMutations() {
       body: UpdateSlotPeriodInput
     }) => exerciseApi.updateSlotPeriod(exerciseId, body),
     onSuccess: (result, { exerciseId }) => {
-      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
-      queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
-      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.simPrefix(exerciseId) })
-      invalidateSubmitPreview(queryClient, exerciseId)
+      writeSlotPeriodResult(queryClient, exerciseId, result)
+    },
+  })
+
+  const clearSlotPeriod = useMutation({
+    mutationFn: (exerciseId: string) => exerciseApi.clearSlotPeriod(exerciseId),
+    onSuccess: (result, exerciseId) => {
+      writeSlotPeriodResult(queryClient, exerciseId, result)
     },
   })
 
@@ -360,6 +374,7 @@ export function useExerciseAssociatedDataMutations() {
     putDailyVolumes,
     putSlotVolumes,
     updateSlotPeriod,
+    clearSlotPeriod,
     createManualCycleTime,
     uploadCycleTimeSupportFile,
     patchTmsSession,
@@ -382,22 +397,6 @@ export function useScenarioMutations() {
     }) => exerciseApi.createScenario(exerciseId, body),
     onSuccess: (scenario, { exerciseId }) => {
       queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenario.id), scenario)
-      invalidateScenarioMeta(queryClient, exerciseId)
-    },
-  })
-
-  const updateScenario = useMutation({
-    mutationFn: ({
-      exerciseId,
-      scenarioId,
-      body,
-    }: {
-      exerciseId: string
-      scenarioId: string
-      body: UpdateScenarioRequest
-    }) => exerciseApi.updateScenario(exerciseId, scenarioId, body),
-    onSuccess: (scenario, { exerciseId, scenarioId }) => {
-      queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenarioId), scenario)
       invalidateScenarioMeta(queryClient, exerciseId)
     },
   })
@@ -477,7 +476,6 @@ export function useScenarioMutations() {
 
   return {
     createScenario,
-    updateScenario,
     commitScenario,
     deleteScenario,
     markOfficial,

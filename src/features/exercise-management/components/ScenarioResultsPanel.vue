@@ -21,7 +21,7 @@ defineProps<{
 </script>
 
 <template>
-  <section class="rounded-lg border bg-card p-4">
+  <section class="min-w-0 rounded-lg border bg-card p-4">
     <h3 class="mb-3 text-base font-bold">Results</h3>
     <div
       v-if="!sizingCompleted"

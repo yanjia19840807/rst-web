@@ -421,7 +421,8 @@ watch(
           <DialogTitle>Save Official Scenario</DialogTitle>
           <DialogDescription>
             This only sets the Official flag on the selected scenario. It does not create a
-            new scenario. You can switch Official any time before Submit.
+            new scenario. Save Forecast and Sizing first (and Slot Simulation when a Slot
+            Period is set). You can switch Official any time before Submit.
           </DialogDescription>
         </DialogHeader>
         <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">

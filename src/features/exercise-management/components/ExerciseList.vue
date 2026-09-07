@@ -19,7 +19,6 @@ import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
 import {
   IN_PROGRESS_TAB,
-  exerciseListTabQuery,
   reviewStageQueryValue,
   type CurrentStepFilter,
 } from '../workflowLabels'
@@ -35,9 +34,7 @@ const router = useRouter()
 const { withdraw } = useExerciseMutations()
 
 function tabFromQuery(value: unknown): TabKey {
-  return exerciseListTabQuery(typeof value === 'string' ? value : null) === 'ARCHIVED'
-    ? 'Archived'
-    : IN_PROGRESS_TAB
+  return value === 'ARCHIVED' ? 'Archived' : IN_PROGRESS_TAB
 }
 
 const activeTab = ref<TabKey>(tabFromQuery(route.query.tab))

@@ -231,7 +231,7 @@ const editorActionLabel = computed(() => {
               <TableRow>
                 <TableHead>Time Granularity</TableHead>
                 <TableHead>Period</TableHead>
-                <TableHead>Volume</TableHead>
+                <TableHead>{{ withUnit('Volume', FieldUnit.transactions) }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

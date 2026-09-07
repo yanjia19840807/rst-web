@@ -83,9 +83,9 @@ const startDisabled = computed(
         </Button>
       </div>
 
-      <div class="mt-auto grid gap-3 border-t pt-5">
+      <div class="mt-4 grid gap-3 border-t pt-4 xl:mt-auto xl:pt-5">
         <h3 class="text-sm font-semibold">Today's Summary</h3>
-        <div class="grid gap-2 sm:grid-cols-3">
+        <div class="grid gap-3 sm:grid-cols-3 sm:gap-2">
           <div class="rounded-lg border p-3">
             <p class="text-xs text-muted-foreground">Sessions today</p>
             <p class="mt-1 text-xl font-bold">

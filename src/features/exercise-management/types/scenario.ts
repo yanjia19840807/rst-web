@@ -20,12 +20,6 @@ export interface CreateScenarioRequest {
   rightSizingHc?: number | null
 }
 
-export interface UpdateScenarioRequest {
-  name: string
-  description?: string | null
-  rightSizingHc?: number | null
-}
-
 export interface StubRun {
   id: string
   runType: string
@@ -57,20 +51,6 @@ export interface ForecastView {
   startedAt: string
   completedAt: string | null
   points: ForecastPointView[]
-}
-
-/** Frozen training actual used by the official forecast (written on APPROVED). */
-export interface ForecastTrainingObservation {
-  grain: string
-  periodStart: string
-  actualVolume: number
-  source: string
-  sourceExerciseId: string | null
-}
-
-export interface ForecastTrainingBundle {
-  monthly: ForecastTrainingObservation[]
-  daily: ForecastTrainingObservation[]
 }
 
 export interface ForecastBundle {

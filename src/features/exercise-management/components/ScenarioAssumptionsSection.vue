@@ -16,8 +16,9 @@ import {
 } from '@/components/ui/table'
 import { TimePicker } from '@/components/ui/time-picker'
 
-import type { ShiftDraft } from '../schemas/scenario'
+import { MAX_SCENARIO_SHIFTS, type ShiftDraft } from '../schemas/scenario'
 import type { DailySizingView, MonthlySizingView, SlotSimulationView, TeamSetup } from '../types'
+import { WEEKEND_CODE_OPTIONS, weekendCodeLabel } from '../weekendCodes'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
 
@@ -47,6 +48,7 @@ const props = defineProps<{
     startTime?: string
     durationHours?: string
     headcount?: string
+    weekendCode?: string
   }>
 }>()
 
@@ -60,6 +62,7 @@ const emit = defineEmits<{
 }>()
 
 const showShiftInputs = computed(() => props.readOnly || !props.slotLocked)
+const atShiftLimit = computed(() => props.shiftRows.length >= MAX_SCENARIO_SHIFTS)
 
 function formatShiftTime(value?: string | null) {
   if (!value) return '—'
@@ -135,10 +138,10 @@ function formatShiftTime(value?: string | null) {
     </section>
 
     <!-- Slot Simulation Panel -->
-    <section class="rounded-lg border bg-card p-4">
+    <section class="min-w-0 overflow-hidden rounded-lg border bg-card p-4">
       <h3 class="mb-3 text-base font-bold">2. Slot Simulation</h3>
 
-      <div v-if="showShiftInputs" class="mb-3.5 rounded-lg border bg-card p-4">
+      <div v-if="showShiftInputs" class="mb-3.5 min-w-0 overflow-hidden rounded-lg border bg-card p-4">
         <div class="mb-3 flex items-center justify-between gap-2">
           <h4 class="text-sm font-bold">Shift Inputs</h4>
           <Button
@@ -153,8 +156,13 @@ function formatShiftTime(value?: string | null) {
         </div>
 
         <p v-if="shiftsError" class="mb-2 text-xs text-destructive">{{ shiftsError }}</p>
-        <div v-if="!readOnly" class="mb-2.5 flex gap-2">
-          <Button variant="outline" size="sm" :disabled="busy" @click="emit('addShift')">
+        <div v-if="!readOnly" class="mb-2.5 flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            :disabled="busy || atShiftLimit"
+            @click="emit('addShift')"
+          >
             Add
           </Button>
           <Button
@@ -165,22 +173,35 @@ function formatShiftTime(value?: string | null) {
           >
             Remove
           </Button>
+          <span v-if="atShiftLimit" class="text-xs text-muted-foreground">
+            Maximum {{ MAX_SCENARIO_SHIFTS }} shifts.
+          </span>
         </div>
 
-        <div class="min-w-0 overflow-x-auto rounded-md border">
-          <Table>
+        <div class="w-full min-w-0 overflow-x-auto rounded-md border">
+          <Table class="w-max min-w-full">
             <TableHeader>
               <TableRow>
-                <TableHead></TableHead>
-                <TableHead v-for="row in shiftRows" :key="row.shiftNo">
+                <TableHead class="sticky left-0 z-10 min-w-36 bg-card"></TableHead>
+                <TableHead
+                  v-for="row in shiftRows"
+                  :key="row.shiftNo"
+                  class="min-w-[14rem]"
+                >
                   Shift {{ row.shiftNo }}
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell class="text-muted-foreground">Start</TableCell>
-                <TableCell v-for="(row, index) in shiftRows" :key="`start-${row.shiftNo}`">
+                <TableCell class="sticky left-0 z-10 bg-card text-muted-foreground">
+                  Start
+                </TableCell>
+                <TableCell
+                  v-for="(row, index) in shiftRows"
+                  :key="`start-${row.shiftNo}`"
+                  class="min-w-[14rem]"
+                >
                   <span v-if="readOnly">{{ formatShiftTime(row.startTime) }}</span>
                   <div v-else class="grid gap-1">
                     <TimePicker
@@ -202,8 +223,14 @@ function formatShiftTime(value?: string | null) {
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell class="text-muted-foreground">Duration (hours)</TableCell>
-                <TableCell v-for="(row, index) in shiftRows" :key="`dur-${row.shiftNo}`">
+                <TableCell class="sticky left-0 z-10 bg-card text-muted-foreground">
+                  Duration (hours)
+                </TableCell>
+                <TableCell
+                  v-for="(row, index) in shiftRows"
+                  :key="`dur-${row.shiftNo}`"
+                  class="min-w-[14rem]"
+                >
                   <span v-if="readOnly">{{ row.durationHours ?? '—' }}</span>
                   <div v-else class="grid gap-1">
                     <NumberFieldControl
@@ -225,8 +252,14 @@ function formatShiftTime(value?: string | null) {
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell class="text-muted-foreground">Capacity FTE</TableCell>
-                <TableCell v-for="(row, index) in shiftRows" :key="`hc-${row.shiftNo}`">
+                <TableCell class="sticky left-0 z-10 bg-card text-muted-foreground">
+                  Capacity FTE
+                </TableCell>
+                <TableCell
+                  v-for="(row, index) in shiftRows"
+                  :key="`hc-${row.shiftNo}`"
+                  class="min-w-[14rem]"
+                >
                   <span v-if="readOnly">{{ row.headcount ?? '—' }}</span>
                   <div v-else class="grid gap-1">
                     <NumberFieldControl
@@ -246,18 +279,42 @@ function formatShiftTime(value?: string | null) {
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell class="text-muted-foreground">Weekend</TableCell>
-                <TableCell v-for="row in shiftRows" :key="`wk-${row.shiftNo}`">
-                  <span v-if="readOnly">{{ row.worksOnWeekend ? 'Yes' : 'No' }}</span>
-                  <Label v-else class="flex items-center gap-2 text-sm">
-                    <input
-                      v-model="row.worksOnWeekend"
-                      type="checkbox"
+                <TableCell class="sticky left-0 z-10 bg-card text-muted-foreground">
+                  Team Weekend
+                </TableCell>
+                <TableCell
+                  v-for="(row, index) in shiftRows"
+                  :key="`wk-${row.shiftNo}`"
+                  class="min-w-[14rem]"
+                >
+                  <span v-if="readOnly">{{ weekendCodeLabel(row.weekendCode) }}</span>
+                  <div v-else class="grid gap-1">
+                    <Label class="sr-only" :for="`shift-weekend-${row.shiftNo}`">
+                      Shift {{ row.shiftNo }} Team Weekend
+                    </Label>
+                    <select
+                      :id="`shift-weekend-${row.shiftNo}`"
+                      v-model="row.weekendCode"
+                      class="flex h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
                       :disabled="busy"
+                      :aria-invalid="Boolean(shiftFieldErrors?.[index]?.weekendCode)"
                       @change="emit('shiftEdited')"
-                    />
-                    Yes
-                  </Label>
+                    >
+                      <option
+                        v-for="option in WEEKEND_CODE_OPTIONS"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </option>
+                    </select>
+                    <p
+                      v-if="shiftFieldErrors?.[index]?.weekendCode"
+                      class="text-xs text-destructive"
+                    >
+                      {{ shiftFieldErrors[index]?.weekendCode }}
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             </TableBody>

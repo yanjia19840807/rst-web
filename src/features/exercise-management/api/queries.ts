@@ -51,10 +51,11 @@ export const exerciseQueryKeys = {
     level?: ForecastLevel,
   ) =>
     [...exerciseQueryKeys.all, 'sim', exerciseId, scenarioId, kind, level ?? ''] as const,
-  forecastTrainingPrefix: (exerciseId: string) =>
-    [...exerciseQueryKeys.all, 'forecastTraining', exerciseId] as const,
-  forecastTraining: (exerciseId: string, scenarioId: string) =>
-    [...exerciseQueryKeys.all, 'forecastTraining', exerciseId, scenarioId] as const,
+  isSimKind: (queryKey: readonly unknown[], exerciseId: string, kind: SimulationKind) =>
+    queryKey[0] === exerciseQueryKeys.all[0] &&
+    queryKey[1] === 'sim' &&
+    queryKey[2] === exerciseId &&
+    queryKey[4] === kind,
   committedResults: (exerciseId: string) =>
     [...exerciseQueryKeys.all, 'committedResults', exerciseId] as const,
   submitPreview: (exerciseId: string) =>
@@ -318,21 +319,6 @@ export function useLatestForecastQuery(
       exerciseApi
         .getLatestForecast(exId.value!, scId.value!, resolvedLevel.value)
         .catch(() => null),
-    enabled: computed(() => Boolean(exId.value && scId.value)),
-  })
-}
-
-export function useForecastTrainingQuery(
-  exerciseId: MaybeRefOrGetter<string | undefined>,
-  scenarioId: MaybeRefOrGetter<string | undefined>,
-) {
-  const exId = computed(() => toValue(exerciseId))
-  const scId = computed(() => toValue(scenarioId))
-  return useQuery({
-    queryKey: computed(() =>
-      exerciseQueryKeys.forecastTraining(exId.value ?? '', scId.value ?? ''),
-    ),
-    queryFn: () => exerciseApi.getForecastTraining(exId.value!, scId.value!),
     enabled: computed(() => Boolean(exId.value && scId.value)),
   })
 }

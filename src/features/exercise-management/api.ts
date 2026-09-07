@@ -31,7 +31,6 @@ import type {
   SlotVolumeRequest,
   CommitScenarioRequest,
   DailySizingView,
-  ForecastTrainingBundle,
   ForecastView,
   MonthlySizingView,
   SizingPreviewBundle,
@@ -44,7 +43,6 @@ import type {
   TeamSetup,
   TeamSetupRequest,
   ToolkitVolumePoints,
-  UpdateScenarioRequest,
 } from './types'
 
 const base = '/api/v1/exercises'
@@ -130,6 +128,10 @@ export const exerciseApi = {
     apiRequest<UpdateSlotPeriodResult>(exercisePath(id, '/slot-period'), {
       method: 'PUT',
       body: JSON.stringify(body),
+    }),
+  clearSlotPeriod: (id: string) =>
+    apiRequest<UpdateSlotPeriodResult>(exercisePath(id, '/slot-period'), {
+      method: 'DELETE',
     }),
   committedResults: (id: string) =>
     apiRequest<CommittedResultsStatus>(exercisePath(id, '/committed-results')),
@@ -304,11 +306,6 @@ export const exerciseApi = {
     }),
   getScenario: (exerciseId: string, scenarioId: string) =>
     apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}`)),
-  updateScenario: (exerciseId: string, scenarioId: string, body: UpdateScenarioRequest) =>
-    apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}`), {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
   commitScenario: (exerciseId: string, scenarioId: string, body: CommitScenarioRequest) =>
     apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}/commit`), {
       method: 'PUT',
@@ -332,10 +329,6 @@ export const exerciseApi = {
         exerciseId,
         `/scenarios/${scenarioId}/forecast/latest?level=${encodeURIComponent(level)}`,
       ),
-    ),
-  getForecastTraining: (exerciseId: string, scenarioId: string) =>
-    apiRequest<ForecastTrainingBundle>(
-      exercisePath(exerciseId, `/scenarios/${scenarioId}/forecast/training`),
     ),
   previewSizing: (exerciseId: string, scenarioId: string, rightSizingHc: number) =>
     apiRequest<SizingPreviewBundle>(

@@ -1,12 +1,20 @@
 import { z } from 'zod'
 
+import { DEFAULT_WEEKEND_CODE, WEEKEND_CODE_OPTIONS } from '../weekendCodes'
+
+/** Slot Simulation allows at most five concurrent shifts. */
+export const MAX_SCENARIO_SHIFTS = 5
+
+const WEEKEND_CODES = WEEKEND_CODE_OPTIONS.map((option) => option.value)
+
 export type ShiftDraft = {
   shiftNo: number
   startTime: string
   /** Shift length in hours (Demo Excel “Shift Duration (hours)”). Persisted as minutes via API. */
   durationHours: number | null
   headcount: number | null
-  worksOnWeekend: boolean
+  /** Excel Volume per Slot “Team Weekend” (NETWORKDAYS.INTL 1–7, 11–17). */
+  weekendCode: string
 }
 
 export function emptyShiftDraft(shiftNo = 1): ShiftDraft {
@@ -15,7 +23,7 @@ export function emptyShiftDraft(shiftNo = 1): ShiftDraft {
     startTime: '',
     durationHours: null,
     headcount: null,
-    worksOnWeekend: false,
+    weekendCode: DEFAULT_WEEKEND_CODE,
   }
 }
 
@@ -29,7 +37,7 @@ export function toShiftRequests(rows: ShiftDraft[]) {
     startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
     durationMinutes: Number(row.durationHours) * 60,
     headcount: Number(row.headcount),
-    worksOnWeekend: row.worksOnWeekend,
+    weekendCode: row.weekendCode,
   }))
 }
 
@@ -38,7 +46,9 @@ const shiftDraftSchema = z.object({
   startTime: z.string(),
   durationHours: z.number().nullable(),
   headcount: z.number().nullable(),
-  worksOnWeekend: z.boolean(),
+  weekendCode: z.string().refine((value) => WEEKEND_CODES.includes(value as (typeof WEEKEND_CODES)[number]), {
+    message: 'Select a weekend code.',
+  }),
 })
 
 function refineShifts(requireCompleteRows: boolean) {
@@ -88,7 +98,9 @@ const scenarioFieldsSchema = z.object({
       })
       .min(0, 'Right Sizing HC must be zero or greater.'),
   ),
-  shifts: z.array(shiftDraftSchema),
+  shifts: z
+    .array(shiftDraftSchema)
+    .max(MAX_SCENARIO_SHIFTS, `A scenario can have at most ${MAX_SCENARIO_SHIFTS} shifts.`),
 })
 
 /** Save: name required; filled shifts must be complete; blank shift rows are ignored. */

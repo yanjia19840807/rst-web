@@ -58,6 +58,11 @@ export function isReturned(exercise: {
 /** Maps the Current Step filter label to the list API `reviewStage` value. */
 export type ExerciseListTabQuery = 'IN_PROGRESS' | 'ARCHIVED'
 
+/**
+ * Maps an Exercise {@code workflowStatus} to the list URL tab.
+ * Do not use this to parse {@code ?tab=} — that query is already
+ * {@code IN_PROGRESS} or {@code ARCHIVED}.
+ */
 export function exerciseListTabQuery(status?: string | null): ExerciseListTabQuery {
   return status === 'APPROVED' || status === 'REJECTED' ? 'ARCHIVED' : 'IN_PROGRESS'
 }

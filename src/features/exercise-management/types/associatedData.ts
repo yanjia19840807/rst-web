@@ -49,7 +49,7 @@ export interface Shift {
   startTime: string
   durationMinutes: number
   headcount: number
-  worksOnWeekend: boolean
+  weekendCode: string
 }
 
 export interface ShiftRequest {
@@ -57,7 +57,7 @@ export interface ShiftRequest {
   startTime: string
   durationMinutes: number
   headcount: number
-  worksOnWeekend: boolean
+  weekendCode: string
 }
 
 export interface SupportItem {
