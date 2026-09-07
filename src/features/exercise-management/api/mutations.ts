@@ -18,6 +18,7 @@ import type {
   MonthlyVolume,
   MonthlyVolumeRequest,
   ShiftRequest,
+  SlotImportResult,
   SlotVolume,
   SlotVolumeRequest,
   SubmitRequest,
@@ -60,6 +61,19 @@ function writeSlotPeriodResult(
 ) {
   queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
   queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
+  void queryClient.invalidateQueries({
+    predicate: (query) => exerciseQueryKeys.isSimKind(query.queryKey, exerciseId, 'slot'),
+  })
+  invalidateSubmitPreview(queryClient, exerciseId)
+}
+
+function writeSlotImportResult(
+  queryClient: QueryClient,
+  exerciseId: string,
+  result: SlotImportResult,
+) {
+  queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
+  invalidateDetailAndList(queryClient, exerciseId)
   void queryClient.invalidateQueries({
     predicate: (query) => exerciseQueryKeys.isSimKind(query.queryKey, exerciseId, 'slot'),
   })
@@ -295,6 +309,11 @@ export function useExerciseAssociatedDataMutations() {
     },
   })
 
+  const previewMonthlyImport = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.previewMonthlyImport(exerciseId, file),
+  })
+
   const importMonthlyVolumes = useMutation({
     mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
       exerciseApi.importMonthlyVolumes(exerciseId, file),
@@ -302,6 +321,11 @@ export function useExerciseAssociatedDataMutations() {
       queryClient.setQueryData(exerciseQueryKeys.volumesMonthly(exerciseId), rows)
       invalidateSubmitPreview(queryClient, exerciseId)
     },
+  })
+
+  const previewDailyImport = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.previewDailyImport(exerciseId, file),
   })
 
   const importDailyVolumes = useMutation({
@@ -313,12 +337,16 @@ export function useExerciseAssociatedDataMutations() {
     },
   })
 
+  const previewSlotImport = useMutation({
+    mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
+      exerciseApi.previewSlotImport(exerciseId, file),
+  })
+
   const importSlotVolumes = useMutation({
     mutationFn: ({ exerciseId, file }: { exerciseId: string; file: File }) =>
       exerciseApi.importSlotVolumes(exerciseId, file),
-    onSuccess: (rows: SlotVolume[], { exerciseId }) => {
-      queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), rows)
-      invalidateSubmitPreview(queryClient, exerciseId)
+    onSuccess: (result: SlotImportResult, { exerciseId }) => {
+      writeSlotImportResult(queryClient, exerciseId, result)
     },
   })
 
@@ -380,6 +408,9 @@ export function useExerciseAssociatedDataMutations() {
     patchTmsSession,
     importMonthlyVolumes,
     importDailyVolumes,
+    previewMonthlyImport,
+    previewDailyImport,
+    previewSlotImport,
     importSlotVolumes,
   }
 }

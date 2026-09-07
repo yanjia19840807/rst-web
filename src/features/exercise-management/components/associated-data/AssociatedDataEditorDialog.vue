@@ -294,7 +294,7 @@ async function save() {
     elevated
     title="Clear saved simulation results?"
     @update:open="onImpactOpenChange"
-    description="Saving Associated Data will clear saved Forecast and Simulation results on all scenarios. Scenario inputs (name, Right Sizing HC, shifts) and Official stay. Re-run Preview / Save afterwards."
+    description="Saving Associated Data will clear saved Forecast and Simulation results on all scenarios, including the Official Scenario. Scenario inputs (name, Right Sizing HC, shifts) stay. Re-run Preview / Save sizing afterwards."
     :rows="
       scenarioCount > 0
         ? [{ label: 'Scenarios with results', value: String(scenarioCount), strong: true }]

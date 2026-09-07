@@ -16,6 +16,8 @@ import type {
 import {
   dailyTrainDates,
   slotTrainKeys,
+  volumeHistoryFloorDate,
+  volumeHistoryFloorMonth,
 } from '@/features/exercise-management/periodWindows'
 import { computeNetworkDays } from '@/features/exercise-management/workingDays'
 
@@ -66,16 +68,25 @@ const emptyTeamSetup = (): TeamSetup => ({
 
 export function seedTrainVolumes(exercise: Exercise, shell: ExerciseShell) {
   const cutoffMonth = exercise.sizingMonth
+  const monthFloor = cutoffMonth ? volumeHistoryFloorMonth(cutoffMonth) : null
   shell.monthlyVolumes = shell.monthlyVolumes
-    .filter((row) => !cutoffMonth || row.month <= cutoffMonth)
+    .filter((row) => {
+      if (cutoffMonth && row.month > cutoffMonth) return false
+      if (monthFloor && row.month < monthFloor) return false
+      return true
+    })
     .sort((a, b) => a.month.localeCompare(b.month))
 
   const dates = dailyTrainDates(exercise.sizingMonth)
   const lastDate = dates[dates.length - 1]
+  const dateFloor = cutoffMonth ? volumeHistoryFloorDate(cutoffMonth) : null
   shell.dailyVolumes = shell.dailyVolumes
-    .filter((row) => !lastDate || row.volumeDate <= lastDate)
+    .filter((row) => {
+      if (lastDate && row.volumeDate > lastDate) return false
+      if (dateFloor && row.volumeDate < dateFloor) return false
+      return true
+    })
     .sort((a, b) => a.volumeDate.localeCompare(b.volumeDate))
-
 }
 
 export function replaceEmptySlotGrid(exercise: Exercise, shell: ExerciseShell) {

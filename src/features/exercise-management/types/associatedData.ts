@@ -152,6 +152,34 @@ export interface SlotVolumeRequest {
   actualVolume: number | null
 }
 
+export interface VolumeSeriesImportPreview {
+  grain: 'MONTHLY' | 'DAILY'
+  fileRowCount: number
+  overwritten: string[]
+  added: string[]
+  kept: string[]
+}
+
+export interface SlotImportPreview {
+  startDate: string
+  weeks: number
+  fileRowCount: number
+  paddedCount: number
+  totalSlots: number
+  currentStartDate: string | null
+  currentWeeks: number | null
+}
+
+export interface SlotImportResult {
+  startDate: string
+  weeks: number
+  fileRowCount: number
+  paddedCount: number
+  totalSlots: number
+  volumes: SlotVolume[]
+  notices: string[]
+}
+
 export interface CycleTimeBaselineFile {
   id: string
   fileName: string

@@ -27,6 +27,9 @@ import type {
   MonthlyVolumeRequest,
   Scenario,
   ShiftRequest,
+  SlotImportPreview,
+  SlotImportResult,
+  VolumeSeriesImportPreview,
   SlotVolume,
   SlotVolumeRequest,
   CommitScenarioRequest,
@@ -233,6 +236,8 @@ export const exerciseApi = {
     downloadVolumeBlob(exerciseId, '/volumes/monthly/export-template', 'volume-monthly-template.xlsx'),
   exportMonthlyVolumes: (exerciseId: string) =>
     downloadVolumeBlob(exerciseId, '/volumes/monthly/export', 'volume-monthly.xlsx'),
+  previewMonthlyImport: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<VolumeSeriesImportPreview>(exerciseId, '/volumes/monthly/import-preview', file),
   importMonthlyVolumes: (exerciseId: string, file: File) =>
     uploadVolumeExcel<MonthlyVolume[]>(exerciseId, '/volumes/monthly/import', file),
 
@@ -240,6 +245,8 @@ export const exerciseApi = {
     downloadVolumeBlob(exerciseId, '/volumes/daily/export-template', 'volume-daily-template.xlsx'),
   exportDailyVolumes: (exerciseId: string) =>
     downloadVolumeBlob(exerciseId, '/volumes/daily/export', 'volume-daily.xlsx'),
+  previewDailyImport: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<VolumeSeriesImportPreview>(exerciseId, '/volumes/daily/import-preview', file),
   importDailyVolumes: (exerciseId: string, file: File) =>
     uploadVolumeExcel<DailyVolume[]>(exerciseId, '/volumes/daily/import', file),
 
@@ -247,8 +254,10 @@ export const exerciseApi = {
     downloadVolumeBlob(exerciseId, '/volumes/slot/export-template', 'volume-slot-template.xlsx'),
   exportSlotVolumes: (exerciseId: string) =>
     downloadVolumeBlob(exerciseId, '/volumes/slot/export', 'volume-slot.xlsx'),
+  previewSlotImport: (exerciseId: string, file: File) =>
+    uploadVolumeExcel<SlotImportPreview>(exerciseId, '/volumes/slot/import-preview', file),
   importSlotVolumes: (exerciseId: string, file: File) =>
-    uploadVolumeExcel<SlotVolume[]>(exerciseId, '/volumes/slot/import', file),
+    uploadVolumeExcel<SlotImportResult>(exerciseId, '/volumes/slot/import', file),
 
   getActiveCycleTime: (exerciseId: string) =>
     apiRequest<CycleTimeBaseline>(exercisePath(exerciseId, '/cycle-time/active')),

@@ -32,6 +32,7 @@ import {
   supportFte,
 } from '@/features/exercise-management/components/associated-data/supportOptions'
 
+import { slotTrainKeys } from '@/features/exercise-management/periodWindows'
 import {
   ensureShell,
   exerciseShells,
@@ -317,6 +318,34 @@ function editable(exercise: Exercise) {
   return exercise.canEdit && exercise.workflowStatus === 'IN_PROGRESS'
 }
 
+function mockSeriesImportPreview(
+  grain: 'MONTHLY' | 'DAILY',
+  keys: string[],
+) {
+  return {
+    grain,
+    fileRowCount: Math.max(keys.length, 1),
+    overwritten: keys,
+    added: [] as string[],
+    kept: [] as string[],
+  }
+}
+
+function mockSlotImportPreview(exercise: Exercise) {
+  const startDate = exercise.slotStartDate ?? '2026-06-01'
+  const weeks = exercise.slotWeeks ?? 1
+  const totalSlots = slotTrainKeys(startDate, weeks).length
+  return {
+    startDate,
+    weeks,
+    fileRowCount: totalSlots,
+    paddedCount: 0,
+    totalSlots,
+    currentStartDate: exercise.slotStartDate,
+    currentWeeks: exercise.slotWeeks,
+  }
+}
+
 function isWorking(scenario: { status: string }) {
   return scenario.status === 'DRAFT'
 }
@@ -349,13 +378,6 @@ function officialPackageProblem(
       422,
       `Saved sizing results do not match the current Right Sizing HC. Re-run Preview / Save sizing before ${gate}.`,
     )
-  }
-  const slotRequired =
-    ctx.exercise.slotStartDate != null &&
-    ctx.exercise.slotWeeks != null &&
-    ctx.exercise.slotWeeks >= 1
-  if (slotRequired && !shell.latestSlotByScenario?.[scenario.id]) {
-    return problem(422, `A Slot Period is set. Save Slot Simulation before ${gate}.`)
   }
   return null
 }
@@ -648,6 +670,7 @@ export const supervisorHandlers = [
     }
     const previousYear = exercise.sizingMonth.slice(0, 4)
     const nextYear = body.sizingMonth.slice(0, 4)
+    const sizingChanged = body.sizingMonth !== exercise.sizingMonth
     Object.assign(exercise, {
       sizingMonth: body.sizingMonth,
       tmsFrom: body.tmsFrom,
@@ -658,8 +681,12 @@ export const supervisorHandlers = [
     if (previousYear !== nextYear) {
       notices.push(`Working Days / Year computed for ${nextYear}.`)
     }
-    seedTrainVolumes(exercise, ensureShell(exercise))
-    notices.push('Volume Input grids refreshed for the updated training windows.')
+    if (sizingChanged) {
+      seedTrainVolumes(exercise, ensureShell(exercise))
+      notices.push(
+        'Monthly and Daily Volume were reset from Toolkit for the new Sizing Month. Volume edits on this Exercise were discarded.',
+      )
+    }
     const shell = ensureShell(exercise) as SimulationShell
     const cleared = clearCommittedSimulationResults(shell)
     if (cleared > 0) {
@@ -1020,6 +1047,17 @@ export const supervisorHandlers = [
       },
     }),
   ),
+  http.post('*/api/v1/exercises/:id/volumes/monthly/import-preview', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(
+      mockSeriesImportPreview(
+        'MONTHLY',
+        ctx.shell.monthlyVolumes.map((row) => row.month),
+      ),
+    )
+  }),
   http.post('*/api/v1/exercises/:id/volumes/monthly/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
@@ -1044,6 +1082,17 @@ export const supervisorHandlers = [
       },
     }),
   ),
+  http.post('*/api/v1/exercises/:id/volumes/daily/import-preview', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(
+      mockSeriesImportPreview(
+        'DAILY',
+        ctx.shell.dailyVolumes.map((row) => row.volumeDate),
+      ),
+    )
+  }),
   http.post('*/api/v1/exercises/:id/volumes/daily/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
@@ -1078,14 +1127,33 @@ export const supervisorHandlers = [
       },
     })
   }),
+  http.post('*/api/v1/exercises/:id/volumes/slot/import-preview', ({ params }) => {
+    const ctx = requireExercise(params.id)
+    if (!ctx) return problem(404, 'Exercise not found.')
+    if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
+    return HttpResponse.json(mockSlotImportPreview(ctx.exercise))
+  }),
   http.post('*/api/v1/exercises/:id/volumes/slot/import', ({ params }) => {
     const ctx = requireExercise(params.id)
     if (!ctx) return problem(404, 'Exercise not found.')
     if (!editable(ctx.exercise)) return problem(409, 'Exercise is not editable.')
-    if (!ctx.exercise.slotStartDate || !ctx.exercise.slotWeeks) {
-      return problem(422, 'Set a Slot Period to generate the per-slot grid.')
-    }
-    return HttpResponse.json(ctx.shell.slotVolumes)
+    const preview = mockSlotImportPreview(ctx.exercise)
+    Object.assign(ctx.exercise, {
+      slotStartDate: preview.startDate,
+      slotWeeks: preview.weeks,
+      version: ctx.exercise.version + 1,
+    })
+    const shell = ctx.shell as SimulationShell
+    replaceEmptySlotGrid(ctx.exercise, shell)
+    shell.latestSlotByScenario = {}
+    shell.stubRuns = (shell.stubRuns ?? []).filter((run) => run.runType !== 'SLOT')
+    return HttpResponse.json({
+      ...preview,
+      volumes: shell.slotVolumes,
+      notices: [
+        `Per-slot Volume imported for ${preview.startDate} (${preview.weeks} week${preview.weeks === 1 ? '' : 's'}).`,
+      ],
+    })
   }),
 
   http.get('*/api/v1/exercises/:id/cycle-time/chart', ({ params }) => {

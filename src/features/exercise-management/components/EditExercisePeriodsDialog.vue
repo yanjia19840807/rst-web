@@ -69,6 +69,17 @@ const periodsChanged = computed(() => {
   )
 })
 
+const sizingChanged = computed(
+  () => (values.sizingMonth ?? '') !== props.exercise.sizingMonth,
+)
+
+const confirmDescription = computed(() => {
+  if (sizingChanged.value) {
+    return 'Sizing Month change resets Monthly and Daily Volume from Toolkit (last 36 months). Volume edits on this Exercise are discarded. TMS sessions refresh. Saved Forecast and Simulation results on all scenarios will be cleared.'
+  }
+  return 'TMS windows will refresh. Saved Forecast and Simulation results on all scenarios will be cleared. Re-run Preview / Save sizing afterwards.'
+})
+
 watch(open, (value) => {
   if (!value) return
   confirmOpen.value = false
@@ -192,7 +203,7 @@ async function confirmSave() {
   <ConfirmDialog
     v-model:open="confirmOpen"
     title="Update Exercise Periods"
-    description="Volume and TMS windows will refresh for the new periods. Saved Forecast and Simulation results on all scenarios will be cleared. Re-run Preview / Save sizing afterwards."
+    :description="confirmDescription"
     confirm-label="Save"
     confirm-variant="default"
     :pending="busy"

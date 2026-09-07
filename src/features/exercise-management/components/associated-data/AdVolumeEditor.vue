@@ -52,6 +52,8 @@ import type {
   DailyVolumeRequest,
   MonthlyVolume,
   MonthlyVolumeRequest,
+  SlotImportPreview,
+  VolumeSeriesImportPreview,
   SlotVolume,
   SlotVolumeRequest,
 } from '../../types'
@@ -99,6 +101,9 @@ const {
   clearSlotPeriod,
   importMonthlyVolumes,
   importDailyVolumes,
+  previewMonthlyImport,
+  previewDailyImport,
+  previewSlotImport,
   importSlotVolumes,
 } = useExerciseAssociatedDataMutations()
 const beforeAssociatedDataWrite = useBeforeAssociatedDataWrite()
@@ -120,6 +125,13 @@ const draftSlotStartDate = ref('')
 const draftSlotWeeks = ref<number | ''>('')
 const confirmPeriodOpen = ref(false)
 const confirmClearPeriodOpen = ref(false)
+const confirmSlotImportOpen = ref(false)
+const pendingSlotFile = ref<File | null>(null)
+const slotImportPreview = ref<SlotImportPreview | null>(null)
+const confirmSeriesImportOpen = ref(false)
+const pendingSeriesFile = ref<File | null>(null)
+const pendingSeriesGrain = ref<'monthly' | 'daily' | null>(null)
+const seriesImportPreview = ref<VolumeSeriesImportPreview | null>(null)
 const exportOpen = ref(false)
 
 const periodSet = computed(() => Boolean(props.slotStartDate && props.slotWeeks))
@@ -276,13 +288,13 @@ const currentTotal = computed(() => {
 
 const windowHint = computed(() => {
   if (tab.value === 'monthly') {
-    return 'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional.'
+    return 'Months must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Commercial Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
   }
   if (tab.value === 'daily') {
-    return 'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional.'
+    return 'Dates must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
   }
   if (!periodSet.value) {
-    return 'Set a Slot Period to generate the per-slot grid. Each day is 09:00–22:00 in 30-minute slots.'
+    return 'Set a Slot Period or import Excel to infer Start date and Weeks (1–12). Each day is 09:00–22:00 in 30-minute slots. Dates in the file must be continuous.'
   }
   return `Slot window: ${deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)} · 09:00–22:00 / 30 min`
 })
@@ -594,6 +606,7 @@ async function confirmEdit() {
   }
   const nextDate = String(dailyForm.values.volumeDate).trim()
   const context = dailyVolumeContextIssue(nextDate, {
+    sizingMonth: props.sizingMonth,
     sizingMonthEnd: sizingMonthEnd.value,
     otherDates: dayDrafts.value.filter((row) => row.key !== key).map((row) => row.volumeDate),
   })
@@ -775,12 +788,42 @@ async function downloadCurrent() {
   }
 }
 
+const slotImportConfirmRows = computed(() => {
+  const preview = slotImportPreview.value
+  if (!preview) return []
+  const current =
+    preview.currentStartDate && preview.currentWeeks
+      ? deriveSlotPeriodLabel(preview.currentStartDate, preview.currentWeeks)
+      : 'None'
+  return [
+    { label: 'New Slot Period', value: deriveSlotPeriodLabel(preview.startDate, preview.weeks) },
+    { label: 'Current Slot Period', value: current },
+    { label: 'File rows', value: String(preview.fileRowCount) },
+    { label: 'Empty slots to fill', value: String(preview.paddedCount) },
+    { label: 'Total slots', value: String(preview.totalSlots) },
+  ]
+})
+
+function formatKeyList(keys: string[] | undefined) {
+  if (!keys || keys.length === 0) return 'None'
+  if (keys.length <= 12) return keys.join(', ')
+  return `${keys.length} (${keys[0]} – ${keys[keys.length - 1]})`
+}
+
+const seriesImportConfirmRows = computed(() => {
+  const preview = seriesImportPreview.value
+  if (!preview) return []
+  const unit = preview.grain === 'DAILY' ? 'dates' : 'months'
+  return [
+    { label: 'File rows', value: String(preview.fileRowCount) },
+    { label: `Overwrite ${unit}`, value: formatKeyList(preview.overwritten) },
+    { label: `Add ${unit}`, value: formatKeyList(preview.added) },
+    { label: `Keep from Toolkit`, value: formatKeyList(preview.kept) },
+  ]
+})
+
 function triggerImport() {
   if (busy.value) return
-  if (tab.value === 'slot' && !periodSet.value) {
-    toast.warning('Set a Slot Period to generate the per-slot grid.')
-    return
-  }
   fileInput.value?.click()
 }
 
@@ -789,29 +832,96 @@ async function onImportFile(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file || props.readOnly) return
+  if (tab.value === 'slot') {
+    try {
+      await withBusy('import', async () => {
+        const preview = await previewSlotImport.mutateAsync({
+          exerciseId: props.exerciseId,
+          file,
+        })
+        pendingSlotFile.value = file
+        slotImportPreview.value = preview
+        confirmSlotImportOpen.value = true
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Import failed.')
+    }
+    return
+  }
+  try {
+    await withBusy('import', async () => {
+      const preview =
+        tab.value === 'monthly'
+          ? await previewMonthlyImport.mutateAsync({
+              exerciseId: props.exerciseId,
+              file,
+            })
+          : await previewDailyImport.mutateAsync({
+              exerciseId: props.exerciseId,
+              file,
+            })
+      pendingSeriesFile.value = file
+      pendingSeriesGrain.value = tab.value
+      seriesImportPreview.value = preview
+      confirmSeriesImportOpen.value = true
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Import failed.')
+  }
+}
+
+async function confirmSeriesImport() {
+  const file = pendingSeriesFile.value
+  const grain = pendingSeriesGrain.value
+  if (!file || !grain || props.readOnly || busy.value) return
   if (!(await beforeAssociatedDataWrite())) return
   try {
     await withBusy('import', async () => {
-      if (tab.value === 'monthly') {
+      if (grain === 'monthly') {
         const saved = await importMonthlyVolumes.mutateAsync({
           exerciseId: props.exerciseId,
           file,
         })
         emit('update:monthly', saved)
-      } else if (tab.value === 'daily') {
+      } else {
         const saved = await importDailyVolumes.mutateAsync({
           exerciseId: props.exerciseId,
           file,
         })
         emit('update:daily', saved)
-      } else {
-        const saved = await importSlotVolumes.mutateAsync({
-          exerciseId: props.exerciseId,
-          file,
-        })
-        emit('update:slot', saved)
       }
+      confirmSeriesImportOpen.value = false
+      pendingSeriesFile.value = null
+      pendingSeriesGrain.value = null
+      seriesImportPreview.value = null
       toast.success('Excel imported.')
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Import failed.')
+  }
+}
+
+async function confirmSlotImport() {
+  const file = pendingSlotFile.value
+  if (!file || props.readOnly || busy.value) return
+  try {
+    await withBusy('import', async () => {
+      const result = await importSlotVolumes.mutateAsync({
+        exerciseId: props.exerciseId,
+        file,
+      })
+      emit('update:slot', result.volumes)
+      draftSlotStartDate.value = result.startDate
+      draftSlotWeeks.value = result.weeks
+      confirmSlotImportOpen.value = false
+      pendingSlotFile.value = null
+      slotImportPreview.value = null
+      const summary = 'Excel imported.'
+      const shown = showOperationNotices({
+        summary,
+        notices: result.notices ?? [],
+      })
+      if (!shown) toast.success(summary)
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Import failed.')
@@ -924,7 +1034,7 @@ async function onImportFile(event: Event) {
         </Button>
         <Button
           size="sm"
-          :disabled="busy || (tab === 'slot' && !periodSet)"
+          :disabled="busy"
           :loading="busyAction === 'import'"
           @click="triggerImport"
         >
@@ -1207,7 +1317,7 @@ async function onImportFile(event: Event) {
               {{
                 periodSet
                   ? 'No slot training volumes yet.'
-                  : 'Set a Slot Period to generate the per-slot grid.'
+                  : 'Set a Slot Period or import Excel to generate the per-slot grid.'
               }}
             </TableCell>
           </TableRow>
@@ -1256,6 +1366,30 @@ async function onImportFile(event: Event) {
       confirm-label="Clear"
       :pending="busyAction === 'clear-period'"
       @confirm="clearPeriod"
+    />
+
+    <ConfirmDialog
+      v-model:open="confirmSeriesImportOpen"
+      :title="
+        pendingSeriesGrain === 'daily' ? 'Import Daily Volume' : 'Import Monthly Volume'
+      "
+      description="This resets the grid from Toolkit volume, then merges the file. All edits on this Exercise Volume grid are discarded, including rows already saved."
+      confirm-label="Import"
+      confirm-variant="default"
+      :rows="seriesImportConfirmRows"
+      :pending="busyAction === 'import'"
+      @confirm="confirmSeriesImport"
+    />
+
+    <ConfirmDialog
+      v-model:open="confirmSlotImportOpen"
+      title="Import Per-slot Volume"
+      description="This replaces the current Per-slot grid, applies the inferred Slot Period, and clears saved Slot Simulation. Forecast and Sizing results are kept."
+      confirm-label="Import"
+      confirm-variant="default"
+      :rows="slotImportConfirmRows"
+      :pending="busyAction === 'import'"
+      @confirm="confirmSlotImport"
     />
   </div>
 </template>

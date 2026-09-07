@@ -545,6 +545,47 @@ function applyZodIssues(issues: { path: PropertyKey[]; message: string }[]) {
   }
 }
 
+async function persistScenario(
+  formValues: ScenarioFormValues,
+  results: {
+    forecast: ForecastBundle
+    monthly: MonthlySizingView
+    daily: DailySizingView
+    slot: SlotSimulationView | null
+  } | null,
+  successMessage: string,
+) {
+  if (!scenario.value || readOnly.value) return
+  await commitScenario.mutateAsync({
+    exerciseId: props.exerciseId,
+    scenarioId: props.scenarioId,
+    body: {
+      name: formValues.name || scenario.value.scenarioCode,
+      description: formValues.description.trim() || null,
+      rightSizingHc: Number(formValues.rightSizingHc),
+      shifts: toShiftRequests(formValues.shifts),
+      results,
+    },
+  })
+  toast.success(successMessage)
+}
+
+function currentSizingResults(slot: SlotSimulationView | null) {
+  if (
+    !latestForecastBundle.value ||
+    !latestMonthlySizing.value ||
+    !latestDailySizing.value
+  ) {
+    return null
+  }
+  return {
+    forecast: latestForecastBundle.value,
+    monthly: latestMonthlySizing.value,
+    daily: latestDailySizing.value,
+    slot,
+  }
+}
+
 const save = handleSubmit(
   async (formValues) => {
     if (!scenario.value || readOnly.value || busy.value) return
@@ -554,25 +595,13 @@ const save = handleSubmit(
         latestForecastBundle.value != null &&
         latestMonthlySizing.value != null &&
         latestDailySizing.value != null
-      await commitScenario.mutateAsync({
-        exerciseId: props.exerciseId,
-        scenarioId: props.scenarioId,
-        body: {
-          name: formValues.name || scenario.value.scenarioCode,
-          description: formValues.description.trim() || null,
-          rightSizingHc: Number(formValues.rightSizingHc),
-          shifts: toShiftRequests(formValues.shifts),
-          results: hasSizingResults
-            ? {
-                forecast: latestForecastBundle.value!,
-                monthly: latestMonthlySizing.value!,
-                daily: latestDailySizing.value!,
-                slot: slotCompleted.value ? latestSlotSimulation.value : null,
-              }
-            : null,
-        },
-      })
-      toast.success('Scenario saved.')
+      await persistScenario(
+        formValues,
+        hasSizingResults
+          ? currentSizingResults(slotCompleted.value ? latestSlotSimulation.value : null)
+          : null,
+        'Scenario saved.',
+      )
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Save failed.')
     }
@@ -606,9 +635,20 @@ async function runSizing() {
     latestDailySizing.value = preview.daily
     sizingCompleted.value = true
     const method = preview.forecast.monthly?.method ?? 'forecast'
-    toast.success(
-      `Sizing preview ready (${method}, ${preview.monthly.rows.length} months, ${preview.daily.rows.length} days). Save to keep.`,
-    )
+    try {
+      await persistScenario(
+        values,
+        {
+          forecast: preview.forecast,
+          monthly: preview.monthly,
+          daily: preview.daily,
+          slot: slotCompleted.value ? latestSlotSimulation.value : null,
+        },
+        `Sizing simulation saved (${method}, ${preview.monthly.rows.length} months, ${preview.daily.rows.length} days).`,
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Save failed.')
+    }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Sizing simulation failed.')
   }
@@ -626,16 +666,30 @@ async function runSlot() {
     return
   }
   try {
-    latestSlotSimulation.value = await runSlotSimulation.mutateAsync({
+    const slotView = await runSlotSimulation.mutateAsync({
       exerciseId: props.exerciseId,
       scenarioId: props.scenarioId,
       shifts: toShiftRequests(slot.data.shifts),
     })
+    latestSlotSimulation.value = slotView
     slotCompleted.value = true
-    const tatPct = (Number(latestSlotSimulation.value.tatOnPeriod) * 100).toFixed(2)
-    toast.success(
-      `Slot preview ready (${latestSlotSimulation.value.rows.length} slots, TAT ${tatPct}%). Save to keep.`,
-    )
+    const results = currentSizingResults(slotView)
+    if (!results) {
+      toast.success(
+        `Slot preview ready (${slotView.rows.length} slots). Run Sizing Simulation first to save.`,
+      )
+      return
+    }
+    const tatPct = (Number(slotView.tatOnPeriod) * 100).toFixed(2)
+    try {
+      await persistScenario(
+        values,
+        results,
+        `Slot simulation saved (${slotView.rows.length} slots, TAT ${tatPct}%).`,
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Save failed.')
+    }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Slot simulation failed.')
   }

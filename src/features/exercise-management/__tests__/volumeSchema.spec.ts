@@ -98,12 +98,22 @@ describe('monthlyVolumeContextIssue', () => {
       }),
     ).toBeNull()
   })
+
+  it('rejects a month more than 36 months before sizing', () => {
+    expect(
+      monthlyVolumeContextIssue('2023-09', {
+        sizingMonth: '2026-09',
+        otherMonths: ['2026-08', '2026-09'],
+      })?.message,
+    ).toContain('36 months')
+  })
 })
 
 describe('dailyVolumeContextIssue', () => {
   it('rejects a date after sizing month', () => {
     expect(
       dailyVolumeContextIssue('2026-02-01', {
+        sizingMonth: '2026-01',
         sizingMonthEnd: '2026-01-31',
         otherDates: [],
       })?.path,
@@ -113,6 +123,7 @@ describe('dailyVolumeContextIssue', () => {
   it('rejects a gap in the series', () => {
     expect(
       dailyVolumeContextIssue('2026-01-04', {
+        sizingMonth: '2026-01',
         sizingMonthEnd: '2026-01-31',
         otherDates: ['2026-01-01', '2026-01-02'],
       })?.message,
