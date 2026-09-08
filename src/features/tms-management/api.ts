@@ -20,8 +20,9 @@ function sessionExportQuery(filters: SessionFilters & { status: 'paused' | 'comp
 }
 
 export const tmsApi = {
-  pausedMatch: (toolkitId: string, reference: string) => {
+  pausedMatch: (toolkitId: string, reference: string, subtaskId?: string | null) => {
     const params = new URLSearchParams({ toolkitId, reference })
+    if (subtaskId?.trim()) params.set('subtaskId', subtaskId.trim())
     return apiRequest<PausedSessionMatch>(`/api/v1/tms/sessions/paused-match?${params}`)
   },
   exportSessions: (

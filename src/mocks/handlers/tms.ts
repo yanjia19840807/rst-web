@@ -29,6 +29,44 @@ function isInvalidVolume(volume: number | null | undefined) {
   return volume == null || !Number.isInteger(volume) || volume < 1
 }
 
+function documentKey(session: {
+  toolkitId: string
+  subtaskId: string | null
+  reference: string
+}) {
+  const reference = session.reference.trim()
+  if (!reference) return ''
+  return `${session.toolkitId}|${session.subtaskId ?? ''}|${reference.toLowerCase()}`
+}
+
+function occupyingDocument(excludeId?: string, next?: {
+  toolkitId: string
+  subtaskId: string | null
+  reference: string
+}) {
+  const key = next ? documentKey(next) : ''
+  if (!key) return undefined
+  return sessions.find(
+    (session) =>
+      session.status !== 'discarded' &&
+      session.id !== excludeId &&
+      documentKey(session) === key,
+  )
+}
+
+function documentConflict(existing: TmsSession) {
+  if (existing.status === 'paused') {
+    return problem(
+      409,
+      'A paused session already exists for this Toolkit, TASK and Reference. Resume it, or delete it from Paused Sessions.',
+    )
+  }
+  if (existing.status === 'completed') {
+    return problem(409, 'A completed session already exists for this Toolkit, TASK and Reference.')
+  }
+  return problem(409, 'Another session already exists for this Toolkit, TASK and Reference.')
+}
+
 function problem(status: number, detail: string) {
   return HttpResponse.json(
     {
@@ -148,6 +186,7 @@ export const tmsHandlers = [
   http.get('*/api/v1/tms/sessions/paused-match', async ({ request }) => {
     const url = new URL(request.url)
     const toolkitId = url.searchParams.get('toolkitId')
+    const subtaskId = url.searchParams.get('subtaskId')
     const reference = url.searchParams.get('reference')?.trim() ?? ''
     if (!toolkitId || !reference) {
       return HttpResponse.json({ latest: null, matchCount: 0 })
@@ -155,8 +194,12 @@ export const tmsHandlers = [
     const matches = sessions.filter(
       (session) =>
         session.status === 'paused' &&
-        session.toolkitId === toolkitId &&
-        session.reference.trim().toLowerCase() === reference.toLowerCase(),
+        documentKey(session) ===
+          documentKey({
+            toolkitId,
+            subtaskId: subtaskId || null,
+            reference,
+          }),
     )
     const latest = [...matches].sort((a, b) =>
       (b.pausedAt || b.startedAt).localeCompare(a.pausedAt || a.startedAt),
@@ -188,6 +231,12 @@ export const tmsHandlers = [
     if (activeSubtasks.length > 0 && !subtask) {
       return problem(422, 'Select a TASK. This Toolkit has at least one TASK.')
     }
+    const occupied = occupyingDocument(undefined, {
+      toolkitId: toolkit.id,
+      subtaskId: subtask?.id ?? null,
+      reference: input.reference ?? '',
+    })
+    if (occupied) return documentConflict(occupied)
 
     const now = new Date()
     const session: TmsSession = {
@@ -219,6 +268,12 @@ export const tmsHandlers = [
     const now = new Date()
     const details = applySessionDetails(session, await readSessionDetails(request))
     if (details instanceof Response) return details
+    const occupied = occupyingDocument(session.id, {
+      toolkitId: session.toolkitId,
+      subtaskId: details.subtaskId,
+      reference: details.reference,
+    })
+    if (occupied) return documentConflict(occupied)
     const updated: TmsSession = {
       ...session,
       ...details,
@@ -262,6 +317,12 @@ export const tmsHandlers = [
     const now = new Date()
     const details = applySessionDetails(session, await readSessionDetails(request))
     if (details instanceof Response) return details
+    const occupied = occupyingDocument(session.id, {
+      toolkitId: session.toolkitId,
+      subtaskId: details.subtaskId,
+      reference: details.reference,
+    })
+    if (occupied) return documentConflict(occupied)
     const updated: TmsSession = {
       ...session,
       ...details,

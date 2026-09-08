@@ -84,7 +84,6 @@ const sessionsDialogOpen = ref(false)
 const matchOpen = ref(false)
 const matchPending = ref(false)
 const pausedMatch = ref<PausedSessionMatch | null>(null)
-const pendingStart = ref<SessionFormValues | null>(null)
 
 const selectedToolkit = computed(() =>
   toolkitsQuery.data.value?.find((toolkit) => toolkit.id === toolkitId.value),
@@ -173,9 +172,8 @@ const startSession = handleSubmit(async (values) => {
   checkingMatch.value = true
   try {
     if (reference && values.toolkitId) {
-      const match = await tmsApi.pausedMatch(values.toolkitId, reference)
+      const match = await tmsApi.pausedMatch(values.toolkitId, reference, values.subtaskId)
       if (match.latest) {
-        pendingStart.value = values
         pausedMatch.value = match
         matchOpen.value = true
         return
@@ -200,20 +198,6 @@ async function confirmResumeMatch() {
     toast.success('Session resumed.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not resume the session.')
-  } finally {
-    matchPending.value = false
-  }
-}
-
-async function confirmStartNewMatch() {
-  const values = pendingStart.value
-  if (!values) return
-  matchPending.value = true
-  try {
-    await createSession(values)
-    matchOpen.value = false
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not start the session.')
   } finally {
     matchPending.value = false
   }
@@ -316,7 +300,6 @@ const endSession = handleSubmit(async (values) => {
       :match-count="pausedMatch?.matchCount ?? 0"
       :pending="matchPending"
       @resume="confirmResumeMatch"
-      @start-new="confirmStartNewMatch"
     />
   </div>
 </template>

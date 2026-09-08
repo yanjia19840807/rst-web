@@ -28,7 +28,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   resume: []
-  startNew: []
 }>()
 
 const extraCount = computed(() => Math.max(0, (props.matchCount ?? 0) - 1))
@@ -50,11 +49,6 @@ function onResume(event: Event) {
   event.preventDefault()
   emit('resume')
 }
-
-function onStartNew(event: Event) {
-  event.preventDefault()
-  emit('startNew')
-}
 </script>
 
 <template>
@@ -63,11 +57,11 @@ function onStartNew(event: Event) {
       <AlertDialogHeader>
         <AlertDialogTitle>Paused session found</AlertDialogTitle>
         <AlertDialogDescription>
-          You already have a paused session for this Toolkit and reference. Resume it, or start a new
-          session.
+          You already have a paused session for this Toolkit, TASK and Reference. Resume it, or
+          cancel and delete it from Paused Sessions if it is no longer needed.
           <template v-if="extraCount > 0">
-            {{ extraCount }} more paused session{{ extraCount === 1 ? '' : 's' }} share this
-            reference.
+            {{ extraCount }} more paused session{{ extraCount === 1 ? '' : 's' }} share this key.
+            Resume or delete the extras from Paused Sessions.
           </template>
         </AlertDialogDescription>
       </AlertDialogHeader>
@@ -76,15 +70,6 @@ function onStartNew(event: Event) {
 
       <AlertDialogFooter>
         <AlertDialogCancel :disabled="pending">Cancel</AlertDialogCancel>
-        <AlertDialogAction
-          variant="outline"
-          :disabled="pending"
-          :aria-busy="pending || undefined"
-          @click="onStartNew"
-        >
-          <Spinner v-if="pending" />
-          Start New
-        </AlertDialogAction>
         <AlertDialogAction
           :disabled="pending"
           :aria-busy="pending || undefined"
