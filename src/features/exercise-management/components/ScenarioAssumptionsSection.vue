@@ -81,7 +81,6 @@ function formatShiftTime(value?: string | null) {
           <h4 class="text-sm font-bold">Sizing Inputs</h4>
           <Button
             v-if="!readOnly"
-            size="sm"
             :disabled="busy"
             :loading="runningSizing"
             @click="emit('runSizing')"
@@ -147,7 +146,6 @@ function formatShiftTime(value?: string | null) {
           <h4 class="text-sm font-bold">Shift Inputs</h4>
           <Button
             v-if="!readOnly"
-            size="sm"
             :disabled="busy"
             :loading="runningSlot"
             @click="emit('runSlot')"

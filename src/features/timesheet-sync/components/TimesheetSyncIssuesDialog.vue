@@ -162,7 +162,7 @@ watch(
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-        <Button type="button" size="sm" variant="outline" @click="open = false">Close</Button>
+        <Button type="button" variant="outline" @click="open = false">Close</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

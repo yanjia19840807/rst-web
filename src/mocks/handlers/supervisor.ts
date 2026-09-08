@@ -49,6 +49,7 @@ import {
   supervisorPositionId,
   supervisorToolkits,
 } from '../data/supervisor'
+import { readSessions } from '../data/tms'
 import { pageOf, pageParams } from '../page'
 
 function volumeText(value: number): string {
@@ -123,6 +124,21 @@ function dailyMonthlyVolumeCheck(
 
 function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Supervisor request failed', status, detail }, { status })
+}
+
+function unfinishedCounts(predicate: (session: { toolkitId: string; subtaskId: string | null; status: string }) => boolean) {
+  const rows = readSessions().filter(predicate)
+  return {
+    running: rows.filter((session) => session.status === 'running').length,
+    paused: rows.filter((session) => session.status === 'paused').length,
+  }
+}
+
+function unfinishedMessage(subject: string, running: number, paused: number) {
+  const parts: string[] = []
+  if (running > 0) parts.push(`${running} running session${running === 1 ? '' : 's'}`)
+  if (paused > 0) parts.push(`${paused} paused session${paused === 1 ? '' : 's'}`)
+  return `${subject} still has ${parts.join(' and ')}. End or discard them before deleting.`
 }
 
 type SimulationShell = {
@@ -555,6 +571,16 @@ export const supervisorHandlers = [
     if (input.sharedKpiSelections.some((item) => 'deliveryHc' in item)) {
       return problem(422, 'Delivery HC must not be persisted in Toolkit selections.')
     }
+    const keepActiveIds = new Set(
+      input.subtasks.filter((item) => item.id && !item.deletedAt).map((item) => item.id),
+    )
+    for (const subtask of current.subtasks.filter((item) => !item.deletedAt)) {
+      if (keepActiveIds.has(subtask.id)) continue
+      const counts = unfinishedCounts((session) => session.subtaskId === subtask.id)
+      if (counts.running + counts.paused > 0) {
+        return problem(409, unfinishedMessage(`Subtask "${subtask.name}"`, counts.running, counts.paused))
+      }
+    }
     const updated: SupervisorToolkit = {
       ...current,
       ...input,
@@ -569,8 +595,9 @@ export const supervisorHandlers = [
   http.delete('*/api/v1/toolkits/:id', ({ params }) => {
     const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
     if (!toolkit) return problem(404, 'Toolkit not found.')
-    if (exercises.some((item) => item.toolkitId === toolkit.id)) {
-      return problem(409, 'Referenced Toolkits cannot be deleted.')
+    const counts = unfinishedCounts((session) => session.toolkitId === toolkit.id)
+    if (counts.running + counts.paused > 0) {
+      return problem(409, unfinishedMessage('This Toolkit', counts.running, counts.paused))
     }
     toolkit.deletedAt = new Date().toISOString()
     toolkit.version += 1

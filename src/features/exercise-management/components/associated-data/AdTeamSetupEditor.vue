@@ -317,7 +317,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Agents <6 months', FieldUnit.hc) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="agentsLt6m"
               :min="0"
               :decimals="2"
@@ -330,7 +329,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Agents 6–24 months', FieldUnit.hc) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="agents6To24m"
               :min="0"
               :decimals="2"
@@ -343,7 +341,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Agents 24–48 months', FieldUnit.hc) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="agents24To48m"
               :min="0"
               :decimals="2"
@@ -356,7 +353,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Agents >48 months', FieldUnit.hc) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="agentsGt48m"
               :min="0"
               :decimals="2"
@@ -401,7 +397,6 @@ defineExpose({ toRequest })
             >{{ withUnit('SLA turntime', FieldUnit.hours) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="slaTurnaroundHours"
               :min="0"
               :decimals="2"
@@ -416,7 +411,6 @@ defineExpose({ toRequest })
             >{{ withUnit('SLA target', FieldUnit.percent) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="slaTargetPercent"
               :min="0"
               :max="100"
@@ -432,7 +426,6 @@ defineExpose({ toRequest })
             <NativeSelect
               v-if="!readOnly"
               v-model="slaType"
-              size="sm"
               class="w-full"
               :aria-invalid="Boolean(errors.slaType)"
             >
@@ -448,7 +441,6 @@ defineExpose({ toRequest })
             <NativeSelect
               v-if="!readOnly"
               v-model="weekendCode"
-              size="sm"
               class="w-full"
               :aria-invalid="Boolean(errors.weekendCode)"
             >
@@ -468,7 +460,6 @@ defineExpose({ toRequest })
             <TimePicker
               v-if="!readOnly"
               v-model="slaStartTime"
-              size="sm"
               aria-label="SLA clock start"
               class="w-full"
               :invalid="Boolean(errors.slaStartTime)"
@@ -481,7 +472,6 @@ defineExpose({ toRequest })
             <TimePicker
               v-if="!readOnly"
               v-model="slaEndTime"
-              size="sm"
               aria-label="SLA clock end"
               class="w-full"
               :invalid="Boolean(errors.slaEndTime)"
@@ -493,7 +483,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Availability ratio', FieldUnit.percent) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="availabilityPercent"
               :min="0"
               :max="100"
@@ -508,7 +497,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Skeleton coverage', FieldUnit.percent) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="skeletonPercent"
               :min="0"
               :max="100"
@@ -555,7 +543,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Paid leave / year', FieldUnit.days) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="paidLeaveDays"
               :min="0"
               :invalid="Boolean(errors.paidLeaveDays)"
@@ -567,7 +554,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Other leave / year', FieldUnit.days) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="otherLeaveDays"
               :min="0"
               :invalid="Boolean(errors.otherLeaveDays)"
@@ -579,7 +565,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Max daily overtime', FieldUnit.minutes) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="maxOvertimeMinutes"
               :min="0"
               :invalid="Boolean(errors.maxOvertimeMinutes)"
@@ -593,7 +578,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Weekend shift', FieldUnit.fte) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="weekendShiftHc"
               :min="0"
               :invalid="Boolean(errors.weekendShiftHc)"
@@ -607,7 +591,6 @@ defineExpose({ toRequest })
             >{{ withUnit('Automation ratio', FieldUnit.percent) }}
             <NumberFieldControl
               v-if="!readOnly"
-              size="sm"
               v-model="automationPercent"
               :min="0"
               :max="100"

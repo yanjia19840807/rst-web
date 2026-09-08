@@ -958,7 +958,6 @@ async function confirmSlotImport() {
           v-model="draftSlotStartDate"
           aria-label="Choose slot start date"
           placeholder="Select start date"
-          size="sm"
           class="w-[180px]"
           :disabled="readOnly || busy"
         />
@@ -967,7 +966,6 @@ async function confirmSlotImport() {
         Weeks
         <NativeSelect
           v-model="draftSlotWeeks"
-          size="sm"
           class="w-20"
           :disabled="readOnly || busy"
         >
@@ -977,7 +975,6 @@ async function confirmSlotImport() {
       </label>
       <Button
         v-if="!readOnly"
-        size="sm"
         :disabled="busy || !periodReady"
         :loading="busyAction === 'period'"
         @click="requestApplyPeriod"
@@ -986,7 +983,6 @@ async function confirmSlotImport() {
       </Button>
       <Button
         v-if="!readOnly"
-        size="sm"
         variant="outline"
         :disabled="busy || !periodSet"
         :loading="busyAction === 'clear-period'"

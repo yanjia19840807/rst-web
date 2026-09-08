@@ -111,7 +111,7 @@ const {
         :has-hierarchy="centers.length > 0"
         :errors="errors"
       />
-      <SubtaskEditorCard v-model:subtasks="subtasks" />
+      <SubtaskEditorCard v-model:subtasks="subtasks" :errors="errors" />
     </div>
 
     <SharedKpiCard
@@ -140,7 +140,7 @@ const {
     <ConfirmDialog
       v-model:open="deleteOpen"
       title="Delete Toolkit"
-      warning="This action cannot be undone. Exercises and scenarios linked to this toolkit will no longer be available in the workspace."
+      warning="Completed sessions and Exercises stay in history. Delete is blocked while this Toolkit has running or paused TMS sessions."
       :rows="[{ label: 'Toolkit', value: values.name, strong: true }]"
       confirm-label="Delete Toolkit"
       :pending="busy"

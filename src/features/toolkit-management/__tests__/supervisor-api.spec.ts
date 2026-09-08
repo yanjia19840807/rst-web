@@ -46,6 +46,12 @@ describe('supervisor mock contract', () => {
     expect(bank?.outOfSync).toBe(false)
   })
 
+  it('blocks Toolkit delete while unfinished TMS sessions exist', async () => {
+    await expect(toolkitApi.remove('ca651a20-909f-4aef-a545-269cb1f0b414')).rejects.toThrow(
+      /1 paused session/,
+    )
+  })
+
   it('filters supervisor toolkits by name on the server', async () => {
     const all = await toolkitApi.list()
     expect(all.items.length).toBeGreaterThan(0)

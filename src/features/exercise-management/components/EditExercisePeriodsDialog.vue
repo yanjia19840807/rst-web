@@ -151,7 +151,6 @@ async function confirmSave() {
             </div>
             <MonthPicker
               v-model="sizingMonth"
-              size="sm"
               aria-label="Choose sizing month"
               placeholder="Select sizing month"
               class="w-[200px]"
@@ -173,7 +172,6 @@ async function confirmSave() {
             <div class="flex flex-wrap items-center gap-2">
               <DatePicker
                 v-model="tmsFrom"
-                size="sm"
                 aria-label="Choose TMS period start"
                 placeholder="From"
                 class="w-[180px]"
@@ -181,7 +179,6 @@ async function confirmSave() {
               <span class="text-muted-foreground">to</span>
               <DatePicker
                 v-model="tmsTo"
-                size="sm"
                 aria-label="Choose TMS period end"
                 placeholder="To"
                 class="w-[180px]"
@@ -195,8 +192,8 @@ async function confirmSave() {
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-        <Button size="sm" variant="outline" :disabled="busy" @click="open = false">Cancel</Button>
-        <Button size="sm" :loading="busy" @click="requestSave">
+        <Button variant="outline" :disabled="busy" @click="open = false">Cancel</Button>
+        <Button :loading="busy" @click="requestSave">
           {{ busy ? 'Saving…' : 'Save' }}
         </Button>
       </DialogFooter>

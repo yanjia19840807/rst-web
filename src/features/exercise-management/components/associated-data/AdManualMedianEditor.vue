@@ -114,7 +114,6 @@ defineExpose({ toRequest })
         <Label for="manual-median-seconds">Manual median cycle time (s)</Label>
         <NumberFieldControl
           id="manual-median-seconds"
-          size="sm"
           v-model="medianSeconds"
           :min="0"
           :disabled="readOnly"

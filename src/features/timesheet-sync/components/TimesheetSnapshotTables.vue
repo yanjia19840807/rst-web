@@ -301,7 +301,6 @@ function rowId(row: {
               Search
               <Input
                 v-model="draftQ"
-                size="sm"
                 class="w-full min-w-0 sm:w-[260px]"
                 :placeholder="searchPlaceholders[resolvedTab]"
               />
@@ -311,7 +310,7 @@ function rowId(row: {
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <NativeSelect v-model="peopleCenter" size="sm" class="w-full min-w-0 sm:w-[200px]">
+              <NativeSelect v-model="peopleCenter" class="w-full min-w-0 sm:w-[200px]">
                 <option value="">All centers</option>
                 <option v-for="center in peopleCenters" :key="center" :value="center">{{ center }}</option>
               </NativeSelect>
@@ -321,7 +320,6 @@ function rowId(row: {
                 Supervisor
                 <Input
                   v-model="draftSupervisor"
-                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="Position ID or name"
                 />
@@ -330,7 +328,6 @@ function rowId(row: {
                 PL3
                 <Input
                   v-model="draftPl3Code"
-                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="PL3 code or name"
                 />
@@ -341,7 +338,6 @@ function rowId(row: {
                 Supervisor
                 <Input
                   v-model="draftSupervisor"
-                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="Position ID or name"
                 />
@@ -350,7 +346,6 @@ function rowId(row: {
                 PL3
                 <Input
                   v-model="draftPl3Code"
-                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="PL3 code or name"
                 />
@@ -361,7 +356,7 @@ function rowId(row: {
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <NativeSelect v-model="scopeCenter" size="sm" class="w-full min-w-0 sm:w-[200px]">
+              <NativeSelect v-model="scopeCenter" class="w-full min-w-0 sm:w-[200px]">
                 <option value="">All centers</option>
                 <option v-for="center in scopeCenters" :key="center" :value="center">{{ center }}</option>
               </NativeSelect>
@@ -402,7 +397,7 @@ function rowId(row: {
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-4 py-3 sm:px-5 sm:justify-end">
-        <Button type="button" size="sm" variant="outline" class="w-full sm:w-auto" @click="open = false">
+        <Button type="button" variant="outline" class="w-full sm:w-auto" @click="open = false">
           Close
         </Button>
       </DialogFooter>

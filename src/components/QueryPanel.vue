@@ -10,14 +10,12 @@ const props = withDefaults(
     defaultOpen?: boolean
     showExport?: boolean
     exporting?: boolean
-    size?: 'sm' | 'default'
   }>(),
   {
     title: 'Filters',
     defaultOpen: true,
     showExport: false,
     exporting: false,
-    size: 'default',
   },
 )
 
@@ -46,7 +44,7 @@ function onSubmit(event: Event) {
       <Button
         type="button"
         variant="ghost"
-        :size="size === 'sm' ? 'icon-sm' : 'icon'"
+        size="icon"
         :aria-expanded="open"
         :aria-label="open ? 'Collapse filters' : 'Expand filters'"
         @click="toggle"
@@ -63,12 +61,11 @@ function onSubmit(event: Event) {
         <slot />
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <Button type="submit" :size="size">Search</Button>
-        <Button type="button" :size="size" variant="outline" @click="emit('clear')">Clear</Button>
+        <Button type="submit">Search</Button>
+        <Button type="button" variant="outline" @click="emit('clear')">Clear</Button>
         <Button
           v-if="showExport"
           type="button"
-          :size="size"
           variant="outline"
           :disabled="exporting"
           @click="emit('export')"

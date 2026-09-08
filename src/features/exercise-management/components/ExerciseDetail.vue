@@ -403,10 +403,10 @@ watch(
           </div>
         </div>
         <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-          <Button size="sm" variant="outline" :disabled="createPending" @click="newScenarioOpen = false">
+          <Button variant="outline" :disabled="createPending" @click="newScenarioOpen = false">
             Cancel
           </Button>
-          <Button size="sm" :loading="createPending" @click="createScenario">
+          <Button :loading="createPending" @click="createScenario">
             {{ createPending ? 'Creating…' : 'Confirm' }}
           </Button>
         </DialogFooter>
@@ -454,10 +454,10 @@ watch(
           </div>
         </div>
         <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-          <Button size="sm" variant="outline" :disabled="officialPending" @click="officialOpen = false">
+          <Button variant="outline" :disabled="officialPending" @click="officialOpen = false">
             Cancel
           </Button>
-          <Button size="sm" :loading="officialPending" @click="confirmOfficial">
+          <Button :loading="officialPending" @click="confirmOfficial">
             {{ officialPending ? 'Saving…' : 'Confirm as Official' }}
           </Button>
         </DialogFooter>

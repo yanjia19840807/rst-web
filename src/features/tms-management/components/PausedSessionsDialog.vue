@@ -150,7 +150,7 @@ async function confirmDelete() {
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <div class="rounded-lg border bg-card p-4">
           <div class="grid gap-4">
-            <Input v-model="queryInput" size="sm" placeholder="Session No / Reference" />
+            <Input v-model="queryInput" placeholder="Session No / Reference" />
 
             <DataTable
               :columns="columns"

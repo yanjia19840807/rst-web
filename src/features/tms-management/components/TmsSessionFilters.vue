@@ -29,20 +29,14 @@ const emptyFilters = (): TmsSessionFilterValues => ({
   pl3Code: '',
 })
 
-const props = withDefaults(
-  defineProps<{
-    showTeamFilters?: boolean
-    showExport?: boolean
-    exporting?: boolean
-    agents?: TeamAgentOption[]
-    toolkits?: Toolkit[]
-    pl3Options?: Pl3Option[]
-    size?: 'sm' | 'default'
-  }>(),
-  {
-    size: 'default',
-  },
-)
+const props = defineProps<{
+  showTeamFilters?: boolean
+  showExport?: boolean
+  exporting?: boolean
+  agents?: TeamAgentOption[]
+  toolkits?: Toolkit[]
+  pl3Options?: Pl3Option[]
+}>()
 
 const emit = defineEmits<{
   search: [value: TmsSessionFilterValues]
@@ -86,7 +80,6 @@ function onClear() {
 <template>
   <QueryPanel
     title="Filters"
-    :size="size"
     :show-export="showExport"
     :exporting="exporting"
     @search="onSearch"
@@ -97,7 +90,6 @@ function onClear() {
       Session No
       <Input
         v-model="draft.sessionNo"
-        :size="size"
         :class="fieldClass"
         placeholder="Search session no"
       />
@@ -106,7 +98,6 @@ function onClear() {
       Reference
       <Input
         v-model="draft.reference"
-        :size="size"
         :class="fieldClass"
         placeholder="Search reference"
       />
@@ -119,7 +110,6 @@ function onClear() {
       <TeamAgentPicker
         :model-value="draft.agentCcgid || null"
         :agents="agents ?? []"
-        :size="size"
         @update:model-value="draft.agentCcgid = $event ?? ''"
       />
     </label>
@@ -129,7 +119,6 @@ function onClear() {
     >
       Toolkit
       <NativeSelect
-        :size="size"
         :class="fieldClass"
         :model-value="draft.toolkitId"
         @update:model-value="draft.toolkitId = String($event ?? '')"
@@ -150,7 +139,6 @@ function onClear() {
     >
       PL3
       <NativeSelect
-        :size="size"
         :class="fieldClass"
         :model-value="draft.pl3Code"
         @update:model-value="onPl3Change(String($event ?? ''))"
@@ -169,7 +157,6 @@ function onClear() {
       Session Date From
       <DatePicker
         v-model="draft.dateFrom"
-        :size="size"
         aria-label="Choose session start date"
         placeholder="Select start date"
         :class="fieldClass"
@@ -179,7 +166,6 @@ function onClear() {
       Session Date To
       <DatePicker
         v-model="draft.dateTo"
-        :size="size"
         aria-label="Choose session end date"
         placeholder="Select end date"
         :class="fieldClass"

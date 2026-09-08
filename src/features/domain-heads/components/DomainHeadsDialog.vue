@@ -236,7 +236,6 @@ async function confirmSave() {
             <NativeSelect
               v-if="usesAdminPicker"
               :model-value="selectedCenter"
-              size="sm"
               class="w-[240px]"
               @update:model-value="onCenterChange"
             >
@@ -248,7 +247,6 @@ async function confirmSave() {
           <Input
             v-if="page?.domains.length"
             v-model="domainFilter"
-            size="sm"
             placeholder="Search Domain"
             class="max-w-xs"
           />
@@ -296,12 +294,11 @@ async function confirmSave() {
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-        <Button type="button" size="sm" variant="outline" :disabled="saveMutation.isPending.value" @click="open = false">
+        <Button type="button" variant="outline" :disabled="saveMutation.isPending.value" @click="open = false">
           Cancel
         </Button>
         <Button
           type="button"
-          size="sm"
           :loading="saveMutation.isPending.value"
           :disabled="!dirty || !center"
           @click="askSave"
