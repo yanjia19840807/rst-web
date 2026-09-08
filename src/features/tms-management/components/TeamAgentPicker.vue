@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import PersonPicker, { type PersonPickerQuery } from '@/components/PersonPicker.vue'
+import type { ButtonVariants } from '@/components/ui/button'
 
 import type { TeamAgentOption } from '../types'
 
@@ -9,6 +10,7 @@ const props = defineProps<{
   modelValue: string | null
   agents: TeamAgentOption[]
   disabled?: boolean
+  size?: ButtonVariants['size']
 }>()
 
 const emit = defineEmits<{
@@ -57,6 +59,7 @@ const emptyText = computed(() =>
     :total="filtered.length"
     :empty-text="emptyText"
     :disabled="disabled"
+    :size="size"
     trigger-class="w-[220px]"
     @update:model-value="emit('update:modelValue', $event)"
     @query="pickerQuery = $event"

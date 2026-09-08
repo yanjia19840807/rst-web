@@ -109,7 +109,7 @@ function onToolkitChange(value: unknown) {
         <div class="flex items-center gap-2">
           <NativeSelect
             id="session-toolkit"
-            class="min-w-0 flex-1"
+            class="min-w-0 w-full flex-1"
             :model-value="toolkitId ?? ''"
             :disabled="toolkitLocked"
             :aria-invalid="Boolean(errors.toolkitId)"

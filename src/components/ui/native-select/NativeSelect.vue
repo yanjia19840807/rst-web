@@ -33,6 +33,8 @@ function classHas(token: string) {
 }
 
 const wrapperFull = computed(() => classHas('w-full'))
+const wrapperFlex = computed(() => classHas('flex-1'))
+const wrapperMinW0 = computed(() => classHas('min-w-0'))
 const wrapperH8 = computed(() => classHas('h-8'))
 
 const isEmptyValue = computed(() => {
@@ -49,6 +51,8 @@ const isEmptyValue = computed(() => {
       cn(
         'group/native-select relative flex h-9 w-fit items-center has-[select:disabled]:opacity-50 data-[size=sm]:h-8 data-[size=xs]:h-6',
         wrapperFull && 'w-full',
+        wrapperFlex && 'min-w-0 flex-1',
+        wrapperMinW0 && 'min-w-0',
         wrapperH8 && 'h-8',
       )
     "

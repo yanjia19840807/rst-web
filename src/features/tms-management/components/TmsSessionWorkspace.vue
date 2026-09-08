@@ -52,15 +52,24 @@ const { defineField, errors, handleSubmit, setFieldValue, resetForm } = useForm<
   },
 )
 
-function resetSessionForm(keepToolkitId?: string) {
+function resetSessionForm(keepToolkitId?: string, keepSubtaskId?: string) {
   const toolkit =
     keepToolkitId && toolkitsQuery.data.value?.some((item) => item.id === keepToolkitId)
       ? keepToolkitId
+      : ''
+  const subtask =
+    toolkit &&
+    keepSubtaskId &&
+    toolkitsQuery.data.value
+      ?.find((item) => item.id === toolkit)
+      ?.subtasks.some((item) => !item.deletedAt && item.id === keepSubtaskId)
+      ? keepSubtaskId
       : ''
   resetForm({
     values: {
       ...defaultFormValues(),
       toolkitId: toolkit,
+      subtaskId: subtask,
     },
   })
 }
@@ -219,7 +228,7 @@ const pauseSession = handleSubmit(async (values) => {
       ...sessionDetails(values),
     })
     sessionStore.setCurrentSession(null)
-    resetSessionForm(pausedToolkitId)
+    resetSessionForm(pausedToolkitId, values.subtaskId)
     toast.success('Session paused. Start a new session, or resume it from Paused Sessions.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not pause the session.')
@@ -246,7 +255,7 @@ const endSession = handleSubmit(async (values) => {
       ...sessionDetails(values),
     })
     sessionStore.setCurrentSession(null)
-    resetSessionForm(endedToolkitId)
+    resetSessionForm(endedToolkitId, values.subtaskId)
     toast.success('Session ended and saved to the TMS list.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not end the session.')

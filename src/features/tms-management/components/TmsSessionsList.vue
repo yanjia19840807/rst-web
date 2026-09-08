@@ -144,6 +144,7 @@ function openDetail(id: string) {
           :show-team-filters="isSupervisor"
           :show-export="true"
           :exporting="exporting"
+          :size="embedded ? 'sm' : 'default'"
           :agents="teamAgentsQuery.data.value ?? []"
           :toolkits="toolkitsQuery.data.value ?? []"
           :pl3-options="pl3Options"
@@ -163,6 +164,7 @@ function openDetail(id: string) {
         />
 
         <TablePager
+          :size="embedded ? 'sm' : 'default'"
           :total="sessionsQuery.data.value?.total ?? 0"
           :page="pagination.page"
           :page-size="pagination.pageSize"
