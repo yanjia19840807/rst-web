@@ -78,7 +78,7 @@ watch(open, (isOpen) => {
         :class="
           cn(
             pickerTriggerClass,
-            !date && 'text-muted-foreground',
+            date ? 'text-foreground' : 'text-muted-foreground',
             props.class,
           )
         "

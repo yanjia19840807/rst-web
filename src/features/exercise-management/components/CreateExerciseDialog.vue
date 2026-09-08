@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
+import { NativeSelect } from '@/components/ui/native-select'
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
 import { formatHc } from '@/lib/hcFormat'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
@@ -179,10 +180,11 @@ const create = handleSubmit(
 
           <div v-if="!lockToolkit" class="grid gap-1.5">
             <Label for="create-exercise-toolkit">Toolkit</Label>
-            <select
+            <NativeSelect
               id="create-exercise-toolkit"
               v-model="toolkitId"
-              class="h-9 max-w-xs rounded-md border border-input bg-card px-2.5 text-sm"
+              size="sm"
+              class="max-w-xs"
               :aria-invalid="Boolean(errors.toolkitId)"
             >
               <option value="">Select toolkit</option>
@@ -194,7 +196,7 @@ const create = handleSubmit(
               >
                 {{ toolkit.name }}{{ toolkit.outOfSync ? ' (scope changed)' : '' }}
               </option>
-            </select>
+            </NativeSelect>
             <p v-if="errors.toolkitId" class="text-xs text-destructive">
               {{ errors.toolkitId }}
             </p>
@@ -211,6 +213,7 @@ const create = handleSubmit(
             </div>
             <MonthPicker
               v-model="sizingMonth"
+              size="sm"
               aria-label="Choose sizing month"
               placeholder="Select sizing month"
               class="w-[200px]"
@@ -232,6 +235,7 @@ const create = handleSubmit(
             <div class="flex flex-wrap items-center gap-2">
               <DatePicker
                 v-model="tmsFrom"
+                size="sm"
                 aria-label="Choose TMS period start"
                 placeholder="From"
                 class="w-[180px]"
@@ -239,6 +243,7 @@ const create = handleSubmit(
               <span class="text-muted-foreground">to</span>
               <DatePicker
                 v-model="tmsTo"
+                size="sm"
                 aria-label="Choose TMS period end"
                 placeholder="To"
                 class="w-[180px]"
@@ -252,8 +257,8 @@ const create = handleSubmit(
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-        <Button variant="outline" :disabled="busy" @click="open = false">Cancel</Button>
-        <Button :loading="busy" :disabled="toolkitBlocked" @click="create">
+        <Button size="sm" variant="outline" :disabled="busy" @click="open = false">Cancel</Button>
+        <Button size="sm" :loading="busy" :disabled="toolkitBlocked" @click="create">
           {{ busy ? 'Creating…' : 'Confirm' }}
         </Button>
       </DialogFooter>

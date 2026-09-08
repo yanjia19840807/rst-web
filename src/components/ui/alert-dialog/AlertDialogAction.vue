@@ -17,7 +17,7 @@ const props = withDefaults(
   >(),
   {
     variant: 'default',
-    size: 'default',
+    size: 'sm',
   },
 )
 

@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 
 import {
   useTimesheetSnapshotFiltersQuery,
@@ -61,7 +62,6 @@ const subtitle = computed(() =>
     : 'Process and Delivery HC from the ACTIVE Monthly snapshot.',
 )
 
-const selectClass = 'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 const activeTab = ref<TimesheetSnapshotTab>(props.initialTab)
 const resolvedTab = computed<TimesheetSnapshotTab>(() => {
@@ -301,6 +301,7 @@ function rowId(row: {
               Search
               <Input
                 v-model="draftQ"
+                size="sm"
                 class="w-full min-w-0 sm:w-[260px]"
                 :placeholder="searchPlaceholders[resolvedTab]"
               />
@@ -310,16 +311,17 @@ function rowId(row: {
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <select v-model="peopleCenter" :class="[selectClass, 'w-full min-w-0 sm:w-[200px]']">
+              <NativeSelect v-model="peopleCenter" size="sm" class="w-full min-w-0 sm:w-[200px]">
                 <option value="">All centers</option>
                 <option v-for="center in peopleCenters" :key="center" :value="center">{{ center }}</option>
-              </select>
+              </NativeSelect>
             </label>
             <template v-if="resolvedTab === 'scopes'">
               <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 Supervisor
                 <Input
                   v-model="draftSupervisor"
+                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="Position ID or name"
                 />
@@ -328,6 +330,7 @@ function rowId(row: {
                 PL3
                 <Input
                   v-model="draftPl3Code"
+                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="PL3 code or name"
                 />
@@ -338,6 +341,7 @@ function rowId(row: {
                 Supervisor
                 <Input
                   v-model="draftSupervisor"
+                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="Position ID or name"
                 />
@@ -346,6 +350,7 @@ function rowId(row: {
                 PL3
                 <Input
                   v-model="draftPl3Code"
+                  size="sm"
                   class="w-full min-w-0 sm:w-[200px]"
                   placeholder="PL3 code or name"
                 />
@@ -356,10 +361,10 @@ function rowId(row: {
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <select v-model="scopeCenter" :class="[selectClass, 'w-full min-w-0 sm:w-[200px]']">
+              <NativeSelect v-model="scopeCenter" size="sm" class="w-full min-w-0 sm:w-[200px]">
                 <option value="">All centers</option>
                 <option v-for="center in scopeCenters" :key="center" :value="center">{{ center }}</option>
-              </select>
+              </NativeSelect>
             </label>
           </div>
 
@@ -397,7 +402,7 @@ function rowId(row: {
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-4 py-3 sm:px-5 sm:justify-end">
-        <Button type="button" variant="outline" class="w-full sm:w-auto" @click="open = false">
+        <Button type="button" size="sm" variant="outline" class="w-full sm:w-auto" @click="open = false">
           Close
         </Button>
       </DialogFooter>

@@ -17,6 +17,7 @@ const props = withDefaults(
     placeholder?: string
     id?: string
     class?: HTMLAttributes['class']
+    size?: 'sm' | 'default'
   }>(),
   {
     modelValue: null,
@@ -24,6 +25,7 @@ const props = withDefaults(
     decimals: 2,
     disabled: false,
     invalid: false,
+    size: 'default',
   },
 )
 
@@ -66,6 +68,7 @@ function onUpdate(value: number | undefined) {
       <NumberFieldInput
         :aria-invalid="invalid || undefined"
         :placeholder="placeholder"
+        :size="size"
         :class="props.class"
       />
     </NumberFieldContent>

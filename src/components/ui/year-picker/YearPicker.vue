@@ -88,7 +88,7 @@ function shiftDecade(delta: number) {
         :class="
           cn(
             pickerTriggerClass,
-            selected == null && 'text-muted-foreground',
+            selected == null ? 'text-muted-foreground' : 'text-foreground',
             props.class,
           )
         "

@@ -57,7 +57,7 @@ const emptyText = computed(() =>
     :total="filtered.length"
     :empty-text="emptyText"
     :disabled="disabled"
-    trigger-class="h-9 w-[200px]"
+    trigger-class="w-[220px]"
     @update:model-value="emit('update:modelValue', $event)"
     @query="pickerQuery = $event"
   />

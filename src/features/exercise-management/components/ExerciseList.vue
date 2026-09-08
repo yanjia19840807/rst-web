@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 import { useManagedToolkitsQuery } from '@/features/toolkit-management/api/queries'
 import { formatDate } from '@/lib/datetime'
@@ -17,17 +16,16 @@ import { formatDate } from '@/lib/datetime'
 import { useExerciseMutations } from '../api/mutations'
 import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
-import {
-  IN_PROGRESS_TAB,
-  reviewStageQueryValue,
-  type CurrentStepFilter,
-} from '../workflowLabels'
+import { IN_PROGRESS_TAB, reviewStageQueryValue } from '../workflowLabels'
 import CreateExerciseDialog from './CreateExerciseDialog.vue'
 import ExerciseListFilters from './ExerciseListFilters.vue'
+import {
+  emptyExerciseListFilters,
+  type ExerciseListFilterValues,
+} from './exerciseListFilters'
 import ExerciseListTable from './ExerciseListTable.vue'
 
 type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
-type OfficialScenarioFilter = 'All scenarios' | 'Assigned' | 'Not assigned'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,68 +40,41 @@ const createOpen = ref(false)
 const withdrawOpen = ref(false)
 const withdrawTarget = ref<Exercise | null>(null)
 
-const exerciseCodeFilter = ref('')
-const appliedExerciseCode = ref('')
-const pl3Filter = ref('All PL3')
-const toolkitFilter = ref('All toolkits')
-const createdFrom = ref('')
-const createdTo = ref('')
-const officialScenarioFilter = ref<OfficialScenarioFilter>('All scenarios')
-const reviewStageFilter = ref<CurrentStepFilter>('All stages')
-const reviewerFilter = ref('All reviewers')
-const submittedFrom = ref('')
-const submittedTo = ref('')
-const finalStatusFilter = ref('All statuses')
-const archivedFrom = ref('')
-const archivedTo = ref('')
-const advancedOpen = ref<TabKey | null>(null)
-
-const draftCreatedFrom = ref('')
-const draftCreatedTo = ref('')
-const draftOfficialScenario = ref<OfficialScenarioFilter>('All scenarios')
-const draftReviewer = ref('All reviewers')
-const draftSubmittedFrom = ref('')
-const draftSubmittedTo = ref('')
-const draftArchivedFrom = ref('')
-const draftArchivedTo = ref('')
+const applied = reactive(emptyExerciseListFilters())
 const page = ref(1)
 const pageSize = ref(10)
 
 const tabs: TabKey[] = [IN_PROGRESS_TAB, 'Archived']
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 const listQuery = computed<ExerciseListQuery>(() => {
   const inProgress = activeTab.value === IN_PROGRESS_TAB
   return {
     tab: inProgress ? 'IN_PROGRESS' : 'ARCHIVED',
-    exerciseCode: appliedExerciseCode.value,
-    toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
-    pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+    exerciseCode: applied.exerciseCode,
+    toolkitName: applied.toolkit === 'All toolkits' ? undefined : applied.toolkit,
+    pl3Name: applied.pl3 || undefined,
     workflowStatus: inProgress
       ? undefined
-      : finalStatusFilter.value === 'Approved'
+      : applied.finalStatus === 'Approved'
         ? 'APPROVED'
-        : finalStatusFilter.value === 'Rejected'
+        : applied.finalStatus === 'Rejected'
           ? 'REJECTED'
           : undefined,
-    reviewStage: inProgress ? reviewStageQueryValue(reviewStageFilter.value) : undefined,
+    reviewStage: inProgress ? reviewStageQueryValue(applied.reviewStage) : undefined,
     handler:
-      !inProgress || reviewerFilter.value === 'All reviewers'
-        ? undefined
-        : reviewerFilter.value,
+      !inProgress || applied.reviewer === 'All reviewers' ? undefined : applied.reviewer,
     officialScenario:
-      !inProgress || officialScenarioFilter.value === 'All scenarios'
+      !inProgress || applied.officialScenario === 'All scenarios'
         ? undefined
-        : officialScenarioFilter.value === 'Assigned'
+        : applied.officialScenario === 'Assigned'
           ? 'ASSIGNED'
           : 'UNASSIGNED',
-    createdFrom: inProgress ? createdFrom.value || undefined : undefined,
-    createdTo: inProgress ? createdTo.value || undefined : undefined,
-    submittedFrom: inProgress ? submittedFrom.value || undefined : undefined,
-    submittedTo: inProgress ? submittedTo.value || undefined : undefined,
-    archivedFrom: inProgress ? undefined : archivedFrom.value || undefined,
-    archivedTo: inProgress ? undefined : archivedTo.value || undefined,
+    createdFrom: inProgress ? applied.createdFrom || undefined : undefined,
+    createdTo: inProgress ? applied.createdTo || undefined : undefined,
+    submittedFrom: inProgress ? applied.submittedFrom || undefined : undefined,
+    submittedTo: inProgress ? applied.submittedTo || undefined : undefined,
+    archivedFrom: inProgress ? undefined : applied.archivedFrom || undefined,
+    archivedTo: inProgress ? undefined : applied.archivedTo || undefined,
     page: page.value,
     pageSize: pageSize.value,
   }
@@ -122,25 +93,13 @@ const loading = computed(
 )
 const withdrawPending = computed(() => withdraw.isPending.value)
 
-const pl3Options = computed(() => ['All PL3', ...pl3Names.value])
+const pl3Options = computed(() => pl3Names.value)
 const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
 const reviewerOptions = computed(() => ['All reviewers', ...reviewerNames.value])
 
 function resetPage() {
   page.value = 1
 }
-
-const advancedCount = computed(() => {
-  if (activeTab.value === IN_PROGRESS_TAB) {
-    return (
-      Number(Boolean(createdFrom.value || createdTo.value)) +
-      Number(officialScenarioFilter.value !== 'All scenarios') +
-      Number(reviewerFilter.value !== 'All reviewers') +
-      Number(Boolean(submittedFrom.value || submittedTo.value))
-    )
-  }
-  return Number(Boolean(archivedFrom.value || archivedTo.value))
-})
 
 function persistTab(tab: TabKey) {
   const next = tab === 'Archived' ? 'ARCHIVED' : 'IN_PROGRESS'
@@ -157,60 +116,19 @@ function switchTab(tab: TabKey) {
     return
   }
   activeTab.value = tab
-  exerciseCodeFilter.value = ''
-  appliedExerciseCode.value = ''
-  advancedOpen.value = null
+  Object.assign(applied, emptyExerciseListFilters())
   resetPage()
   persistTab(tab)
 }
 
-function toggleAdvanced() {
-  if (advancedOpen.value !== activeTab.value) {
-    if (activeTab.value === IN_PROGRESS_TAB) {
-      draftCreatedFrom.value = createdFrom.value
-      draftCreatedTo.value = createdTo.value
-      draftOfficialScenario.value = officialScenarioFilter.value
-      draftReviewer.value = reviewerFilter.value
-      draftSubmittedFrom.value = submittedFrom.value
-      draftSubmittedTo.value = submittedTo.value
-    } else {
-      draftArchivedFrom.value = archivedFrom.value
-      draftArchivedTo.value = archivedTo.value
-    }
-    advancedOpen.value = activeTab.value
-  } else {
-    advancedOpen.value = null
-  }
-}
-
-function clearAdvancedDrafts() {
-  if (activeTab.value === IN_PROGRESS_TAB) {
-    draftCreatedFrom.value = ''
-    draftCreatedTo.value = ''
-    draftOfficialScenario.value = 'All scenarios'
-    draftReviewer.value = 'All reviewers'
-    draftSubmittedFrom.value = ''
-    draftSubmittedTo.value = ''
-  } else {
-    draftArchivedFrom.value = ''
-    draftArchivedTo.value = ''
-  }
-}
-
-function applyAdvanced() {
-  if (activeTab.value === IN_PROGRESS_TAB) {
-    createdFrom.value = draftCreatedFrom.value
-    createdTo.value = draftCreatedTo.value
-    officialScenarioFilter.value = draftOfficialScenario.value
-    reviewerFilter.value = draftReviewer.value
-    submittedFrom.value = draftSubmittedFrom.value
-    submittedTo.value = draftSubmittedTo.value
-  } else {
-    archivedFrom.value = draftArchivedFrom.value
-    archivedTo.value = draftArchivedTo.value
-  }
+function applySearch(values: ExerciseListFilterValues) {
+  Object.assign(applied, values)
   resetPage()
-  advancedOpen.value = null
+}
+
+function clearFilters() {
+  Object.assign(applied, emptyExerciseListFilters())
+  resetPage()
 }
 
 function openCreate() {
@@ -254,41 +172,9 @@ watch(
     const next = tabFromQuery(value)
     if (next === activeTab.value) return
     activeTab.value = next
-    exerciseCodeFilter.value = ''
-    appliedExerciseCode.value = ''
-    advancedOpen.value = null
+    Object.assign(applied, emptyExerciseListFilters())
     resetPage()
   },
-)
-
-watch(
-  [
-    activeTab,
-    pl3Filter,
-    toolkitFilter,
-    reviewStageFilter,
-    finalStatusFilter,
-    createdFrom,
-    createdTo,
-    officialScenarioFilter,
-    reviewerFilter,
-    submittedFrom,
-    submittedTo,
-    archivedFrom,
-    archivedTo,
-  ],
-  () => {
-    resetPage()
-  },
-)
-
-watchDebounced(
-  exerciseCodeFilter,
-  (value) => {
-    appliedExerciseCode.value = value
-    resetPage()
-  },
-  { debounce: 400 },
 )
 
 watch(
@@ -324,52 +210,22 @@ watch(
     </PageActions>
 
     <Card>
-      <CardHeader class="gap-3">
+      <CardHeader>
         <TabStrip
           :tabs="tabs.map((tab) => ({ key: tab, label: tab }))"
           :model-value="activeTab"
           @update:model-value="switchTab"
         />
-        <CardTitle class="text-base">Exercises</CardTitle>
       </CardHeader>
       <CardContent class="space-y-3">
         <ExerciseListFilters
+          :key="activeTab"
           :active-tab="activeTab"
-          :select-class="selectClass"
-          :exercise-code-filter="exerciseCodeFilter"
-          :pl3-filter="pl3Filter"
-          :toolkit-filter="toolkitFilter"
-          :review-stage-filter="reviewStageFilter"
-          :final-status-filter="finalStatusFilter"
-          :advanced-open="advancedOpen"
-          :advanced-count="advancedCount"
           :pl3-options="pl3Options"
           :toolkit-options="toolkitOptions"
           :reviewer-options="reviewerOptions"
-          :draft-created-from="draftCreatedFrom"
-          :draft-created-to="draftCreatedTo"
-          :draft-official-scenario="draftOfficialScenario"
-          :draft-reviewer="draftReviewer"
-          :draft-submitted-from="draftSubmittedFrom"
-          :draft-submitted-to="draftSubmittedTo"
-          :draft-archived-from="draftArchivedFrom"
-          :draft-archived-to="draftArchivedTo"
-          @update:exercise-code-filter="exerciseCodeFilter = $event"
-          @update:pl3-filter="pl3Filter = $event"
-          @update:toolkit-filter="toolkitFilter = $event"
-          @update:review-stage-filter="reviewStageFilter = $event"
-          @update:final-status-filter="finalStatusFilter = $event"
-          @update:draft-created-from="draftCreatedFrom = $event"
-          @update:draft-created-to="draftCreatedTo = $event"
-          @update:draft-official-scenario="draftOfficialScenario = $event"
-          @update:draft-reviewer="draftReviewer = $event"
-          @update:draft-submitted-from="draftSubmittedFrom = $event"
-          @update:draft-submitted-to="draftSubmittedTo = $event"
-          @update:draft-archived-from="draftArchivedFrom = $event"
-          @update:draft-archived-to="draftArchivedTo = $event"
-          @toggle-advanced="toggleAdvanced"
-          @clear-advanced-drafts="clearAdvancedDrafts"
-          @apply-advanced="applyAdvanced"
+          @search="applySearch"
+          @clear="clearFilters"
         />
 
         <ExerciseListTable

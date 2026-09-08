@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { toast } from 'vue-sonner'
-import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import PageActions from '@/components/PageActions.vue'
+import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
@@ -23,17 +22,18 @@ import type { RepositoryListQuery, RepositoryRow } from '../types'
 import FilterField from './FilterField.vue'
 import { createRstRepositoryColumns } from './rstRepositoryColumns'
 
-const exerciseFilter = ref('')
-const appliedExerciseCode = ref('')
-const gbsFilter = ref('All')
-const domainFilter = ref('All')
-const pl3Filter = ref('All')
-const toolkitFilter = ref('All')
-const submittedFrom = ref('')
-const submittedTo = ref('')
-const draftSubmittedFrom = ref('')
-const draftSubmittedTo = ref('')
-const moreFiltersOpen = ref(false)
+const emptyFilters = () => ({
+  exerciseCode: '',
+  gbs: 'All',
+  domain: 'All',
+  pl3: 'All',
+  toolkit: 'All',
+  submittedFrom: '',
+  submittedTo: '',
+})
+
+const draft = reactive(emptyFilters())
+const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
 const exportOpen = ref(false)
@@ -41,18 +41,16 @@ const exporting = ref(false)
 const queryClient = useQueryClient()
 const toolkitInfoOpen = ref(false)
 const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
-
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
+const fieldClass = 'w-[220px]'
 
 const listQuery = computed<RepositoryListQuery>(() => ({
-  exerciseCode: appliedExerciseCode.value || undefined,
-  center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
-  domain: domainFilter.value === 'All' ? undefined : domainFilter.value,
-  pl3Name: pl3Filter.value === 'All' ? undefined : pl3Filter.value,
-  toolkitName: toolkitFilter.value === 'All' ? undefined : toolkitFilter.value,
-  submittedFrom: submittedFrom.value || undefined,
-  submittedTo: submittedTo.value || undefined,
+  exerciseCode: applied.exerciseCode || undefined,
+  center: applied.gbs === 'All' ? undefined : applied.gbs,
+  domain: applied.domain === 'All' ? undefined : applied.domain,
+  pl3Name: applied.pl3 === 'All' ? undefined : applied.pl3,
+  toolkitName: applied.toolkit === 'All' ? undefined : applied.toolkit,
+  submittedFrom: applied.submittedFrom || undefined,
+  submittedTo: applied.submittedTo || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -72,25 +70,15 @@ const columns = computed(() =>
   }),
 )
 
-const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
-
-function resetPage() {
+function applySearch() {
+  Object.assign(applied, { ...draft })
   page.value = 1
 }
 
-function toggleMoreFilters() {
-  if (!moreFiltersOpen.value) {
-    draftSubmittedFrom.value = submittedFrom.value
-    draftSubmittedTo.value = submittedTo.value
-  }
-  moreFiltersOpen.value = !moreFiltersOpen.value
-}
-
-function applyAdvancedFilters() {
-  submittedFrom.value = draftSubmittedFrom.value
-  submittedTo.value = draftSubmittedTo.value
-  resetPage()
-  moreFiltersOpen.value = false
+function clearFilters() {
+  Object.assign(draft, emptyFilters())
+  Object.assign(applied, emptyFilters())
+  page.value = 1
 }
 
 async function confirmExport() {
@@ -137,22 +125,6 @@ watch(
 )
 
 watch(
-  [gbsFilter, domainFilter, pl3Filter, toolkitFilter, submittedFrom, submittedTo],
-  () => {
-    resetPage()
-  },
-)
-
-watchDebounced(
-  exerciseFilter,
-  (value) => {
-    appliedExerciseCode.value = value
-    resetPage()
-  },
-  { debounce: 400 },
-)
-
-watch(
   () => repositoryQuery.isError.value,
   (isError) => {
     if (isError) {
@@ -168,111 +140,84 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-4">
-    <PageActions>
-      <Button :disabled="exporting" @click="exportOpen = true">Export Repository</Button>
-    </PageActions>
-
     <Card>
-      <CardHeader>
-        <div class="flex items-baseline gap-2">
-          <CardTitle class="text-base">Repository Table</CardTitle>
-          <span class="text-xs text-muted-foreground">{{ total }} records</span>
-        </div>
-      </CardHeader>
       <CardContent class="space-y-3">
-        <div class="flex flex-wrap items-end gap-2.5">
+        <QueryPanel
+          title="Filters"
+          show-export
+          :exporting="exporting"
+          @search="applySearch"
+          @clear="clearFilters"
+          @export="exportOpen = true"
+        >
           <FilterField label="Exercise No">
             <Input
-              v-model="exerciseFilter"
-              class="w-[200px]"
+              v-model="draft.exerciseCode"
+              :class="fieldClass"
               placeholder="Search exercise no"
             />
           </FilterField>
           <FilterField label="GBS Center">
-            <select v-model="gbsFilter" :class="[selectClass, 'w-[180px]']">
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.gbs"
+              @update:model-value="draft.gbs = String($event ?? 'All')"
+            >
               <option v-for="option in gbsOptions" :key="option" :value="option">
                 {{ option }}
               </option>
-            </select>
+            </NativeSelect>
           </FilterField>
           <FilterField label="Domain">
-            <select v-model="domainFilter" :class="[selectClass, 'w-[160px]']">
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.domain"
+              @update:model-value="draft.domain = String($event ?? 'All')"
+            >
               <option v-for="option in domainOptions" :key="option" :value="option">
                 {{ option }}
               </option>
-            </select>
+            </NativeSelect>
           </FilterField>
           <FilterField label="PL3">
-            <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.pl3"
+              @update:model-value="draft.pl3 = String($event ?? 'All')"
+            >
               <option v-for="option in pl3Options" :key="option" :value="option">
                 {{ option }}
               </option>
-            </select>
+            </NativeSelect>
           </FilterField>
           <FilterField label="Toolkit">
-            <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']">
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.toolkit"
+              @update:model-value="draft.toolkit = String($event ?? 'All')"
+            >
               <option v-for="option in toolkitOptions" :key="option" :value="option">
                 {{ option }}
               </option>
-            </select>
+            </NativeSelect>
           </FilterField>
-          <Button variant="outline" @click="toggleMoreFilters">
-            More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-          </Button>
-        </div>
-
-        <div
-          v-if="moreFiltersOpen"
-          class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
-        >
           <FilterField label="Submitted Date From">
             <DatePicker
-              v-model="draftSubmittedFrom"
+              v-model="draft.submittedFrom"
               aria-label="Submitted date from"
               placeholder="From"
-              class="w-[180px]"
+              :class="fieldClass"
             />
           </FilterField>
           <FilterField label="Submitted Date To">
             <DatePicker
-              v-model="draftSubmittedTo"
+              v-model="draft.submittedTo"
               aria-label="Submitted date to"
               placeholder="To"
-              class="w-[180px]"
+              :class="fieldClass"
             />
           </FilterField>
-          <Button
-            variant="outline"
-            @click="
-              () => {
-                draftSubmittedFrom = ''
-                draftSubmittedTo = ''
-              }
-            "
-          >
-            Clear
-          </Button>
-          <Button @click="applyAdvancedFilters">Apply Filters</Button>
-        </div>
-
-        <div v-if="advancedFilterCount" class="flex flex-wrap gap-2">
-          <button
-            v-if="submittedFrom"
-            type="button"
-            class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="submittedFrom = ''"
-          >
-            Submitted after: {{ submittedFrom }} ×
-          </button>
-          <button
-            v-if="submittedTo"
-            type="button"
-            class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="submittedTo = ''"
-          >
-            Submitted before: {{ submittedTo }} ×
-          </button>
-        </div>
+        </QueryPanel>
 
         <DataTable
           :columns="columns"
@@ -302,7 +247,7 @@ watch(
     <ConfirmDialog
       v-model:open="exportOpen"
       title="Export Repository"
-      description="Download all repository rows matching the current filters as an Excel file. Pagination is not applied."
+      description="Download all repository rows matching the applied search filters as an Excel file. Pagination is not applied."
       confirm-label="Export"
       confirm-variant="default"
       :pending="exporting"

@@ -5,7 +5,7 @@ import { toast } from 'vue-sonner'
 
 import { useSessionStore } from '@/auth/session'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import ListLoading from '@/components/ListLoading.vue'
 import { Switch } from '@/components/ui/switch'
@@ -39,12 +39,6 @@ async function onToggle(row: MailPreferenceType, enabled: boolean) {
 
 <template>
   <Card>
-    <CardHeader class="border-b">
-      <CardTitle>Email notifications</CardTitle>
-      <CardDescription>
-        Mail is sent to the address on your Timesheet person row. Types you do not own are not shown.
-      </CardDescription>
-    </CardHeader>
     <CardContent class="grid gap-4 py-4">
       <ListLoading v-if="query.isPending.value" />
       <template v-else>

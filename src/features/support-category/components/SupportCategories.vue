@@ -9,7 +9,7 @@ import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -216,8 +216,7 @@ async function saveUpdate(
 
     <Card>
     <CardHeader>
-      <CardTitle>Support Categories</CardTitle>
-      <CardDescription class="mt-1">
+      <CardDescription>
         Standard Production Support categories used in Workload Registry and Support Repository.
         Drag the handle to reorder. Inactive names stay on existing rows but are hidden from new
         selections.

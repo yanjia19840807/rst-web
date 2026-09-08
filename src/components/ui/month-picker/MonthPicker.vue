@@ -108,7 +108,7 @@ function isSelected(month: number) {
         :class="
           cn(
             pickerTriggerClass,
-            !selected && 'text-muted-foreground',
+            selected ? 'text-foreground' : 'text-muted-foreground',
             props.class,
           )
         "

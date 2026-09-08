@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
+import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 
 import CreateExerciseDialog from '@/features/exercise-management/components/CreateExerciseDialog.vue'
 import type { Exercise } from '@/features/exercise-management/types'
@@ -21,15 +22,21 @@ import type { SupervisorToolkit, ToolkitListQuery } from '../types'
 import { createToolkitColumns } from './toolkitColumns'
 
 const router = useRouter()
-const nameFilter = ref('')
-const appliedName = ref('')
-const pl3Filter = ref('All PL3')
+
+const emptyFilters = () => ({
+  name: '',
+  pl3: '',
+})
+
+const draft = reactive(emptyFilters())
+const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
+const fieldClass = 'w-[220px]'
 
 const listQuery = computed<ToolkitListQuery>(() => ({
-  name: appliedName.value.trim() || undefined,
-  pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
+  name: applied.name.trim() || undefined,
+  pl3Name: applied.pl3 || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -37,10 +44,7 @@ const listQuery = computed<ToolkitListQuery>(() => ({
 const toolkitsQuery = useManagedToolkitsQuery(listQuery)
 const toolkits = computed(() => toolkitsQuery.data.value?.items ?? [])
 const total = computed(() => toolkitsQuery.data.value?.total ?? 0)
-const pl3Options = computed(() => [
-  'All PL3',
-  ...(toolkitsQuery.data.value?.pl3Names ?? []),
-])
+const pl3Options = computed(() => toolkitsQuery.data.value?.pl3Names ?? [])
 const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.data.value)
 const exportingId = ref<string | null>(null)
 const exportTarget = ref<SupervisorToolkit | null>(null)
@@ -49,21 +53,16 @@ const createOpen = ref(false)
 const createToolkit = ref<SupervisorToolkit | null>(null)
 const createToolkits = computed(() => (createToolkit.value ? [createToolkit.value] : []))
 
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
-
-watch(pl3Filter, () => {
+function applySearch() {
+  Object.assign(applied, { ...draft })
   page.value = 1
-})
+}
 
-watchDebounced(
-  nameFilter,
-  (value) => {
-    appliedName.value = value
-    page.value = 1
-  },
-  { debounce: 400 },
-)
+function clearFilters() {
+  Object.assign(draft, emptyFilters())
+  Object.assign(applied, emptyFilters())
+  page.value = 1
+}
 
 watch(
   () => ({
@@ -148,28 +147,30 @@ async function confirmExport() {
     </PageActions>
 
     <Card>
-      <CardHeader>
-        <CardTitle>Toolkits</CardTitle>
-      </CardHeader>
       <CardContent class="space-y-3">
-        <div class="flex flex-wrap items-end gap-2.5">
+        <QueryPanel @search="applySearch" @clear="clearFilters">
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Toolkit name
             <Input
-              v-model="nameFilter"
-              class="w-[220px]"
+              v-model="draft.name"
+              :class="fieldClass"
               placeholder="Search toolkit name"
             />
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             PL3
-            <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.pl3"
+              @update:model-value="draft.pl3 = String($event ?? '')"
+            >
+              <option value="">All PL3</option>
               <option v-for="option in pl3Options" :key="option" :value="option">
                 {{ option }}
               </option>
-            </select>
+            </NativeSelect>
           </label>
-        </div>
+        </QueryPanel>
 
         <DataTable
           :columns="columns"

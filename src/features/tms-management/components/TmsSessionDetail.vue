@@ -10,7 +10,7 @@ import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
 import type { Exercise } from '@/features/exercise-management/types'
@@ -125,9 +125,6 @@ function goBack() {
     </PageActions>
 
     <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
-      <CardHeader v-if="!embedded">
-        <CardTitle class="text-base">TMS Session Detail</CardTitle>
-      </CardHeader>
       <CardContent :class="embedded ? 'px-0' : undefined">
         <ListLoading v-if="detailQuery.isPending.value" />
         <p

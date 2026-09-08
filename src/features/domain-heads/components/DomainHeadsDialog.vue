@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import {
   Table,
   TableBody,
@@ -34,9 +35,6 @@ const open = defineModel<boolean>('open', { default: false })
 
 const session = useSessionStore()
 const saveMutation = useSaveDomainHeads()
-
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 /** LTH (including LTH+ADMIN) uses identity Center; pure ADMIN picks from ACTIVE Person/Scope. */
 const usesAdminPicker = computed(
@@ -178,16 +176,15 @@ function emptyMessage() {
   return 'This Center has no GBS Domain in the ACTIVE Monthly Timesheet.'
 }
 
-function onCenterChange(event: Event) {
-  const next = (event.target as HTMLSelectElement).value
-  if (next === selectedCenter.value) return
+function onCenterChange(next: unknown) {
+  const value = String(next ?? '')
+  if (value === selectedCenter.value) return
   if (dirty.value) {
-    pendingCenter.value = next
+    pendingCenter.value = value
     confirmSwitchOpen.value = true
-    ;(event.target as HTMLSelectElement).value = selectedCenter.value
     return
   }
-  selectedCenter.value = next
+  selectedCenter.value = value
 }
 
 function confirmSwitchCenter() {
@@ -236,20 +233,22 @@ async function confirmSave() {
         <div class="flex flex-wrap items-end justify-between gap-3">
           <div class="grid gap-1.5 text-sm">
             <span class="text-muted-foreground">Center</span>
-            <select
+            <NativeSelect
               v-if="usesAdminPicker"
-              :value="selectedCenter"
-              :class="[selectClass, 'w-[240px]']"
-              @change="onCenterChange"
+              :model-value="selectedCenter"
+              size="sm"
+              class="w-[240px]"
+              @update:model-value="onCenterChange"
             >
               <option value="">Select center</option>
               <option v-for="item in centers" :key="item" :value="item">{{ item }}</option>
-            </select>
+            </NativeSelect>
             <div v-else class="font-medium">{{ center || '—' }}</div>
           </div>
           <Input
             v-if="page?.domains.length"
             v-model="domainFilter"
+            size="sm"
             placeholder="Search Domain"
             class="max-w-xs"
           />
@@ -281,6 +280,7 @@ async function confirmSave() {
                     :center="center"
                     :fallback-name="row.name"
                     :fallback-position-id="row.positionId"
+                    size="sm"
                     @update:model-value="drafts[row.domain] = $event"
                   />
                 </TableCell>
@@ -296,11 +296,12 @@ async function confirmSave() {
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-        <Button type="button" variant="outline" :disabled="saveMutation.isPending.value" @click="open = false">
+        <Button type="button" size="sm" variant="outline" :disabled="saveMutation.isPending.value" @click="open = false">
           Cancel
         </Button>
         <Button
           type="button"
+          size="sm"
           :loading="saveMutation.isPending.value"
           :disabled="!dirty || !center"
           @click="askSave"

@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ListLoading from '@/components/ListLoading.vue'
-import PageActions from '@/components/PageActions.vue'
+import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
+import { NativeSelect } from '@/components/ui/native-select'
 
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 
@@ -21,32 +21,32 @@ import { createBenchmarkingColumns } from './benchmarkingColumns'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 
-const gbsFilter = ref('All')
-const domainFilter = ref('All')
-const pl1Filter = ref('All')
-const pl2Filter = ref('All')
-const pl3Filter = ref('All')
-const submittedFrom = ref('')
-const submittedTo = ref('')
-const draftSubmittedFrom = ref('')
-const draftSubmittedTo = ref('')
-const moreFiltersOpen = ref(false)
+const emptyFilters = () => ({
+  gbs: 'All',
+  domain: 'All',
+  pl1: 'All',
+  pl2: 'All',
+  pl3: 'All',
+  submittedFrom: '',
+  submittedTo: '',
+})
+
+const draft = reactive(emptyFilters())
+const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
 const exportOpen = ref(false)
 const exporting = ref(false)
-
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
+const fieldClass = 'w-[220px]'
 
 const listQuery = computed<BenchmarkingQuery>(() => ({
-  center: gbsFilter.value === 'All' ? undefined : gbsFilter.value,
-  domain: domainFilter.value === 'All' ? undefined : domainFilter.value,
-  pl1: pl1Filter.value === 'All' ? undefined : pl1Filter.value,
-  pl2: pl2Filter.value === 'All' ? undefined : pl2Filter.value,
-  pl3Code: pl3Filter.value === 'All' ? undefined : pl3Filter.value,
-  submittedFrom: submittedFrom.value || undefined,
-  submittedTo: submittedTo.value || undefined,
+  center: applied.gbs === 'All' ? undefined : applied.gbs,
+  domain: applied.domain === 'All' ? undefined : applied.domain,
+  pl1: applied.pl1 === 'All' ? undefined : applied.pl1,
+  pl2: applied.pl2 === 'All' ? undefined : applied.pl2,
+  pl3Code: applied.pl3 === 'All' ? undefined : applied.pl3,
+  submittedFrom: applied.submittedFrom || undefined,
+  submittedTo: applied.submittedTo || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -61,29 +61,19 @@ const pl1Options = computed(() => ['All', ...(data.value?.pl1Names ?? [])])
 const pl2Options = computed(() => ['All', ...(data.value?.pl2Names ?? [])])
 const pl3Options = computed(() => data.value?.pl3Options ?? [])
 const loading = computed(() => benchmarkingQuery.isPending.value && !benchmarkingQuery.data.value)
-const pl3Selected = computed(() => pl3Filter.value !== 'All')
+const pl3Selected = computed(() => applied.pl3 !== 'All')
 
 const columns = createBenchmarkingColumns()
 
-const advancedFilterCount = computed(() => Number(Boolean(submittedFrom.value || submittedTo.value)))
-
-function resetPage() {
+function applySearch() {
+  Object.assign(applied, { ...draft })
   page.value = 1
 }
 
-function toggleMoreFilters() {
-  if (!moreFiltersOpen.value) {
-    draftSubmittedFrom.value = submittedFrom.value
-    draftSubmittedTo.value = submittedTo.value
-  }
-  moreFiltersOpen.value = !moreFiltersOpen.value
-}
-
-function applyAdvancedFilters() {
-  submittedFrom.value = draftSubmittedFrom.value
-  submittedTo.value = draftSubmittedTo.value
-  resetPage()
-  moreFiltersOpen.value = false
+function clearFilters() {
+  Object.assign(draft, emptyFilters())
+  Object.assign(applied, emptyFilters())
+  page.value = 1
 }
 
 async function confirmExport() {
@@ -100,13 +90,6 @@ async function confirmExport() {
     exporting.value = false
   }
 }
-
-watch(
-  [gbsFilter, domainFilter, pl1Filter, pl2Filter, pl3Filter, submittedFrom, submittedTo],
-  () => {
-    resetPage()
-  },
-)
 
 watch(
   () => ({
@@ -136,108 +119,60 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-4">
-    <PageActions>
-      <Button :disabled="exporting" @click="exportOpen = true">Export Benchmark</Button>
-    </PageActions>
-
-    <Card>
-      <CardContent class="space-y-3">
-        <div class="flex flex-wrap items-end gap-2.5">
-          <FilterField label="GBS Center">
-            <select v-model="gbsFilter" :class="[selectClass, 'w-[170px]']">
-              <option v-for="option in gbsOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
-          </FilterField>
-          <FilterField label="Domain">
-            <select v-model="domainFilter" :class="[selectClass, 'w-[150px]']">
-              <option v-for="option in domainOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
-          </FilterField>
-          <FilterField label="PL1">
-            <select v-model="pl1Filter" :class="[selectClass, 'w-[170px]']">
-              <option v-for="option in pl1Options" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
-          </FilterField>
-          <FilterField label="PL2">
-            <select v-model="pl2Filter" :class="[selectClass, 'w-[210px]']">
-              <option v-for="option in pl2Options" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
-          </FilterField>
-          <FilterField label="PL3">
-            <select v-model="pl3Filter" :class="[selectClass, 'w-[220px]']">
-              <option value="All">All</option>
-              <option v-for="option in pl3Options" :key="option.code" :value="option.code">
-                {{ option.name }}
-              </option>
-            </select>
-          </FilterField>
-          <Button variant="outline" @click="toggleMoreFilters">
-            More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-          </Button>
-        </div>
-
-        <div
-          v-if="moreFiltersOpen"
-          class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
-        >
-          <FilterField label="Submitted Date From">
-            <DatePicker
-              v-model="draftSubmittedFrom"
-              aria-label="Submitted date from"
-              placeholder="From"
-              class="w-[180px]"
-            />
-          </FilterField>
-          <FilterField label="Submitted Date To">
-            <DatePicker
-              v-model="draftSubmittedTo"
-              aria-label="Submitted date to"
-              placeholder="To"
-              class="w-[180px]"
-            />
-          </FilterField>
-          <Button
-            variant="outline"
-            @click="
-              () => {
-                draftSubmittedFrom = ''
-                draftSubmittedTo = ''
-              }
-            "
-          >
-            Clear
-          </Button>
-          <Button @click="applyAdvancedFilters">Apply Filters</Button>
-        </div>
-
-        <div v-if="advancedFilterCount" class="flex flex-wrap gap-2">
-          <button
-            v-if="submittedFrom"
-            type="button"
-            class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="submittedFrom = ''"
-          >
-            Submitted after: {{ submittedFrom }} ×
-          </button>
-          <button
-            v-if="submittedTo"
-            type="button"
-            class="rounded-full border bg-card px-2.5 py-1 text-xs"
-            @click="submittedTo = ''"
-          >
-            Submitted before: {{ submittedTo }} ×
-          </button>
-        </div>
-      </CardContent>
-    </Card>
+    <QueryPanel show-export :exporting="exporting" @search="applySearch" @clear="clearFilters" @export="exportOpen = true">
+      <FilterField label="GBS Center">
+        <NativeSelect v-model="draft.gbs" :class="fieldClass">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect v-model="draft.domain" :class="fieldClass">
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL1">
+        <NativeSelect v-model="draft.pl1" :class="fieldClass">
+          <option v-for="option in pl1Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL2">
+        <NativeSelect v-model="draft.pl2" :class="fieldClass">
+          <option v-for="option in pl2Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect v-model="draft.pl3" :class="fieldClass">
+          <option value="All">All</option>
+          <option v-for="option in pl3Options" :key="option.code" :value="option.code">
+            {{ option.name }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Submitted Date From">
+        <DatePicker
+          v-model="draft.submittedFrom"
+          aria-label="Submitted date from"
+          placeholder="From"
+          :class="fieldClass"
+        />
+      </FilterField>
+      <FilterField label="Submitted Date To">
+        <DatePicker
+          v-model="draft.submittedTo"
+          aria-label="Submitted date to"
+          placeholder="To"
+          :class="fieldClass"
+        />
+      </FilterField>
+    </QueryPanel>
 
     <ListLoading v-if="loading" class="h-48" />
 
@@ -302,7 +237,7 @@ watch(
     <ConfirmDialog
       v-model:open="exportOpen"
       title="Export Benchmark"
-      description="Download all benchmark rows matching the current filters as an Excel file. Pagination is not applied."
+      description="Download all benchmark rows matching the applied search filters as an Excel file. Pagination is not applied."
       confirm-label="Export"
       confirm-variant="default"
       :pending="exporting"

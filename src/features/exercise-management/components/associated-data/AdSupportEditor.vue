@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import {
   Table,
@@ -56,8 +57,6 @@ const emit = defineEmits<{
   'update:items': [value: SupportItem[]]
 }>()
 
-const controlClass =
-  'flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm'
 
 const { createSupport, updateSupport, deleteSupport, importSupport } =
   useExerciseAssociatedDataMutations()
@@ -392,9 +391,10 @@ async function onImportFile(event: Event) {
           <TableBody>
             <TableRow v-if="adding" class="bg-muted/30">
               <TableCell>
-                <select
+                <NativeSelect
                   v-model="categoryId"
-                  :class="controlClass"
+                  size="sm"
+                  class="w-full"
                   :aria-invalid="Boolean(errors.categoryId)"
                   @change="onCategoryChange"
                 >
@@ -406,19 +406,21 @@ async function onImportFile(event: Event) {
                   >
                     {{ category.name }}
                   </option>
-                </select>
+                </NativeSelect>
               </TableCell>
               <TableCell>
                 <Input
                   v-model="activity"
+                  size="sm"
                   placeholder="Activity"
                   :aria-invalid="Boolean(errors.activity)"
                 />
               </TableCell>
               <TableCell>
-                <select
+                <NativeSelect
                   v-model="frequencyCode"
-                  :class="controlClass"
+                  size="sm"
+                  class="w-full"
                   :aria-invalid="Boolean(errors.frequencyCode)"
                 >
                   <option
@@ -428,29 +430,32 @@ async function onImportFile(event: Event) {
                   >
                     {{ frequency.label }}
                   </option>
-                </select>
+                </NativeSelect>
               </TableCell>
               <TableCell>
                 <NumberFieldControl
                   v-model="volume"
+                  size="sm"
                   :min="0"
                   :invalid="Boolean(errors.volume)"
                 />
               </TableCell>
               <TableCell>
-                <select
+                <NativeSelect
                   v-model="unitOfMeasure"
-                  :class="controlClass"
+                  size="sm"
+                  class="w-full"
                   :aria-invalid="Boolean(errors.unitOfMeasure)"
                 >
                   <option v-for="uom in SUPPORT_UOMS" :key="uom" :value="uom">
                     {{ uom }}
                   </option>
-                </select>
+                </NativeSelect>
               </TableCell>
               <TableCell>
                 <NumberFieldControl
                   v-model="workloadPerUnitMinutes"
+                  size="sm"
                   :min="0"
                   :invalid="Boolean(errors.workloadPerUnitMinutes)"
                 />
@@ -466,6 +471,7 @@ async function onImportFile(event: Event) {
               <TableCell>
                 <Input
                   v-model="comments"
+                  size="sm"
                   placeholder="Comments"
                   :aria-invalid="Boolean(errors.comments)"
                 />
@@ -501,10 +507,11 @@ async function onImportFile(event: Event) {
             >
               <template v-if="editingId === item.id">
                 <TableCell>
-                  <select
+                  <NativeSelect
                     v-model="categoryId"
+                    size="sm"
+                    class="w-full"
                     :aria-invalid="Boolean(errors.categoryId)"
-                    :class="controlClass"
                     @change="onCategoryChange"
                   >
                     <option value="">Select category</option>
@@ -515,19 +522,21 @@ async function onImportFile(event: Event) {
                     >
                       {{ category.name }}
                     </option>
-                  </select>
+                  </NativeSelect>
                 </TableCell>
                 <TableCell>
                   <Input
                     v-model="activity"
+                    size="sm"
                     placeholder="Activity"
                     :aria-invalid="Boolean(errors.activity)"
                   />
                 </TableCell>
                 <TableCell>
-                  <select
+                  <NativeSelect
                     v-model="frequencyCode"
-                    :class="controlClass"
+                    size="sm"
+                    class="w-full"
                     :aria-invalid="Boolean(errors.frequencyCode)"
                   >
                     <option
@@ -537,29 +546,32 @@ async function onImportFile(event: Event) {
                     >
                       {{ frequency.label }}
                     </option>
-                  </select>
+                  </NativeSelect>
                 </TableCell>
                 <TableCell>
                   <NumberFieldControl
                     v-model="volume"
+                    size="sm"
                     :min="0"
                     :invalid="Boolean(errors.volume)"
                   />
                 </TableCell>
                 <TableCell>
-                  <select
+                  <NativeSelect
                     v-model="unitOfMeasure"
-                    :class="controlClass"
+                    size="sm"
+                    class="w-full"
                     :aria-invalid="Boolean(errors.unitOfMeasure)"
                   >
                     <option v-for="uom in SUPPORT_UOMS" :key="uom" :value="uom">
                       {{ uom }}
                     </option>
-                  </select>
+                  </NativeSelect>
                 </TableCell>
                 <TableCell>
                   <NumberFieldControl
                     v-model="workloadPerUnitMinutes"
+                    size="sm"
                     :min="0"
                     :invalid="Boolean(errors.workloadPerUnitMinutes)"
                   />
@@ -575,6 +587,7 @@ async function onImportFile(event: Event) {
                 <TableCell>
                   <Input
                     v-model="comments"
+                    size="sm"
                     placeholder="Comments"
                     :aria-invalid="Boolean(errors.comments)"
                   />

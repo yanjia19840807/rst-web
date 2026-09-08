@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { watchDebounced } from '@vueuse/core'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import PageActions from '@/components/PageActions.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 
 import { tmsApi } from '../api'
@@ -19,7 +16,9 @@ import {
   useTmsSessionsQuery,
 } from '../api/queries'
 import type { TmsListMode } from '../types'
-import TmsSessionFilters from './TmsSessionFilters.vue'
+import TmsSessionFilters, {
+  type TmsSessionFilterValues,
+} from './TmsSessionFilters.vue'
 import TmsSessionsTable from './TmsSessionsTable.vue'
 
 const props = withDefaults(
@@ -37,8 +36,7 @@ const emit = defineEmits<{
 const router = useRouter()
 const isSupervisor = computed(() => props.mode === 'supervisor')
 
-const filters = reactive({
-  status: 'completed' as const,
+const emptyFilterValues = (): TmsSessionFilterValues => ({
   sessionNo: '',
   reference: '',
   dateFrom: '',
@@ -46,16 +44,21 @@ const filters = reactive({
   agentCcgid: '',
   toolkitId: '',
   pl3Code: '',
+})
+
+const applied = reactive(emptyFilterValues())
+const pagination = reactive({
   page: 1,
   pageSize: 10,
 })
-const appliedSessionNo = ref('')
-const appliedReference = ref('')
+
 const queryFilters = computed(() => ({
-  ...filters,
-  sessionNo: appliedSessionNo.value,
-  reference: appliedReference.value,
+  status: 'completed' as const,
+  ...applied,
+  page: pagination.page,
+  pageSize: pagination.pageSize,
 }))
+
 const sessionsQuery = useTmsSessionsQuery(queryFilters, () => props.mode)
 const teamAgentsQuery = useTeamAgentsQuery(isSupervisor)
 const toolkitsQuery = useManagedToolkitsQuery(isSupervisor)
@@ -79,30 +82,15 @@ const pl3Options = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-watch(
-  () => [filters.dateFrom, filters.dateTo, filters.agentCcgid, filters.toolkitId, filters.pl3Code],
-  () => {
-    filters.page = 1
-  },
-)
+function applySearch(values: TmsSessionFilterValues) {
+  Object.assign(applied, values)
+  pagination.page = 1
+}
 
-watchDebounced(
-  () => filters.sessionNo,
-  (value) => {
-    appliedSessionNo.value = value
-    filters.page = 1
-  },
-  { debounce: 400 },
-)
-
-watchDebounced(
-  () => filters.reference,
-  (value) => {
-    appliedReference.value = value
-    filters.page = 1
-  },
-  { debounce: 400 },
-)
+function clearFilters() {
+  Object.assign(applied, emptyFilterValues())
+  pagination.page = 1
+}
 
 function openDelete(id: string) {
   deleteTargetId.value = id
@@ -150,32 +138,19 @@ function openDetail(id: string) {
 
 <template>
   <div>
-    <PageActions v-if="!embedded">
-      <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
-    </PageActions>
     <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
-      <CardHeader v-if="!embedded" class="items-baseline">
-        <CardTitle>{{ isSupervisor ? 'Team TMS Sessions' : 'My TMS Sessions' }}</CardTitle>
-      </CardHeader>
       <CardContent :class="embedded ? 'grid gap-4 px-0' : 'grid gap-4'">
         <TmsSessionFilters
-          v-model:session-no="filters.sessionNo"
-          v-model:reference="filters.reference"
-          v-model:date-from="filters.dateFrom"
-          v-model:date-to="filters.dateTo"
-          v-model:agent-ccgid="filters.agentCcgid"
-          v-model:toolkit-id="filters.toolkitId"
-          v-model:pl3-code="filters.pl3Code"
           :show-team-filters="isSupervisor"
-          :compact="embedded"
+          :show-export="true"
+          :exporting="exporting"
           :agents="teamAgentsQuery.data.value ?? []"
           :toolkits="toolkitsQuery.data.value ?? []"
           :pl3-options="pl3Options"
-        >
-          <template v-if="embedded" #actions>
-            <Button :disabled="exporting" @click="exportOpen = true">Export</Button>
-          </template>
-        </TmsSessionFilters>
+          @search="applySearch"
+          @clear="clearFilters"
+          @export="exportOpen = true"
+        />
 
         <TmsSessionsTable
           :sessions="sessionsQuery.data.value?.items ?? []"
@@ -189,14 +164,14 @@ function openDetail(id: string) {
 
         <TablePager
           :total="sessionsQuery.data.value?.total ?? 0"
-          :page="filters.page"
-          :page-size="filters.pageSize"
+          :page="pagination.page"
+          :page-size="pagination.pageSize"
           label="sessions"
-          @update:page="filters.page = $event"
+          @update:page="pagination.page = $event"
           @update:page-size="
             (size) => {
-              filters.pageSize = size
-              filters.page = 1
+              pagination.pageSize = size
+              pagination.page = 1
             }
           "
         />
@@ -206,7 +181,7 @@ function openDetail(id: string) {
     <ConfirmDialog
       v-model:open="exportOpen"
       title="Export TMS Sessions"
-      description="Download all sessions matching the current filters as an Excel file. Pagination is not applied."
+      description="Download all sessions matching the applied search filters as an Excel file. Pagination is not applied."
       confirm-label="Export"
       confirm-variant="default"
       :pending="exporting"

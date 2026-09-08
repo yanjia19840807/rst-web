@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
+import { NativeSelect } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import {
   Table,
@@ -964,14 +965,15 @@ async function confirmSlotImport() {
       </div>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Weeks
-        <select
+        <NativeSelect
           v-model="draftSlotWeeks"
-          class="h-8 w-20 rounded-[min(var(--radius-md),12px)] border border-input bg-card px-2 text-[0.8rem] text-foreground"
+          size="sm"
+          class="w-20"
           :disabled="readOnly || busy"
         >
           <option value="">—</option>
           <option v-for="week in 12" :key="week" :value="week">{{ week }}</option>
-        </select>
+        </NativeSelect>
       </label>
       <Button
         v-if="!readOnly"
@@ -1075,6 +1077,7 @@ async function confirmSlotImport() {
               <MonthPicker
                 v-if="editKey === row.key"
                 v-model="month"
+                size="sm"
                 class="w-[180px]"
                 :invalid="Boolean(monthlyErrors.month)"
               />
@@ -1082,6 +1085,7 @@ async function confirmSlotImport() {
             </TableCell>
             <TableCell>
               <NumberFieldControl
+                size="sm"
                 v-if="editKey === row.key"
                 v-model="monthlyActualVolume"
                 class="max-w-36"
@@ -1091,6 +1095,7 @@ async function confirmSlotImport() {
             </TableCell>
             <TableCell>
               <NumberFieldControl
+                size="sm"
                 v-if="editKey === row.key"
                 v-model="commercialPercent"
                 class="max-w-36"
@@ -1173,6 +1178,7 @@ async function confirmSlotImport() {
               <DatePicker
                 v-if="editKey === row.key"
                 v-model="volumeDate"
+                size="sm"
                 aria-label="Volume date"
                 placeholder="Select date"
                 class="w-[180px]"
@@ -1183,6 +1189,7 @@ async function confirmSlotImport() {
             <TableCell>{{ dayName(editKey === row.key ? volumeDate : row.volumeDate) }}</TableCell>
             <TableCell>
               <NumberFieldControl
+                size="sm"
                 v-if="editKey === row.key"
                 v-model="dailyActualVolume"
                 class="max-w-36"
@@ -1192,6 +1199,7 @@ async function confirmSlotImport() {
             </TableCell>
             <TableCell>
               <NumberFieldControl
+                size="sm"
                 v-if="editKey === row.key"
                 v-model="dailyAdjPercent"
                 class="max-w-36"
@@ -1269,6 +1277,7 @@ async function confirmSlotImport() {
             <TableCell>{{ formatSlotTime(row.slotStartAt, row.slotEndAt) }}</TableCell>
             <TableCell>
               <NumberFieldControl
+                size="sm"
                 v-if="slotEditingIndex === index"
                 v-model="slotActualVolume"
                 class="max-w-36"

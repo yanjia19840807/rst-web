@@ -288,7 +288,8 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/settings/MailPreferencesPage.vue'),
     meta: {
       title: 'Email notifications',
-      subtitle: 'Choose which RST mail this role should receive.',
+      subtitle:
+        'Choose which RST mail this role should receive. Mail is sent to the address on your Timesheet person row.',
     },
   },
   {

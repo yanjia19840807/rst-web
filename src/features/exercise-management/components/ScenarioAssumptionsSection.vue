@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import DetailTable from '@/components/DetailTable.vue'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -206,7 +207,6 @@ function formatShiftTime(value?: string | null) {
                   <div v-else class="grid gap-1">
                     <TimePicker
                       v-model="row.startTime"
-                      size="sm"
                       class="w-[140px]"
                       :disabled="busy"
                       :invalid="Boolean(shiftFieldErrors?.[index]?.startTime)"
@@ -292,10 +292,10 @@ function formatShiftTime(value?: string | null) {
                     <Label class="sr-only" :for="`shift-weekend-${row.shiftNo}`">
                       Shift {{ row.shiftNo }} Team Weekend
                     </Label>
-                    <select
+                    <NativeSelect
                       :id="`shift-weekend-${row.shiftNo}`"
                       v-model="row.weekendCode"
-                      class="flex h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+                      class="w-full"
                       :disabled="busy"
                       :aria-invalid="Boolean(shiftFieldErrors?.[index]?.weekendCode)"
                       @change="emit('shiftEdited')"
@@ -307,7 +307,7 @@ function formatShiftTime(value?: string | null) {
                       >
                         {{ option.label }}
                       </option>
-                    </select>
+                    </NativeSelect>
                     <p
                       v-if="shiftFieldErrors?.[index]?.weekendCode"
                       class="text-xs text-destructive"

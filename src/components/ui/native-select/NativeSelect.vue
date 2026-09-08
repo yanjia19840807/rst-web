@@ -34,6 +34,13 @@ function classHas(token: string) {
 
 const wrapperFull = computed(() => classHas('w-full'))
 const wrapperH8 = computed(() => classHas('h-8'))
+
+const isEmptyValue = computed(() => {
+  const value = modelValue.value
+  if (value == null) return true
+  if (Array.isArray(value)) return value.length === 0
+  return String(value) === ''
+})
 </script>
 
 <template>
@@ -56,6 +63,7 @@ const wrapperH8 = computed(() => classHas('h-8'))
       :class="
         cn(
           'border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-full w-full min-w-0 appearance-none rounded-lg border bg-card py-0 pr-8 pl-2.5 text-sm leading-none transition-colors select-none focus-visible:ring-3 aria-invalid:ring-3 data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-[size=xs]:rounded-[min(var(--radius-md),10px)] data-[size=xs]:pr-6 data-[size=xs]:pl-2 data-[size=xs]:text-xs outline-none disabled:pointer-events-none disabled:cursor-not-allowed',
+          isEmptyValue ? 'text-muted-foreground' : 'text-foreground',
           props.class,
         )
       "

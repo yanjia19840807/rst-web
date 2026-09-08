@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import {
   Table,
   TableBody,
@@ -399,6 +400,7 @@ async function onImportFile(event: Event) {
             <TableCell>
               <DatePicker
                 v-model="holidayDate"
+                size="sm"
                 aria-label="Holiday date"
                 placeholder="Select date"
                 class="w-[180px]"
@@ -406,9 +408,10 @@ async function onImportFile(event: Event) {
               />
             </TableCell>
             <TableCell>
-              <select
+              <NativeSelect
                 v-model="holidayType"
-                class="flex h-9 w-full min-w-[140px] rounded-md border border-input bg-card px-3 text-sm"
+                size="sm"
+                class="w-full min-w-[140px]"
                 aria-label="Day type"
                 :aria-invalid="Boolean(errors.holidayType)"
               >
@@ -419,11 +422,12 @@ async function onImportFile(event: Event) {
                 >
                   {{ option.label }}
                 </option>
-              </select>
+              </NativeSelect>
             </TableCell>
             <TableCell>
               <Input
                 v-model="holidayName"
+                size="sm"
                 placeholder="Description"
                 :aria-invalid="Boolean(errors.holidayName)"
               />
@@ -461,6 +465,7 @@ async function onImportFile(event: Event) {
               <TableCell>
                 <DatePicker
                   v-model="holidayDate"
+                  size="sm"
                   aria-label="Holiday date"
                   placeholder="Select date"
                   class="w-[180px]"
@@ -468,9 +473,10 @@ async function onImportFile(event: Event) {
                 />
               </TableCell>
               <TableCell>
-                <select
+                <NativeSelect
                   v-model="holidayType"
-                  class="flex h-9 w-full min-w-[140px] rounded-md border border-input bg-card px-3 text-sm"
+                  size="sm"
+                  class="w-full min-w-[140px]"
                   aria-label="Day type"
                   :aria-invalid="Boolean(errors.holidayType)"
                 >
@@ -481,11 +487,12 @@ async function onImportFile(event: Event) {
                   >
                     {{ option.label }}
                   </option>
-                </select>
+                </NativeSelect>
               </TableCell>
               <TableCell>
                 <Input
                   v-model="holidayName"
+                  size="sm"
                   placeholder="Description"
                   :aria-invalid="Boolean(errors.holidayName)"
                 />

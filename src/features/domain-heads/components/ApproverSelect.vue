@@ -5,6 +5,7 @@ import PersonPicker, {
   type PersonPickerQuery,
   type PersonPickerRow,
 } from '@/components/PersonPicker.vue'
+import type { ButtonVariants } from '@/components/ui/button'
 import { useTimesheetPeopleQuery } from '@/features/timesheet/api/queries'
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
   fallbackName?: string | null
   fallbackPositionId?: string | null
   disabled?: boolean
+  size?: ButtonVariants['size']
 }>()
 
 const emit = defineEmits<{
@@ -68,6 +70,7 @@ function formatLabel(row: PersonPickerRow) {
     :loading="loading"
     :empty-text="emptyText"
     :disabled="disabled"
+    :size="size"
     :format-label="formatLabel"
     @update:model-value="emit('update:modelValue', $event)"
     @query="pickerQuery = $event"

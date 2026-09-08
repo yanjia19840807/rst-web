@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { watchDebounced } from '@vueuse/core'
 
+import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import TabStrip from '@/components/TabStrip.vue'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import AdMetric from '@/features/exercise-management/components/associated-data/AdMetric.vue'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { exerciseApi } from '@/features/exercise-management/api'
@@ -32,29 +32,27 @@ const router = useRouter()
 const queryClient = useQueryClient()
 const activeTab = ref<TabKey>('Awaiting Review')
 
-const exerciseFilter = ref('')
-const appliedExerciseCode = ref('')
-const pl3Filter = ref('All PL3')
-const toolkitFilter = ref('All toolkits')
-const submittedFrom = ref('')
-const submittedTo = ref('')
-const draftSubmittedFrom = ref('')
-const draftSubmittedTo = ref('')
-const decisionFilter = ref('All decisions')
-const completedFrom = ref('')
-const completedTo = ref('')
-const draftCompletedFrom = ref('')
-const draftCompletedTo = ref('')
-const moreFiltersOpen = ref(false)
+const emptyFilters = () => ({
+  exerciseCode: '',
+  toolkit: 'All toolkits',
+  pl3: '',
+  submittedFrom: '',
+  submittedTo: '',
+  decision: 'All decisions',
+  completedFrom: '',
+  completedTo: '',
+})
+
+const draft = reactive(emptyFilters())
+const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
 const toolkitInfoOpen = ref(false)
 const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
 const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
+const fieldClass = 'w-[220px]'
 
 const tabs: TabKey[] = ['Awaiting Review', 'Completed Task']
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 const columns = computed(() =>
   createApprovalQueueColumns({
@@ -73,17 +71,14 @@ const listQuery = computed<ApprovalQueueQuery>(() => {
   return {
     status: 'AWAITING',
     completed,
-    exerciseCode: appliedExerciseCode.value,
-    toolkitName: toolkitFilter.value === 'All toolkits' ? undefined : toolkitFilter.value,
-    pl3Name: pl3Filter.value === 'All PL3' ? undefined : pl3Filter.value,
-    submittedFrom: completed ? undefined : submittedFrom.value || undefined,
-    submittedTo: completed ? undefined : submittedTo.value || undefined,
-    completedFrom: completed ? completedFrom.value || undefined : undefined,
-    completedTo: completed ? completedTo.value || undefined : undefined,
-    decision:
-      !completed || decisionFilter.value === 'All decisions'
-        ? undefined
-        : decisionFilter.value,
+    exerciseCode: applied.exerciseCode || undefined,
+    toolkitName: applied.toolkit === 'All toolkits' ? undefined : applied.toolkit,
+    pl3Name: applied.pl3 || undefined,
+    submittedFrom: completed ? undefined : applied.submittedFrom || undefined,
+    submittedTo: completed ? undefined : applied.submittedTo || undefined,
+    completedFrom: completed ? applied.completedFrom || undefined : undefined,
+    completedTo: completed ? applied.completedTo || undefined : undefined,
+    decision: !completed || applied.decision === 'All decisions' ? undefined : applied.decision,
     page: page.value,
     pageSize: pageSize.value,
   }
@@ -105,53 +100,19 @@ const toolkitNames = computed(() => queueQuery.data.value?.toolkitNames ?? [])
 const pl3Names = computed(() => queueQuery.data.value?.pl3Names ?? [])
 const loading = computed(() => queueQuery.isPending.value && !queueQuery.data.value)
 
-const pl3Options = computed(() => ['All PL3', ...pl3Names.value])
+const pl3Options = computed(() => pl3Names.value)
 
 const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
 
-const advancedFilterCount = computed(() =>
-  activeTab.value === 'Awaiting Review'
-    ? Number(Boolean(submittedFrom.value || submittedTo.value))
-    : Number(Boolean(completedFrom.value || completedTo.value)),
-)
-
-function resetPage() {
+function applySearch() {
+  Object.assign(applied, { ...draft })
   page.value = 1
 }
 
-function toggleMoreFilters() {
-  if (!moreFiltersOpen.value) {
-    if (activeTab.value === 'Awaiting Review') {
-      draftSubmittedFrom.value = submittedFrom.value
-      draftSubmittedTo.value = submittedTo.value
-    } else {
-      draftCompletedFrom.value = completedFrom.value
-      draftCompletedTo.value = completedTo.value
-    }
-  }
-  moreFiltersOpen.value = !moreFiltersOpen.value
-}
-
-function clearAdvancedDraft() {
-  if (activeTab.value === 'Awaiting Review') {
-    draftSubmittedFrom.value = ''
-    draftSubmittedTo.value = ''
-  } else {
-    draftCompletedFrom.value = ''
-    draftCompletedTo.value = ''
-  }
-}
-
-function applyAdvancedFilters() {
-  if (activeTab.value === 'Awaiting Review') {
-    submittedFrom.value = draftSubmittedFrom.value
-    submittedTo.value = draftSubmittedTo.value
-  } else {
-    completedFrom.value = draftCompletedFrom.value
-    completedTo.value = draftCompletedTo.value
-  }
-  resetPage()
-  moreFiltersOpen.value = false
+function clearFilters() {
+  Object.assign(draft, emptyFilters())
+  Object.assign(applied, emptyFilters())
+  page.value = 1
 }
 
 function openReview(item: ApprovalQueueItem) {
@@ -177,47 +138,12 @@ async function openToolkit(item: ApprovalQueueItem) {
 }
 
 function onTabChange(tab: TabKey) {
+  if (tab === activeTab.value) return
   activeTab.value = tab
-  exerciseFilter.value = ''
-  appliedExerciseCode.value = ''
-  toolkitFilter.value = 'All toolkits'
-  pl3Filter.value = 'All PL3'
-  submittedFrom.value = ''
-  submittedTo.value = ''
-  draftSubmittedFrom.value = ''
-  draftSubmittedTo.value = ''
-  decisionFilter.value = 'All decisions'
-  completedFrom.value = ''
-  completedTo.value = ''
-  draftCompletedFrom.value = ''
-  draftCompletedTo.value = ''
-  moreFiltersOpen.value = false
-  resetPage()
+  Object.assign(draft, emptyFilters())
+  Object.assign(applied, emptyFilters())
+  page.value = 1
 }
-
-watch(
-  [
-    toolkitFilter,
-    pl3Filter,
-    decisionFilter,
-    submittedFrom,
-    submittedTo,
-    completedFrom,
-    completedTo,
-  ],
-  () => {
-    resetPage()
-  },
-)
-
-watchDebounced(
-  exerciseFilter,
-  (value) => {
-    appliedExerciseCode.value = value
-    resetPage()
-  },
-  { debounce: 400 },
-)
 
 watch(
   () => ({
@@ -271,128 +197,94 @@ watch(
         />
       </CardHeader>
       <CardContent class="space-y-3">
-        <template v-if="activeTab === 'Awaiting Review'">
-          <div class="flex flex-wrap items-end gap-2.5">
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Exercise Code
-              <Input
-                v-model="exerciseFilter"
-                class="w-[210px]"
-                placeholder="Search exercise code"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Toolkit
-              <select v-model="toolkitFilter" :class="[selectClass, 'w-[210px]']">
-                <option v-for="option in toolkitOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              PL3
-              <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
-                <option v-for="option in pl3Options" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <Button variant="outline" @click="toggleMoreFilters">
-              More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-            </Button>
-          </div>
-          <div
-            v-if="moreFiltersOpen"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
-          >
+        <QueryPanel :key="activeTab" @search="applySearch" @clear="clearFilters">
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Exercise Code
+            <Input
+              v-model="draft.exerciseCode"
+              :class="fieldClass"
+              placeholder="Search exercise code"
+            />
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Toolkit
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.toolkit"
+              @update:model-value="draft.toolkit = String($event ?? 'All toolkits')"
+            >
+              <option v-for="option in toolkitOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            PL3
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.pl3"
+              @update:model-value="draft.pl3 = String($event ?? '')"
+            >
+              <option value="">All PL3</option>
+              <option v-for="option in pl3Options" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <template v-if="activeTab === 'Awaiting Review'">
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Submitted Date From
               <DatePicker
-                v-model="draftSubmittedFrom"
+                v-model="draft.submittedFrom"
                 aria-label="Submitted date from"
                 placeholder="From"
-                class="w-[180px]"
+                :class="fieldClass"
               />
             </label>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Submitted Date To
               <DatePicker
-                v-model="draftSubmittedTo"
+                v-model="draft.submittedTo"
                 aria-label="Submitted date to"
                 placeholder="To"
-                class="w-[180px]"
+                :class="fieldClass"
               />
             </label>
-            <Button variant="outline" @click="clearAdvancedDraft">Clear</Button>
-            <Button @click="applyAdvancedFilters">Apply Filters</Button>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="flex flex-wrap items-end gap-2.5">
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Exercise Code
-              <Input
-                v-model="exerciseFilter"
-                class="w-[220px]"
-                placeholder="Search exercise code"
-              />
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Toolkit
-              <select v-model="toolkitFilter" :class="[selectClass, 'w-[240px]']">
-                <option v-for="option in toolkitOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
-              PL3
-              <select v-model="pl3Filter" :class="[selectClass, 'w-[210px]']">
-                <option v-for="option in pl3Options" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
+          </template>
+          <template v-else>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               My Decision
-              <select v-model="decisionFilter" :class="[selectClass, 'w-[170px]']">
+              <NativeSelect
+                :class="fieldClass"
+                :model-value="draft.decision"
+                @update:model-value="draft.decision = String($event ?? 'All decisions')"
+              >
                 <option>All decisions</option>
                 <option>Approved</option>
                 <option>Returned</option>
                 <option>Rejected</option>
-              </select>
+              </NativeSelect>
             </label>
-            <Button variant="outline" @click="toggleMoreFilters">
-              More Filters{{ advancedFilterCount ? ` (${advancedFilterCount})` : '' }}
-            </Button>
-          </div>
-          <div
-            v-if="moreFiltersOpen"
-            class="flex flex-wrap items-end gap-2.5 rounded-lg border bg-muted/40 p-3"
-          >
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Completed Date From
               <DatePicker
-                v-model="draftCompletedFrom"
+                v-model="draft.completedFrom"
                 aria-label="Completed date from"
                 placeholder="From"
-                class="w-[180px]"
+                :class="fieldClass"
               />
             </label>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
               Completed Date To
               <DatePicker
-                v-model="draftCompletedTo"
+                v-model="draft.completedTo"
                 aria-label="Completed date to"
                 placeholder="To"
-                class="w-[180px]"
+                :class="fieldClass"
               />
             </label>
-            <Button variant="outline" @click="clearAdvancedDraft">Clear</Button>
-            <Button @click="applyAdvancedFilters">Apply Filters</Button>
-          </div>
-        </template>
+          </template>
+        </QueryPanel>
 
         <DataTable
           :columns="columns"

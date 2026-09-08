@@ -89,7 +89,7 @@ function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) 
         :class="
           cn(
             pickerTriggerClass,
-            !hasValue && 'text-muted-foreground',
+            hasValue ? 'text-foreground' : 'text-muted-foreground',
             props.class,
           )
         "

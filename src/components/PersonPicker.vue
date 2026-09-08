@@ -5,7 +5,7 @@ import { watchDebounced } from '@vueuse/core'
 
 import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
-import { Button } from '@/components/ui/button'
+import { Button, type ButtonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Popover,
@@ -48,6 +48,7 @@ const props = withDefaults(
     emptyText?: string
     searchPlaceholder?: string
     triggerClass?: string
+    size?: ButtonVariants['size']
     formatLabel?: (row: PersonPickerRow) => string
   }>(),
   {
@@ -55,6 +56,7 @@ const props = withDefaults(
     allowClear: false,
     emptyText: 'No people found',
     searchPlaceholder: 'Search name or email',
+    size: 'default',
   },
 )
 
@@ -148,7 +150,14 @@ watch(
       <Button
         type="button"
         variant="outline"
-        :class="cn('relative w-full justify-start pr-8 pl-2.5 font-normal', triggerClass)"
+        :size="size"
+        :class="
+          cn(
+            'relative w-full justify-start pr-8 pl-2.5 font-normal',
+            selected ? 'text-foreground' : 'text-muted-foreground',
+            triggerClass,
+          )
+        "
         :disabled="disabled"
         :aria-invalid="invalid || undefined"
       >
@@ -163,8 +172,8 @@ watch(
         <div class="min-w-0 flex-1">
           <Input
             v-model="queryInput"
+            size="sm"
             :placeholder="searchPlaceholder"
-            class="h-8 text-sm"
           />
         </div>
         <Button
