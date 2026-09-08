@@ -39,9 +39,10 @@ const items = computed(() =>
 )
 const total = computed(() => peopleQuery.data.value?.total ?? 0)
 const loading = computed(() => peopleQuery.isFetching.value)
-const emptyText = computed(() =>
-  pickerQuery.value.q ? 'No matching people' : 'No people found',
-)
+const emptyText = computed(() => {
+  if (peopleQuery.isError.value) return 'Could not load people'
+  return pickerQuery.value.q ? 'No matching people' : 'No people found'
+})
 </script>
 
 <template>

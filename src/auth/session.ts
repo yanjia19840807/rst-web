@@ -122,6 +122,7 @@ export const useSessionStore = defineStore('session', () => {
           ...local,
           displayName: me.ccgid === local.ccgid && me.displayName ? me.displayName : local.displayName,
           email: me.ccgid === local.ccgid && me.email ? me.email : local.email,
+          center: me.ccgid === local.ccgid && me.center ? me.center : local.center,
           scopes: me.scopes?.length ? me.scopes : local.scopes,
           actor: me.ccgid === local.ccgid && me.actor ? me.actor : local.actor,
           delegationId: me.delegationId ?? null,
