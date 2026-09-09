@@ -67,7 +67,7 @@ const lead = computed(() => {
     return `${prefix} Confirm below to submit using the frozen scope.`
   }
   if (props.audience === 'approval') {
-    return `${prefix} Approve to continue with the frozen scope, Return it to the Supervisor, or Reject if the scope is no longer valid.`
+    return `${prefix} Approve to continue with the frozen scope, or Return it to the Supervisor.`
   }
   return `${prefix} You can continue this exercise, or delete it and create a new one after updating the Toolkit.`
 })

@@ -300,7 +300,7 @@ function withToolkitAlignment(toolkit: SupervisorToolkit) {
 }
 
 function exerciseAlignment(exercise: Exercise) {
-  if (exercise.workflowStatus === 'APPROVED' || exercise.workflowStatus === 'REJECTED') {
+  if (exercise.workflowStatus === 'APPROVED') {
     return null
   }
   const candidates = kpiCandidates(exercise.snapshot.toolkit.pl3Code)
@@ -481,7 +481,7 @@ function syncFlags(exercise: Exercise) {
     exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
   exercise.submissionStatus = shell.submitted?.submissionStatus ?? null
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS'
-  exercise.canDelete = exercise.canEdit && !exercise.submittedAt
+  exercise.canDelete = exercise.canEdit
   exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
   const ready = shell.submitted?.steps.find((step) => step.routingStatus === 'PENDING')
   if (exercise.workflowStatus === 'UNDER_REVIEW' && shell.submitted) {
@@ -709,7 +709,7 @@ export const supervisorHandlers = [
     const params = new URL(request.url).searchParams
     const tab = params.get('tab') || 'IN_PROGRESS'
     const tabStatuses = tab === 'ARCHIVED'
-      ? new Set(['APPROVED', 'REJECTED'])
+      ? new Set(['APPROVED'])
       : new Set(['IN_PROGRESS', 'UNDER_REVIEW'])
     const source = exercises.filter((item) => tabStatuses.has(item.workflowStatus))
     const items = source.filter((item) => matchesExerciseList(item, params))

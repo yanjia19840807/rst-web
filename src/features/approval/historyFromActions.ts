@@ -37,8 +37,7 @@ function isSubmit(action: WorkflowActionView) {
 function isReviewerDecision(action: WorkflowActionView) {
   return !isSubmit(action)
     && (action.actionType === 'APPROVED'
-      || action.actionType === 'RETURNED'
-      || action.actionType === 'REJECTED')
+      || action.actionType === 'RETURNED')
 }
 
 function decision(action: WorkflowActionView) {
@@ -48,8 +47,6 @@ function decision(action: WorkflowActionView) {
       return 'Approved'
     case 'RETURNED':
       return 'Returned'
-    case 'REJECTED':
-      return 'Rejected'
     case 'WITHDRAWN':
       return 'Withdrawn'
     default:

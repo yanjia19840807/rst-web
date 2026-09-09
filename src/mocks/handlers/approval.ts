@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
 import type {
+  ActionView,
   ApprovalDetailView,
   ApprovalQueueItem,
   ApproveRequest,
@@ -26,7 +27,7 @@ function syncFlags(exercise: Exercise) {
   const shell = ensureShell(exercise)
   exercise.officialScenarioId = exercise.officialScenarioId ?? shell.submitted?.scenarioId ?? null
   exercise.canEdit = exercise.workflowStatus === 'IN_PROGRESS'
-  exercise.canDelete = exercise.canEdit && !exercise.submittedAt
+  exercise.canDelete = exercise.canEdit
   exercise.canSubmit = Boolean(exercise.officialScenarioId) && exercise.canEdit
 }
 
@@ -69,26 +70,49 @@ function previousStepLabel(role?: string | null) {
   }
 }
 
-function currentAwaitingRole(submitted: SubmittedDetails) {
-  if (!isOpenStatus(submitted.submissionStatus)) return null
-  return requiredRole(submitted)
+function isReviewerDecision(action: ActionView) {
+  return (
+    (action.actionType === 'APPROVED' || action.actionType === 'RETURNED') &&
+    (action.actorRoleCode === 'MANAGER' ||
+      action.actorRoleCode === 'CDH' ||
+      action.actorRoleCode === 'LTH')
+  )
+}
+
+function reviewDecisions(submitted: SubmittedDetails) {
+  return submitted.actions.filter(isReviewerDecision)
 }
 
 function roleDecision(submitted: SubmittedDetails) {
-  return submitted.actions.filter(
-    (action) =>
-      (action.actionType === 'APPROVED' || action.actionType === 'RETURNED' || action.actionType === 'REJECTED') &&
-      (action.actorRoleCode === 'MANAGER' ||
-        action.actorRoleCode === 'CDH' ||
-        action.actorRoleCode === 'LTH'),
-  ).at(-1) ?? null
+  return reviewDecisions(submitted).at(-1) ?? null
+}
+
+function cycleSubmittedAt(submitted: SubmittedDetails, actionAt?: string | null) {
+  const submits = submitted.actions
+    .filter(
+      (action) =>
+        action.actionType === 'APPROVED' &&
+        (action.actorRoleCode === 'SUPERVISOR' || (action.stepNo ?? 0) === 0),
+    )
+    .sort((a, b) => new Date(a.actionAt).getTime() - new Date(b.actionAt).getTime())
+  if (!actionAt) return submitted.submittedAt
+  const at = new Date(actionAt).getTime()
+  let last = submitted.submittedAt
+  for (const submit of submits) {
+    if (new Date(submit.actionAt).getTime() <= at) last = submit.actionAt
+  }
+  return last
 }
 
 function isClosedSubmission(status: string) {
-  return status === 'APPROVED' || status === 'RETURNED' || status === 'REJECTED' || status === 'WITHDRAWN'
+  return status === 'APPROVED' || status === 'RETURNED' || status === 'WITHDRAWN'
 }
 
-function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQueueItem {
+function toQueueItem(
+  exercise: Exercise,
+  submitted: SubmittedDetails,
+  mine: ActionView | null = reviewDecisions(submitted).at(-1) ?? null,
+): ApprovalQueueItem {
   const deliveryHc = (exercise.snapshot.sharedKpis ?? []).reduce(
     (sum, item) => sum + Number(item.deliveryHc || 0),
     0,
@@ -114,12 +138,12 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
       action.actionType === 'WITHDRAWN' ||
       action.actionType === 'APPROVED',
   )
-  const mine = roleDecision(submitted)
   const archivedAt = isClosedSubmission(submitted.submissionStatus)
     ? (closeActions[closeActions.length - 1]?.actionAt ?? submitted.submittedAt)
     : submitted.submittedAt
   return {
     submissionId: submitted.submissionId,
+    completedTaskId: mine?.requestId || (mine ? `${submitted.submissionId}-${mine.stepNo}-${mine.actionAt}` : null),
     exerciseId: exercise.id,
     exerciseCode: exercise.exerciseCode,
     center: exercise.snapshot.toolkit.center,
@@ -136,13 +160,15 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
     previousStepAt: last?.actionAt ?? submitted.submittedAt,
     agingDays: daysBetween(agingFrom),
     createdAt: exercise.createdAt,
-    submittedAt: submitted.submittedAt,
+    submittedAt: mine ? cycleSubmittedAt(submitted, mine.actionAt) : submitted.submittedAt,
     archivedAt,
     finalStatus: submitted.submissionStatus === 'APPROVED'
       ? 'Approved'
-      : submitted.submissionStatus === 'RETURNED' || submitted.submissionStatus === 'WITHDRAWN'
-        ? 'Rejected'
-        : null,
+      : submitted.submissionStatus === 'RETURNED'
+        ? 'Returned'
+        : submitted.submissionStatus === 'WITHDRAWN'
+          ? 'Withdrawn'
+          : null,
     reviewDurationDays: isClosedSubmission(submitted.submissionStatus)
       ? daysBetween(submitted.submittedAt)
       : null,
@@ -152,9 +178,7 @@ function toQueueItem(exercise: Exercise, submitted: SubmittedDetails): ApprovalQ
         ? 'Approved'
         : mine?.actionType === 'RETURNED'
           ? 'Returned'
-          : mine?.actionType === 'REJECTED'
-            ? 'Rejected'
-            : null,
+          : null,
     myCompletedAt: mine?.actionAt ?? null,
     completedStep: mine ? previousStepLabel(mine.actorRoleCode) : null,
     scopeChanged: isOpenStatus(submitted.submissionStatus) && hasStructuralDrift(exercise),
@@ -279,14 +303,9 @@ export const approvalHandlers = [
       .map((item) => toQueueItem(item.exercise, item.submitted))
     const source = completed
       ? listSubmitted()
-          .map((item) => {
-            const row = toQueueItem(item.exercise, item.submitted)
-            const mine = roleDecision(item.submitted)
-            const current = currentAwaitingRole(item.submitted)
-            return { row, include: Boolean(row.myDecision) && (!current || current !== mine?.actorRoleCode) }
-          })
-          .filter((item) => item.include)
-          .map((item) => item.row)
+          .flatMap((item) =>
+            reviewDecisions(item.submitted).map((action) => toQueueItem(item.exercise, item.submitted, action)),
+          )
           .sort(
             (a, b) =>
               new Date(b.myCompletedAt ?? 0).getTime() - new Date(a.myCompletedAt ?? 0).getTime(),
@@ -395,44 +414,6 @@ export const approvalHandlers = [
     ctx.submitted.submissionStatus = 'RETURNED'
     ctx.exercise.workflowStatus = 'IN_PROGRESS'
     ctx.exercise.submissionStatus = 'RETURNED'
-    syncFlags(ctx.exercise)
-    return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
-  }),
-
-  http.post('*/api/v1/approvals/:submissionId/reject', async ({ params, request }) => {
-    const ctx = findBySubmission(params.submissionId)
-    if (!ctx) return problem(404, 'The Submission was not found.')
-    if (!isOpenStatus(ctx.submitted.submissionStatus)) {
-      return problem(409, 'Submission is not awaiting approval.')
-    }
-    const body = ((await request.json().catch(() => ({}))) ?? {}) as ReturnRequest
-    if (!body.comments?.trim()) {
-      return problem(422, 'Reject comments are required.')
-    }
-    const requestId = body.requestId ?? crypto.randomUUID()
-    if (ctx.submitted.actions.some((action) => action.requestId === requestId)) {
-      return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
-    }
-
-    const now = new Date().toISOString()
-    const step = ctx.submitted.steps.find((item) => item.routingStatus === 'PENDING')
-    const stepNo = step?.stepNo ?? ctx.submitted.currentStep ?? 1
-    const role = step?.requiredRoleCode ?? 'MANAGER'
-
-    if (step) step.routingStatus = 'REJECTED'
-    ctx.submitted.actions.push({
-      stepNo,
-      actionType: 'REJECTED',
-      actorCcgid: crypto.randomUUID(),
-      actorRoleCode: role,
-      actorDisplayName: 'Approver',
-      comments: body.comments,
-      actionAt: now,
-      requestId,
-    })
-    ctx.submitted.submissionStatus = 'REJECTED'
-    ctx.exercise.workflowStatus = 'REJECTED'
-    ctx.exercise.submissionStatus = 'REJECTED'
     syncFlags(ctx.exercise)
     return HttpResponse.json(toDetail(ctx.exercise, ctx.submitted))
   }),

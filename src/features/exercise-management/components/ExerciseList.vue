@@ -57,9 +57,7 @@ const listQuery = computed<ExerciseListQuery>(() => {
       ? undefined
       : applied.finalStatus === 'Approved'
         ? 'APPROVED'
-        : applied.finalStatus === 'Rejected'
-          ? 'REJECTED'
-          : undefined,
+        : undefined,
     reviewStage: inProgress ? reviewStageQueryValue(applied.reviewStage) : undefined,
     handler:
       !inProgress || applied.reviewer === 'All reviewers' ? undefined : applied.reviewer,

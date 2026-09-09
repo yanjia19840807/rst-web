@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import type { MailPreferenceType, MailPreferenceView } from '@/features/mail-preference/types'
 
 const types: MailPreferenceType[] = [
-  { id: 'submission.outcome', label: 'Exercise returned, rejected or approved', enabled: true },
+  { id: 'workflow.notification', label: 'Workflow notifications', enabled: true },
 ]
 
 function view(): MailPreferenceView {

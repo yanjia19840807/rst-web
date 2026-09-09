@@ -42,8 +42,6 @@ export function currentStepLabel(exercise: {
       return nextStepLabel(exercise.requiredRole)
     case 'APPROVED':
       return 'Approved'
-    case 'REJECTED':
-      return 'Rejected'
     default:
       return SUPERVISOR_SIZING_STEP
   }
@@ -64,7 +62,7 @@ export type ExerciseListTabQuery = 'IN_PROGRESS' | 'ARCHIVED'
  * {@code IN_PROGRESS} or {@code ARCHIVED}.
  */
 export function exerciseListTabQuery(status?: string | null): ExerciseListTabQuery {
-  return status === 'APPROVED' || status === 'REJECTED' ? 'ARCHIVED' : 'IN_PROGRESS'
+  return status === 'APPROVED' ? 'ARCHIVED' : 'IN_PROGRESS'
 }
 
 export function exerciseListLocation(status?: string | null) {

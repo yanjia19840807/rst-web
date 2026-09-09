@@ -469,7 +469,7 @@ watch(
     <ConfirmDialog
       v-model:open="deleteOpen"
       title="Delete Exercise"
-      warning="This action cannot be undone. All scenarios and unsubmitted data associated with this exercise will be deleted."
+      warning="This action cannot be undone. The exercise, its scenarios, and any open approval process will be closed."
       :rows="
         exercise
           ? [

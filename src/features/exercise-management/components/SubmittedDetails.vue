@@ -71,7 +71,7 @@ const toolkitInfoOpen = ref(false)
 const comments = ref('')
 const redirected = ref(false)
 
-const { approve, returnToSupervisor, reject } = useApprovalMutations()
+const { approve, returnToSupervisor } = useApprovalMutations()
 const approvalQuery = useApprovalDetailQuery(
   () => props.submissionId,
   isApprover,
@@ -135,7 +135,7 @@ const latestDailySizing = computed(() => dailyQuery.data.value ?? null)
 const latestSlotSimulation = computed(() => slotQuery.data.value ?? null)
 const pending = computed(
   () =>
-    approve.isPending.value || returnToSupervisor.isPending.value || reject.isPending.value,
+    approve.isPending.value || returnToSupervisor.isPending.value,
 )
 
 const primaryPending = computed(() =>
@@ -382,32 +382,6 @@ function requestReturn() {
     return
   }
   void onReturn(reason)
-}
-
-async function onReject(reason: string) {
-  if (!props.submissionId || pending.value) return
-  try {
-    await reject.mutateAsync({
-      submissionId: props.submissionId,
-      body: {
-        comments: reason,
-        requestId: crypto.randomUUID(),
-      },
-    })
-    comments.value = ''
-    toast.success('Submission rejected.')
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Reject failed.')
-  }
-}
-
-function requestReject() {
-  const reason = comments.value.trim()
-  if (!reason) {
-    toast.error('Comment is required when rejecting a submission.')
-    return
-  }
-  void onReject(reason)
 }
 
 function downloadSummary() {
@@ -717,7 +691,6 @@ function downloadSummary() {
         @update:comments="comments = $event"
         @approve="onApprove"
         @return="requestReturn"
-        @reject="requestReject"
       />
       <ApprovalCompletedPanel v-else :workspace="workspace" />
     </div>

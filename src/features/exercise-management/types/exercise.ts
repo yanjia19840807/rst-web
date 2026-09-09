@@ -7,7 +7,6 @@ export type WorkflowStatus =
   | 'IN_PROGRESS'
   | 'UNDER_REVIEW'
   | 'APPROVED'
-  | 'REJECTED'
 
 export interface ExerciseKpiLine {
   id: string

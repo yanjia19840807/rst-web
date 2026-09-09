@@ -57,8 +57,6 @@ function historyDecision(action: WorkflowActionView) {
       return 'Approved'
     case 'RETURNED':
       return 'Returned'
-    case 'REJECTED':
-      return 'Rejected'
     case 'WITHDRAWN':
       return 'Withdrawn'
     default:
@@ -97,8 +95,7 @@ function historyRows(submitted: SubmittedDetails, mineStepNo?: number | null): A
         && action.stepNo === mineStepNo
         && !isSubmit(action)
         && (action.actionType === 'APPROVED'
-          || action.actionType === 'RETURNED'
-          || action.actionType === 'REJECTED')
+          || action.actionType === 'RETURNED')
       return [
         {
           actionId: action.requestId || `${action.stepNo}-${action.actionAt}`,
@@ -167,9 +164,7 @@ export function buildApprovalWorkspace(
       ? { state: 'APPROVED', label: 'Approved' }
       : submitted.submissionStatus === 'RETURNED'
         ? { state: 'RETURNED', label: 'Returned' }
-        : submitted.submissionStatus === 'REJECTED'
-          ? { state: 'REJECTED', label: 'Rejected' }
-          : submitted.submissionStatus === 'WITHDRAWN'
+        : submitted.submissionStatus === 'WITHDRAWN'
             ? { state: 'WITHDRAWN', label: 'Withdrawn' }
             : null
   return {

@@ -165,7 +165,6 @@ function onClear() {
         >
           <option>All statuses</option>
           <option>Approved</option>
-          <option>Rejected</option>
         </NativeSelect>
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">

@@ -262,7 +262,6 @@ watch(
                 <option>All decisions</option>
                 <option>Approved</option>
                 <option>Returned</option>
-                <option>Rejected</option>
               </NativeSelect>
             </label>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
@@ -296,7 +295,7 @@ watch(
               : 'No completed tasks found.'
           "
           :table-class="activeTab === 'Awaiting Review' ? 'min-w-[1520px]' : 'min-w-[1320px]'"
-          :get-row-id="(row) => row.submissionId"
+          :get-row-id="(row) => row.completedTaskId || row.submissionId"
           :column-visibility="columnVisibility"
         />
 

@@ -1,5 +1,6 @@
 export interface ApprovalQueueItem {
   submissionId: string
+  completedTaskId?: string | null
   exerciseId: string
   exerciseCode: string
   center?: string | null
