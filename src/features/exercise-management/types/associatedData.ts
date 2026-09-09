@@ -189,6 +189,15 @@ export interface CycleTimeBaselineFile {
   displayOrder: number
 }
 
+export interface TmsRatio {
+  reason: string
+  ratio: number | null
+  tmsVolumeSum: number
+  dailyVolumeSum: number
+  missingDateCount: number
+  threshold: number
+}
+
 export interface CycleTimeBaseline {
   id: string
   baselineType: string
@@ -199,6 +208,7 @@ export interface CycleTimeBaseline {
   active: boolean
   calculatedAt: string
   files?: CycleTimeBaselineFile[]
+  tmsRatio?: TmsRatio | null
 }
 
 export interface ExerciseTmsSession {

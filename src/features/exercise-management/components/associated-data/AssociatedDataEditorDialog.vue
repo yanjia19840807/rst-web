@@ -48,6 +48,8 @@ const props = defineProps<{
   daily: DailyVolume[]
   slot: SlotVolume[]
   cycleTime: CycleTimeBaseline | null
+  tmsFrom: string | null
+  tmsTo: string | null
   medianSource: MedianSourceMode
   readOnly?: boolean
 }>()
@@ -115,13 +117,16 @@ function onOpenChange(next: boolean) {
   if (!next) emit('close')
 }
 
-/** Editors that only need Close (no dialog-level Save). */
+const isSystemTms = computed(
+  () => props.editor === 'tms' && props.medianSource === 'system',
+)
+
 const closeOnly = computed(
   () =>
     props.editor === 'volume' ||
     props.editor === 'support' ||
     props.editor === 'calendar' ||
-    (props.editor === 'tms' && props.medianSource === 'system'),
+    isSystemTms.value,
 )
 
 async function save() {
@@ -209,7 +214,7 @@ async function save() {
                     : isManualTms
                       ? 'Enter the manual median override and reason, then save. Support files are optional.'
                       : editor === 'tms'
-                        ? 'Review TMS sessions linked to this exercise Cycle Time population.'
+                        ? 'Apply a TMS period to link COMPLETED sessions for the SYSTEM median. Changes are saved immediately.'
                         : 'Edit the exercise Associated Data, then save your changes.'
           }}
         </DialogDescription>
@@ -237,6 +242,8 @@ async function save() {
         <AdTmsEditor
           v-else-if="editor === 'tms'"
           :exercise-id="props.exerciseId"
+          :tms-from="tmsFrom"
+          :tms-to="tmsTo"
           :cycle-time="cycleTime"
           :read-only="readOnly"
         />

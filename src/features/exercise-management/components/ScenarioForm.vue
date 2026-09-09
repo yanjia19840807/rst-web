@@ -808,8 +808,9 @@ const scenarioInfoRows = computed(() => {
         </div>
 
         <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-          Sizing Month, TMS period, and Associated Data are maintained on the Exercise
-          ({{ periodHint }}). Slot Period is set in Volume Input. This scenario only changes
+          Sizing Month and Associated Data are maintained on the Exercise
+          ({{ periodHint }}). TMS period is set in Associated Data when using the SYSTEM
+          median. Slot Period is set in Volume Input. This scenario only changes
           Right Sizing HC, shifts, and simulation.
         </div>
       </CardContent>

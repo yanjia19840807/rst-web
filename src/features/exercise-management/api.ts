@@ -9,6 +9,7 @@ import type {
   CreateScenarioRequest,
   UpdateExercisePeriodsInput,
   UpdateExercisePeriodsResult,
+  UpdateTmsPeriodInput,
   UpdateSlotPeriodInput,
   UpdateSlotPeriodResult,
   CycleTimeBaseline,
@@ -126,6 +127,15 @@ export const exerciseApi = {
     apiRequest<UpdateExercisePeriodsResult>(exercisePath(id, '/periods'), {
       method: 'PUT',
       body: JSON.stringify(body),
+    }),
+  updateTmsPeriod: (id: string, body: UpdateTmsPeriodInput) =>
+    apiRequest<UpdateExercisePeriodsResult>(exercisePath(id, '/tms-period'), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  clearTmsPeriod: (id: string) =>
+    apiRequest<UpdateExercisePeriodsResult>(exercisePath(id, '/tms-period'), {
+      method: 'DELETE',
     }),
   updateSlotPeriod: (id: string, body: UpdateSlotPeriodInput) =>
     apiRequest<UpdateSlotPeriodResult>(exercisePath(id, '/slot-period'), {

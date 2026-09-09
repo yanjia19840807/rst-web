@@ -36,8 +36,8 @@ export interface Exercise {
   sizingMonth: string
   slotStartDate: string | null
   slotWeeks: number | null
-  tmsFrom: string
-  tmsTo: string
+  tmsFrom: string | null
+  tmsTo: string | null
   workflowStatus: WorkflowStatus
   submissionStatus?: string | null
   officialScenarioId: string | null
@@ -116,8 +116,6 @@ export interface ExerciseListView {
 export interface CreateExerciseInput {
   toolkitId: string
   sizingMonth: string
-  tmsFrom: string
-  tmsTo: string
 }
 
 export interface CreateExerciseResult {
@@ -127,6 +125,9 @@ export interface CreateExerciseResult {
 
 export interface UpdateExercisePeriodsInput {
   sizingMonth: string
+}
+
+export interface UpdateTmsPeriodInput {
   tmsFrom: string
   tmsTo: string
 }

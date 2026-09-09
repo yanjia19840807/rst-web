@@ -35,6 +35,7 @@ import {
   submitRemarksRequiredSchema,
   submitRemarksSchema,
 } from '../schemas/submitRemarks'
+import { formatTmsRatioPercent, TMS_RATIO_REASONS } from '../tmsRatio'
 import type {
   SubmittedDetails,
   ValidationFinding,
@@ -75,6 +76,7 @@ const submitting = computed(() => submit.isPending.value)
 
 const findingLabel: Record<ValidationRuleCode, string> = {
   DAILY_VS_MONTHLY: 'Daily total vs monthly total',
+  TMS_RATIO: 'TMS ratio vs Daily volume',
 }
 
 const reasonLabel: Record<string, string> = {
@@ -84,6 +86,10 @@ const reasonLabel: Record<string, string> = {
   'no-overlap': 'No overlapping months to compare',
   matched: 'Overlapping months match',
   mismatch: 'Overlapping months do not match',
+  ok: 'TMS ratio is at least 80%',
+  'incomplete-coverage': 'Daily volume is missing for some dates in the TMS period',
+  'below-threshold': 'TMS ratio is below 80%',
+  'daily-volume-zero': 'Daily volume in the TMS period sums to 0',
 }
 
 watch(open, (value) => {
@@ -149,8 +155,15 @@ function validationSummary(): string {
 
 function findingDetail(finding: ValidationFinding): string {
   const reason = finding.detail?.reason
-  if (reason && reasonLabel[reason]) return reasonLabel[reason]
-  return reason ?? '—'
+  const label = reason && reasonLabel[reason] ? reasonLabel[reason] : (reason ?? '—')
+  if (finding.ruleCode !== 'TMS_RATIO' || !finding.detail) return label
+  const extras: string[] = []
+  if (finding.detail.reason === TMS_RATIO_REASONS.incompleteCoverage) {
+    const missing = finding.detail.missingDateCount
+    if (missing != null) extras.push(`${missing} day${missing === 1 ? '' : 's'} without Daily volume`)
+  }
+  if (finding.detail.ratio != null) extras.push(formatTmsRatioPercent(finding.detail.ratio))
+  return extras.length ? `${label} (${extras.join(', ')})` : label
 }
 
 function mismatchesOf(finding: ValidationFinding) {

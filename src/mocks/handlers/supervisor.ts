@@ -9,6 +9,7 @@ import type {
   DailyVolume,
   DailyVolumeRequest,
   Exercise,
+  ExerciseTmsSession,
   MonthlyVolume,
   ManualBaselineRequest,
   MonthlyVolumeRequest,
@@ -19,6 +20,7 @@ import type {
   ValidationSeverity,
 } from '@/features/exercise-management/types'
 import { VALIDATION_RULES } from '@/features/exercise-management/types'
+import { attachSystemTmsRatio, computeTmsRatio, TMS_RATIO_REASONS } from '@/features/exercise-management/tmsRatio'
 import type {
   SharedKpiKey,
   SupervisorToolkit,
@@ -34,6 +36,8 @@ import {
 
 import { slotTrainKeys } from '@/features/exercise-management/periodWindows'
 import {
+  applyDemoTms,
+  emptyTms,
   ensureShell,
   exerciseShells,
   replaceEmptySlotGrid,
@@ -119,6 +123,42 @@ function dailyMonthlyVolumeCheck(
   return {
     severity: VALIDATION_RULES.DAILY_VS_MONTHLY.severity,
     detail: { reason: 'mismatch', comparedMonths: compared, mismatches },
+  }
+}
+
+function tmsRatioFinding(
+  exercise: Exercise,
+  daily: DailyVolume[],
+  sessions: ExerciseTmsSession[],
+  baselineType: string | null | undefined,
+) {
+  if (baselineType?.toUpperCase() !== 'SYSTEM' || !exercise.tmsFrom || !exercise.tmsTo) {
+    return null
+  }
+  const ratio = computeTmsRatio({
+    tmsFrom: exercise.tmsFrom,
+    tmsTo: exercise.tmsTo,
+    daily,
+    sessions,
+  })
+  if (!ratio) return null
+  const warning =
+    ratio.reason === TMS_RATIO_REASONS.incompleteCoverage ||
+    ratio.reason === TMS_RATIO_REASONS.belowThreshold ||
+    ratio.reason === TMS_RATIO_REASONS.dailyVolumeZero
+  return {
+    ruleCode: 'TMS_RATIO' as const,
+    severity: warning ? VALIDATION_RULES.TMS_RATIO.severity : ('OK' as ValidationSeverity),
+    detail: {
+      reason: ratio.reason,
+      comparedMonths: 0,
+      mismatches: [],
+      ratio: ratio.ratio,
+      tmsVolumeSum: ratio.tmsVolumeSum,
+      dailyVolumeSum: ratio.dailyVolumeSum,
+      missingDateCount: ratio.missingDateCount,
+      threshold: ratio.threshold,
+    },
   }
 }
 
@@ -693,10 +733,7 @@ export const supervisorHandlers = [
     )
     if (!toolkit) return problem(404, 'Toolkit not found.')
     if (toolkit.enabled === false) return problem(409, 'Enable the Toolkit before creating an Exercise.')
-    if (
-      !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.sizingMonth) ||
-      input.tmsTo < input.tmsFrom
-    ) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.sizingMonth)) {
       return problem(422, 'Exercise dates are invalid.')
     }
     const frozen = snapshot(toolkit)
@@ -707,6 +744,8 @@ export const supervisorHandlers = [
       ...input,
       slotStartDate: null,
       slotWeeks: null,
+      tmsFrom: null,
+      tmsTo: null,
       id: crypto.randomUUID(),
       exerciseCode: `EX-${new Date().getFullYear()}-${String(exercises.length + 1).padStart(4, '0')}`,
       workflowStatus: 'IN_PROGRESS',
@@ -725,9 +764,8 @@ export const supervisorHandlers = [
       {
         exercise: withExerciseAlignment(exercise),
         notices: [
-          'Associated Data seeded from Toolkit latest state (mock).',
-          'Volume Input pre-filled from Toolkit volume when available.',
-          'Working Days / Year computed for sizing year.',
+          'Team Setup, Production Support, and Calendar copied from the Toolkit.',
+          'Volume Input filled from Toolkit history for this Sizing Month.',
         ],
       },
       { status: 201 },
@@ -746,14 +784,8 @@ export const supervisorHandlers = [
     if (!exercise) return problem(404, 'Exercise not found.')
     syncFlags(exercise)
     if (!exercise.canEdit) return problem(422, 'Exercise periods can only be changed during Supervisor Sizing.')
-    const body = (await request.json()) as Pick<
-      CreateExerciseInput,
-      'sizingMonth' | 'tmsFrom' | 'tmsTo'
-    >
-    if (
-      !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.sizingMonth) ||
-      body.tmsTo < body.tmsFrom
-    ) {
+    const body = (await request.json()) as Pick<CreateExerciseInput, 'sizingMonth'>
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(body.sizingMonth)) {
       return problem(422, 'Exercise dates are invalid.')
     }
     const previousYear = exercise.sizingMonth.slice(0, 4)
@@ -761,8 +793,6 @@ export const supervisorHandlers = [
     const sizingChanged = body.sizingMonth !== exercise.sizingMonth
     Object.assign(exercise, {
       sizingMonth: body.sizingMonth,
-      tmsFrom: body.tmsFrom,
-      tmsTo: body.tmsTo,
       version: exercise.version + 1,
     })
     const notices: string[] = []
@@ -774,13 +804,67 @@ export const supervisorHandlers = [
       notices.push(
         'Monthly and Daily Volume were reset from Toolkit for the new Sizing Month. Volume edits on this Exercise were discarded.',
       )
+      const shell = ensureShell(exercise) as SimulationShell
+      const cleared = clearCommittedSimulationResults(shell)
+      if (cleared > 0) {
+        notices.push(
+          `Cleared saved Forecast and Simulation results for ${cleared} scenario(s). Re-run Preview / Save sizing on each scenario.`,
+        )
+      }
     }
-    const shell = ensureShell(exercise) as SimulationShell
-    const cleared = clearCommittedSimulationResults(shell)
-    if (cleared > 0) {
-      notices.push(
-        `Cleared saved Forecast and Simulation results for ${cleared} scenario(s). Re-run Preview / Save sizing on each scenario.`,
-      )
+    return HttpResponse.json({ exercise: withExerciseAlignment(exercise), notices })
+  }),
+
+  http.put('*/api/v1/exercises/:id/tms-period', async ({ params, request }) => {
+    const exercise = findExercise(params.id)
+    if (!exercise) return problem(404, 'Exercise not found.')
+    syncFlags(exercise)
+    if (!exercise.canEdit) return problem(422, 'TMS period can only be changed during Supervisor Sizing.')
+    const body = (await request.json()) as { tmsFrom?: string; tmsTo?: string }
+    if (!body.tmsFrom || !body.tmsTo || body.tmsTo < body.tmsFrom) {
+      return problem(422, 'Exercise dates are invalid.')
+    }
+    const tmsChanged = body.tmsFrom !== exercise.tmsFrom || body.tmsTo !== exercise.tmsTo
+    Object.assign(exercise, {
+      tmsFrom: body.tmsFrom,
+      tmsTo: body.tmsTo,
+      version: exercise.version + 1,
+    })
+    const shell = ensureShell(exercise)
+    applyDemoTms(shell)
+    const notices = ['Linked COMPLETED TMS session(s) for the Exercise TMS period.']
+    if (tmsChanged) {
+      const cleared = clearCommittedSimulationResults(shell as SimulationShell)
+      if (cleared > 0) {
+        notices.push(
+          `Cleared saved Forecast and Simulation results for ${cleared} scenario(s). Re-run Preview / Save sizing on each scenario.`,
+        )
+      }
+    }
+    return HttpResponse.json({ exercise: withExerciseAlignment(exercise), notices })
+  }),
+
+  http.delete('*/api/v1/exercises/:id/tms-period', ({ params }) => {
+    const exercise = findExercise(params.id)
+    if (!exercise) return problem(404, 'Exercise not found.')
+    syncFlags(exercise)
+    if (!exercise.canEdit) return problem(422, 'TMS period can only be changed during Supervisor Sizing.')
+    const hadPeriod = Boolean(exercise.tmsFrom && exercise.tmsTo)
+    Object.assign(exercise, {
+      tmsFrom: null,
+      tmsTo: null,
+      version: exercise.version + 1,
+    })
+    const shell = ensureShell(exercise)
+    Object.assign(shell, emptyTms())
+    const notices = ['TMS period cleared. Linked sessions and the SYSTEM median were removed.']
+    if (hadPeriod) {
+      const cleared = clearCommittedSimulationResults(shell as SimulationShell)
+      if (cleared > 0) {
+        notices.push(
+          `Cleared saved Forecast and Simulation results for ${cleared} scenario(s). Re-run Preview / Save sizing on each scenario.`,
+        )
+      }
     }
     return HttpResponse.json({ exercise: withExerciseAlignment(exercise), notices })
   }),
@@ -1254,9 +1338,15 @@ export const supervisorHandlers = [
     const ctx = requireExercise(params.id)
     if (!ctx) return passthrough()
     if (!ctx.shell.cycleTime) return problem(404, 'No active Cycle Time baseline.')
+    const cycleTime = attachSystemTmsRatio(ctx.shell.cycleTime, {
+      tmsFrom: ctx.exercise.tmsFrom,
+      tmsTo: ctx.exercise.tmsTo,
+      daily: ctx.shell.dailyVolumes,
+      sessions: ctx.shell.tmsSessions,
+    })
     return HttpResponse.json({
-      ...ctx.shell.cycleTime,
-      files: ctx.shell.cycleTime.files ?? [],
+      ...cycleTime,
+      files: cycleTime?.files ?? [],
     })
   }),
 
@@ -1852,17 +1942,25 @@ export const supervisorHandlers = [
       ctx.shell.monthlyVolumes,
       ctx.shell.dailyVolumes,
     )
+    const tmsRatio = tmsRatioFinding(
+      ctx.exercise,
+      ctx.shell.dailyVolumes,
+      ctx.shell.tmsSessions,
+      ctx.shell.cycleTime?.baselineType,
+    )
+    const findings = [
+      {
+        ruleCode: 'DAILY_VS_MONTHLY' as const,
+        severity: dailyVsMonthly.severity,
+        detail: dailyVsMonthly.detail,
+      },
+      ...(tmsRatio ? [tmsRatio] : []),
+    ]
     const timesheetAlignment = exerciseAlignment(ctx.exercise)
     return HttpResponse.json({
       scenarioId: official?.id ?? ctx.exercise.officialScenarioId ?? '',
-      findings: [
-        {
-          ruleCode: 'DAILY_VS_MONTHLY',
-          severity: dailyVsMonthly.severity,
-          detail: dailyVsMonthly.detail,
-        },
-      ],
-      remarksRequired: dailyVsMonthly.severity === 'WARNING',
+      findings,
+      remarksRequired: findings.some((finding) => finding.severity === 'WARNING'),
       submitBlocked: false,
       timesheetAlignment,
       scopeAcknowledgementRequired: Boolean(timesheetAlignment?.structuralDrift),
@@ -1886,6 +1984,21 @@ export const supervisorHandlers = [
     const body = ((await request.json().catch(() => ({}))) ?? {}) as SubmitRequest
     if (exerciseAlignment(ctx.exercise)?.structuralDrift && body.scopeAcknowledged !== true) {
       return problem(422, 'Confirm submitting with the frozen Shared KPI scope.')
+    }
+    const dailyVsMonthly = dailyMonthlyVolumeCheck(
+      ctx.shell.monthlyVolumes,
+      ctx.shell.dailyVolumes,
+    )
+    const tmsRatio = tmsRatioFinding(
+      ctx.exercise,
+      ctx.shell.dailyVolumes,
+      ctx.shell.tmsSessions,
+      ctx.shell.cycleTime?.baselineType,
+    )
+    const remarksRequired =
+      dailyVsMonthly.severity === 'WARNING' || tmsRatio?.severity === 'WARNING'
+    if (remarksRequired && !body.remarks?.trim()) {
+      return problem(422, 'WARNING validation failures require remarks before Submit.')
     }
     const official = ctx.shell.scenarios.find((item) => item.id === ctx.exercise.officialScenarioId)
     if (official) {

@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/table'
 
 import { FieldUnit, withUnit } from '../../fieldUnits'
+import { formatTmsPeriodLabel } from '../../periodWindows'
+import { tmsRatioDescription, tmsRatioLabel } from '../../tmsRatio'
 import type { CycleTimeBaseline, CycleTimeBaselineFile } from '../../types'
 import type { MedianSourceMode } from './adTypes'
 import { formatNumber } from './adTypes'
@@ -19,6 +21,8 @@ import CycleTimeControlChart from './CycleTimeControlChart.vue'
 const props = defineProps<{
   source: MedianSourceMode
   cycleTime: CycleTimeBaseline | null
+  tmsFrom: string | null
+  tmsTo: string | null
   exerciseId: string
   readOnly?: boolean
 }>()
@@ -64,6 +68,10 @@ const medianSecondsLabel = computed(() => {
 const sampleCountLabel = computed(() =>
   props.cycleTime?.sampleCount != null ? formatNumber(props.cycleTime.sampleCount) : '—',
 )
+
+const tmsRatio = computed(() => (isSystemBaseline.value ? props.cycleTime?.tmsRatio ?? null : null))
+const tmsRatioValue = computed(() => tmsRatioLabel(tmsRatio.value))
+const tmsRatioHint = computed(() => tmsRatioDescription(tmsRatio.value))
 
 function formatSize(bytes: number | null | undefined) {
   if (bytes == null || !Number.isFinite(bytes)) return '—'
@@ -168,6 +176,13 @@ function formatSize(bytes: number | null | undefined) {
             </TableHeader>
             <TableBody>
               <TableRow>
+                <TableCell>TMS period</TableCell>
+                <TableCell>{{ formatTmsPeriodLabel(tmsFrom, tmsTo) }}</TableCell>
+                <TableCell class="text-muted-foreground">
+                  Window used to link COMPLETED sessions
+                </TableCell>
+              </TableRow>
+              <TableRow>
                 <TableCell>{{ withUnit('Median cycle time', FieldUnit.seconds) }}</TableCell>
                 <TableCell>{{ isSystemBaseline ? medianSecondsLabel : '—' }}</TableCell>
                 <TableCell class="text-muted-foreground">Used for simulation</TableCell>
@@ -177,11 +192,16 @@ function formatSize(bytes: number | null | undefined) {
                 <TableCell>{{ isSystemBaseline ? sampleCountLabel : '—' }}</TableCell>
                 <TableCell class="text-muted-foreground">Median sample count</TableCell>
               </TableRow>
+              <TableRow>
+                <TableCell>{{ withUnit('TMS ratio', FieldUnit.percent) }}</TableCell>
+                <TableCell>{{ isSystemBaseline ? tmsRatioValue : '—' }}</TableCell>
+                <TableCell class="text-muted-foreground">{{ tmsRatioHint }}</TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
         <p v-if="!isSystemBaseline" class="text-xs text-muted-foreground">
-          No SYSTEM baseline yet. Open Edit to review the session list.
+          No SYSTEM baseline yet. Open Edit TMS and apply a TMS period.
         </p>
       </template>
 

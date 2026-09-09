@@ -345,11 +345,13 @@ watch(
       />
 
       <AssociatedDataPanel
-        :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.tmsFrom}-${exercise.tmsTo}`"
+        :key="`${exercise.id}-${exercise.sizingMonth}`"
         :exercise-id="exerciseId"
         :sizing-month="exercise.sizingMonth"
         :slot-start-date="exercise.slotStartDate"
         :slot-weeks="exercise.slotWeeks"
+        :tms-from="exercise.tmsFrom"
+        :tms-to="exercise.tmsTo"
         :read-only="locked"
       />
 

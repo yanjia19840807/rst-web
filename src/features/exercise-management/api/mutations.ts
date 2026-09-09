@@ -26,6 +26,7 @@ import type {
   TeamSetup,
   TeamSetupRequest,
   UpdateExercisePeriodsInput,
+  UpdateTmsPeriodInput,
   UpdateSlotPeriodInput,
   UpdateSlotPeriodResult,
 } from '../types'
@@ -160,6 +161,29 @@ export function useExerciseMutations() {
     },
   })
 
+  const updateTmsPeriod = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateTmsPeriodInput }) =>
+      exerciseApi.updateTmsPeriod(id, body),
+    onSuccess: (result) => {
+      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
+      queryClient.setQueryData(exerciseQueryKeys.committedResults(result.exercise.id), {
+        scenarioCount: 0,
+      })
+      invalidateAfterPeriodsChange(queryClient, result.exercise.id)
+    },
+  })
+
+  const clearTmsPeriod = useMutation({
+    mutationFn: (id: string) => exerciseApi.clearTmsPeriod(id),
+    onSuccess: (result) => {
+      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
+      queryClient.setQueryData(exerciseQueryKeys.committedResults(result.exercise.id), {
+        scenarioCount: 0,
+      })
+      invalidateAfterPeriodsChange(queryClient, result.exercise.id)
+    },
+  })
+
   const remove = useMutation({
     mutationFn: (id: string) => exerciseApi.delete(id),
     onSuccess: (_data, id) => {
@@ -196,7 +220,16 @@ export function useExerciseMutations() {
     onSuccess: (_data, id) => invalidateAfterDecision(queryClient, id),
   })
 
-  return { create, updatePeriods, remove, clearCommittedResults, submit, withdraw }
+  return {
+    create,
+    updatePeriods,
+    updateTmsPeriod,
+    clearTmsPeriod,
+    remove,
+    clearCommittedResults,
+    submit,
+    withdraw,
+  }
 }
 
 export function useExerciseAssociatedDataMutations() {
@@ -276,6 +309,7 @@ export function useExerciseAssociatedDataMutations() {
       exerciseApi.putDailyVolumes(exerciseId, body),
     onSuccess: (rows: DailyVolume[], { exerciseId }) => {
       queryClient.setQueryData(exerciseQueryKeys.volumesDaily(exerciseId), rows)
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.cycleTimeActive(exerciseId) })
       invalidateSubmitPreview(queryClient, exerciseId)
     },
   })
@@ -333,6 +367,7 @@ export function useExerciseAssociatedDataMutations() {
       exerciseApi.importDailyVolumes(exerciseId, file),
     onSuccess: (rows: DailyVolume[], { exerciseId }) => {
       queryClient.setQueryData(exerciseQueryKeys.volumesDaily(exerciseId), rows)
+      void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.cycleTimeActive(exerciseId) })
       invalidateSubmitPreview(queryClient, exerciseId)
     },
   })

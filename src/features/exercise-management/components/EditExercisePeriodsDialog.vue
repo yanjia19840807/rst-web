@@ -6,7 +6,6 @@ import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -20,12 +19,7 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { showOperationNotices } from '@/composables/useOperationNotices'
 
 import { useExerciseMutations } from '../api/mutations'
-import {
-  SIZING_MONTH_HINT_DESCRIPTION,
-  TMS_PERIOD_HINT_DESCRIPTION,
-  sizingHintLines,
-  tmsHintLines,
-} from '../periodWindows'
+import { SIZING_MONTH_HINT_DESCRIPTION, sizingHintLines } from '../periodWindows'
 import {
   editExercisePeriodsSchema,
   emptyEditExercisePeriodsForm,
@@ -54,31 +48,12 @@ const { defineField, errors, handleSubmit, resetForm, values } = useForm({
 })
 
 const [sizingMonth] = defineField('sizingMonth')
-const [tmsFrom] = defineField('tmsFrom')
-const [tmsTo] = defineField('tmsTo')
 
 const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
-const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
-
-const periodsChanged = computed(() => {
-  const ex = props.exercise
-  return (
-    (values.sizingMonth ?? '') !== ex.sizingMonth ||
-    (values.tmsFrom ?? '') !== ex.tmsFrom ||
-    (values.tmsTo ?? '') !== ex.tmsTo
-  )
-})
 
 const sizingChanged = computed(
   () => (values.sizingMonth ?? '') !== props.exercise.sizingMonth,
 )
-
-const confirmDescription = computed(() => {
-  if (sizingChanged.value) {
-    return 'Sizing Month change resets Monthly and Daily Volume from Toolkit (last 36 months). Volume edits on this Exercise are discarded. TMS sessions refresh. Saved Forecast and Simulation results on all scenarios will be cleared.'
-  }
-  return 'TMS windows will refresh. Saved Forecast and Simulation results on all scenarios will be cleared. Re-run Preview / Save sizing afterwards.'
-})
 
 watch(open, (value) => {
   if (!value) return
@@ -86,14 +61,12 @@ watch(open, (value) => {
   resetForm({
     values: {
       sizingMonth: props.exercise.sizingMonth,
-      tmsFrom: props.exercise.tmsFrom,
-      tmsTo: props.exercise.tmsTo,
     },
   })
 })
 
 const requestSave = handleSubmit(() => {
-  if (!periodsChanged.value) {
+  if (!sizingChanged.value) {
     open.value = false
     return
   }
@@ -106,8 +79,6 @@ async function confirmSave() {
       id: props.exercise.id,
       body: {
         sizingMonth: values.sizingMonth!,
-        tmsFrom: values.tmsFrom!,
-        tmsTo: values.tmsTo!,
       },
     })
     confirmOpen.value = false
@@ -134,7 +105,8 @@ async function confirmSave() {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Edit Exercise Periods</DialogTitle>
         <DialogDescription>
-          Update Sizing Month and TMS period. Toolkit remains frozen from create.
+          Update Sizing Month. Toolkit remains frozen from create. TMS period is set in Associated
+          Data when using the SYSTEM median.
         </DialogDescription>
       </DialogHeader>
 
@@ -159,35 +131,6 @@ async function confirmSave() {
               {{ errors.sizingMonth }}
             </p>
           </div>
-
-          <div class="grid gap-1.5">
-            <div class="inline-flex items-center gap-1.5">
-              <Label>TMS period</Label>
-              <PeriodDerivedHints
-                title="TMS period"
-                :description="TMS_PERIOD_HINT_DESCRIPTION"
-                :lines="tmsHints"
-              />
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <DatePicker
-                v-model="tmsFrom"
-                aria-label="Choose TMS period start"
-                placeholder="From"
-                class="w-[180px]"
-              />
-              <span class="text-muted-foreground">to</span>
-              <DatePicker
-                v-model="tmsTo"
-                aria-label="Choose TMS period end"
-                placeholder="To"
-                class="w-[180px]"
-              />
-            </div>
-            <p v-if="errors.tmsFrom || errors.tmsTo" class="text-xs text-destructive">
-              {{ errors.tmsFrom || errors.tmsTo }}
-            </p>
-          </div>
         </div>
       </div>
 
@@ -203,7 +146,7 @@ async function confirmSave() {
   <ConfirmDialog
     v-model:open="confirmOpen"
     title="Update Exercise Periods"
-    :description="confirmDescription"
+    description="Sizing Month change resets Monthly and Daily Volume from Toolkit (last 36 months). Volume edits on this Exercise are discarded. Saved Forecast and Simulation results on all scenarios will be cleared."
     confirm-label="Save"
     confirm-variant="default"
     :pending="busy"

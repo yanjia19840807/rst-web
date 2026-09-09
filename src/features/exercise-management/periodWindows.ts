@@ -140,9 +140,19 @@ export function slotHintLines(startDate: string, weeks: number): DerivedHintLine
   ]
 }
 
-export function tmsHintLines(tmsFrom: string, tmsTo: string): DerivedHintLine[] {
-  const from = tmsFrom.trim()
-  const to = tmsTo.trim()
+export function formatTmsPeriodLabel(
+  tmsFrom?: string | null,
+  tmsTo?: string | null,
+): string {
+  const from = tmsFrom?.trim() ?? ''
+  const to = tmsTo?.trim() ?? ''
+  if (!from || !to) return '—'
+  return `${formatDate(from)} – ${formatDate(to)}`
+}
+
+export function tmsHintLines(tmsFrom?: string | null, tmsTo?: string | null): DerivedHintLine[] {
+  const from = tmsFrom?.trim() ?? ''
+  const to = tmsTo?.trim() ?? ''
   const valid = Boolean(from && to && to >= from)
   return [
     {

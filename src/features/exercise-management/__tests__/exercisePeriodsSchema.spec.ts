@@ -5,31 +5,30 @@ import {
   editExercisePeriodsSchema,
   emptyCreateExercisePeriodsForm,
   slotPeriodSchema,
+  tmsPeriodSchema,
 } from '../schemas/exercisePeriods'
 
 function validCreate() {
   return {
     toolkitId: 'tk-1',
     sizingMonth: '2026-03',
-    tmsFrom: '2026-01-01',
-    tmsTo: '2026-01-31',
   }
 }
 
 describe('createExercisePeriodsSchema', () => {
-  it('accepts a complete create payload without slot period', () => {
+  it('accepts a complete create payload without slot or TMS period', () => {
     expect(createExercisePeriodsSchema.safeParse(validCreate()).success).toBe(true)
   })
 
-  it('requires toolkit, sizing month, and TMS dates', () => {
+  it('requires toolkit and sizing month only', () => {
     const blank = createExercisePeriodsSchema.safeParse(emptyCreateExercisePeriodsForm())
     expect(blank.success).toBe(false)
     if (blank.success) return
     const paths = blank.error.issues.map((issue) => issue.path.join('.'))
     expect(paths).toContain('toolkitId')
     expect(paths).toContain('sizingMonth')
-    expect(paths).toContain('tmsFrom')
-    expect(paths).toContain('tmsTo')
+    expect(paths).not.toContain('tmsFrom')
+    expect(paths).not.toContain('tmsTo')
     expect(paths).not.toContain('slotStartDate')
     expect(paths).not.toContain('slotWeeks')
   })
@@ -41,22 +40,41 @@ describe('createExercisePeriodsSchema', () => {
     })
     expect(result.success).toBe(false)
   })
+})
+
+describe('editExercisePeriodsSchema', () => {
+  it('does not require toolkitId', () => {
+    expect(editExercisePeriodsSchema.safeParse({ sizingMonth: '2026-03' }).success).toBe(true)
+  })
+})
+
+describe('tmsPeriodSchema', () => {
+  it('accepts an inclusive from / to range', () => {
+    expect(
+      tmsPeriodSchema.safeParse({
+        tmsFrom: '2026-01-01',
+        tmsTo: '2026-01-31',
+      }).success,
+    ).toBe(true)
+  })
+
+  it('requires both dates', () => {
+    const result = tmsPeriodSchema.safeParse({ tmsFrom: '', tmsTo: '' })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    const paths = result.error.issues.map((issue) => issue.path.join('.'))
+    expect(paths).toContain('tmsFrom')
+    expect(paths).toContain('tmsTo')
+  })
 
   it('requires tmsTo on or after tmsFrom', () => {
-    const result = createExercisePeriodsSchema.safeParse({
-      ...validCreate(),
+    const result = tmsPeriodSchema.safeParse({
       tmsFrom: '2026-02-01',
       tmsTo: '2026-01-01',
     })
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error.issues.some((issue) => issue.path.join('.') === 'tmsTo')).toBe(true)
-  })
-})
-
-describe('editExercisePeriodsSchema', () => {
-  it('does not require toolkitId', () => {
-    expect(editExercisePeriodsSchema.safeParse(validCreate()).success).toBe(true)
   })
 })
 

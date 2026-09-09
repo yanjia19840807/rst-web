@@ -1,25 +1,47 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
+import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Label } from '@/components/ui/label'
 import {
   createTmsSessionColumns,
   type TmsSessionTableRow,
 } from '@/features/tms-management/components/tmsSessionColumns'
+import { showOperationNotices } from '@/composables/useOperationNotices'
 
+import { useExerciseMutations } from '../../api/mutations'
 import { useExerciseTmsSessionsQuery } from '../../api/queries'
 import { FieldUnit, withUnit } from '../../fieldUnits'
+import {
+  TMS_PERIOD_HINT_DESCRIPTION,
+  tmsHintLines,
+} from '../../periodWindows'
+import { tmsPeriodSchema } from '../../schemas/exercisePeriods'
+import { tmsRatioDescription, tmsRatioLabel } from '../../tmsRatio'
 import type { CycleTimeBaseline, ExerciseTmsSession } from '../../types'
+import PeriodDerivedHints from '../PeriodDerivedHints.vue'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
 
 const props = defineProps<{
   exerciseId: string
+  tmsFrom: string | null
+  tmsTo: string | null
   cycleTime: CycleTimeBaseline | null
   readOnly?: boolean
 }>()
 
+const { updateTmsPeriod, clearTmsPeriod } = useExerciseMutations()
+const draftTmsFrom = ref(props.tmsFrom ?? '')
+const draftTmsTo = ref(props.tmsTo ?? '')
+const confirmPeriodOpen = ref(false)
+const confirmClearPeriodOpen = ref(false)
+const busyAction = ref<'period' | 'clear-period' | null>(null)
 const page = ref(1)
 const pageSize = ref(10)
 const localCycleTime = ref<CycleTimeBaseline | null>(props.cycleTime)
@@ -30,6 +52,19 @@ watch(
     localCycleTime.value = value
   },
 )
+
+watch(
+  () => [props.tmsFrom, props.tmsTo] as const,
+  ([from, to]) => {
+    draftTmsFrom.value = from ?? ''
+    draftTmsTo.value = to ?? ''
+  },
+)
+
+const periodSet = computed(() => Boolean(props.tmsFrom && props.tmsTo))
+const periodReady = computed(() => Boolean(draftTmsFrom.value && draftTmsTo.value))
+const busy = computed(() => busyAction.value != null)
+const tmsHints = computed(() => tmsHintLines(draftTmsFrom.value, draftTmsTo.value))
 
 const sessionsQuery = useExerciseTmsSessionsQuery(
   () => props.exerciseId,
@@ -57,6 +92,9 @@ const sessionTotalLabel = computed(() => {
   if (loading.value) return '…'
   return total.value > 0 ? formatNumber(total.value) : '0'
 })
+
+const tmsRatioMetric = computed(() => tmsRatioLabel(localCycleTime.value?.tmsRatio))
+const tmsRatioHint = computed(() => tmsRatioDescription(localCycleTime.value?.tmsRatio))
 
 const rows = computed<TmsSessionTableRow[]>(() =>
   sessions.value.map((session) => toTmsSessionRow(session)),
@@ -104,11 +142,135 @@ watch(
     }
   },
 )
+
+async function withBusy(action: 'period' | 'clear-period', work: () => Promise<void>) {
+  busyAction.value = action
+  try {
+    await work()
+  } finally {
+    busyAction.value = null
+  }
+}
+
+function requestApplyPeriod() {
+  if (props.readOnly || busy.value) return
+  const parsed = tmsPeriodSchema.safeParse({
+    tmsFrom: draftTmsFrom.value,
+    tmsTo: draftTmsTo.value,
+  })
+  if (!parsed.success) {
+    toast.warning(parsed.error.issues[0]?.message ?? 'Please complete the TMS period.')
+    return
+  }
+  if (periodSet.value) {
+    confirmPeriodOpen.value = true
+    return
+  }
+  void applyPeriod()
+}
+
+async function applyPeriod() {
+  if (props.readOnly || busy.value) return
+  try {
+    await withBusy('period', async () => {
+      const result = await updateTmsPeriod.mutateAsync({
+        id: props.exerciseId,
+        body: {
+          tmsFrom: draftTmsFrom.value,
+          tmsTo: draftTmsTo.value,
+        },
+      })
+      confirmPeriodOpen.value = false
+      const summary = 'TMS period applied.'
+      const shown = showOperationNotices({
+        summary,
+        notices: result.notices ?? [],
+      })
+      if (!shown) toast.success(summary)
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not apply TMS period.')
+  }
+}
+
+function requestClearPeriod() {
+  if (props.readOnly || busy.value || !periodSet.value) return
+  confirmClearPeriodOpen.value = true
+}
+
+async function clearPeriod() {
+  if (props.readOnly || busy.value || !periodSet.value) return
+  try {
+    await withBusy('clear-period', async () => {
+      const result = await clearTmsPeriod.mutateAsync(props.exerciseId)
+      draftTmsFrom.value = ''
+      draftTmsTo.value = ''
+      confirmClearPeriodOpen.value = false
+      const summary = 'TMS period cleared.'
+      const shown = showOperationNotices({
+        summary,
+        notices: result.notices ?? [],
+      })
+      if (!shown) toast.success(summary)
+    })
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not clear TMS period.')
+  }
+}
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="grid max-w-xl gap-3 sm:grid-cols-2">
+  <div class="space-y-4 rounded-lg border bg-card p-4">
+    <div class="inline-flex items-center gap-1.5">
+      <Label>TMS period</Label>
+      <PeriodDerivedHints
+        title="TMS period"
+        :description="TMS_PERIOD_HINT_DESCRIPTION"
+        :lines="tmsHints"
+      />
+    </div>
+
+    <div class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3">
+      <div class="grid gap-1.5">
+        <span class="text-xs text-muted-foreground">From</span>
+        <DatePicker
+          v-model="draftTmsFrom"
+          aria-label="Choose TMS period start"
+          placeholder="From"
+          class="w-[180px]"
+          :disabled="readOnly || busy"
+        />
+      </div>
+      <div class="grid gap-1.5">
+        <span class="text-xs text-muted-foreground">To</span>
+        <DatePicker
+          v-model="draftTmsTo"
+          aria-label="Choose TMS period end"
+          placeholder="To"
+          class="w-[180px]"
+          :disabled="readOnly || busy"
+        />
+      </div>
+      <Button
+        v-if="!readOnly"
+        :disabled="busy || !periodReady"
+        :loading="busyAction === 'period'"
+        @click="requestApplyPeriod"
+      >
+        {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
+      </Button>
+      <Button
+        v-if="!readOnly"
+        variant="outline"
+        :disabled="busy || !periodSet"
+        :loading="busyAction === 'clear-period'"
+        @click="requestClearPeriod"
+      >
+        {{ busyAction === 'clear-period' ? 'Clearing…' : 'Clear' }}
+      </Button>
+    </div>
+
+    <div class="grid max-w-3xl gap-3 sm:grid-cols-3">
       <AdMetric
         label="Sessions"
         :value="sessionTotalLabel"
@@ -119,16 +281,21 @@ watch(
         :value="medianLabel"
         hint="Baseline used for simulation"
       />
+      <AdMetric
+        :label="withUnit('TMS ratio', FieldUnit.percent)"
+        :value="tmsRatioMetric"
+        :hint="tmsRatioHint"
+      />
     </div>
 
-    <section class="rounded-lg border bg-card p-4">
+    <div>
       <h3 class="mb-3 text-sm font-bold">TMS Sessions</h3>
 
       <DataTable
         :columns="columns"
         :data="rows"
         :pending="loading"
-        empty-text="No TMS sessions linked to this exercise."
+        empty-text="Set a TMS period to link COMPLETED sessions."
         table-class="min-w-[1240px]"
         :get-row-id="(row) => row.id"
       >
@@ -150,6 +317,25 @@ watch(
           }
         "
       />
-    </section>
+    </div>
   </div>
+
+  <ConfirmDialog
+    v-model:open="confirmPeriodOpen"
+    title="Change TMS Period"
+    description="Changing the period refreshes linked COMPLETED sessions and the SYSTEM median. Saved Forecast and Simulation results on all scenarios will be cleared."
+    confirm-label="Apply Period"
+    confirm-variant="default"
+    :pending="busyAction === 'period'"
+    @confirm="applyPeriod"
+  />
+
+  <ConfirmDialog
+    v-model:open="confirmClearPeriodOpen"
+    title="Clear TMS Period"
+    description="Clearing the period unlinks TMS sessions and removes the SYSTEM median. Saved Forecast and Simulation results on all scenarios will be cleared."
+    confirm-label="Clear"
+    :pending="busyAction === 'clear-period'"
+    @confirm="clearPeriod"
+  />
 </template>

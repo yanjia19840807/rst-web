@@ -17,16 +17,22 @@ export interface MonthMismatch {
 
 export interface ValidationDetail {
   reason: string
-  comparedMonths: number
-  mismatches: MonthMismatch[]
+  comparedMonths?: number
+  mismatches?: MonthMismatch[]
+  ratio?: number | string | null
+  tmsVolumeSum?: number | string | null
+  dailyVolumeSum?: number | string | null
+  missingDateCount?: number | null
+  threshold?: number | string | null
 }
 
-export type ValidationRuleCode = 'DAILY_VS_MONTHLY'
+export type ValidationRuleCode = 'DAILY_VS_MONTHLY' | 'TMS_RATIO'
 export type ValidationSeverity = 'OK' | 'WARNING' | 'SEVERE'
 
 /** Failure grade is fixed per rule, same as the API ValidationRule enum. */
 export const VALIDATION_RULES: Record<ValidationRuleCode, { severity: ValidationSeverity }> = {
   DAILY_VS_MONTHLY: { severity: 'WARNING' },
+  TMS_RATIO: { severity: 'WARNING' },
 }
 
 export interface ValidationFinding {

@@ -101,6 +101,20 @@ export function replaceEmptySlotGrid(exercise: Exercise, shell: ExerciseShell) {
   }))
 }
 
+export function emptyTms(): Pick<ExerciseShell, 'cycleTime' | 'tmsSessions' | 'cycleTimeChart'> {
+  return {
+    tmsSessions: [],
+    cycleTime: null,
+    cycleTimeChart: {
+      points: [],
+      centerSeconds: null,
+      upperControlLimitSeconds: null,
+      lowerControlLimitSeconds: null,
+      sampleCount: 0,
+    },
+  }
+}
+
 function demoTms(): Pick<ExerciseShell, 'cycleTime' | 'tmsSessions' | 'cycleTimeChart'> {
   const tmsSessions: ExerciseTmsSession[] = [
     {
@@ -179,6 +193,10 @@ function demoTms(): Pick<ExerciseShell, 'cycleTime' | 'tmsSessions' | 'cycleTime
   }
 }
 
+export function applyDemoTms(shell: ExerciseShell) {
+  Object.assign(shell, demoTms())
+}
+
 export function createExerciseShell(): ExerciseShell {
   return {
     teamSetup: {
@@ -210,7 +228,7 @@ export function createExerciseShell(): ExerciseShell {
     monthlyVolumes: [],
     dailyVolumes: [],
     slotVolumes: [],
-    ...demoTms(),
+    ...emptyTms(),
     scenarios: [],
     stubRuns: [],
     submitted: null,

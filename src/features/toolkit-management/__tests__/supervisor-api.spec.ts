@@ -21,12 +21,23 @@ describe('supervisor mock contract', () => {
     const result = await exerciseApi.create({
       toolkitId: toolkit!.id,
       sizingMonth: '2026-09',
-      tmsFrom: '2026-08-01',
-      tmsTo: '2026-08-31',
     })
 
     expect(result.exercise.slotStartDate).toBeNull()
     expect(result.exercise.slotWeeks).toBeNull()
+    expect(result.exercise.tmsFrom).toBeNull()
+    expect(result.exercise.tmsTo).toBeNull()
+
+    const updated = await exerciseApi.updateTmsPeriod(result.exercise.id, {
+      tmsFrom: '2026-08-01',
+      tmsTo: '2026-08-31',
+    })
+    expect(updated.exercise.tmsFrom).toBe('2026-08-01')
+    expect(updated.exercise.tmsTo).toBe('2026-08-31')
+
+    const cleared = await exerciseApi.clearTmsPeriod(result.exercise.id)
+    expect(cleared.exercise.tmsFrom).toBeNull()
+    expect(cleared.exercise.tmsTo).toBeNull()
 
     expect(result.exercise.snapshot.toolkit.version).toBe(toolkit!.version)
     expect(result.exercise.snapshot.subtasks.every((item) => item.deletedAt === null)).toBe(true)

@@ -43,7 +43,7 @@ import {
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { slaMinutesToHours } from '../schemas/teamSetup'
-import { deriveSizingWindows, deriveSlotPeriodLabel } from '../periodWindows'
+import { deriveSizingWindows, deriveSlotPeriodLabel, formatTmsPeriodLabel } from '../periodWindows'
 import { actualHeadcount } from '../sizingChartMath'
 import type { SubmittedDetails } from '../types'
 import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
@@ -289,7 +289,7 @@ const packageRows = computed(() => {
       label: 'Slot Period',
       value: deriveSlotPeriodLabel(ex.slotStartDate, ex.slotWeeks),
     },
-    { label: 'TMS period', value: `${formatDate(ex.tmsFrom)} – ${formatDate(ex.tmsTo)}` },
+    { label: 'TMS period', value: formatTmsPeriodLabel(ex.tmsFrom, ex.tmsTo) },
     { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
     { label: withUnit('SLA Turntime', FieldUnit.hours), value: slaTurntimeLabel.value },
     { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
@@ -597,11 +597,13 @@ function downloadSummary() {
       </Card>
 
       <AssociatedDataPanel
-        :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.slotStartDate}-${exercise.slotWeeks}`"
+        :key="`${exercise.id}-${exercise.sizingMonth}-${exercise.slotStartDate}-${exercise.slotWeeks}-${exercise.tmsFrom}-${exercise.tmsTo}`"
         :exercise-id="resolvedExerciseId"
         :sizing-month="exercise.sizingMonth"
         :slot-start-date="exercise.slotStartDate"
         :slot-weeks="exercise.slotWeeks"
+        :tms-from="exercise.tmsFrom"
+        :tms-to="exercise.tmsTo"
         read-only
       />
 

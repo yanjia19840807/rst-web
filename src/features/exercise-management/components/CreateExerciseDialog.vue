@@ -8,7 +8,6 @@ import { toast } from 'vue-sonner'
 import DetailTable from '@/components/DetailTable.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -27,12 +26,7 @@ import { showOperationNotices } from '@/composables/useOperationNotices'
 import { formatDate } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../api/mutations'
-import {
-  SIZING_MONTH_HINT_DESCRIPTION,
-  TMS_PERIOD_HINT_DESCRIPTION,
-  sizingHintLines,
-  tmsHintLines,
-} from '../periodWindows'
+import { SIZING_MONTH_HINT_DESCRIPTION, sizingHintLines } from '../periodWindows'
 import {
   createExercisePeriodsSchema,
   emptyCreateExercisePeriodsForm,
@@ -69,8 +63,6 @@ const { defineField, errors, handleSubmit, resetForm, values } = useForm({
 
 const [toolkitId] = defineField('toolkitId')
 const [sizingMonth] = defineField('sizingMonth')
-const [tmsFrom] = defineField('tmsFrom')
-const [tmsTo] = defineField('tmsTo')
 
 const lockedToolkit = computed(
   () => props.toolkits.find((toolkit) => toolkit.id === (toolkitId.value || props.initialToolkitId)),
@@ -97,7 +89,6 @@ const infoRows = computed(() => {
   return rows
 })
 const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
-const tmsHints = computed(() => tmsHintLines(values.tmsFrom ?? '', values.tmsTo ?? ''))
 
 watch(open, (value) => {
   if (!value) return
@@ -116,12 +107,10 @@ const create = handleSubmit(
       const result = await createMutation.mutateAsync({
         toolkitId: formValues.toolkitId,
         sizingMonth: formValues.sizingMonth,
-        tmsFrom: formValues.tmsFrom,
-        tmsTo: formValues.tmsTo,
       })
       emit('created', result.exercise)
       open.value = false
-      const summary = `${result.exercise.exerciseCode} created with a frozen snapshot.`
+      const summary = `${result.exercise.exerciseCode} created.`
       const shown = showOperationNotices({
         summary,
         notices: result.notices ?? [],
@@ -138,7 +127,7 @@ const create = handleSubmit(
   ({ errors: submitErrors }) => {
     const first = Object.values(submitErrors).find((message) => Boolean(message))
     toast.error(
-      typeof first === 'string' ? first : 'Complete the toolkit and period fields.',
+      typeof first === 'string' ? first : 'Complete the toolkit and Sizing Month.',
     )
   },
 )
@@ -161,10 +150,10 @@ const create = handleSubmit(
           <Alert variant="info">
             <Info />
             <AlertDescription>
-              Associated Data (Team Setup, Support, Calendar) will be initialized from Toolkit
-              latest state when available. Volume Input is pre-filled from Toolkit volume when
-              available. Creating the Exercise freezes the current Toolkit,
+              Associated Data (Team Setup, Support, Calendar) and Volume Input are initialized
+              from the Toolkit when available. Creating the Exercise freezes the current Toolkit,
               Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
+              TMS period is set later in Associated Data if you use the system-calculated median.
               <template v-if="selectedToolkit && !toolkitBlocked">
                 Delivery HC to freeze: {{ freezeHc }}
                 <template v-if="freezeSyncDate">
@@ -218,35 +207,6 @@ const create = handleSubmit(
             />
             <p v-if="errors.sizingMonth" class="text-xs text-destructive">
               {{ errors.sizingMonth }}
-            </p>
-          </div>
-
-          <div class="grid gap-1.5">
-            <div class="inline-flex items-center gap-1.5">
-              <Label>TMS period</Label>
-              <PeriodDerivedHints
-                title="TMS period"
-                :description="TMS_PERIOD_HINT_DESCRIPTION"
-                :lines="tmsHints"
-              />
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <DatePicker
-                v-model="tmsFrom"
-                aria-label="Choose TMS period start"
-                placeholder="From"
-                class="w-[180px]"
-              />
-              <span class="text-muted-foreground">to</span>
-              <DatePicker
-                v-model="tmsTo"
-                aria-label="Choose TMS period end"
-                placeholder="To"
-                class="w-[180px]"
-              />
-            </div>
-            <p v-if="errors.tmsFrom || errors.tmsTo" class="text-xs text-destructive">
-              {{ errors.tmsFrom || errors.tmsTo }}
             </p>
           </div>
         </div>

@@ -28,6 +28,8 @@ const props = defineProps<{
   sizingMonth: string
   slotStartDate: string | null
   slotWeeks: number | null
+  tmsFrom: string | null
+  tmsTo: string | null
   readOnly?: boolean
 }>()
 
@@ -168,6 +170,8 @@ const editorActionLabel = computed(() => {
         <AdTmsSummary
           v-model:source="medianSource"
           :cycle-time="cycleTime"
+          :tms-from="props.tmsFrom"
+          :tms-to="props.tmsTo"
           :exercise-id="props.exerciseId"
           :read-only="props.readOnly"
         />
@@ -261,6 +265,8 @@ const editorActionLabel = computed(() => {
     :daily="daily"
     :slot="slot"
     :cycle-time="cycleTime"
+    :tms-from="props.tmsFrom"
+    :tms-to="props.tmsTo"
     :median-source="medianSource"
     :read-only="props.readOnly"
     @update:team-setup="teamSetup = $event"

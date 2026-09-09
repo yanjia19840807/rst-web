@@ -27,10 +27,8 @@ const slotWeeksSchema = z.preprocess(
     .max(12, 'Slot weeks must be between 1 and 12.'),
 )
 
-const periodsBaseSchema = z.object({
+const sizingMonthOnlySchema = z.object({
   sizingMonth: sizingMonthSchema,
-  tmsFrom: isoDateSchema('Please complete the TMS period.'),
-  tmsTo: isoDateSchema('Please complete the TMS period.'),
 })
 
 function withTmsOrder<T extends z.ZodTypeAny>(schema: T) {
@@ -46,13 +44,18 @@ function withTmsOrder<T extends z.ZodTypeAny>(schema: T) {
   })
 }
 
-export const createExercisePeriodsSchema = withTmsOrder(
-  periodsBaseSchema.extend({
-    toolkitId: z.string().trim().min(1, 'Please select a Toolkit.'),
+export const createExercisePeriodsSchema = sizingMonthOnlySchema.extend({
+  toolkitId: z.string().trim().min(1, 'Please select a Toolkit.'),
+})
+
+export const editExercisePeriodsSchema = sizingMonthOnlySchema
+
+export const tmsPeriodSchema = withTmsOrder(
+  z.object({
+    tmsFrom: isoDateSchema('Please complete the TMS period.'),
+    tmsTo: isoDateSchema('Please complete the TMS period.'),
   }),
 )
-
-export const editExercisePeriodsSchema = withTmsOrder(periodsBaseSchema)
 
 export const slotPeriodSchema = z.object({
   slotStartDate: isoDateSchema('Please complete the Slot Period.'),
@@ -67,20 +70,14 @@ export function emptyCreateExercisePeriodsForm(toolkitId = '') {
   return {
     toolkitId,
     sizingMonth: '',
-    tmsFrom: '',
-    tmsTo: '',
   }
 }
 
 export function emptyEditExercisePeriodsForm(): {
   sizingMonth: string
-  tmsFrom: string
-  tmsTo: string
 } {
   return {
     sizingMonth: '',
-    tmsFrom: '',
-    tmsTo: '',
   }
 }
 

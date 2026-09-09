@@ -12,6 +12,7 @@ import { formatDate } from '@/lib/datetime'
 import {
   SIZING_MONTH_HINT_DESCRIPTION,
   TMS_PERIOD_HINT_DESCRIPTION,
+  formatTmsPeriodLabel,
   sizingHintLines,
   tmsHintLines,
 } from '../periodWindows'
@@ -51,7 +52,7 @@ const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exerc
           {
             key: 'tmsPeriod',
             label: 'TMS period',
-            value: `${formatDate(exercise.tmsFrom)} – ${formatDate(exercise.tmsTo)}`,
+            value: formatTmsPeriodLabel(exercise.tmsFrom, exercise.tmsTo),
           },
           { key: 'status', label: 'Current Step', value: currentStepLabel(exercise) },
         ]"
