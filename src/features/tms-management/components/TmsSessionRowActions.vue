@@ -2,13 +2,14 @@
 import { Button } from '@/components/ui/button'
 
 defineProps<{
-  canDelete?: boolean
-  deleting?: boolean
+  canToggleEnabled?: boolean
+  enabled?: boolean
+  toggling?: boolean
 }>()
 
 const emit = defineEmits<{
   open: []
-  delete: []
+  toggleEnabled: []
 }>()
 </script>
 
@@ -23,14 +24,14 @@ const emit = defineEmits<{
       View
     </Button>
     <Button
-      v-if="canDelete"
+      v-if="canToggleEnabled"
       size="sm"
-      variant="link-destructive"
+      variant="link"
       class="h-auto px-0 text-sm font-semibold"
-      :disabled="deleting"
-      @click="emit('delete')"
+      :disabled="toggling"
+      @click="emit('toggleEnabled')"
     >
-      Delete
+      {{ enabled === false ? 'Enable' : 'Disable' }}
     </Button>
   </div>
 </template>

@@ -10,7 +10,8 @@ export interface Toolkit {
   pl3Code?: string
   pl3Name: string
   combineSubtasksTime: boolean
-  subtasks: Array<{ id: string; name: string; deletedAt: string | null }>
+  enabled?: boolean
+  subtasks: Array<{ id: string; name: string; deletedAt: string | null; enabled?: boolean }>
 }
 
 export interface Pl3Option {
@@ -30,6 +31,7 @@ export interface TmsSession {
   reference: string
   remarks: string
   status: TmsSessionStatus
+  enabled?: boolean
   startedAt: string
   pausedAt: string | null
   endedAt: string | null
@@ -67,6 +69,7 @@ export interface SessionFilters {
   agentCcgid?: string
   toolkitId?: string
   pl3Code?: string
+  enabled?: boolean
   page: number
   pageSize: number
 }

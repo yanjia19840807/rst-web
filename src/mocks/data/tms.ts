@@ -4,7 +4,7 @@ import { supervisorToolkits } from './supervisor'
 
 // Bump when the running-session invariant or session shape changes so stale browser
 // mock storage cannot resurrect multiple running sessions.
-const storageKey = 'rst-web:tms-sessions:v3'
+const storageKey = 'rst-web:tms-sessions:v4'
 
 export function getAgentToolkits(): Toolkit[] {
   // Mock ACTIVE Timesheet says the current Agent belongs to POS-SUP-001 + PL3-BANK-REC.
@@ -24,9 +24,15 @@ export function getAgentToolkits(): Toolkit[] {
       pl2: item.pl2,
       pl3Name: item.pl3Name,
       combineSubtasksTime: item.combineSubtasksTime,
+      enabled: item.enabled !== false,
       subtasks: item.subtasks
-        .filter((subtask) => !subtask.deletedAt)
-        .map((subtask) => ({ id: subtask.id, name: subtask.name, deletedAt: null })),
+        .filter((subtask) => !subtask.deletedAt && subtask.enabled !== false)
+        .map((subtask) => ({
+          id: subtask.id,
+          name: subtask.name,
+          deletedAt: null,
+          enabled: true,
+        })),
     }))
 }
 
@@ -109,6 +115,7 @@ const completedSeed: TmsSession[] = [
   reference: String(reference),
   remarks: String(remarks),
   status: 'completed',
+  enabled: true,
   startedAt: String(startedAt),
   pausedAt: null,
   endedAt: String(endedAt),
@@ -135,6 +142,7 @@ const pausedSeed: TmsSession[] = pausedRows.map(([id, pausedAt, reference], inde
   reference,
   remarks: '',
   status: 'paused',
+  enabled: true,
   startedAt: new Date(new Date(pausedAt).getTime() - 180_000).toISOString(),
   pausedAt,
   endedAt: null,
@@ -157,6 +165,7 @@ export function readSessions(): TmsSession[] {
         subtaskName: row.subtaskName || row.subtask || 'Historical Subtask',
         processedVolume: row.processedVolume ?? row.volume ?? 0,
         netDurationSeconds: row.netDurationSeconds ?? row.accumulatedSeconds ?? 0,
+        enabled: row.enabled !== false,
       }))
       let runningSeen = false
       return normalized.map((row) => {

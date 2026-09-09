@@ -14,6 +14,7 @@ export function snapshotFromToolkit(toolkit: SupervisorToolkit): Exercise['snaps
       pl3Code: toolkit.pl3Code,
       pl3Name: toolkit.pl3Name,
       combineSubtasksTime: toolkit.combineSubtasksTime,
+      enabled: toolkit.enabled !== false,
       version: toolkit.version,
     },
     subtasks: toolkit.subtasks,

@@ -49,7 +49,7 @@ import {
   supervisorPositionId,
   supervisorToolkits,
 } from '../data/supervisor'
-import { readSessions } from '../data/tms'
+import { readSessions, writeSessions } from '../data/tms'
 import { pageOf, pageParams } from '../page'
 
 function volumeText(value: number): string {
@@ -126,19 +126,56 @@ function problem(status: number, detail: string) {
   return HttpResponse.json({ title: 'Supervisor request failed', status, detail }, { status })
 }
 
-function unfinishedCounts(predicate: (session: { toolkitId: string; subtaskId: string | null; status: string }) => boolean) {
-  const rows = readSessions().filter(predicate)
-  return {
-    running: rows.filter((session) => session.status === 'running').length,
-    paused: rows.filter((session) => session.status === 'paused').length,
-  }
+function syncSessions(
+  predicate: (session: { toolkitId: string; subtaskId: string | null }) => boolean,
+  enabled: boolean,
+) {
+  let synced = 0
+  const next = readSessions().map((session) => {
+    if (!predicate(session) || (session.enabled !== false) === enabled) return session
+    synced += 1
+    return { ...session, enabled }
+  })
+  writeSessions(next)
+  return synced
 }
 
-function unfinishedMessage(subject: string, running: number, paused: number) {
-  const parts: string[] = []
-  if (running > 0) parts.push(`${running} running session${running === 1 ? '' : 's'}`)
-  if (paused > 0) parts.push(`${paused} paused session${paused === 1 ? '' : 's'}`)
-  return `${subject} still has ${parts.join(' and ')}. End or discard them before deleting.`
+function toggleToolkit(id: string, enabled: boolean) {
+  const toolkit = supervisorToolkits.find((item) => item.id === id && !item.deletedAt)
+  if (!toolkit) return problem(404, 'Toolkit not found.')
+  toolkit.enabled = enabled
+  toolkit.version += 1
+  const synced = syncSessions((session) => session.toolkitId === toolkit.id, enabled)
+  return HttpResponse.json({ ...withToolkitAlignment(toolkit), syncedSessionCount: synced })
+}
+
+function toggleSubtask(toolkitId: string, subtaskId: string, enabled: boolean) {
+  const toolkit = supervisorToolkits.find((item) => item.id === toolkitId && !item.deletedAt)
+  const subtask = toolkit?.subtasks.find((item) => item.id === subtaskId && !item.deletedAt)
+  if (!toolkit || !subtask) return problem(404, 'The Subtask was not found.')
+  subtask.enabled = enabled
+  toolkit.version += 1
+  const synced = syncSessions((session) => session.subtaskId === subtask.id, enabled)
+  return HttpResponse.json({ ...withToolkitAlignment(toolkit), syncedSessionCount: synced })
+}
+
+function withSessionCounts(toolkit: SupervisorToolkit): SupervisorToolkit {
+  const sessions = readSessions().filter((session) => session.toolkitId === toolkit.id)
+  return {
+    ...toolkit,
+    enabled: toolkit.enabled !== false,
+    referencedEnabledSessionCount: sessions.filter((session) => session.enabled !== false).length,
+    referencedDisabledSessionCount: sessions.filter((session) => session.enabled === false).length,
+    subtasks: toolkit.subtasks.map((subtask) => {
+      const rows = sessions.filter((session) => session.subtaskId === subtask.id)
+      return {
+        ...subtask,
+        enabled: subtask.enabled !== false,
+        referencedEnabledSessionCount: rows.filter((session) => session.enabled !== false).length,
+        referencedDisabledSessionCount: rows.filter((session) => session.enabled === false).length,
+      }
+    }),
+  }
 }
 
 type SimulationShell = {
@@ -219,7 +256,7 @@ function toolkitAlignment(toolkit: SupervisorToolkit) {
 
 function withToolkitAlignment(toolkit: SupervisorToolkit) {
   const alignment = toolkitAlignment(toolkit)
-  return { ...toolkit, outOfSync: alignment.structuralDrift, alignment }
+  return withSessionCounts({ ...toolkit, outOfSync: alignment.structuralDrift, alignment })
 }
 
 function exerciseAlignment(exercise: Exercise) {
@@ -280,7 +317,7 @@ function snapshot(toolkit: SupervisorToolkit): Exercise['snapshot'] {
       version: toolkit.version,
     },
     subtasks: toolkit.subtasks
-      .filter((item) => !item.deletedAt)
+      .filter((item) => !item.deletedAt && item.enabled !== false)
       .map((item) => ({
         id: crypto.randomUUID(),
         sourceToolkitSubtaskId: item.id,
@@ -501,12 +538,17 @@ export const supervisorHandlers = [
     const url = new URL(request.url)
     const name = (url.searchParams.get('name') ?? '').trim().toLowerCase()
     const pl3Name = (url.searchParams.get('pl3Name') ?? '').trim()
+    const enabled = url.searchParams.get('enabled')
     const source = supervisorToolkits.filter((item) => !item.deletedAt)
     const pl3Names = [...new Set(source.map((item) => item.pl3Name).filter(Boolean))].sort()
     const items = source.filter((item) => {
       const matchesName = !name || item.name.toLowerCase().includes(name)
       const matchesPl3 = !pl3Name || item.pl3Name === pl3Name
-      return matchesName && matchesPl3
+      const matchesEnabled =
+        enabled !== 'true' && enabled !== 'false'
+          ? true
+          : (item.enabled !== false) === (enabled === 'true')
+      return matchesName && matchesPl3 && matchesEnabled
     })
     const paged = pageOf(
       items.map(withToolkitAlignment),
@@ -555,6 +597,7 @@ export const supervisorHandlers = [
       id: crypto.randomUUID(),
       version: 0,
       deletedAt: null,
+      enabled: true,
     }
     supervisorToolkits.unshift(toolkit)
     return HttpResponse.json(withToolkitAlignment(toolkit), { status: 201 })
@@ -571,20 +614,10 @@ export const supervisorHandlers = [
     if (input.sharedKpiSelections.some((item) => 'deliveryHc' in item)) {
       return problem(422, 'Delivery HC must not be persisted in Toolkit selections.')
     }
-    const keepActiveIds = new Set(
-      input.subtasks.filter((item) => item.id && !item.deletedAt).map((item) => item.id),
-    )
-    for (const subtask of current.subtasks.filter((item) => !item.deletedAt)) {
-      if (keepActiveIds.has(subtask.id)) continue
-      const counts = unfinishedCounts((session) => session.subtaskId === subtask.id)
-      if (counts.running + counts.paused > 0) {
-        return problem(409, unfinishedMessage(`Subtask "${subtask.name}"`, counts.running, counts.paused))
-      }
-    }
     const updated: SupervisorToolkit = {
       ...current,
       ...input,
-      subtasks: input.subtasks.map((item) => ({ ...item })),
+      subtasks: current.subtasks,
       sharedKpiSelections: input.sharedKpiSelections.map((item) => ({ ...item })),
       version: current.version + 1,
     }
@@ -592,17 +625,44 @@ export const supervisorHandlers = [
     return HttpResponse.json(withToolkitAlignment(updated))
   }),
 
-  http.delete('*/api/v1/toolkits/:id', ({ params }) => {
+  http.post('*/api/v1/toolkits/:id/enable', ({ params }) => toggleToolkit(String(params.id), true)),
+  http.post('*/api/v1/toolkits/:id/disable', ({ params }) => toggleToolkit(String(params.id), false)),
+  http.post('*/api/v1/toolkits/:id/subtasks', async ({ params, request }) => {
     const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
     if (!toolkit) return problem(404, 'Toolkit not found.')
-    const counts = unfinishedCounts((session) => session.toolkitId === toolkit.id)
-    if (counts.running + counts.paused > 0) {
-      return problem(409, unfinishedMessage('This Toolkit', counts.running, counts.paused))
-    }
-    toolkit.deletedAt = new Date().toISOString()
+    const input = (await request.json()) as { name?: string; description?: string; displayOrder?: number }
+    const name = input.name?.trim() ?? ''
+    if (!name) return problem(422, 'Enter a subtask name.')
+    toolkit.subtasks.push({
+      id: crypto.randomUUID(),
+      name,
+      description: input.description ?? '',
+      displayOrder: input.displayOrder ?? toolkit.subtasks.length + 1,
+      deletedAt: null,
+      enabled: true,
+    })
     toolkit.version += 1
-    return new HttpResponse(null, { status: 204 })
+    return HttpResponse.json(withToolkitAlignment(toolkit), { status: 201 })
   }),
+  http.put('*/api/v1/toolkits/:id/subtasks/:subtaskId', async ({ params, request }) => {
+    const toolkit = supervisorToolkits.find((item) => item.id === params.id && !item.deletedAt)
+    const subtask = toolkit?.subtasks.find((item) => item.id === params.subtaskId && !item.deletedAt)
+    if (!toolkit || !subtask) return problem(404, 'The Subtask was not found.')
+    const input = (await request.json()) as { name?: string; description?: string; displayOrder?: number }
+    const name = input.name?.trim() ?? ''
+    if (!name) return problem(422, 'Enter a subtask name.')
+    subtask.name = name
+    if (input.description !== undefined) subtask.description = input.description
+    if (input.displayOrder !== undefined) subtask.displayOrder = input.displayOrder
+    toolkit.version += 1
+    return HttpResponse.json(withToolkitAlignment(toolkit))
+  }),
+  http.post('*/api/v1/toolkits/:id/subtasks/:subtaskId/enable', ({ params }) =>
+    toggleSubtask(String(params.id), String(params.subtaskId), true),
+  ),
+  http.post('*/api/v1/toolkits/:id/subtasks/:subtaskId/disable', ({ params }) =>
+    toggleSubtask(String(params.id), String(params.subtaskId), false),
+  ),
 
   http.get('*/api/v1/exercises', ({ request }) => {
     exercises.forEach(syncFlags)
@@ -632,6 +692,7 @@ export const supervisorHandlers = [
       (item) => item.id === input.toolkitId && !item.deletedAt,
     )
     if (!toolkit) return problem(404, 'Toolkit not found.')
+    if (toolkit.enabled === false) return problem(409, 'Enable the Toolkit before creating an Exercise.')
     if (
       !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.sizingMonth) ||
       input.tmsTo < input.tmsFrom

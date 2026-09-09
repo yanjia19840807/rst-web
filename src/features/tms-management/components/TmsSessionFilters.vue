@@ -9,6 +9,8 @@ import { NativeSelect } from '@/components/ui/native-select'
 import type { Pl3Option, TeamAgentOption, Toolkit } from '../types'
 import TeamAgentPicker from './TeamAgentPicker.vue'
 
+export type TmsSessionEnabledFilter = '' | 'true' | 'false'
+
 export type TmsSessionFilterValues = {
   sessionNo: string
   reference: string
@@ -17,6 +19,7 @@ export type TmsSessionFilterValues = {
   agentCcgid: string
   toolkitId: string
   pl3Code: string
+  enabled: TmsSessionEnabledFilter
 }
 
 const emptyFilters = (): TmsSessionFilterValues => ({
@@ -27,6 +30,7 @@ const emptyFilters = (): TmsSessionFilterValues => ({
   agentCcgid: '',
   toolkitId: '',
   pl3Code: '',
+  enabled: '',
 })
 
 const props = defineProps<{
@@ -53,6 +57,10 @@ const toolkitOptions = computed(() => {
   if (!draft.pl3Code) return all
   return all.filter((toolkit) => toolkit.pl3Code === draft.pl3Code)
 })
+
+function onEnabledChange(value: unknown) {
+  draft.enabled = value === 'true' || value === 'false' ? value : ''
+}
 
 function onPl3Change(value: string) {
   draft.pl3Code = value
@@ -101,6 +109,18 @@ function onClear() {
         :class="fieldClass"
         placeholder="Search reference"
       />
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Status
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.enabled"
+        @update:model-value="onEnabledChange($event)"
+      >
+        <option value="">All</option>
+        <option value="true">Enabled</option>
+        <option value="false">Disabled</option>
+      </NativeSelect>
     </label>
     <label
       v-if="showTeamFilters"

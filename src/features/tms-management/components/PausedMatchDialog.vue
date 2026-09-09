@@ -58,10 +58,10 @@ function onResume(event: Event) {
         <AlertDialogTitle>Paused session found</AlertDialogTitle>
         <AlertDialogDescription>
           You already have a paused session for this Toolkit, TASK and Reference. Resume it, or
-          cancel and delete it from Paused Sessions if it is no longer needed.
+          cancel and discard it from Paused Sessions if it is no longer needed.
           <template v-if="extraCount > 0">
             {{ extraCount }} more paused session{{ extraCount === 1 ? '' : 's' }} share this key.
-            Resume or delete the extras from Paused Sessions.
+            Resume or discard the extras from Paused Sessions.
           </template>
         </AlertDialogDescription>
       </AlertDialogHeader>

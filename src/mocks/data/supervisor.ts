@@ -76,6 +76,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
         description: 'Match unmatched bank entries.',
         displayOrder: 1,
         deletedAt: null,
+        enabled: true,
       },
       {
         id: '774470ed-41fb-48f4-97ed-665cdf325c9e',
@@ -83,6 +84,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
         description: 'Validate posting results.',
         displayOrder: 2,
         deletedAt: null,
+        enabled: true,
       },
       {
         id: 'f1b3a57a-5ace-465f-b236-2707f5cf270c',
@@ -90,6 +92,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
         description: 'Historical task retained for TMS display.',
         displayOrder: 3,
         deletedAt: '2026-07-01T00:00:00Z',
+        enabled: true,
       },
     ],
     sharedKpiSelections: [
@@ -98,6 +101,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
     ],
     version: 2,
     deletedAt: null,
+    enabled: true,
   },
   {
     id: '7d2c1a0e-4b8f-4f1a-9c3d-2e6a8b0c1d2e',
@@ -118,6 +122,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
         description: 'Capture inbound invoices.',
         displayOrder: 1,
         deletedAt: null,
+        enabled: true,
       },
     ],
     sharedKpiSelections: [
@@ -126,6 +131,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
     ],
     version: 1,
     deletedAt: null,
+    enabled: true,
   },
 ]
 

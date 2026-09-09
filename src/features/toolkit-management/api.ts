@@ -23,6 +23,8 @@ export const toolkitApi = {
     const name = query?.name?.trim()
     if (name) params.set('name', name)
     if (query?.pl3Name) params.set('pl3Name', query.pl3Name)
+    if (query?.enabled === true) params.set('enabled', 'true')
+    if (query?.enabled === false) params.set('enabled', 'false')
     params.set('page', String(query?.page ?? 1))
     params.set('pageSize', String(query?.pageSize ?? 10))
     return apiRequest<ToolkitListView>(`${toolkits}/managed?${params.toString()}`)
@@ -46,8 +48,29 @@ export const toolkitApi = {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
-  remove: (id: string) =>
-    apiRequest<void>(`${toolkits}/${id}`, { method: 'DELETE' }),
+  addSubtask: (id: string, input: { name: string; description?: string; displayOrder?: number }) =>
+    apiRequest<SupervisorToolkit>(`${toolkits}/${id}/subtasks`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updateSubtask: (
+    id: string,
+    subtaskId: string,
+    input: { name: string; description?: string; displayOrder?: number },
+  ) =>
+    apiRequest<SupervisorToolkit>(`${toolkits}/${id}/subtasks/${subtaskId}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  setEnabled: (id: string, enabled: boolean) =>
+    apiRequest<SupervisorToolkit>(`${toolkits}/${id}/${enabled ? 'enable' : 'disable'}`, {
+      method: 'POST',
+    }),
+  setSubtaskEnabled: (id: string, subtaskId: string, enabled: boolean) =>
+    apiRequest<SupervisorToolkit>(
+      `${toolkits}/${id}/subtasks/${subtaskId}/${enabled ? 'enable' : 'disable'}`,
+      { method: 'POST' },
+    ),
   exportWorkbook: async (id: string) => {
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}${toolkits}/${id}/export`, {
       headers: apiHeaders(undefined, { json: false }),

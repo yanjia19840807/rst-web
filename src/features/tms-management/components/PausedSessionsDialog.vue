@@ -43,8 +43,8 @@ const listQuery = computed<SessionFilters & { status: 'paused' }>(() => ({
 
 const pausedQuery = useTmsSessionsQuery(listQuery, 'agent', () => props.open)
 const { resume, discard } = useTmsSessionMutations()
-const deleteTargetId = ref('')
-const deleteOpen = ref(false)
+const discardTargetId = ref('')
+const discardOpen = ref(false)
 
 const items = computed(() => pausedQuery.data.value?.items ?? [])
 const total = computed(() => pausedQuery.data.value?.total ?? 0)
@@ -54,11 +54,11 @@ const columns = computed(() =>
   createPausedSessionColumns({
     hasRunningSession: props.hasRunningSession,
     resumePending: resume.isPending.value,
-    deletePending: discard.isPending.value,
+    discardPending: discard.isPending.value,
     onResume: (id) => {
       void resumeSession(id)
     },
-    onDelete: openDelete,
+    onDiscard: openDiscard,
   }),
 )
 
@@ -115,18 +115,18 @@ async function resumeSession(id: string) {
   }
 }
 
-function openDelete(id: string) {
-  deleteTargetId.value = id
-  deleteOpen.value = true
+function openDiscard(id: string) {
+  discardTargetId.value = id
+  discardOpen.value = true
 }
 
-async function confirmDelete() {
+async function confirmDiscard() {
   try {
-    await discard.mutateAsync(deleteTargetId.value)
-    deleteOpen.value = false
-    toast.success('Paused session deleted.')
+    await discard.mutateAsync(discardTargetId.value)
+    discardOpen.value = false
+    toast.success('Paused session discarded.')
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not delete the session.')
+    toast.error(error instanceof Error ? error.message : 'Could not discard the session.')
   }
 }
 </script>
@@ -181,12 +181,12 @@ async function confirmDelete() {
   </Dialog>
 
   <ConfirmDialog
-    v-model:open="deleteOpen"
-    title="Delete Session"
+    v-model:open="discardOpen"
+    title="Discard Session"
     warning="This will discard the paused timing session."
-    :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
-    confirm-label="Delete"
+    :rows="[{ label: 'Session No', value: discardTargetId, strong: true }]"
+    confirm-label="Discard"
     :pending="discard.isPending.value"
-    @confirm="confirmDelete"
+    @confirm="confirmDiscard"
   />
 </template>

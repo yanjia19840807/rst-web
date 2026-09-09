@@ -31,7 +31,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   const hydrating = ref(false)
   const initialized = ref(false)
   const kpiOpen = ref(false)
-  const deleteOpen = ref(false)
+  const toggleOpen = ref(false)
 
   const {
     defineField,
@@ -150,7 +150,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     () =>
       mutations.create.isPending.value ||
       mutations.update.isPending.value ||
-      mutations.remove.isPending.value,
+      mutations.setEnabled.isPending.value,
   )
 
   async function hydrate() {
@@ -182,6 +182,9 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
             description: item.description ?? '',
             displayOrder: item.displayOrder,
             deletedAt: item.deletedAt,
+            enabled: item.enabled !== false,
+            referencedEnabledSessionCount: item.referencedEnabledSessionCount,
+            referencedDisabledSessionCount: item.referencedDisabledSessionCount,
           })),
           sharedKpiSelections: toolkit.sharedKpiSelections.map((item) => ({
             carrier: item.carrier,
@@ -302,16 +305,49 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     },
   )
 
-  async function confirmDelete() {
+  const toolkitEnabled = computed(() => toolkitQuery.data.value?.enabled !== false)
+
+  function syncSessionCount() {
+    const toolkit = toolkitQuery.data.value
+    if (!toolkit) return 0
+    return toolkitEnabled.value
+      ? (toolkit.referencedEnabledSessionCount ?? 0)
+      : (toolkit.referencedDisabledSessionCount ?? 0)
+  }
+
+  async function confirmToggle() {
     if (!resolvedId.value) return
+    const nextEnabled = !toolkitEnabled.value
     try {
-      await mutations.remove.mutateAsync(resolvedId.value)
-      deleteOpen.value = false
-      toast.success(`${values.name} deleted.`)
-      void router.push({ name: 'supervisor-toolkits' })
+      const toolkit = await mutations.setEnabled.mutateAsync({
+        id: resolvedId.value,
+        enabled: nextEnabled,
+      })
+      applyToolkit(toolkit)
+      toggleOpen.value = false
+      toast.success(nextEnabled ? 'Toolkit enabled.' : 'Toolkit disabled.')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Toolkit could not be deleted.')
+      toast.error(error instanceof Error ? error.message : 'Could not update the Toolkit status.')
     }
+  }
+
+  function applyToolkit(toolkit: {
+    version?: number
+    enabled?: boolean
+    subtasks: ToolkitFormValues['subtasks']
+    referencedEnabledSessionCount?: number
+    referencedDisabledSessionCount?: number
+  }) {
+    setFieldValue('version', toolkit.version, false)
+    setFieldValue(
+      'subtasks',
+      toolkit.subtasks.map((item) => ({
+        ...item,
+        description: item.description ?? '',
+        deletedAt: item.deletedAt ?? null,
+      })),
+      false,
+    )
   }
 
   const mappingErrors = computed(() =>
@@ -354,10 +390,13 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     loading,
     busy,
     kpiOpen,
-    deleteOpen,
+    toggleOpen,
+    toolkitEnabled,
+    syncSessionCount,
     applyKpiSelection,
     removeKpi,
+    applyToolkit,
     save,
-    confirmDelete,
+    confirmToggle,
   }
 }

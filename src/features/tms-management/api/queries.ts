@@ -111,6 +111,7 @@ export function useTmsSessionsQuery(
         agentCcgid,
         toolkitId,
         pl3Code,
+        enabled,
         page,
         pageSize,
       } = resolvedFilters.value
@@ -130,6 +131,8 @@ export function useTmsSessionsQuery(
       if (agentCcgid) params.set('agentCcgid', agentCcgid)
       if (toolkitId) params.set('toolkitId', toolkitId)
       if (pl3Code) params.set('pl3Code', pl3Code)
+      if (enabled === true) params.set('enabled', 'true')
+      if (enabled === false) params.set('enabled', 'false')
       const path =
         resolvedMode.value === 'supervisor'
           ? `/api/v1/tms/team/sessions?${params}`

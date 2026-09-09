@@ -49,6 +49,7 @@ function occupyingDocument(excludeId?: string, next?: {
   return sessions.find(
     (session) =>
       session.status !== 'discarded' &&
+      session.enabled !== false &&
       session.id !== excludeId &&
       documentKey(session) === key,
   )
@@ -58,7 +59,7 @@ function documentConflict(existing: TmsSession) {
   if (existing.status === 'paused') {
     return problem(
       409,
-      'A paused session already exists for this Toolkit, TASK and Reference. Resume it, or delete it from Paused Sessions.',
+      'A paused session already exists for this Toolkit, TASK and Reference. Resume it, or discard it from Paused Sessions.',
     )
   }
   if (existing.status === 'completed') {
@@ -119,6 +120,11 @@ function applySessionDetails(
   }
 }
 
+function matchesEnabled(session: TmsSession, enabledParam: string | null) {
+  if (enabledParam !== 'true' && enabledParam !== 'false') return true
+  return (session.enabled !== false) === (enabledParam === 'true')
+}
+
 function pageOf(items: TmsSession[], page: number, pageSize: number): PageResult<TmsSession> {
   const total = items.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -161,10 +167,12 @@ export const tmsHandlers = [
     const query = url.searchParams.get('query')?.trim().toLowerCase() ?? ''
     const dateFrom = url.searchParams.get('dateFrom')
     const dateTo = url.searchParams.get('dateTo')
+    const enabled = url.searchParams.get('enabled')
     const page = Number(url.searchParams.get('page') ?? 1)
     const pageSize = Number(url.searchParams.get('pageSize') ?? 10)
 
     const filtered = sessions
+      .filter((session) => matchesEnabled(session, enabled))
       .filter((session) => !status || session.status === status)
       .filter((session) => !sessionNo || session.id.toLowerCase().includes(sessionNo))
       .filter((session) => !reference || session.reference.toLowerCase().includes(reference))
@@ -249,6 +257,7 @@ export const tmsHandlers = [
       reference: input.reference,
       remarks: input.remarks,
       status: 'running',
+      enabled: true,
       startedAt: now.toISOString(),
       pausedAt: null,
       endedAt: null,
@@ -363,10 +372,12 @@ export const tmsHandlers = [
     const agentCcgid = url.searchParams.get('agentCcgid')
     const toolkitId = url.searchParams.get('toolkitId')
     const pl3Code = url.searchParams.get('pl3Code')
+    const enabled = url.searchParams.get('enabled')
     const page = Number(url.searchParams.get('page') ?? 1)
     const pageSize = Number(url.searchParams.get('pageSize') ?? 10)
 
     const filtered = sessions
+      .filter((session) => matchesEnabled(session, enabled))
       .filter((session) => !status || session.status === status)
       .filter((session) => !sessionNo || session.id.toLowerCase().includes(sessionNo))
       .filter((session) => !reference || session.reference.toLowerCase().includes(reference))
@@ -399,9 +410,31 @@ export const tmsHandlers = [
     if (!session) {
       return problem(404, 'The session no longer exists.')
     }
+    if (session.status === 'completed') {
+      return problem(409, 'Completed sessions cannot be discarded.')
+    }
     const discarded = { ...session, status: 'discarded' as const }
-    // Discard is a state transition; TMS history must remain queryable.
     save(sessions.map((item) => (item.id === discarded.id ? discarded : item)))
     return HttpResponse.json(discarded)
   }),
+
+  http.post('*/api/v1/tms/team/sessions/:id/enable', async ({ params }) => {
+    return toggleEnabled(String(params.id), true)
+  }),
+
+  http.post('*/api/v1/tms/team/sessions/:id/disable', async ({ params }) => {
+    return toggleEnabled(String(params.id), false)
+  }),
 ]
+
+async function toggleEnabled(id: string, enabled: boolean) {
+  await delay(80)
+  const session = sessions.find((candidate) => candidate.id === id)
+  if (!session) return problem(404, 'The TMS session was not found.')
+  if (session.status !== 'completed') {
+    return problem(409, 'Only a completed session can be enabled or disabled.')
+  }
+  const updated = { ...session, enabled }
+  save(sessions.map((item) => (item.id === updated.id ? updated : item)))
+  return HttpResponse.json(updated)
+}

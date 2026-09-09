@@ -19,7 +19,7 @@ const columnHelper = createColumnHelper<SupervisorToolkit>()
 export function activeSubtaskNames(toolkit: SupervisorToolkit) {
   return (
     toolkit.subtasks
-      .filter((item) => !item.deletedAt)
+      .filter((item) => !item.deletedAt && item.enabled !== false)
       .map((item) => item.name)
       .join('; ') || '—'
   )
@@ -56,6 +56,10 @@ export function createToolkitColumns(
       id: 'subtasks',
       header: 'Subtasks',
     }),
+    columnHelper.accessor((row) => (row.enabled === false ? 'Disabled' : 'Enabled'), {
+      id: 'enabled',
+      header: 'Status',
+    }),
     columnHelper.display({
       id: 'actions',
       enableHiding: false,
@@ -65,7 +69,7 @@ export function createToolkitColumns(
           h(ToolkitRowActions, {
             exporting: options.exportingId === row.original.id,
             exportDisabled: Boolean(options.exportingId),
-            createDisabled: Boolean(row.original.outOfSync),
+            createDisabled: Boolean(row.original.outOfSync) || row.original.enabled === false,
             onCreate: () => options.onCreate?.(row.original),
             onEdit: () => options.onEdit?.(row.original.id),
             onExport: () => options.onExport?.(row.original),

@@ -12,6 +12,7 @@ export const toolkitQueryKeys = {
       'list',
       query.name ?? '',
       query.pl3Name ?? '',
+      query.enabled === true ? 'true' : query.enabled === false ? 'false' : '',
       query.page ?? 1,
       query.pageSize ?? 10,
     ] as const,

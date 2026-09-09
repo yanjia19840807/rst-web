@@ -72,5 +72,14 @@ export function useTmsSessionMutations() {
     },
   })
 
-  return { start, pause, resume, end, discard }
+  const setEnabled = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      apiRequest<TmsSession>(
+        `/api/v1/tms/team/sessions/${id}/${enabled ? 'enable' : 'disable'}`,
+        { method: 'POST' },
+      ),
+    onSuccess: invalidateSessionState,
+  })
+
+  return { start, pause, resume, end, discard, setEnabled }
 }

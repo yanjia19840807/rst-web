@@ -16,6 +16,8 @@ function sessionExportQuery(filters: SessionFilters & { status: 'paused' | 'comp
   if (filters.agentCcgid) params.set('agentCcgid', filters.agentCcgid)
   if (filters.toolkitId) params.set('toolkitId', filters.toolkitId)
   if (filters.pl3Code) params.set('pl3Code', filters.pl3Code)
+  if (filters.enabled === true) params.set('enabled', 'true')
+  if (filters.enabled === false) params.set('enabled', 'false')
   return params.toString()
 }
 

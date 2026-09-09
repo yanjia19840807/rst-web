@@ -1,24 +1,17 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
 import { computed, ref } from 'vue'
-import { useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
-import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
-import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
-import type { Exercise } from '@/features/exercise-management/types'
-import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
-import { toolkitApi } from '@/features/toolkit-management/api'
-import { toolkitQueryKeys } from '@/features/toolkit-management/api/queries'
 import { formatDate } from '@/lib/datetime'
 
+import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionDetailQuery } from '../api/queries'
 import { formatDuration } from '../composables/useTmsTimer'
 import { cycleTime, formatSessionVolume } from './tmsSessionColumns'
@@ -34,7 +27,6 @@ const props = withDefaults(
 )
 
 const router = useRouter()
-const queryClient = useQueryClient()
 const detailQuery = useTmsSessionDetailQuery(
   () => props.sessionId,
   () => props.mode,
@@ -42,10 +34,12 @@ const detailQuery = useTmsSessionDetailQuery(
 
 const session = computed(() => detailQuery.data.value ?? null)
 const isSupervisor = computed(() => props.mode === 'supervisor')
-const toolkitInfoOpen = ref(false)
-const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
-const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
-const toolkitInfoPending = ref(false)
+const { setEnabled } = useTmsSessionMutations()
+const canToggleEnabled = computed(
+  () => isSupervisor.value && session.value?.status === 'completed',
+)
+const isEnabled = computed(() => session.value?.enabled !== false)
+const toggleOpen = ref(false)
 
 function cycleTimeLabel() {
   const item = session.value
@@ -71,7 +65,7 @@ const rows = computed(() => {
     })
   }
   base.push(
-    { key: 'toolkit', label: 'Toolkit', value: item.toolkitName },
+    { label: 'Toolkit', value: item.toolkitName },
     { label: 'Subtask', value: item.subtaskName || '—' },
     { label: 'Start', value: formatDate(item.startedAt) },
     { label: 'End', value: formatDate(item.endedAt) },
@@ -84,22 +78,18 @@ const rows = computed(() => {
   return base
 })
 
-async function openToolkitInfo() {
-  const toolkitId = session.value?.toolkitId
-  if (!toolkitId || toolkitInfoPending.value) return
-  toolkitInfoPending.value = true
+async function confirmToggle() {
+  const item = session.value
+  if (!item) return
+  const nextEnabled = !isEnabled.value
   try {
-    const toolkit = await queryClient.fetchQuery({
-      queryKey: toolkitQueryKeys.detail(toolkitId),
-      queryFn: () => toolkitApi.get(toolkitId),
-    })
-    toolkitSnapshot.value = snapshotFromToolkit(toolkit)
-    toolkitAlignment.value = toolkit.alignment ?? null
-    toolkitInfoOpen.value = true
+    await setEnabled.mutateAsync({ id: item.id, enabled: nextEnabled })
+    toggleOpen.value = false
+    toast.success(nextEnabled ? 'TMS session enabled.' : 'TMS session disabled.')
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
-  } finally {
-    toolkitInfoPending.value = false
+    toast.error(
+      error instanceof Error ? error.message : 'Could not update the session status.',
+    )
   }
 }
 
@@ -122,6 +112,15 @@ function goBack() {
           {{ isSupervisor ? '← Back to TMS List' : '← Back to TMS Session' }}
         </Button>
       </template>
+      <template v-if="canToggleEnabled">
+        <Button
+          :variant="isEnabled ? 'destructive' : 'default'"
+          :disabled="setEnabled.isPending.value"
+          @click="toggleOpen = true"
+        >
+          {{ isEnabled ? 'Disable' : 'Enable' }}
+        </Button>
+      </template>
     </PageActions>
 
     <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
@@ -137,30 +136,29 @@ function goBack() {
               : 'Could not load the session.'
           }}
         </p>
-        <DetailTable v-else :rows="rows">
-          <template #toolkit="{ row }">
-            <span class="inline-flex items-center gap-1.5">
-              <span>{{ row.value || '—' }}</span>
-              <button
-                type="button"
-                :class="infoHintButtonClass"
-                title="Toolkit info"
-                :disabled="toolkitInfoPending || !session?.toolkitId"
-                @click="openToolkitInfo"
-              >
-                <Info :class="infoHintIconClass" />
-                <span class="sr-only">Toolkit info</span>
-              </button>
-            </span>
-          </template>
-        </DetailTable>
+        <DetailTable v-else :rows="rows" />
       </CardContent>
     </Card>
 
-    <ToolkitInfoDialog
-      v-model:open="toolkitInfoOpen"
-      :snapshot="toolkitSnapshot"
-      :alignment="toolkitAlignment"
+    <ConfirmDialog
+      v-if="canToggleEnabled"
+      v-model:open="toggleOpen"
+      :title="isEnabled ? 'Disable Session' : 'Enable Session'"
+      :warning="
+        isEnabled
+          ? 'This completed session will be excluded from cycle time and will not occupy the same Toolkit, TASK and Reference.'
+          : undefined
+      "
+      :description="
+        isEnabled
+          ? undefined
+          : 'This completed session will be included in cycle time again and will occupy the same Toolkit, TASK and Reference.'
+      "
+      :rows="[{ label: 'Session No', value: session?.id ?? '', strong: true }]"
+      :confirm-label="isEnabled ? 'Disable' : 'Enable'"
+      :confirm-variant="isEnabled ? 'destructive' : 'default'"
+      :pending="setEnabled.isPending.value"
+      @confirm="confirmToggle"
     />
   </div>
 </template>

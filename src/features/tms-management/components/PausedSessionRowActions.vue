@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button'
 
 defineProps<{
   resumeDisabled?: boolean
-  deleteDisabled?: boolean
+  discardDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
   resume: []
-  delete: []
+  discard: []
 }>()
 </script>
 
@@ -27,10 +27,10 @@ const emit = defineEmits<{
       size="sm"
       variant="link-destructive"
       class="h-auto px-0 font-semibold"
-      :disabled="deleteDisabled"
-      @click="emit('delete')"
+      :disabled="discardDisabled"
+      @click="emit('discard')"
     >
-      Delete
+      Discard
     </Button>
   </div>
 </template>

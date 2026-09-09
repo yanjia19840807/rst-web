@@ -10,32 +10,36 @@ const props = withDefaults(
   defineProps<{
     sessions: TmsSession[]
     pending?: boolean
-    deletingId?: string
+    togglingId?: string
     showAgent?: boolean
-    canDelete?: boolean
+    showStatus?: boolean
+    canToggleEnabled?: boolean
   }>(),
   {
     showAgent: false,
-    canDelete: true,
+    showStatus: true,
+    canToggleEnabled: false,
   },
 )
 
 const emit = defineEmits<{
-  delete: [id: string]
+  toggleEnabled: [id: string]
   open: [id: string]
 }>()
 
 const columns = computed(() =>
   createTmsSessionColumns({
-    canDelete: props.canDelete,
-    deletingId: props.deletingId,
+    showStatus: props.showStatus,
+    canToggleEnabled: props.canToggleEnabled,
+    togglingId: props.togglingId,
     onOpen: (id) => emit('open', id),
-    onDelete: (id) => emit('delete', id),
+    onToggleEnabled: (id) => emit('toggleEnabled', id),
   }),
 )
 
 const columnVisibility = computed(() => ({
   agent: props.showAgent,
+  enabled: props.showStatus,
 }))
 </script>
 
@@ -45,7 +49,7 @@ const columnVisibility = computed(() => ({
     :data="sessions"
     :pending="pending"
     empty-text="No sessions found."
-    :table-class="showAgent ? 'min-w-[1240px]' : 'min-w-[1120px]'"
+    :table-class="showAgent ? 'min-w-[1320px]' : 'min-w-[1240px]'"
     :get-row-id="(row) => row.id"
     :column-visibility="columnVisibility"
   />

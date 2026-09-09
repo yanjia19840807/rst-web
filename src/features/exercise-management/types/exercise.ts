@@ -26,6 +26,7 @@ export interface ExerciseSubtask {
   description: string | null
   displayOrder: number
   deletedAt: string | null
+  enabled?: boolean
 }
 
 export interface Exercise {
@@ -68,6 +69,7 @@ export interface Exercise {
       | 'pl3Code'
       | 'pl3Name'
       | 'combineSubtasksTime'
+      | 'enabled'
       | 'version'
     >
     subtasks: ExerciseSubtask[] | ToolkitSubtask[]

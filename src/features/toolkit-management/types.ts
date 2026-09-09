@@ -6,6 +6,9 @@ export interface ToolkitSubtask {
   description: string | null
   displayOrder: number
   deletedAt: string | null
+  enabled?: boolean
+  referencedEnabledSessionCount?: number
+  referencedDisabledSessionCount?: number
 }
 
 export interface SharedKpiKey {
@@ -34,6 +37,10 @@ export interface SupervisorToolkit {
   sharedKpiSelections: SharedKpiKey[]
   version: number
   deletedAt: string | null
+  enabled?: boolean
+  referencedEnabledSessionCount?: number
+  referencedDisabledSessionCount?: number
+  syncedSessionCount?: number
   outOfSync?: boolean
   alignment?: TimesheetAlignmentView | null
 }
@@ -67,6 +74,7 @@ export interface ToolkitEditorPayload {
 export interface ToolkitListQuery {
   name?: string
   pl3Name?: string
+  enabled?: boolean
   page?: number
   pageSize?: number
 }

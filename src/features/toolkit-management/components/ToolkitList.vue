@@ -26,6 +26,7 @@ const router = useRouter()
 const emptyFilters = () => ({
   name: '',
   pl3: '',
+  enabled: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -37,6 +38,8 @@ const fieldClass = 'w-[220px]'
 const listQuery = computed<ToolkitListQuery>(() => ({
   name: applied.name.trim() || undefined,
   pl3Name: applied.pl3 || undefined,
+  enabled:
+    applied.enabled === 'true' ? true : applied.enabled === 'false' ? false : undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -103,7 +106,7 @@ const columns = computed(() =>
 )
 
 function createExercise(toolkit: SupervisorToolkit) {
-  if (toolkit.outOfSync) return
+  if (toolkit.outOfSync || toolkit.enabled === false) return
   createToolkit.value = toolkit
   createOpen.value = true
 }
@@ -170,6 +173,18 @@ async function confirmExport() {
               </option>
             </NativeSelect>
           </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Status
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.enabled"
+              @update:model-value="draft.enabled = String($event ?? '')"
+            >
+              <option value="">All</option>
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </NativeSelect>
+          </label>
         </QueryPanel>
 
         <DataTable
@@ -177,7 +192,7 @@ async function confirmExport() {
           :data="toolkits"
           :pending="loading"
           empty-text="No Toolkit is currently available."
-          table-class="min-w-[960px]"
+          table-class="min-w-[1080px]"
           :get-row-id="(row) => row.id"
         />
 

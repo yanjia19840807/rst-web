@@ -14,6 +14,15 @@ export function useToolkitMutations() {
     void queryClient.invalidateQueries({ queryKey: toolkitQueryKeys.hierarchy() })
     void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.toolkits() })
     void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.managedToolkits() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.sessionsPrefix() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.sessionPrefix() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.current() })
+    void queryClient.invalidateQueries({ queryKey: tmsQueryKeys.summary() })
+  }
+
+  const rememberToolkit = (toolkit: { id: string }) => {
+    queryClient.setQueryData(toolkitQueryKeys.detail(toolkit.id), toolkit)
+    invalidateToolkitLists()
   }
 
   const create = useMutation({
@@ -30,13 +39,56 @@ export function useToolkitMutations() {
     },
   })
 
-  const remove = useMutation({
-    mutationFn: (id: string) => toolkitApi.remove(id),
-    onSuccess: (_data, id) => {
-      queryClient.removeQueries({ queryKey: toolkitQueryKeys.detail(id) })
-      invalidateToolkitLists()
-    },
+  const addSubtask = useMutation({
+    mutationFn: ({
+      id,
+      name,
+      description,
+      displayOrder,
+    }: {
+      id: string
+      name: string
+      description?: string
+      displayOrder?: number
+    }) => toolkitApi.addSubtask(id, { name, description, displayOrder }),
+    onSuccess: rememberToolkit,
   })
 
-  return { create, update, remove }
+  const updateSubtask = useMutation({
+    mutationFn: ({
+      id,
+      subtaskId,
+      name,
+      description,
+      displayOrder,
+    }: {
+      id: string
+      subtaskId: string
+      name: string
+      description?: string
+      displayOrder?: number
+    }) => toolkitApi.updateSubtask(id, subtaskId, { name, description, displayOrder }),
+    onSuccess: rememberToolkit,
+  })
+
+  const setEnabled = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      toolkitApi.setEnabled(id, enabled),
+    onSuccess: rememberToolkit,
+  })
+
+  const setSubtaskEnabled = useMutation({
+    mutationFn: ({
+      id,
+      subtaskId,
+      enabled,
+    }: {
+      id: string
+      subtaskId: string
+      enabled: boolean
+    }) => toolkitApi.setSubtaskEnabled(id, subtaskId, enabled),
+    onSuccess: rememberToolkit,
+  })
+
+  return { create, update, addSubtask, updateSubtask, setEnabled, setSubtaskEnabled }
 }

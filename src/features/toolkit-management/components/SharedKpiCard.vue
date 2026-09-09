@@ -3,7 +3,6 @@ import { computed } from 'vue'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -43,16 +42,14 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Card class="mt-4">
-    <CardHeader>
-      <div>
-        <CardTitle>Shared KPI Scope Split</CardTitle>
-        <p v-if="showDeliveryHc" class="mt-1 text-xs text-muted-foreground">
-          Delivery HC is read-only from ACTIVE Timesheet (sync {{ syncDate || '—' }}).
-        </p>
-      </div>
-    </CardHeader>
-    <CardContent class="grid gap-4">
+  <section class="grid gap-4 border-t pt-4">
+    <div>
+      <h3 class="text-sm font-semibold">Shared KPI Scope Split</h3>
+      <p v-if="showDeliveryHc" class="mt-1 text-xs text-muted-foreground">
+        Delivery HC is read-only from ACTIVE Timesheet (sync {{ syncDate || '—' }}).
+      </p>
+    </div>
+    <div class="grid gap-4">
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
 
       <div class="grid gap-2">
@@ -115,6 +112,6 @@ const emit = defineEmits<{
           </Table>
         </div>
       </div>
-    </CardContent>
-  </Card>
+    </div>
+  </section>
 </template>

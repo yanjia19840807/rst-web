@@ -10,9 +10,9 @@ import PausedSessionRowActions from './PausedSessionRowActions.vue'
 export type PausedSessionColumnOptions = {
   hasRunningSession?: boolean
   resumePending?: boolean
-  deletePending?: boolean
+  discardPending?: boolean
   onResume?: (id: string) => void
-  onDelete?: (id: string) => void
+  onDiscard?: (id: string) => void
 }
 
 const columnHelper = createColumnHelper<TmsSession>()
@@ -41,9 +41,9 @@ export function createPausedSessionColumns(
         h('div', { class: 'relative' }, [
           h(PausedSessionRowActions, {
             resumeDisabled: options.hasRunningSession || options.resumePending,
-            deleteDisabled: options.deletePending,
+            discardDisabled: options.discardPending,
             onResume: () => options.onResume?.(row.original.id),
-            onDelete: () => options.onDelete?.(row.original.id),
+            onDiscard: () => options.onDiscard?.(row.original.id),
           }),
         ]),
       meta: { headerClass: 'text-right', cellClass: 'text-right' },

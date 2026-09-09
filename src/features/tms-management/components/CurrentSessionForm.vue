@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
-import { computed, ref } from 'vue'
-import { useQueryClient } from '@tanstack/vue-query'
-import { toast } from 'vue-sonner'
+import { computed } from 'vue'
 
-import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
@@ -12,12 +8,6 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
-import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
-import type { Exercise } from '@/features/exercise-management/types'
-import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
-import { toolkitApi } from '@/features/toolkit-management/api'
-import { toolkitQueryKeys } from '@/features/toolkit-management/api/queries'
 
 import type { Toolkit } from '../types'
 
@@ -45,36 +35,18 @@ const emit = defineEmits<{
   'update:remarks': [value: string]
   'open-paused': []
   'open-sessions': []
+  'open-toolkits': []
 }>()
-
-const queryClient = useQueryClient()
-const toolkitInfoOpen = ref(false)
-const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
-const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
-const toolkitInfoPending = ref(false)
 
 const selectedToolkit = computed(() =>
   props.toolkits.find((toolkit) => toolkit.id === props.toolkitId),
 )
 
-async function openToolkitInfo() {
-  const toolkitId = props.toolkitId
-  if (!toolkitId || toolkitInfoPending.value) return
-  toolkitInfoPending.value = true
-  try {
-    const toolkit = await queryClient.fetchQuery({
-      queryKey: toolkitQueryKeys.detail(toolkitId),
-      queryFn: () => toolkitApi.get(toolkitId),
-    })
-    toolkitSnapshot.value = snapshotFromToolkit(toolkit)
-    toolkitAlignment.value = toolkit.alignment ?? null
-    toolkitInfoOpen.value = true
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
-  } finally {
-    toolkitInfoPending.value = false
-  }
-}
+const startableToolkits = computed(() =>
+  props.toolkits.filter(
+    (toolkit) => toolkit.enabled !== false || toolkit.id === props.toolkitId,
+  ),
+)
 
 function onToolkitChange(value: unknown) {
   if (props.toolkitLocked) return
@@ -87,6 +59,13 @@ function onToolkitChange(value: unknown) {
     <CardHeader>
       <CardTitle>Session</CardTitle>
       <CardAction class="flex items-center gap-4">
+        <Button
+          variant="link"
+          class="px-0 text-sm leading-none font-semibold"
+          @click="emit('open-toolkits')"
+        >
+          All Toolkits
+        </Button>
         <Button
           variant="link"
           class="px-0 text-sm leading-none font-semibold"
@@ -106,37 +85,24 @@ function onToolkitChange(value: unknown) {
     <CardContent class="grid gap-4">
       <div class="grid gap-1.5">
         <Label for="session-toolkit">Toolkit</Label>
-        <div class="flex items-center gap-2">
-          <NativeSelect
-            id="session-toolkit"
-            class="min-w-0 w-full flex-1"
-            :model-value="toolkitId ?? ''"
-            :disabled="toolkitLocked"
-            :aria-invalid="Boolean(errors.toolkitId)"
-            aria-label="Current toolkit"
-            @update:model-value="onToolkitChange"
+        <NativeSelect
+          id="session-toolkit"
+          class="w-full"
+          :model-value="toolkitId ?? ''"
+          :disabled="toolkitLocked"
+          :aria-invalid="Boolean(errors.toolkitId)"
+          aria-label="Current toolkit"
+          @update:model-value="onToolkitChange"
+        >
+          <NativeSelectOption value="">Select a toolkit</NativeSelectOption>
+          <NativeSelectOption
+            v-for="toolkit in startableToolkits"
+            :key="toolkit.id"
+            :value="toolkit.id"
           >
-            <NativeSelectOption value="">Select a toolkit</NativeSelectOption>
-            <NativeSelectOption
-              v-for="toolkit in toolkits"
-              :key="toolkit.id"
-              :value="toolkit.id"
-            >
-              {{ toolkit.name }}
-            </NativeSelectOption>
-          </NativeSelect>
-          <button
-            v-if="selectedToolkit"
-            type="button"
-            :class="infoHintButtonClass"
-            title="Toolkit info"
-            :disabled="toolkitInfoPending"
-            @click="openToolkitInfo"
-          >
-            <Info :class="infoHintIconClass" />
-            <span class="sr-only">Toolkit info</span>
-          </button>
-        </div>
+            {{ toolkit.name }}
+          </NativeSelectOption>
+        </NativeSelect>
         <p v-if="errors.toolkitId" class="text-xs text-destructive">{{ errors.toolkitId }}</p>
       </div>
 
@@ -155,7 +121,7 @@ function onToolkitChange(value: unknown) {
         >
           <NativeSelectOption value="">Select a subtask</NativeSelectOption>
           <NativeSelectOption
-            v-for="item in selectedToolkit?.subtasks.filter((subtask) => !subtask.deletedAt) ?? []"
+            v-for="item in selectedToolkit?.subtasks.filter((subtask) => !subtask.deletedAt && subtask.enabled !== false) ?? []"
             :key="item.id"
             :value="item.id"
           >
@@ -211,11 +177,5 @@ function onToolkitChange(value: unknown) {
         <p v-if="errors.remarks" class="text-xs text-destructive">{{ errors.remarks }}</p>
       </div>
     </CardContent>
-
-    <ToolkitInfoDialog
-      v-model:open="toolkitInfoOpen"
-      :snapshot="toolkitSnapshot"
-      :alignment="toolkitAlignment"
-    />
   </Card>
 </template>

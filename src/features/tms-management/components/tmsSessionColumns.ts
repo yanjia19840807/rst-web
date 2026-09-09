@@ -19,16 +19,18 @@ export type TmsSessionTableRow = {
   reference?: string | null
   remarks?: string | null
   cycleTimeSeconds?: number | null
+  enabled?: boolean
 }
 
 export type TmsSessionColumnOptions = {
   showActions?: boolean
-  canDelete?: boolean
-  deletingId?: string
+  showStatus?: boolean
+  canToggleEnabled?: boolean
+  togglingId?: string
   cycleTimeHeader?: string
   cycleTimeWithUnit?: boolean
   onOpen?: (id: string) => void
-  onDelete?: (id: string) => void
+  onToggleEnabled?: (id: string) => void
 }
 
 const columnHelper = createColumnHelper<TmsSessionTableRow>()
@@ -104,6 +106,15 @@ export function createTmsSessionColumns(
       meta: { cellClass: 'max-w-52 truncate' },
     }),
   ]
+  if (options.showStatus) {
+    columns.push(
+      columnHelper.accessor((row) => (row.enabled === false ? 'Disabled' : 'Enabled'), {
+        id: 'enabled',
+        header: 'Status',
+        meta: { headerClass: 'min-w-[5.75rem]', cellClass: 'min-w-[5.75rem]' },
+      }),
+    )
+  }
 
   if (options.showActions === false) {
     return columns as ColumnDef<TmsSessionTableRow>[]
@@ -118,13 +129,14 @@ export function createTmsSessionColumns(
       cell: ({ row }) =>
         h('div', { class: 'relative' }, [
           h(TmsSessionRowActions, {
-            canDelete: options.canDelete,
-            deleting: options.deletingId === row.original.id,
+            canToggleEnabled: options.canToggleEnabled,
+            enabled: row.original.enabled !== false,
+            toggling: options.togglingId === row.original.id,
             onOpen: () => options.onOpen?.(row.original.id),
-            onDelete: () => options.onDelete?.(row.original.id),
+            onToggleEnabled: () => options.onToggleEnabled?.(row.original.id),
           }),
         ]),
-      meta: { headerClass: 'text-right', cellClass: 'text-right' },
+      meta: { headerClass: 'min-w-[4.5rem] text-right', cellClass: 'min-w-[4.5rem] text-right' },
     }),
   ] as ColumnDef<TmsSessionTableRow>[]
 }

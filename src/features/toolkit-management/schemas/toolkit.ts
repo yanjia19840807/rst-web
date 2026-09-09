@@ -9,6 +9,9 @@ export const toolkitSubtaskSchema = z.object({
     .transform((value) => value ?? ''),
   displayOrder: z.number().min(0),
   deletedAt: z.string().nullable(),
+  enabled: z.boolean().optional(),
+  referencedEnabledSessionCount: z.number().optional(),
+  referencedDisabledSessionCount: z.number().optional(),
 })
 
 export const sharedKpiKeySchema = z.object({

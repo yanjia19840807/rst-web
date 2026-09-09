@@ -23,7 +23,7 @@ const emit = defineEmits<{
       :disabled="createDisabled"
       :title="
         createDisabled
-          ? 'Reconfigure Shared KPI scope before creating an Exercise.'
+          ? 'Enable the Toolkit and fix Shared KPI scope before creating an Exercise.'
           : undefined
       "
       @click="emit('create')"

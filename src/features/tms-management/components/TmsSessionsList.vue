@@ -44,6 +44,7 @@ const emptyFilterValues = (): TmsSessionFilterValues => ({
   agentCcgid: '',
   toolkitId: '',
   pl3Code: '',
+  enabled: '',
 })
 
 const applied = reactive(emptyFilterValues())
@@ -55,6 +56,8 @@ const pagination = reactive({
 const queryFilters = computed(() => ({
   status: 'completed' as const,
   ...applied,
+  enabled:
+    applied.enabled === 'true' ? true : applied.enabled === 'false' ? false : undefined,
   page: pagination.page,
   pageSize: pagination.pageSize,
 }))
@@ -62,10 +65,10 @@ const queryFilters = computed(() => ({
 const sessionsQuery = useTmsSessionsQuery(queryFilters, () => props.mode)
 const teamAgentsQuery = useTeamAgentsQuery(isSupervisor)
 const toolkitsQuery = useManagedToolkitsQuery(isSupervisor)
-const { discard } = useTmsSessionMutations()
-const deletingId = ref('')
-const deleteTargetId = ref('')
-const deleteOpen = ref(false)
+const { setEnabled } = useTmsSessionMutations()
+const togglingId = ref('')
+const toggleTarget = ref<{ id: string; enabled: boolean } | null>(null)
+const toggleOpen = ref(false)
 const exportOpen = ref(false)
 const exporting = ref(false)
 
@@ -92,21 +95,27 @@ function clearFilters() {
   pagination.page = 1
 }
 
-function openDelete(id: string) {
-  deleteTargetId.value = id
-  deleteOpen.value = true
+function openToggle(id: string) {
+  const session = sessionsQuery.data.value?.items.find((item) => item.id === id)
+  toggleTarget.value = { id, enabled: session?.enabled !== false }
+  toggleOpen.value = true
 }
 
-async function confirmDelete() {
-  deletingId.value = deleteTargetId.value
+async function confirmToggle() {
+  const target = toggleTarget.value
+  if (!target) return
+  togglingId.value = target.id
+  const nextEnabled = !target.enabled
   try {
-    await discard.mutateAsync(deleteTargetId.value)
-    deleteOpen.value = false
-    toast.success('TMS session deleted.')
+    await setEnabled.mutateAsync({ id: target.id, enabled: nextEnabled })
+    toggleOpen.value = false
+    toast.success(nextEnabled ? 'TMS session enabled.' : 'TMS session disabled.')
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not delete the session.')
+    toast.error(
+      error instanceof Error ? error.message : 'Could not update the session status.',
+    )
   } finally {
-    deletingId.value = ''
+    togglingId.value = ''
   }
 }
 
@@ -138,8 +147,8 @@ function openDetail(id: string) {
 
 <template>
   <div>
-    <Card :class="embedded ? 'bg-transparent py-0 ring-0' : undefined">
-      <CardContent :class="embedded ? 'grid gap-4 px-0' : 'grid gap-4'">
+    <Card :class="embedded ? 'overflow-visible bg-transparent py-0 ring-0' : undefined">
+      <CardContent :class="embedded ? 'grid gap-3 px-0' : 'grid gap-4'">
         <TmsSessionFilters
           :show-team-filters="isSupervisor"
           :show-export="true"
@@ -155,10 +164,10 @@ function openDetail(id: string) {
         <TmsSessionsTable
           :sessions="sessionsQuery.data.value?.items ?? []"
           :pending="sessionsQuery.isPending.value"
-          :deleting-id="deletingId"
+          :toggling-id="togglingId"
           :show-agent="isSupervisor"
-          :can-delete="!isSupervisor"
-          @delete="openDelete"
+          :can-toggle-enabled="isSupervisor"
+          @toggle-enabled="openToggle"
           @open="openDetail"
         />
 
@@ -189,14 +198,24 @@ function openDetail(id: string) {
     />
 
     <ConfirmDialog
-      v-if="!isSupervisor"
-      v-model:open="deleteOpen"
-      title="Delete Session"
-      warning="This will discard the completed timing session from the list."
-      :rows="[{ label: 'Session No', value: deleteTargetId, strong: true }]"
-      confirm-label="Delete"
-      :pending="Boolean(deletingId)"
-      @confirm="confirmDelete"
+      v-if="isSupervisor"
+      v-model:open="toggleOpen"
+      :title="toggleTarget?.enabled ? 'Disable Session' : 'Enable Session'"
+      :warning="
+        toggleTarget?.enabled
+          ? 'This completed session will be excluded from cycle time and will not occupy the same Toolkit, TASK and Reference.'
+          : undefined
+      "
+      :description="
+        toggleTarget?.enabled
+          ? undefined
+          : 'This completed session will be included in cycle time again and will occupy the same Toolkit, TASK and Reference.'
+      "
+      :rows="[{ label: 'Session No', value: toggleTarget?.id ?? '', strong: true }]"
+      :confirm-label="toggleTarget?.enabled ? 'Disable' : 'Enable'"
+      :confirm-variant="toggleTarget?.enabled ? 'destructive' : 'default'"
+      :pending="Boolean(togglingId)"
+      @confirm="confirmToggle"
     />
   </div>
 </template>

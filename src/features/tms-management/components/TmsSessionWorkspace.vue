@@ -17,6 +17,7 @@ import { useTmsSessionStore } from '../stores/session'
 import type { PausedSessionMatch } from '../types'
 import CurrentSessionForm from './CurrentSessionForm.vue'
 import AllSessionsDialog from './AllSessionsDialog.vue'
+import AllToolkitsDialog from './AllToolkitsDialog.vue'
 import PausedMatchDialog from './PausedMatchDialog.vue'
 import PausedSessionsDialog from './PausedSessionsDialog.vue'
 import SessionTimer from './SessionTimer.vue'
@@ -54,7 +55,8 @@ const { defineField, errors, handleSubmit, setFieldValue, resetForm } = useForm<
 
 function resetSessionForm(keepToolkitId?: string, keepSubtaskId?: string) {
   const toolkit =
-    keepToolkitId && toolkitsQuery.data.value?.some((item) => item.id === keepToolkitId)
+    keepToolkitId &&
+    toolkitsQuery.data.value?.some((item) => item.id === keepToolkitId && item.enabled !== false)
       ? keepToolkitId
       : ''
   const subtask =
@@ -62,7 +64,7 @@ function resetSessionForm(keepToolkitId?: string, keepSubtaskId?: string) {
     keepSubtaskId &&
     toolkitsQuery.data.value
       ?.find((item) => item.id === toolkit)
-      ?.subtasks.some((item) => !item.deletedAt && item.id === keepSubtaskId)
+      ?.subtasks.some((item) => !item.deletedAt && item.enabled !== false && item.id === keepSubtaskId)
       ? keepSubtaskId
       : ''
   resetForm({
@@ -81,6 +83,7 @@ const [reference] = defineField('reference')
 const [remarks] = defineField('remarks')
 const pausedDialogOpen = ref(false)
 const sessionsDialogOpen = ref(false)
+const toolkitsDialogOpen = ref(false)
 const matchOpen = ref(false)
 const matchPending = ref(false)
 const pausedMatch = ref<PausedSessionMatch | null>(null)
@@ -90,9 +93,12 @@ const selectedToolkit = computed(() =>
 )
 
 const toolkitLocked = computed(() => currentSession.value?.status === 'running')
+const enabledToolkits = computed(
+  () => toolkitsQuery.data.value?.filter((toolkit) => toolkit.enabled !== false) ?? [],
+)
 const hasSelectedToolkit = computed(() => Boolean(selectedToolkit.value))
 const noMatchingToolkit = computed(
-  () => toolkitsQuery.isSuccess.value && !(toolkitsQuery.data.value?.length),
+  () => toolkitsQuery.isSuccess.value && !enabledToolkits.value.length,
 )
 
 const checkingMatch = ref(false)
@@ -136,7 +142,7 @@ watch(
   [toolkitId, () => toolkitsQuery.data.value],
   () => {
     const availableSubtasks =
-      selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt) ?? []
+      selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt && item.enabled !== false) ?? []
     subtaskRequired.value = availableSubtasks.length > 0
     if (currentSession.value) return
     if (toolkitId.value && !selectedToolkit.value) {
@@ -273,6 +279,7 @@ const endSession = handleSubmit(async (values) => {
         :paused-count="summaryQuery.data.value?.pausedSessions ?? 0"
         @open-paused="pausedDialogOpen = true"
         @open-sessions="sessionsDialogOpen = true"
+        @open-toolkits="toolkitsDialogOpen = true"
       />
       <SessionTimer
         :session="currentSession"
@@ -288,6 +295,12 @@ const endSession = handleSubmit(async (values) => {
     </div>
 
     <AllSessionsDialog v-model:open="sessionsDialogOpen" />
+
+    <AllToolkitsDialog
+      v-model:open="toolkitsDialogOpen"
+      :toolkits="toolkitsQuery.data.value ?? []"
+      :pending="toolkitsQuery.isPending.value"
+    />
 
     <PausedSessionsDialog
       v-model:open="pausedDialogOpen"

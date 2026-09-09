@@ -49,14 +49,17 @@ const {
   loading,
   busy,
   kpiOpen,
-  deleteOpen,
+  toggleOpen,
+  toolkitEnabled,
+  syncSessionCount,
   errors,
   sharedKpiError,
   values,
   applyKpiSelection,
+  applyToolkit,
   removeKpi,
   save,
-  confirmDelete,
+  confirmToggle,
 } = useToolkitEditor(() => props.toolkitId)
 </script>
 
@@ -83,8 +86,13 @@ const {
           ← Back to Toolkit List
         </Button>
       </template>
-      <Button v-if="toolkitId" variant="destructive" @click="deleteOpen = true">
-        Delete Toolkit
+      <Button
+        v-if="toolkitId"
+        :variant="toolkitEnabled ? 'destructive' : 'outline'"
+        :disabled="loading || busy"
+        @click="toggleOpen = true"
+      >
+        {{ toolkitEnabled ? 'Disable' : 'Enable' }}
       </Button>
       <Button :loading="busy" :disabled="loading || hasMissingKpis" @click="save">
         {{ busy ? 'Saving…' : 'Save Toolkit' }}
@@ -92,7 +100,7 @@ const {
     </PageActions>
 
     <ListLoading v-if="loading" class="h-48" />
-    <div v-else class="grid gap-4 xl:grid-cols-2">
+    <div v-else class="grid gap-4">
       <ProcessMappingCard
         v-model:name="name"
         v-model:center="center"
@@ -101,7 +109,6 @@ const {
         v-model:pl2="pl2"
         v-model:supervisor-position-id="supervisorPositionId"
         v-model:selected-countries="selectedCountries"
-        v-model:combine-subtasks-time="combineSubtasksTime"
         :centers="centers"
         :domains="domains"
         :pl1s="pl1s"
@@ -110,22 +117,28 @@ const {
         :countries="countries"
         :has-hierarchy="centers.length > 0"
         :errors="errors"
+      >
+        <SharedKpiCard
+          :rows="selectedKpiRows"
+          :total-hc="totalHc"
+          :sync-date="syncDate"
+          :can-select="selectedCountries.length > 0"
+          :has-countries="selectedCountries.length > 0"
+          :error="sharedKpiError"
+          :show-delivery-hc="Boolean(toolkitId)"
+          @select="kpiOpen = true"
+          @remove="removeKpi"
+        />
+      </ProcessMappingCard>
+      <SubtaskEditorCard
+        v-model:subtasks="subtasks"
+        v-model:combine-subtasks-time="combineSubtasksTime"
+        :mode="toolkitId ? 'edit' : 'create'"
+        :toolkit-id="toolkitId"
+        :errors="errors"
+        @updated="applyToolkit"
       />
-      <SubtaskEditorCard v-model:subtasks="subtasks" :errors="errors" />
     </div>
-
-    <SharedKpiCard
-      v-if="!loading"
-      :rows="selectedKpiRows"
-      :total-hc="totalHc"
-      :sync-date="syncDate"
-      :can-select="selectedCountries.length > 0"
-      :has-countries="selectedCountries.length > 0"
-      :error="sharedKpiError"
-      :show-delivery-hc="Boolean(toolkitId)"
-      @select="kpiOpen = true"
-      @remove="removeKpi"
-    />
 
     <SelectSharedKpiDialog
       v-model:open="kpiOpen"
@@ -138,13 +151,24 @@ const {
     />
 
     <ConfirmDialog
-      v-model:open="deleteOpen"
-      title="Delete Toolkit"
-      warning="Completed sessions and Exercises stay in history. Delete is blocked while this Toolkit has running or paused TMS sessions."
+      v-if="toolkitId"
+      v-model:open="toggleOpen"
+      :title="toolkitEnabled ? 'Disable Toolkit' : 'Enable Toolkit'"
+      :warning="
+        toolkitEnabled
+          ? `This will disable ${syncSessionCount()} TMS sessions. Completed and in-progress ones will be excluded from cycle time and will not occupy the same Toolkit, TASK and Reference.`
+          : undefined
+      "
+      :description="
+        toolkitEnabled
+          ? undefined
+          : `This will enable ${syncSessionCount()} TMS sessions to match the Toolkit. Discarded sessions stay discarded.`
+      "
       :rows="[{ label: 'Toolkit', value: values.name, strong: true }]"
-      confirm-label="Delete Toolkit"
+      :confirm-label="toolkitEnabled ? 'Disable' : 'Enable'"
+      :confirm-variant="toolkitEnabled ? 'destructive' : 'default'"
       :pending="busy"
-      @confirm="confirmDelete"
+      @confirm="confirmToggle"
     />
   </div>
 </template>
