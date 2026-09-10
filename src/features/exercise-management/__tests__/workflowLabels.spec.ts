@@ -13,19 +13,19 @@ import {
 describe('currentStepLabel', () => {
   it('uses Supervisor Sizing before the first Submit and after Return / Withdraw', () => {
     expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS' })).toBe(SUPERVISOR_SIZING_STEP)
-    expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS', requiredRole: 'MANAGER' })).toBe(
+    expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS', requiredRole: 'SR_MANAGER' })).toBe(
       SUPERVISOR_SIZING_STEP,
     )
   })
 
   it('uses the waiting review stage while Under Review', () => {
-    expect(currentStepLabel({ workflowStatus: 'UNDER_REVIEW', requiredRole: 'MANAGER' })).toBe(
+    expect(currentStepLabel({ workflowStatus: 'UNDER_REVIEW', requiredRole: 'SR_MANAGER' })).toBe(
       'Manager Review',
     )
-    expect(currentStepLabel({ workflowStatus: 'UNDER_REVIEW', requiredRole: 'CDH' })).toBe(
+    expect(currentStepLabel({ workflowStatus: 'UNDER_REVIEW', requiredRole: 'DOMAIN_HEAD' })).toBe(
       'Center Delivery Head Review',
     )
-    expect(currentStepLabel({ workflowStatus: 'UNDER_REVIEW', requiredRole: 'LTH' })).toBe(
+    expect(currentStepLabel({ workflowStatus: 'UNDER_REVIEW', requiredRole: 'LOCAL_TRANSFORMATION_HEAD' })).toBe(
       'Local Transformation Head Review',
     )
   })

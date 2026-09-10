@@ -8,11 +8,11 @@ const OPEN = new Set(['OPEN', 'AWAITING'])
 
 function reviewStage(role?: string | null) {
   switch (role) {
-    case 'MANAGER':
+    case 'SR_MANAGER':
       return 'Manager Review'
-    case 'CDH':
+    case 'DOMAIN_HEAD':
       return 'Center Delivery Head Review'
-    case 'LTH':
+    case 'LOCAL_TRANSFORMATION_HEAD':
       return 'Local Transformation Head Review'
     default:
       return role || null
@@ -23,11 +23,11 @@ function roleLabel(role?: string | null) {
   switch (role) {
     case 'SUPERVISOR':
       return 'Supervisor'
-    case 'MANAGER':
+    case 'SR_MANAGER':
       return 'Manager'
-    case 'CDH':
+    case 'DOMAIN_HEAD':
       return 'Center Delivery Head'
-    case 'LTH':
+    case 'LOCAL_TRANSFORMATION_HEAD':
       return 'Local Transformation Head'
     default:
       return role || null
@@ -44,9 +44,9 @@ function historyStep(action: WorkflowActionView) {
     return 'Supervisor Workbench'
   }
   const stepNo = action.stepNo ?? 0
-  if (stepNo === 1) return reviewStage('MANAGER') ?? 'Manager Review'
-  if (stepNo === 2) return reviewStage('CDH') ?? 'Center Delivery Head Review'
-  if (stepNo === 3) return reviewStage('LTH') ?? 'Local Transformation Head Review'
+  if (stepNo === 1) return reviewStage('SR_MANAGER') ?? 'Manager Review'
+  if (stepNo === 2) return reviewStage('DOMAIN_HEAD') ?? 'Center Delivery Head Review'
+  if (stepNo === 3) return reviewStage('LOCAL_TRANSFORMATION_HEAD') ?? 'Local Transformation Head Review'
   return reviewStage(action.actorRoleCode) ?? 'Review'
 }
 
@@ -113,7 +113,7 @@ function historyRows(submitted: SubmittedDetails, mineStepNo?: number | null): A
 }
 
 function nextFor(role?: string | null) {
-  if (role === 'MANAGER') {
+  if (role === 'SR_MANAGER') {
     return {
       step: 'Center Delivery Head Review',
       positionId: null as string | null,
@@ -121,15 +121,15 @@ function nextFor(role?: string | null) {
       handlerCcgid: null as string | null,
     }
   }
-  if (role === 'CDH') {
+  if (role === 'DOMAIN_HEAD') {
     return {
       step: 'Local Transformation Head Review',
-      positionId: 'LTH',
+      positionId: 'LOCAL_TRANSFORMATION_HEAD',
       reviewer: null,
       handlerCcgid: null,
     }
   }
-  if (role === 'LTH') {
+  if (role === 'LOCAL_TRANSFORMATION_HEAD') {
     return { step: 'Archive', positionId: null, reviewer: null, handlerCcgid: null }
   }
   return { step: null, positionId: null, reviewer: null, handlerCcgid: null }

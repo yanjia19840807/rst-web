@@ -2029,7 +2029,7 @@ export const supervisorHandlers = [
       if (!previous.steps.some((step) => step.stepNo === 1)) {
         previous.steps.push({
           stepNo: 1,
-          requiredRoleCode: 'MANAGER',
+          requiredRoleCode: 'SR_MANAGER',
           assigneeCcgid: crypto.randomUUID(),
           assigneeDisplayName: 'Grace Li',
           routingStatus: 'PENDING',
@@ -2041,7 +2041,7 @@ export const supervisorHandlers = [
       previous.scenarioName = official?.name ?? previous.scenarioName
       previous.submissionStatus = 'OPEN'
       previous.currentStep = 1
-      previous.requiredRole = 'MANAGER'
+      previous.requiredRole = 'SR_MANAGER'
       previous.remarks = body.remarks ?? null
       ctx.exercise.workflowStatus = 'UNDER_REVIEW'
       ctx.exercise.submittedAt = now
@@ -2058,7 +2058,7 @@ export const supervisorHandlers = [
       submissionId: crypto.randomUUID(),
       submissionStatus: 'OPEN',
       currentStep: 1,
-      requiredRole: 'MANAGER',
+      requiredRole: 'SR_MANAGER',
       remarks: body.remarks ?? null,
       scopes: ctx.exercise.snapshot.sharedKpis.map((kpi) => ({
         scopeLevel: 'PL3',
@@ -2072,7 +2072,7 @@ export const supervisorHandlers = [
       steps: [
         {
           stepNo: 1,
-          requiredRoleCode: 'MANAGER',
+          requiredRoleCode: 'SR_MANAGER',
           assigneeCcgid: crypto.randomUUID(),
           assigneeDisplayName: 'Grace Li',
           routingStatus: 'PENDING',

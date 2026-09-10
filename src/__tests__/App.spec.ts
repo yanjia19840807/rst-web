@@ -19,7 +19,7 @@ describe('App', () => {
     writeDevIdentity({
       ccgid: 'S00628182',
       role: 'SUPERVISOR',
-      center: 'Kuala Lumpur',
+      center: 'GBS CHINA INDIA',
     })
     const router = createRouter({
       history: createMemoryHistory(),

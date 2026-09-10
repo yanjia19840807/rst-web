@@ -38,7 +38,7 @@ const saveMutation = useSaveDomainHeads()
 
 /** LTH (including LTH+ADMIN) uses identity Center; pure ADMIN picks from ACTIVE Person/Scope. */
 const usesAdminPicker = computed(
-  () => session.roles.includes('ADMIN') && !session.roles.includes('LTH'),
+  () => session.roles.includes('ADMIN') && !session.roles.includes('LOCAL_TRANSFORMATION_HEAD'),
 )
 
 const selectedCenter = ref('')

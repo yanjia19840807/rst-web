@@ -11,7 +11,7 @@ export const supervisorPositionId = 'POS-SUP-001'
 export const hierarchy: HierarchyOption[] = [
   {
     supervisorPositionId,
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
     domain: 'Finance',
     pl1: 'Accounting',
     pl2: 'Record to Report',
@@ -20,7 +20,7 @@ export const hierarchy: HierarchyOption[] = [
   },
   {
     supervisorPositionId,
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
     domain: 'Finance',
     pl1: 'Accounting',
     pl2: 'Procure to Pay',
@@ -62,7 +62,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
     name: 'Bank Reconciliation',
     description: 'Manual and automated reconciliation work.',
     supervisorPositionId,
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
     domain: 'Finance',
     pl1: 'Accounting',
     pl2: 'Record to Report',
@@ -108,7 +108,7 @@ export const supervisorToolkits: SupervisorToolkit[] = [
     name: 'Invoice Processing',
     description: 'Includes a Shared KPI line that left the ACTIVE Monthly Timesheet.',
     supervisorPositionId,
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
     domain: 'Finance',
     pl1: 'Accounting',
     pl2: 'Procure to Pay',

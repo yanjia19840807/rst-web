@@ -18,11 +18,11 @@ export function nextStepLabel(role?: string | null): string {
   switch (role) {
     case 'SUPERVISOR':
       return SUPERVISOR_SIZING_STEP
-    case 'MANAGER':
+    case 'SR_MANAGER':
       return 'Manager Review'
-    case 'CDH':
+    case 'DOMAIN_HEAD':
       return 'Center Delivery Head Review'
-    case 'LTH':
+    case 'LOCAL_TRANSFORMATION_HEAD':
       return 'Local Transformation Head Review'
     default:
       return role || '—'
@@ -83,11 +83,11 @@ export function reviewStageQueryValue(label: CurrentStepFilter): string | undefi
     case SUPERVISOR_SIZING_STEP:
       return 'SUPERVISOR'
     case 'Manager Review':
-      return 'MANAGER'
+      return 'SR_MANAGER'
     case 'Center Delivery Head Review':
-      return 'CDH'
+      return 'DOMAIN_HEAD'
     case 'Local Transformation Head Review':
-      return 'LTH'
+      return 'LOCAL_TRANSFORMATION_HEAD'
     default:
       return undefined
   }

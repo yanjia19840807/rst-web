@@ -16,10 +16,10 @@ const people: TimesheetPerson[] = [
   },
 ]
 
-const centers = ['GBS CHINA', 'Kuala Lumpur']
+const centers = ['GBS CHINA INDIA', 'GBS CHINA INDIA']
 
 let page: DomainHeadPage = {
-  center: 'Kuala Lumpur',
+  center: 'GBS CHINA INDIA',
   dailyAvailable: true,
   monthlyAvailable: true,
   remountedCount: null,

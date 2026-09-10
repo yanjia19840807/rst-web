@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import { queryClient } from '@/api/query-client'
 import { captureDevIdentityFromQuery, stripDevIdentityQuery } from '@/auth/dev-identity'
+import { isSsoEnabled } from '@/auth/sso'
 import { useSessionStore } from '@/auth/session'
 import { installRouteLoading } from '@/composables/useRouteLoading'
 
@@ -15,6 +16,16 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  if (isSsoEnabled()) {
+    const session = useSessionStore()
+    await session.load()
+    if (!session.user) {
+      if (session.error || session.signedOut) return
+      return false
+    }
+    if (to.name === 'home' || to.name === 'not-found') return session.homePath
+    return
+  }
   if (captureDevIdentityFromQuery(to.query)) {
     const session = useSessionStore()
     session.applyLocalIdentity()

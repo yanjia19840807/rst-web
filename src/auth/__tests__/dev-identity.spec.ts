@@ -26,14 +26,14 @@ describe('dev identity override', () => {
       captureDevIdentityFromQuery({
         ccgid: 'S00813982',
         role: 'supervisor',
-        center: 'GBS CHINA',
+        center: 'GBS CHINA INDIA',
       }),
     ).toBe(true)
 
     expect(readDevIdentity()).toEqual({
       ccgid: 'S00813982',
       role: 'SUPERVISOR',
-      center: 'GBS CHINA',
+      center: 'GBS CHINA INDIA',
     })
   })
 
@@ -44,9 +44,9 @@ describe('dev identity override', () => {
 
   it('merges later query params onto the stored identity', () => {
     writeDevIdentity({ ccgid: 'ADMIN001', role: 'ADMIN' })
-    captureDevIdentityFromQuery({ role: 'LTH' })
+    captureDevIdentityFromQuery({ role: 'LOCAL_TRANSFORMATION_HEAD' })
 
-    expect(readDevIdentity()).toEqual({ ccgid: 'ADMIN001', role: 'LTH' })
+    expect(readDevIdentity()).toEqual({ ccgid: 'ADMIN001', role: 'LOCAL_TRANSFORMATION_HEAD' })
   })
 
   it('strips only identity query keys', () => {
@@ -61,13 +61,13 @@ describe('dev identity override', () => {
   })
 
   it('writes identity headers for API calls', () => {
-    mergeDevIdentity({ ccgid: 'HO001', role: 'HO', center: 'Kuala Lumpur' })
+    mergeDevIdentity({ ccgid: 'HO001', role: 'GOVERNANCE', center: 'GBS CHINA INDIA' })
     const headers = new Headers()
     applyDevIdentityHeaders(headers)
 
     expect(headers.get(DEV_CCGID_HEADER)).toBe('HO001')
-    expect(headers.get(DEV_ROLE_HEADER)).toBe('HO')
-    expect(headers.get(DEV_CENTER_HEADER)).toBe('Kuala Lumpur')
+    expect(headers.get(DEV_ROLE_HEADER)).toBe('GOVERNANCE')
+    expect(headers.get(DEV_CENTER_HEADER)).toBe('GBS CHINA INDIA')
   })
 
   it('falls back to the frontend default when nothing is stored', () => {
@@ -78,6 +78,20 @@ describe('dev identity override', () => {
     expect(headers.get(DEV_CCGID_HEADER)).toBe(DEFAULT_DEV_IDENTITY.ccgid)
     expect(headers.get(DEV_ROLE_HEADER)).toBe(DEFAULT_DEV_IDENTITY.role)
     expect(headers.get(DEV_CENTER_HEADER)).toBeNull()
+  })
+
+  it('drops stored roles that are not product codes', () => {
+    sessionStorage.setItem(DEV_IDENTITY_STORAGE_KEY, JSON.stringify({ ccgid: 'LTH001', role: 'LTH' }))
+
+    expect(resolveDevIdentity()).toEqual({
+      ccgid: 'LTH001',
+      role: 'ADMIN',
+    })
+    expect(readDevIdentity()?.role).toBeUndefined()
+
+    const headers = new Headers()
+    applyDevIdentityHeaders(headers)
+    expect(headers.get(DEV_ROLE_HEADER)).toBe('ADMIN')
   })
 
   it('clears stored identity', () => {

@@ -20,8 +20,11 @@ Default person is Admin.
 ## Commands
 
 ```sh
-npm run dev             # local development
-npm run build           # type-check and production build
+npm run dev             # local development (Dev Identity, VITE_SSO_ENABLED=false)
+npm run build           # type-check and production build (SSO on)
+npm run build:uat       # Vite mode uat
+npm run build:pre       # Vite mode pre
+npm run build:prod      # Vite mode production
 npm run check           # types, lint, unit tests and build
 npm run lint            # read-only lint checks
 npm run lint:fix        # apply lint fixes
@@ -94,10 +97,10 @@ server adapter, while production builds always call `VITE_API_BASE_URL`.
 - Until login integration is available, route metadata drives the role badge while both Agent and
   Supervisor navigation remain visible for development.
 
-When `rst-api` has `app.security.dev-identity.override-enabled: true`, login
-identity comes from `?ccgid=&role=` (optional `&center=`). All other requests
-still go to `rst-api` with `X-Dev-*` headers. Default person is `ADMIN001` /
-Admin. `VITE_ENABLE_MSW` is only for developing without the API.
+Local `dev` uses Dev Identity: `?ccgid=&role=` (optional `&center=GBS%20CHINA%20INDIA`)
+and `X-Dev-*` headers. Default person is `ADMIN001` / `ADMIN`. Deployed **uat / pre / prod**
+set `VITE_SSO_ENABLED=true` and send the browser to `/api/sso/auth`.
+`VITE_ENABLE_MSW` is only for developing without the API.
 
 ### Temporary REST contract
 

@@ -7,7 +7,7 @@ const daily: TimesheetSyncRunHeader = {
   kind: 'DAILY',
   status: 'ACTIVE',
   syncDate: '2026-07-27',
-  center: 'GBS CHINA',
+  center: 'GBS CHINA INDIA',
   attemptNo: 1,
   rowCount: 120,
   sourceType: 'SHAREPOINT',
@@ -78,7 +78,7 @@ const mockPeople = [
     empId: 'EMP-1',
     name: 'Agent One',
     email: 's00000001@dev.local',
-    center: 'GBS CHINA',
+    center: 'GBS CHINA INDIA',
     positionId: 'EMP-POS-1',
   },
   {
@@ -86,7 +86,7 @@ const mockPeople = [
     empId: 'EMP-2',
     name: 'Agent Two',
     email: 's00000005@dev.local',
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
     positionId: 'EMP-POS-2',
   },
 ]
@@ -99,7 +99,7 @@ const mockPositions = [
     supervisorName: 'Supervisor One',
     srManagerPositionId: 'POS-SRM-1',
     srManagerName: 'SR Manager One',
-    center: 'GBS CHINA',
+    center: 'GBS CHINA INDIA',
   },
   {
     agentPositionId: 'EMP-POS-2',
@@ -108,7 +108,7 @@ const mockPositions = [
     supervisorName: 'Supervisor One',
     srManagerPositionId: 'POS-SRM-1',
     srManagerName: 'SR Manager One',
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
   },
 ]
 
@@ -116,7 +116,7 @@ const mockScopes = [
   {
     supervisorPositionId: 'POS-SUP-1',
     supervisorName: 'Supervisor One',
-    center: 'GBS CHINA',
+    center: 'GBS CHINA INDIA',
     domain: 'Finance',
     pl1: 'PL1',
     pl2: 'PL2',
@@ -133,7 +133,7 @@ const mockAssignments = [
     supervisorName: 'Supervisor One',
     pl3Code: 'PL3',
     pl3Name: 'PL3 Name',
-    center: 'GBS CHINA',
+    center: 'GBS CHINA INDIA',
   },
   {
     agentPositionId: 'EMP-POS-2',
@@ -142,7 +142,7 @@ const mockAssignments = [
     supervisorName: 'Supervisor One',
     pl3Code: 'PL3',
     pl3Name: 'PL3 Name',
-    center: 'Kuala Lumpur',
+    center: 'GBS CHINA INDIA',
   },
 ]
 
@@ -150,7 +150,7 @@ const mockKpis = [
   {
     supervisorPositionId: 'POS-SUP-1',
     supervisorName: 'Supervisor One',
-    center: 'GBS CHINA',
+    center: 'GBS CHINA INDIA',
     pl3Code: 'PL3',
     pl3Name: 'PL3 Name',
     carrier: 'CMA',
@@ -212,8 +212,8 @@ export const timesheetSyncHandlers = [
   }),
   http.get('*/api/v1/timesheet/sync/tables/filters', () =>
     HttpResponse.json({
-      peopleCenters: ['GBS CHINA', 'Kuala Lumpur'],
-      scopeCenters: ['GBS CHINA'],
+      peopleCenters: ['GBS CHINA INDIA', 'GBS CHINA INDIA'],
+      scopeCenters: ['GBS CHINA INDIA'],
       scopeDomains: ['Finance'],
     }),
   ),

@@ -8,6 +8,7 @@ export async function downloadExcel(
   fallbackName: string,
 ): Promise<{ blob: Blob; filename: string }> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: 'include',
     headers: apiHeaders(undefined, { json: false }),
   })
   if (!response.ok) {

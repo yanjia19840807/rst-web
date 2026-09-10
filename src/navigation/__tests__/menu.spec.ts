@@ -11,7 +11,7 @@ function visibleLabels(roles: readonly AppRole[]) {
 
 describe('menu order', () => {
   it('puts Global Dashboard first for HO, with reports after it', () => {
-    expect(visibleLabels(['HO'])).toEqual([
+    expect(visibleLabels(['GOVERNANCE'])).toEqual([
       'Global Dashboard',
       'RST Repository',
       'Support Repository',

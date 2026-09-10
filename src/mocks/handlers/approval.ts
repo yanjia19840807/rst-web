@@ -44,7 +44,7 @@ function findBySubmission(submissionId: string | readonly string[] | undefined) 
 
 function requiredRole(submitted: SubmittedDetails) {
   const ready = submitted.steps.find((step) => step.routingStatus === 'PENDING')
-  return ready?.requiredRoleCode ?? 'MANAGER'
+  return ready?.requiredRoleCode ?? 'SR_MANAGER'
 }
 
 function daysBetween(from?: string | null) {
@@ -59,11 +59,11 @@ function daysBetween(from?: string | null) {
 
 function previousStepLabel(role?: string | null) {
   switch (role) {
-    case 'MANAGER':
+    case 'SR_MANAGER':
       return 'Manager Review'
-    case 'CDH':
+    case 'DOMAIN_HEAD':
       return 'Center Delivery Head Review'
-    case 'LTH':
+    case 'LOCAL_TRANSFORMATION_HEAD':
       return 'Local Transformation Head Review'
     default:
       return role || null
@@ -73,9 +73,9 @@ function previousStepLabel(role?: string | null) {
 function isReviewerDecision(action: ActionView) {
   return (
     (action.actionType === 'APPROVED' || action.actionType === 'RETURNED') &&
-    (action.actorRoleCode === 'MANAGER' ||
-      action.actorRoleCode === 'CDH' ||
-      action.actorRoleCode === 'LTH')
+    (action.actorRoleCode === 'SR_MANAGER' ||
+      action.actorRoleCode === 'DOMAIN_HEAD' ||
+      action.actorRoleCode === 'LOCAL_TRANSFORMATION_HEAD')
   )
 }
 
@@ -358,7 +358,7 @@ export const approvalHandlers = [
     const now = new Date().toISOString()
     const step = ctx.submitted.steps.find((item) => item.routingStatus === 'PENDING')
     const stepNo = step?.stepNo ?? ctx.submitted.currentStep ?? 1
-    const role = step?.requiredRoleCode ?? 'MANAGER'
+    const role = step?.requiredRoleCode ?? 'SR_MANAGER'
 
     if (step) step.routingStatus = 'APPROVED'
     ctx.submitted.actions.push({
@@ -398,7 +398,7 @@ export const approvalHandlers = [
     const now = new Date().toISOString()
     const step = ctx.submitted.steps.find((item) => item.routingStatus === 'PENDING')
     const stepNo = step?.stepNo ?? ctx.submitted.currentStep ?? 1
-    const role = step?.requiredRoleCode ?? 'MANAGER'
+    const role = step?.requiredRoleCode ?? 'SR_MANAGER'
 
     if (step) step.routingStatus = 'RETURNED'
     ctx.submitted.actions.push({

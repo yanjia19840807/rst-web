@@ -1,5 +1,6 @@
 import { applyDevIdentityHeaders } from '@/auth/dev-identity'
 import { DELEGATION_HEADER, notifyDelegationEnded, readDelegationId } from '@/auth/delegation'
+import { isSsoCallbackFailed, isSsoEnabled, redirectToSso } from '@/auth/sso'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -43,12 +44,21 @@ export function apiHeaders(init?: HeadersInit, options?: { json?: boolean }): He
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: 'include',
     headers: apiHeaders(init?.headers),
   })
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ProblemBody | null
     const code = problemCode(body?.type)
+    if (
+      response.status === 401 &&
+      isSsoEnabled() &&
+      !isSsoCallbackFailed() &&
+      !path.startsWith('/api/sso/')
+    ) {
+      redirectToSso(typeof window === 'undefined' ? '/' : window.location.pathname)
+    }
     if (response.status === 403 && code === 'delegation-inactive') {
       notifyDelegationEnded()
     }

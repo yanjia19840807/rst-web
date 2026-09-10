@@ -3,11 +3,11 @@ import type { WorkflowActionView } from '@/features/exercise-management/types'
 
 function reviewStage(role?: string | null) {
   switch (role) {
-    case 'MANAGER':
+    case 'SR_MANAGER':
       return 'Manager Review'
-    case 'CDH':
+    case 'DOMAIN_HEAD':
       return 'Center Delivery Head Review'
-    case 'LTH':
+    case 'LOCAL_TRANSFORMATION_HEAD':
       return 'Local Transformation Head Review'
     default:
       return role || '—'
@@ -18,11 +18,11 @@ function roleLabel(role?: string | null) {
   switch (role) {
     case 'SUPERVISOR':
       return 'Supervisor'
-    case 'MANAGER':
+    case 'SR_MANAGER':
       return 'Manager'
-    case 'CDH':
+    case 'DOMAIN_HEAD':
       return 'Center Delivery Head'
-    case 'LTH':
+    case 'LOCAL_TRANSFORMATION_HEAD':
       return 'Local Transformation Head'
     default:
       return role || '—'
@@ -59,9 +59,9 @@ function stepLabel(action: WorkflowActionView) {
     return 'Supervisor Workbench'
   }
   const stepNo = action.stepNo ?? 0
-  if (stepNo === 1) return reviewStage('MANAGER')
-  if (stepNo === 2) return reviewStage('CDH')
-  if (stepNo === 3) return reviewStage('LTH')
+  if (stepNo === 1) return reviewStage('SR_MANAGER')
+  if (stepNo === 2) return reviewStage('DOMAIN_HEAD')
+  if (stepNo === 3) return reviewStage('LOCAL_TRANSFORMATION_HEAD')
   return reviewStage(action.actorRoleCode)
 }
 

@@ -44,3 +44,7 @@ playwright-report/
 .env
 .env.*
 !.env.example
+!.env.development
+!.env.uat
+!.env.pre
+!.env.production

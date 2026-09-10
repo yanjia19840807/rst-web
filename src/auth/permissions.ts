@@ -18,7 +18,7 @@ export const PERMISSIONS = {
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
 
 /** RST product roles (aligned with backend / Role Matrix). */
-export type AppRole = 'AGENT' | 'SUPERVISOR' | 'MANAGER' | 'CDH' | 'LTH' | 'HO' | 'ADMIN'
+export type AppRole = 'AGENT' | 'SUPERVISOR' | 'SR_MANAGER' | 'DOMAIN_HEAD' | 'LOCAL_TRANSFORMATION_HEAD' | 'GOVERNANCE' | 'ADMIN'
 
 const SHARED_REPORTS: readonly Permission[] = [
   PERMISSIONS.governanceRepository,
@@ -34,16 +34,16 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     PERMISSIONS.toolkitManage,
     PERMISSIONS.exerciseManage,
   ],
-  MANAGER: [PERMISSIONS.approvalQueue],
-  CDH: [PERMISSIONS.approvalQueue],
-  LTH: [
+  SR_MANAGER: [PERMISSIONS.approvalQueue],
+  DOMAIN_HEAD: [PERMISSIONS.approvalQueue],
+  LOCAL_TRANSFORMATION_HEAD: [
     PERMISSIONS.approvalQueue,
     PERMISSIONS.domainHeadConfig,
     PERMISSIONS.timesheetSync,
     PERMISSIONS.governanceValidationWorkflow,
     ...SHARED_REPORTS,
   ],
-  HO: [...SHARED_REPORTS],
+  GOVERNANCE: [...SHARED_REPORTS],
   ADMIN: [
     PERMISSIONS.timesheetSync,
     PERMISSIONS.domainHeadConfig,
@@ -56,10 +56,10 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
 const APP_ROLES = new Set<string>([
   'AGENT',
   'SUPERVISOR',
-  'MANAGER',
-  'CDH',
-  'LTH',
-  'HO',
+  'SR_MANAGER',
+  'DOMAIN_HEAD',
+  'LOCAL_TRANSFORMATION_HEAD',
+  'GOVERNANCE',
   'ADMIN',
 ])
 
@@ -80,9 +80,9 @@ export function permissionsForRoles(roles: readonly AppRole[]): Permission[] {
 export const ROLE_LABELS: Record<AppRole, string> = {
   AGENT: 'Agent',
   SUPERVISOR: 'Supervisor',
-  MANAGER: 'Manager',
-  CDH: 'CDH',
-  LTH: 'LTH',
-  HO: 'HO',
+  SR_MANAGER: 'Sr Manager',
+  DOMAIN_HEAD: 'Domain Head',
+  LOCAL_TRANSFORMATION_HEAD: 'Local Transformation Head',
+  GOVERNANCE: 'Governance',
   ADMIN: 'Admin',
 }

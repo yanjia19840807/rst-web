@@ -4,19 +4,19 @@ import type { AppRole } from '@/auth/permissions'
 export const ROLE_HOME_PATH: Record<AppRole, string> = {
   AGENT: '/agent/session',
   SUPERVISOR: '/supervisor/toolkits',
-  MANAGER: '/approver/queue',
-  CDH: '/approver/queue',
-  LTH: '/approver/queue',
-  HO: '/approver/dashboard',
+  SR_MANAGER: '/approver/queue',
+  DOMAIN_HEAD: '/approver/queue',
+  LOCAL_TRANSFORMATION_HEAD: '/approver/queue',
+  GOVERNANCE: '/approver/dashboard',
   ADMIN: '/approver/dashboard',
 }
 
 const HOME_ROLE_PRIORITY: readonly AppRole[] = [
   'ADMIN',
-  'HO',
-  'LTH',
-  'CDH',
-  'MANAGER',
+  'GOVERNANCE',
+  'LOCAL_TRANSFORMATION_HEAD',
+  'DOMAIN_HEAD',
+  'SR_MANAGER',
   'SUPERVISOR',
   'AGENT',
 ]

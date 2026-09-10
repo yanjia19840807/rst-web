@@ -51,7 +51,7 @@ export const timesheetSyncApi = {
     form.append('file', file)
     const response = await fetch(`${API_BASE_URL}${base}`, {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: apiHeaders(undefined, { json: false }),
       body: form,
     })

@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner'
 import { queryClient } from '@/api/query-client'
 import { DELEGATION_ENDED_EVENT } from '@/auth/delegation'
 import { useSessionStore } from '@/auth/session'
+import { isSsoEnabled } from '@/auth/sso'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isAgentWorkspace, isMenuItemActive, menuItems } from '@/navigation/menu'
@@ -21,7 +22,7 @@ defineProps<{
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
-if (!session.user && !session.signedOut) {
+if (!isSsoEnabled() && !session.user && !session.signedOut) {
   session.applyLocalIdentity()
 }
 
@@ -198,6 +199,16 @@ const copyrightYear = new Date().getFullYear()
             <UserMenu />
           </div>
         </div>
+        <Alert
+          v-if="session.error && !session.user"
+          variant="warning"
+          role="alert"
+          class="rounded-none border-x-0 border-b-0 px-4 py-2.5 sm:px-6"
+        >
+          <TriangleAlert />
+          <AlertTitle>Sign-in failed</AlertTitle>
+          <AlertDescription>{{ session.error }}</AlertDescription>
+        </Alert>
         <Alert
           v-if="session.actingAs"
           variant="warning"

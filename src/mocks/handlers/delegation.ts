@@ -13,7 +13,7 @@ const granted: Delegation[] = [
     delegateCcgid: 'AGENT010',
     delegateName: 'Test Agent AGENT010',
     delegatorRoles: ['SUPERVISOR'],
-    delegatorCenter: 'Kuala Lumpur',
+    delegatorCenter: 'GBS CHINA INDIA',
     validFrom: now.toISOString(),
     validUntil: until.toISOString(),
     status: 'ACTIVE',
@@ -32,13 +32,13 @@ export const delegationHandlers = [
       {
         ccgid: 'AGENT010',
         name: 'Test Agent AGENT010',
-        center: 'Kuala Lumpur',
+        center: 'GBS CHINA INDIA',
         email: 'agent010@cma-cgm.com',
       },
       {
         ccgid: 'S00813982',
         name: 'Demo Manager',
-        center: 'Kuala Lumpur',
+        center: 'GBS CHINA INDIA',
         email: 'demo.manager@cma-cgm.com',
       },
     ].filter(
@@ -64,7 +64,7 @@ export const delegationHandlers = [
       delegateCcgid: body.delegateCcgid,
       delegateName: body.delegateCcgid,
       delegatorRoles: ['SUPERVISOR'],
-      delegatorCenter: 'Kuala Lumpur',
+      delegatorCenter: 'GBS CHINA INDIA',
       validFrom: body.validFrom,
       validUntil: body.validUntil,
       status: 'ACTIVE',

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { apiRequest } from '@/api/client'
+import { ApiError, apiRequest } from '@/api/client'
 
 import { homePathForRoles } from '@/navigation/home'
 
@@ -11,6 +11,7 @@ import {
   resolveDevIdentity,
 } from './dev-identity'
 import { readDelegationId, writeDelegationId } from './delegation'
+import { consumeSsoCallbackError, isSsoEnabled, redirectToSso, SSO_LOGOUT_PATH } from './sso'
 import {
   isAppRole,
   permissionsForRoles,
@@ -35,12 +36,12 @@ export type CurrentUser = {
 const GRANTABLE_ROLES: readonly AppRole[] = [
   'AGENT',
   'SUPERVISOR',
-  'MANAGER',
-  'CDH',
-  'LTH',
+  'SR_MANAGER',
+  'DOMAIN_HEAD',
+  'LOCAL_TRANSFORMATION_HEAD',
 ]
 
-const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'MANAGER', 'CDH', 'LTH', 'ADMIN']
+const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'SR_MANAGER', 'DOMAIN_HEAD', 'LOCAL_TRANSFORMATION_HEAD', 'ADMIN']
 
 function userFromDevIdentity(): CurrentUser {
   const identity = resolveDevIdentity()
@@ -113,6 +114,36 @@ export const useSessionStore = defineStore('session', () => {
   async function load() {
     if (signedOut.value) return
     if (loadPromise) return loadPromise
+    if (isSsoEnabled()) {
+      const callbackError = consumeSsoCallbackError()
+      if (callbackError) {
+        user.value = null
+        signedOut.value = true
+        error.value = callbackError
+        return
+      }
+      loading.value = true
+      loadPromise = apiRequest<CurrentUser>('/api/v1/me')
+        .then((me) => {
+          user.value = me
+          signedOut.value = false
+          error.value = null
+          if (!me.delegationId && readDelegationId()) {
+            writeDelegationId(null)
+          }
+        })
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && err.status === 401) {
+            redirectToSso(typeof window === 'undefined' ? '/' : window.location.pathname)
+            return
+          }
+          error.value = err instanceof Error ? err.message : 'Could not load current user.'
+        })
+        .finally(() => {
+          loading.value = false
+        })
+      return loadPromise
+    }
     applyLocalIdentity()
     loading.value = true
     loadPromise = apiRequest<CurrentUser>('/api/v1/me')
@@ -158,13 +189,6 @@ export const useSessionStore = defineStore('session', () => {
     await reload()
   }
 
-  function azureLogoutUrl() {
-    const tenant = String(import.meta.env.VITE_AZURE_TENANT_ID ?? '').trim()
-    if (!tenant || typeof window === 'undefined') return null
-    const redirect = encodeURIComponent(`${window.location.origin}/`)
-    return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/logout?post_logout_redirect_uri=${redirect}`
-  }
-
   async function signOut() {
     writeDelegationId(null)
     clearDevIdentity()
@@ -172,15 +196,18 @@ export const useSessionStore = defineStore('session', () => {
     error.value = null
     loadPromise = null
     signedOut.value = true
-    const logoutUrl = azureLogoutUrl()
-    if (logoutUrl) {
-      window.location.assign(logoutUrl)
+    if (isSsoEnabled() && typeof window !== 'undefined') {
+      window.location.assign(SSO_LOGOUT_PATH)
     }
   }
 
   async function signIn() {
     signedOut.value = false
     loadPromise = null
+    if (isSsoEnabled()) {
+      redirectToSso()
+      return
+    }
     await load()
   }
 

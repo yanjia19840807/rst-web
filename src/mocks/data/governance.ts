@@ -39,7 +39,7 @@ export const dashboardData: DashboardResponse = {
   ],
   centers: [
     {
-      center: 'GBS China',
+      center: 'GBS CHINA LEBANON',
       applicablePl3: 546,
       completedThisQuarter: 354,
       completionPct: '65%',
@@ -72,7 +72,7 @@ export const dashboardData: DashboardResponse = {
       onTrack: false,
     },
     {
-      center: 'GBS India',
+      center: 'GBS CHINA INDIA',
       applicablePl3: 4030,
       completedThisQuarter: 2610,
       completionPct: '65%',
@@ -117,12 +117,12 @@ export const dashboardData: DashboardResponse = {
     },
   ],
   domainsByCenter: {
-    'GBS China': [
+    'GBS CHINA LEBANON': [
       { domain: 'Customer Care', applicablePl3: 168, completed: 97, pct: '58%', neverDone: 18 },
       { domain: 'Finance', applicablePl3: 242, completed: 176, pct: '73%', neverDone: 9 },
       { domain: 'Procurement', applicablePl3: 136, completed: 81, pct: '60%', neverDone: 8 },
     ],
-    'GBS India': [
+    'GBS CHINA INDIA': [
       { domain: 'Customer Care', applicablePl3: 1820, completed: 1104, pct: '61%', neverDone: 120 },
       { domain: 'Finance', applicablePl3: 1560, completed: 1120, pct: '72%', neverDone: 80 },
       { domain: 'Procurement', applicablePl3: 650, completed: 386, pct: '59%', neverDone: 45 },
@@ -141,7 +141,7 @@ export const repositoryRows: RepositoryRow[] = [
     exerciseUuid: '11111111-1111-1111-1111-111111111111',
     carrier: 'CMA CGM',
     site: 'MUMBAI-2',
-    country: 'GBS India',
+    country: 'GBS CHINA INDIA',
     domain: 'FINANCE',
     pl1: 'Record to report',
     pl2: 'Bank Reconciliation',
@@ -161,7 +161,7 @@ export const repositoryRows: RepositoryRow[] = [
     exerciseUuid: '11111111-1111-1111-1111-111111111111',
     carrier: 'CMA CGM',
     site: 'CHENNAI-1',
-    country: 'GBS India',
+    country: 'GBS CHINA INDIA',
     domain: 'FINANCE',
     pl1: 'Record to report',
     pl2: 'Bank Reconciliation',
@@ -181,7 +181,7 @@ export const repositoryRows: RepositoryRow[] = [
     exerciseUuid: '11111111-1111-1111-1111-111111111111',
     carrier: 'ANL',
     site: 'MUMBAI-2',
-    country: 'GBS India',
+    country: 'GBS CHINA INDIA',
     domain: 'FINANCE',
     pl1: 'Record to report',
     pl2: 'Bank Reconciliation',
@@ -240,7 +240,7 @@ export const repositoryRows: RepositoryRow[] = [
 
 export const benchmarkingRows: BenchmarkRow[] = [
   {
-    gbs: 'GBS China',
+    gbs: 'GBS CHINA LEBANON',
     sharedKpiLine: 'China',
     domain: 'FINANCE',
     pl1: 'Record to report',
@@ -256,7 +256,7 @@ export const benchmarkingRows: BenchmarkRow[] = [
     submittedDate: '2026-07-10',
   },
   {
-    gbs: 'GBS China',
+    gbs: 'GBS CHINA LEBANON',
     sharedKpiLine: 'Singapore',
     domain: 'FINANCE',
     pl1: 'Record to report',
@@ -272,7 +272,7 @@ export const benchmarkingRows: BenchmarkRow[] = [
     submittedDate: '2026-07-10',
   },
   {
-    gbs: 'GBS India',
+    gbs: 'GBS CHINA INDIA',
     sharedKpiLine: 'India',
     domain: 'FINANCE',
     pl1: 'Record to report',

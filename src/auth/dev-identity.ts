@@ -1,3 +1,5 @@
+import { isAppRole } from './permissions'
+
 export const DEV_CCGID_HEADER = 'X-Dev-Ccgid'
 export const DEV_ROLE_HEADER = 'X-Dev-Role'
 export const DEV_CENTER_HEADER = 'X-Dev-Center'
@@ -9,6 +11,12 @@ export type DevIdentity = {
   ccgid?: string
   role?: string
   center?: string
+}
+
+function productRole(role?: string) {
+  if (!role) return undefined
+  const normalized = role.trim().toUpperCase()
+  return isAppRole(normalized) ? normalized : undefined
 }
 
 /** Used whenever the override switch is on and the tab has not picked another person. */
@@ -50,12 +58,19 @@ function storage(): Storage | null {
  * Last test identity chosen from the URL query string.
  */
 export function readDevIdentity(): DevIdentity | null {
-  const raw = storage()?.getItem(DEV_IDENTITY_STORAGE_KEY)
+  const store = storage()
+  const raw = store?.getItem(DEV_IDENTITY_STORAGE_KEY)
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as DevIdentity
     if (!parsed || typeof parsed !== 'object') return null
-    return parsed
+    const role = productRole(parsed.role)
+    if (parsed.role && !role) {
+      const next = { ...parsed, role: undefined }
+      store?.setItem(DEV_IDENTITY_STORAGE_KEY, JSON.stringify(next))
+      return next
+    }
+    return role && role !== parsed.role ? { ...parsed, role } : parsed
   } catch {
     return null
   }
@@ -68,7 +83,7 @@ export function writeDevIdentity(identity: DevIdentity | null) {
     store.removeItem(DEV_IDENTITY_STORAGE_KEY)
     return
   }
-  store.setItem(DEV_IDENTITY_STORAGE_KEY, JSON.stringify(identity))
+  store.setItem(DEV_IDENTITY_STORAGE_KEY, JSON.stringify({ ...identity, role: productRole(identity.role) }))
 }
 
 export function clearDevIdentity() {
@@ -82,7 +97,7 @@ export function mergeDevIdentity(partial: DevIdentity): DevIdentity {
     next.ccgid = partial.ccgid.trim() || undefined
   }
   if (partial.role !== undefined) {
-    next.role = partial.role.trim().toUpperCase() || undefined
+    next.role = productRole(partial.role)
   }
   if (partial.center !== undefined) {
     next.center = partial.center.trim() || undefined
@@ -133,7 +148,7 @@ export function resolveDevIdentity(): DevIdentity {
   const stored = readDevIdentity()
   return {
     ccgid: stored?.ccgid?.trim() || DEFAULT_DEV_IDENTITY.ccgid,
-    role: (stored?.role?.trim() || DEFAULT_DEV_IDENTITY.role).toUpperCase(),
+    role: productRole(stored?.role) || DEFAULT_DEV_IDENTITY.role,
     ...(stored?.center?.trim() ? { center: stored.center.trim() } : {}),
   }
 }
