@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// Keep only a lightweight smoke check; full workflow coverage lives in unit/MSW specs.
+// Keep only a lightweight smoke check; feature coverage lives in unit specs.
 test('loads the Agent workspace shell', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveURL(/\/agent\/session$/)

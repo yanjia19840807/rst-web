@@ -70,7 +70,6 @@
     "eslint-plugin-vue": "~10.10.0",
     "jiti": "^2.7.0",
     "jsdom": "^30.0.1",
-    "msw": "^2.15.0",
     "npm-run-all2": "^9.0.3",
     "oxlint": "~1.77.0",
     "prettier": "3.9.6",
@@ -87,14 +86,8 @@
   },
   "packageManager": "npm@11.17.0",
   "allowScripts": {
-    "msw@2.15.0": true,
     "vue-demi@0.14.10": true,
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true
-  },
-  "msw": {
-    "workerDirectory": [
-      "public"
-    ]
   }
 }

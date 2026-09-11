@@ -19,10 +19,11 @@ export function useGrantedDelegationsQuery(enabled: MaybeRefOrGetter<boolean> = 
   })
 }
 
-export function useReceivedDelegationsQuery() {
+export function useReceivedDelegationsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: delegationQueryKeys.received(),
     queryFn: () => delegationApi.received(),
+    enabled: computed(() => toValue(enabled)),
   })
 }
 

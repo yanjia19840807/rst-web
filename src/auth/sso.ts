@@ -30,7 +30,7 @@ export function isSsoCallbackFailed() {
   return callbackFailed
 }
 
-/** Test helper. */
+/** Clears the callback-failure latch so a user-initiated Sign in can start Azure again. */
 export function resetSsoCallbackFailure() {
   callbackFailed = false
 }

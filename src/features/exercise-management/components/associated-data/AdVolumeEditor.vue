@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table'
 
 import { showOperationNotices } from '@/composables/useOperationNotices'
+import { formatDate } from '@/lib/datetime'
 
 import { exerciseApi } from '../../api'
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
@@ -137,6 +138,10 @@ const exportOpen = ref(false)
 
 const periodSet = computed(() => Boolean(props.slotStartDate && props.slotWeeks))
 const periodReady = computed(() => Boolean(draftSlotStartDate.value && draftSlotWeeks.value))
+const slotWeeksLabel = computed(() => {
+  const weeks = props.slotWeeks
+  return weeks != null && weeks >= 1 ? String(weeks) : '—'
+})
 
 watch(
   () => [props.slotStartDate, props.slotWeeks] as const,
@@ -949,7 +954,20 @@ async function confirmSlotImport() {
     </Alert>
 
     <div
-      v-if="tab === 'slot'"
+      v-if="tab === 'slot' && readOnly"
+      class="flex flex-wrap items-baseline gap-x-8 gap-y-1 text-sm"
+    >
+      <div>
+        <span class="text-muted-foreground">Start date</span>
+        <span class="ml-3 font-semibold">{{ formatDate(slotStartDate) }}</span>
+      </div>
+      <div>
+        <span class="text-muted-foreground">Weeks</span>
+        <span class="ml-3 font-semibold">{{ slotWeeksLabel }}</span>
+      </div>
+    </div>
+    <div
+      v-else-if="tab === 'slot'"
       class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3"
     >
       <div class="grid gap-1.5">
@@ -959,7 +977,7 @@ async function confirmSlotImport() {
           aria-label="Choose slot start date"
           placeholder="Select start date"
           class="w-[180px]"
-          :disabled="readOnly || busy"
+          :disabled="busy"
         />
       </div>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
@@ -967,14 +985,13 @@ async function confirmSlotImport() {
         <NativeSelect
           v-model="draftSlotWeeks"
           class="w-20"
-          :disabled="readOnly || busy"
+          :disabled="busy"
         >
           <option value="">—</option>
           <option v-for="week in 12" :key="week" :value="week">{{ week }}</option>
         </NativeSelect>
       </label>
       <Button
-        v-if="!readOnly"
         :disabled="busy || !periodReady"
         :loading="busyAction === 'period'"
         @click="requestApplyPeriod"
@@ -982,7 +999,6 @@ async function confirmSlotImport() {
         {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
       </Button>
       <Button
-        v-if="!readOnly"
         variant="outline"
         :disabled="busy || !periodSet"
         :loading="busyAction === 'clear-period'"

@@ -11,7 +11,13 @@ import {
   resolveDevIdentity,
 } from './dev-identity'
 import { readDelegationId, writeDelegationId } from './delegation'
-import { consumeSsoCallbackError, isSsoEnabled, redirectToSso, SSO_LOGOUT_PATH } from './sso'
+import {
+  consumeSsoCallbackError,
+  isSsoEnabled,
+  redirectToSso,
+  resetSsoCallbackFailure,
+  SSO_LOGOUT_PATH,
+} from './sso'
 import {
   isAppRole,
   permissionsForRoles,
@@ -29,7 +35,7 @@ export type CurrentUser = {
   center?: string | null
   actor?: { ccgid: string; displayName: string } | null
   delegationId?: string | null
-  /** Present on {@code dev}/{@code test} (and MSW) when test-login override is on. */
+  /** Present on {@code dev}/{@code test} when test-login override is on. */
   devOverrideEnabled?: boolean | null
 }
 
@@ -204,7 +210,9 @@ export const useSessionStore = defineStore('session', () => {
   async function signIn() {
     signedOut.value = false
     loadPromise = null
+    error.value = null
     if (isSsoEnabled()) {
+      resetSsoCallbackFailure()
       redirectToSso()
       return
     }

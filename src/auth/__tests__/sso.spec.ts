@@ -30,6 +30,26 @@ describe('SSO helpers', () => {
     )
   })
 
+  it('blocks automatic redirect after a callback error until reset', () => {
+    const assign = vi.fn()
+    const replaceState = vi.fn()
+    vi.stubGlobal('window', {
+      location: {
+        assign,
+        search: '?ssoError=sso-role-missing',
+        pathname: '/',
+        hash: '',
+      },
+      history: { replaceState, state: null },
+    })
+    expect(consumeSsoCallbackError()).toBe('SSO role is missing.')
+    redirectToSso()
+    expect(assign).not.toHaveBeenCalled()
+    resetSsoCallbackFailure()
+    redirectToSso()
+    expect(assign).toHaveBeenCalledWith(SSO_AUTH_PATH)
+  })
+
   it('maps callback error codes to readable text', () => {
     expect(ssoErrorMessage('sso-timesheet-missing')).toBe(
       'CCGID is not in the ACTIVE Daily Timesheet.',

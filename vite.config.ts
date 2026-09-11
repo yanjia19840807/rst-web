@@ -14,6 +14,8 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1',
+    allowedHosts: ['gbs-rst-uat.cma-cgm.com', 'localhost'],
     // Prefer same-origin /api in local UI to avoid CORS and the IPv4 nginx
     // process that also binds *:8080 on this machine.
     proxy: {

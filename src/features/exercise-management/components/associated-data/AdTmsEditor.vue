@@ -13,6 +13,7 @@ import {
   type TmsSessionTableRow,
 } from '@/features/tms-management/components/tmsSessionColumns'
 import { showOperationNotices } from '@/composables/useOperationNotices'
+import { formatDate } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../../api/mutations'
 import { useExerciseTmsSessionsQuery } from '../../api/queries'
@@ -230,7 +231,23 @@ async function clearPeriod() {
       />
     </div>
 
-    <div class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3">
+    <div
+      v-if="readOnly"
+      class="flex flex-wrap items-baseline gap-x-8 gap-y-1 text-sm"
+    >
+      <div>
+        <span class="text-muted-foreground">From</span>
+        <span class="ml-3 font-semibold">{{ formatDate(tmsFrom) }}</span>
+      </div>
+      <div>
+        <span class="text-muted-foreground">To</span>
+        <span class="ml-3 font-semibold">{{ formatDate(tmsTo) }}</span>
+      </div>
+    </div>
+    <div
+      v-else
+      class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3"
+    >
       <div class="grid gap-1.5">
         <span class="text-xs text-muted-foreground">From</span>
         <DatePicker
@@ -238,7 +255,7 @@ async function clearPeriod() {
           aria-label="Choose TMS period start"
           placeholder="From"
           class="w-[180px]"
-          :disabled="readOnly || busy"
+          :disabled="busy"
         />
       </div>
       <div class="grid gap-1.5">
@@ -248,11 +265,10 @@ async function clearPeriod() {
           aria-label="Choose TMS period end"
           placeholder="To"
           class="w-[180px]"
-          :disabled="readOnly || busy"
+          :disabled="busy"
         />
       </div>
       <Button
-        v-if="!readOnly"
         :disabled="busy || !periodReady"
         :loading="busyAction === 'period'"
         @click="requestApplyPeriod"
@@ -260,7 +276,6 @@ async function clearPeriod() {
         {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
       </Button>
       <Button
-        v-if="!readOnly"
         variant="outline"
         :disabled="busy || !periodSet"
         :loading="busyAction === 'clear-period'"

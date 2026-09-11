@@ -14,7 +14,7 @@ import { useReceivedDelegationsQuery } from '@/features/delegation/api/queries'
 const session = useSessionStore()
 const router = useRouter()
 const open = ref(false)
-const receivedQuery = useReceivedDelegationsQuery()
+const receivedQuery = useReceivedDelegationsQuery(() => Boolean(session.user))
 
 const details = computed(() => [
   { label: 'CCGID', value: session.ccgid || '—' },
@@ -69,9 +69,8 @@ async function stopActing() {
     <Spinner class="size-4" />
   </div>
 
-  <div v-else-if="session.signedOut" class="min-w-0 text-right">
-    <div class="text-sm font-semibold">Signed out</div>
-    <Button type="button" variant="link" size="sm" class="h-auto px-0" @click="session.signIn()">
+  <div v-else-if="!session.user" class="flex min-h-10 items-center justify-end">
+    <Button type="button" variant="outline" size="sm" @click="session.signIn()">
       Sign in
     </Button>
   </div>
