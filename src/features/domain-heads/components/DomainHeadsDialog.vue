@@ -4,7 +4,7 @@ import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ListLoading from '@/components/ListLoading.vue'
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -154,12 +154,6 @@ function statusLabel(status: DomainHeadStatus) {
   return 'Missing'
 }
 
-function statusVariant(status: DomainHeadStatus) {
-  if (status === 'CONFIGURED') return 'secondary' as const
-  if (status === 'STALE') return 'outline' as const
-  return 'destructive' as const
-}
-
 function emptyMessage() {
   if (usesAdminPicker.value && !selectedCenter.value.trim()) {
     return centers.value.length
@@ -283,9 +277,7 @@ async function confirmSave() {
                   />
                 </TableCell>
                 <TableCell>
-                  <Badge :variant="statusVariant(row.status)">
-                    {{ statusLabel(row.status) }}
-                  </Badge>
+                  <StatusBadge :status="statusLabel(row.status)" />
                 </TableCell>
               </TableRow>
             </TableBody>

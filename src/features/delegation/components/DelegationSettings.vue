@@ -12,7 +12,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -248,7 +248,7 @@ function selectTab(tab: TabKey) {
                     {{ formatDateTime(row.validFrom) }} – {{ formatDateTime(row.validUntil) }}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{{ statusLabel(row.status) }}</Badge>
+                    <StatusBadge :status="statusLabel(row.status)" />
                   </TableCell>
                   <TableCell class="text-right">
                     <Button type="button" variant="destructive" size="sm" @click="requestRevoke(row)">
@@ -297,7 +297,7 @@ function selectTab(tab: TabKey) {
                   {{ formatDateTime(row.validFrom) }} – {{ formatDateTime(row.validUntil) }}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{{ statusLabel(row.status) }}</Badge>
+                  <StatusBadge :status="statusLabel(row.status)" />
                 </TableCell>
                 <TableCell class="text-right">
                   <Button type="button" size="sm" @click="switchIdentity(row.id)">
@@ -342,7 +342,7 @@ function selectTab(tab: TabKey) {
                   {{ formatDateTime(row.validFrom) }} – {{ formatDateTime(row.validUntil) }}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{{ statusLabel(row.status) }}</Badge>
+                  <StatusBadge :status="statusLabel(row.status)" />
                 </TableCell>
                 <TableCell>{{ formatDateTime(row.endedAt) }}</TableCell>
               </TableRow>

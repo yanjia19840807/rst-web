@@ -5,9 +5,10 @@ import { VueDraggable } from 'vue-draggable-plus'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,8 +41,8 @@ const adding = ref(false)
 const editingId = ref<string | null>(null)
 const draftName = ref('')
 const nameInvalid = ref(false)
-const deactivateOpen = ref(false)
-const pendingDeactivate = ref<SupportCategoryAdminRow | null>(null)
+const disableOpen = ref(false)
+const pendingDisable = ref<SupportCategoryAdminRow | null>(null)
 const deleteOpen = ref(false)
 const pendingDelete = ref<SupportCategoryAdminRow | null>(null)
 const localRows = ref<SupportCategoryAdminRow[]>([])
@@ -135,21 +136,25 @@ async function confirmEdit() {
   }
 }
 
-function requestDeactivate(row: SupportCategoryAdminRow) {
-  if (formLocked.value || saving.value) return
-  pendingDeactivate.value = row
-  deactivateOpen.value = true
+function categoryStatusLabel(status: SupportCategoryAdminRow['status']) {
+  return status === 'ACTIVE' ? 'Enabled' : 'Disabled'
 }
 
-async function confirmDeactivate() {
-  const row = pendingDeactivate.value
+function requestDisable(row: SupportCategoryAdminRow) {
+  if (formLocked.value || saving.value) return
+  pendingDisable.value = row
+  disableOpen.value = true
+}
+
+async function confirmDisable() {
+  const row = pendingDisable.value
   if (!row) return
   await saveUpdate(row, { status: 'INACTIVE' })
-  deactivateOpen.value = false
-  pendingDeactivate.value = null
+  disableOpen.value = false
+  pendingDisable.value = null
 }
 
-async function activate(row: SupportCategoryAdminRow) {
+async function enable(row: SupportCategoryAdminRow) {
   if (formLocked.value || saving.value) return
   await saveUpdate(row, { status: 'ACTIVE' })
 }
@@ -218,7 +223,7 @@ async function saveUpdate(
     <CardHeader>
       <CardDescription>
         Standard Production Support categories used in Workload Registry and Support Repository.
-        Drag the handle to reorder. Inactive names stay on existing rows but are hidden from new
+        Drag the handle to reorder. Disabled names stay on existing rows but are hidden from new
         selections.
       </CardDescription>
     </CardHeader>
@@ -250,31 +255,17 @@ async function saveUpdate(
                 />
               </TableCell>
               <TableCell>
-                <Badge variant="secondary">ACTIVE</Badge>
+                <StatusBadge status="Enabled" />
               </TableCell>
               <TableCell>—</TableCell>
               <TableCell>—</TableCell>
               <TableCell>
-                <div class="flex gap-3">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :loading="saving"
-                    @click="confirmAdd"
-                  >
-                    Confirm
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="saving"
-                    @click="cancelAdd"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                <span class="inline-flex gap-3">
+                  <TableTextLink :disabled="saving" @click="confirmAdd">
+                    {{ saving ? 'Saving…' : 'Confirm' }}
+                  </TableTextLink>
+                  <TableTextLink :disabled="saving" @click="cancelAdd">Cancel</TableTextLink>
+                </span>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -321,85 +312,50 @@ async function saveUpdate(
                   />
                 </TableCell>
                 <TableCell>
-                  <Badge :variant="row.status === 'ACTIVE' ? 'secondary' : 'outline'">
-                    {{ row.status }}
-                  </Badge>
+                  <StatusBadge :status="categoryStatusLabel(row.status)" />
                 </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
                 <TableCell>{{ formatDateTime(row.updatedAt) }}</TableCell>
                 <TableCell>
-                  <div class="flex gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :loading="saving"
-                      @click="confirmEdit"
-                    >
-                      Confirm
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="saving"
-                      @click="cancelEdit"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  <span class="inline-flex gap-3">
+                    <TableTextLink :disabled="saving" @click="confirmEdit">
+                      {{ saving ? 'Saving…' : 'Confirm' }}
+                    </TableTextLink>
+                    <TableTextLink :disabled="saving" @click="cancelEdit">Cancel</TableTextLink>
+                  </span>
                 </TableCell>
               </template>
               <template v-else>
                 <TableCell class="font-medium">{{ row.name }}</TableCell>
                 <TableCell>
-                  <Badge :variant="row.status === 'ACTIVE' ? 'secondary' : 'outline'">
-                    {{ row.status }}
-                  </Badge>
+                  <StatusBadge :status="categoryStatusLabel(row.status)" />
                 </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
                 <TableCell>{{ formatDateTime(row.updatedAt) }}</TableCell>
                 <TableCell>
-                  <div class="flex flex-wrap gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="saving || formLocked"
-                      @click="startEdit(row)"
-                    >
+                  <span class="inline-flex flex-wrap gap-3">
+                    <TableTextLink :disabled="saving || formLocked" @click="startEdit(row)">
                       Edit
-                    </Button>
-                    <Button
+                    </TableTextLink>
+                    <TableTextLink
                       v-if="row.status === 'ACTIVE'"
-                      size="sm"
-                      variant="link-destructive"
-                      class="h-auto px-0 font-semibold"
+                      destructive
                       :disabled="saving || formLocked"
-                      @click="requestDeactivate(row)"
+                      @click="requestDisable(row)"
                     >
-                      Deactivate
-                    </Button>
-                    <Button
-                      v-else
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="saving || formLocked"
-                      @click="activate(row)"
-                    >
-                      Activate
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link-destructive"
-                      class="h-auto px-0 font-semibold"
+                      Disable
+                    </TableTextLink>
+                    <TableTextLink v-else :disabled="saving || formLocked" @click="enable(row)">
+                      Enable
+                    </TableTextLink>
+                    <TableTextLink
+                      destructive
                       :disabled="saving || formLocked"
                       @click="requestDelete(row)"
                     >
                       Delete
-                    </Button>
-                  </div>
+                    </TableTextLink>
+                  </span>
                 </TableCell>
               </template>
             </TableRow>
@@ -420,13 +376,13 @@ async function saveUpdate(
   </Card>
 
   <ConfirmDialog
-    v-model:open="deactivateOpen"
-    title="Deactivate this category?"
+    v-model:open="disableOpen"
+    title="Disable this category?"
     description="It will no longer appear in new Workload Registry rows. Existing rows keep it."
-    confirm-label="Deactivate"
-    confirm-variant="default"
+    confirm-label="Disable"
+    confirm-variant="destructive"
     :pending="updateMutation.isPending.value"
-    @confirm="confirmDeactivate"
+    @confirm="confirmDisable"
   />
 
   <ConfirmDialog

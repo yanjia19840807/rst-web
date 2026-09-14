@@ -101,6 +101,12 @@ export interface ExerciseListQuery {
   pageSize?: number
 }
 
+export interface ExerciseReviewerOption {
+  name: string
+  email?: string | null
+  ccgid?: string | null
+}
+
 export interface ExerciseListView {
   items: Exercise[]
   page: number
@@ -109,7 +115,7 @@ export interface ExerciseListView {
   totalPages: number
   toolkitNames: string[]
   pl3Names: string[]
-  reviewerNames: string[]
+  reviewers: ExerciseReviewerOption[]
 }
 
 export interface CreateExerciseInput {

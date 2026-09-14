@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
+import TableTextLink from '@/components/TableTextLink.vue'
 
 defineProps<{
   canToggleEnabled?: boolean
@@ -14,24 +14,15 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center justify-end gap-3">
-    <Button
-      size="sm"
-      variant="link"
-      class="h-auto px-0 text-sm font-semibold"
-      @click="emit('open')"
-    >
-      View
-    </Button>
-    <Button
+  <span class="inline-flex gap-3">
+    <TableTextLink @click="emit('open')">View</TableTextLink>
+    <TableTextLink
       v-if="canToggleEnabled"
-      size="sm"
-      variant="link"
-      class="h-auto px-0 text-sm font-semibold"
+      :destructive="enabled !== false"
       :disabled="toggling"
       @click="emit('toggleEnabled')"
     >
       {{ enabled === false ? 'Enable' : 'Disable' }}
-    </Button>
-  </div>
+    </TableTextLink>
+  </span>
 </template>

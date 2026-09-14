@@ -192,7 +192,7 @@ const submissionPathRows = computed(() => {
         <DialogTitle>Submit For Validation</DialogTitle>
         <DialogDescription>
           This will send the Official Scenario to Manager Review and lock the exercise.
-          You cannot edit it until it is returned or withdrawn. Warning checks require remarks.
+          You cannot edit it until it is returned. Warning checks require remarks.
           Severe checks block submit.
         </DialogDescription>
       </DialogHeader>

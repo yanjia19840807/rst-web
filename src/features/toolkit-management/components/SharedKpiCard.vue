@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -77,17 +78,10 @@ const emit = defineEmits<{
                 <TableCell>{{ item.customerCountry }}</TableCell>
                 <TableCell v-if="showDeliveryHc">{{ item.deliveryHc ?? '—' }}</TableCell>
                 <TableCell v-if="showAlignment">
-                  <Badge v-if="item.missing" variant="destructive">Missing</Badge>
+                  <StatusBadge v-if="item.missing" status="Missing" />
                 </TableCell>
                 <TableCell class="text-right">
-                  <Button
-                    size="sm"
-                    variant="link-destructive"
-                    class="h-auto px-0 font-semibold"
-                    @click="emit('remove', item)"
-                  >
-                    Remove
-                  </Button>
+                  <TableTextLink destructive @click="emit('remove', item)">Remove</TableTextLink>
                 </TableCell>
               </TableRow>
               <TableRow v-if="!rows.length">

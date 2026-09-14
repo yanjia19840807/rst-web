@@ -276,7 +276,7 @@ async function clearPeriod() {
         {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
       </Button>
       <Button
-        variant="outline"
+        variant="destructive"
         :disabled="busy || !periodSet"
         :loading="busyAction === 'clear-period'"
         @click="requestClearPeriod"

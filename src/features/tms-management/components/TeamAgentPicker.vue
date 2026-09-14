@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import PersonPicker, { type PersonPickerQuery } from '@/components/PersonPicker.vue'
+import { personMatchesQuery } from '@/components/personPickerQuery'
 import type { ButtonVariants } from '@/components/ui/button'
 
 import type { TeamAgentOption } from '../types'
@@ -25,19 +26,13 @@ const pickerQuery = ref<PersonPickerQuery>({
 })
 
 const filtered = computed(() => {
-  const needle = pickerQuery.value.q.trim().toLowerCase()
   const rows = props.agents.map((agent) => ({
     id: agent.ccgid,
     ccgid: agent.ccgid,
     name: agent.name,
     email: agent.email,
   }))
-  if (!needle) return rows
-  return rows.filter(
-    (agent) =>
-      agent.name.toLowerCase().includes(needle) ||
-      (agent.email ?? '').toLowerCase().includes(needle),
-  )
+  return rows.filter((agent) => personMatchesQuery(agent, pickerQuery.value.q))
 })
 
 const items = computed(() => {

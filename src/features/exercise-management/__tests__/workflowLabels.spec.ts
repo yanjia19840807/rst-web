@@ -11,7 +11,7 @@ import {
 } from '../workflowLabels'
 
 describe('currentStepLabel', () => {
-  it('uses Supervisor Sizing before the first Submit and after Return / Withdraw', () => {
+  it('uses Supervisor Sizing before the first Submit and after Return', () => {
     expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS' })).toBe(SUPERVISOR_SIZING_STEP)
     expect(currentStepLabel({ workflowStatus: 'IN_PROGRESS', requiredRole: 'SR_MANAGER' })).toBe(
       SUPERVISOR_SIZING_STEP,

@@ -1,6 +1,7 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
+import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
 
 import type { Toolkit } from '../types'
@@ -47,6 +48,8 @@ export function createAgentToolkitColumns(
       id: 'enabled',
       header: 'Status',
       meta: { headerClass: 'min-w-[5.75rem]', cellClass: 'min-w-[5.75rem]' },
+      cell: ({ row }) =>
+        h(StatusBadge, { status: row.original.enabled === false ? 'Disabled' : 'Enabled' }),
     }),
     columnHelper.display({
       id: 'actions',

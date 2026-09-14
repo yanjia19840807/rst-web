@@ -88,7 +88,7 @@ const {
       </template>
       <Button
         v-if="toolkitId"
-        :variant="toolkitEnabled ? 'destructive' : 'outline'"
+        :variant="toolkitEnabled ? 'destructive' : 'default'"
         :disabled="loading || busy"
         @click="toggleOpen = true"
       >

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -113,10 +114,7 @@ function shiftSetupLabel(scenario: Scenario) {
                 {{ formatSigned(capacityCreation(scenario)) }}
               </TableCell>
               <TableCell class="text-right" @click.stop>
-                <Button
-                  size="sm"
-                  variant="link"
-                  class="h-auto px-0 font-semibold"
+                <TableTextLink
                   @click="
                     router.push({
                       name: snapshotMode
@@ -127,7 +125,7 @@ function shiftSetupLabel(scenario: Scenario) {
                   "
                 >
                   Open
-                </Button>
+                </TableTextLink>
               </TableCell>
             </TableRow>
             <TableRow v-if="!scenarios.length">

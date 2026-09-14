@@ -6,6 +6,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import type { ExerciseReviewerOption } from '../types'
 import {
   CURRENT_STEP_FILTERS,
   IN_PROGRESS_TAB,
@@ -14,8 +15,8 @@ import {
 import {
   emptyExerciseListFilters,
   type ExerciseListFilterValues,
-  type OfficialScenarioFilter,
 } from './exerciseListFilters'
+import ReviewerPicker from './ReviewerPicker.vue'
 
 type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 
@@ -23,7 +24,7 @@ defineProps<{
   activeTab: TabKey
   pl3Options: string[]
   toolkitOptions: string[]
-  reviewerOptions: string[]
+  reviewers: ExerciseReviewerOption[]
 }>()
 
 const emit = defineEmits<{
@@ -93,48 +94,8 @@ function onClear() {
         </NativeSelect>
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Official Scenario
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.officialScenario"
-          @update:model-value="
-            draft.officialScenario = String($event ?? 'All scenarios') as OfficialScenarioFilter
-          "
-        >
-          <option value="All scenarios">All scenarios</option>
-          <option value="Assigned">Assigned</option>
-          <option value="Not assigned">Not assigned</option>
-        </NativeSelect>
-      </label>
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Handler
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.reviewer"
-          @update:model-value="draft.reviewer = String($event ?? 'All reviewers')"
-        >
-          <option v-for="option in reviewerOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </label>
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Created Date From
-        <DatePicker
-          v-model="draft.createdFrom"
-          aria-label="Created date from"
-          placeholder="From"
-          :class="fieldClass"
-        />
-      </label>
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Created Date To
-        <DatePicker
-          v-model="draft.createdTo"
-          aria-label="Created date to"
-          placeholder="To"
-          :class="fieldClass"
-        />
+        Current Reviewer
+        <ReviewerPicker v-model="draft.reviewer" :reviewers="reviewers" />
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Submitted Date From

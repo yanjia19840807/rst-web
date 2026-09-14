@@ -1,6 +1,7 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
+import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
 import { formatDateTime } from '@/lib/datetime'
 
@@ -112,6 +113,8 @@ export function createTmsSessionColumns(
         id: 'enabled',
         header: 'Status',
         meta: { headerClass: 'min-w-[5.75rem]', cellClass: 'min-w-[5.75rem]' },
+        cell: ({ row }) =>
+          h(StatusBadge, { status: row.original.enabled === false ? 'Disabled' : 'Enabled' }),
       }),
     )
   }
@@ -127,15 +130,13 @@ export function createTmsSessionColumns(
       header: () => h('div', { class: 'text-right' }, 'Action'),
       enableHiding: false,
       cell: ({ row }) =>
-        h('div', { class: 'relative' }, [
-          h(TmsSessionRowActions, {
-            canToggleEnabled: options.canToggleEnabled,
-            enabled: row.original.enabled !== false,
-            toggling: options.togglingId === row.original.id,
-            onOpen: () => options.onOpen?.(row.original.id),
-            onToggleEnabled: () => options.onToggleEnabled?.(row.original.id),
-          }),
-        ]),
+        h(TmsSessionRowActions, {
+          canToggleEnabled: options.canToggleEnabled,
+          enabled: row.original.enabled !== false,
+          toggling: options.togglingId === row.original.id,
+          onOpen: () => options.onOpen?.(row.original.id),
+          onToggleEnabled: () => options.onToggleEnabled?.(row.original.id),
+        }),
       meta: { headerClass: 'min-w-[4.5rem] text-right', cellClass: 'min-w-[4.5rem] text-right' },
     }),
   ] as ColumnDef<TmsSessionTableRow>[]

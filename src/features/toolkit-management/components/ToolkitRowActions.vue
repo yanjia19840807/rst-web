@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
+import TableTextLink from '@/components/TableTextLink.vue'
 
-const props = defineProps<{
+defineProps<{
   exporting?: boolean
   exportDisabled?: boolean
   createDisabled?: boolean
@@ -15,11 +15,8 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center justify-end gap-3">
-    <Button
-      size="sm"
-      variant="link"
-      class="h-auto px-0 font-semibold"
+  <span class="inline-flex gap-3">
+    <TableTextLink
       :disabled="createDisabled"
       :title="
         createDisabled
@@ -29,24 +26,10 @@ const emit = defineEmits<{
       @click="emit('create')"
     >
       Create Exercise
-    </Button>
-    <Button
-      size="sm"
-      variant="link"
-      class="h-auto px-0 font-semibold"
-      :loading="exporting"
-      :disabled="exportDisabled"
-      @click="emit('export')"
-    >
+    </TableTextLink>
+    <TableTextLink :disabled="exportDisabled || exporting" @click="emit('export')">
       {{ exporting ? 'Exporting…' : 'Export' }}
-    </Button>
-    <Button
-      size="sm"
-      variant="link"
-      class="h-auto px-0 font-semibold"
-      @click="emit('edit')"
-    >
-      Edit
-    </Button>
-  </div>
+    </TableTextLink>
+    <TableTextLink @click="emit('edit')">Edit</TableTextLink>
+  </span>
 </template>

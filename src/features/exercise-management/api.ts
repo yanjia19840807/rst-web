@@ -168,10 +168,6 @@ export const exerciseApi = {
     }),
   submittedDetails: (id: string) =>
     apiRequest<SubmittedDetails>(exercisePath(id, '/submitted-details')),
-  withdraw: (id: string) =>
-    apiRequest<SubmittedDetails>(exercisePath(id, '/withdraw'), {
-      method: 'POST',
-    }),
 
   getTeamSetup: (exerciseId: string) =>
     apiRequest<TeamSetup>(exercisePath(exerciseId, '/team-setup')),

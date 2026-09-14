@@ -1,8 +1,8 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import StatusBadge from '@/components/StatusBadge.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import '@/components/ui/data-table/types'
 import { formatDateTimeSeconds } from '@/lib/datetime'
 
@@ -30,24 +30,12 @@ function dash(value: string | number | null | undefined) {
 }
 
 function statusBadge(status: string | null | undefined) {
-  if (!status) return '—'
-  const variant =
-    status === 'ACTIVE' ? 'secondary' : status === 'FAILED' ? 'destructive' : 'outline'
-  return h(Badge, { variant }, () => status)
+  return h(StatusBadge, { status })
 }
 
 function viewIssuesButton(row: TimesheetSyncRunHeader | null, onViewIssues?: (row: TimesheetSyncRunHeader) => void) {
   if (!row) return '—'
-  return h(
-    Button,
-    {
-      size: 'sm',
-      variant: 'link',
-      class: 'h-auto px-0 font-semibold',
-      onClick: () => onViewIssues?.(row),
-    },
-    () => 'View issues',
-  )
+  return h(TableTextLink, { onClick: () => onViewIssues?.(row) }, () => 'View issues')
 }
 
 function mappedTableLinks(
@@ -66,19 +54,10 @@ function mappedTableLinks(
           { key: 'kpis', label: 'Delivery HC' },
         ] as const)
   return h(
-    'div',
-    { class: 'flex flex-wrap justify-end gap-x-3' },
+    'span',
+    { class: 'inline-flex flex-wrap justify-end gap-3' },
     tabs.map((tab) =>
-      h(
-        Button,
-        {
-          size: 'sm',
-          variant: 'link',
-          class: 'h-auto px-0 font-semibold',
-          onClick: () => onViewTables?.(row, tab.key),
-        },
-        () => tab.label,
-      ),
+      h(TableTextLink, { onClick: () => onViewTables?.(row, tab.key) }, () => tab.label),
     ),
   )
 }

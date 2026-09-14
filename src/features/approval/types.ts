@@ -92,7 +92,7 @@ export interface ActionView {
 }
 
 export interface ApprovalStatusBar {
-  state: 'IN_PROGRESS' | 'NOW' | 'APPROVED' | 'RETURNED' | 'WITHDRAWN' | string
+  state: 'IN_PROGRESS' | 'NOW' | 'APPROVED' | 'RETURNED' | string
   label: string
   step?: string | null
   reviewer?: string | null

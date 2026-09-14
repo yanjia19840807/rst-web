@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner'
 import { Info } from '@lucide/vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -433,26 +434,10 @@ async function onImportFile(event: Event) {
               />
             </TableCell>
             <TableCell>
-              <div class="flex gap-3">
-                <Button
-                  size="sm"
-                  variant="link"
-                  class="h-auto px-0 font-semibold"
-                  :disabled="busy"
-                  @click="confirmAdd"
-                >
-                  Confirm
-                </Button>
-                <Button
-                  size="sm"
-                  variant="link"
-                  class="h-auto px-0 font-semibold"
-                  :disabled="busy"
-                  @click="cancelAdd"
-                >
-                  Cancel
-                </Button>
-              </div>
+              <span class="inline-flex gap-3">
+                <TableTextLink :disabled="busy" @click="confirmAdd">Confirm</TableTextLink>
+                <TableTextLink :disabled="busy" @click="cancelAdd">Cancel</TableTextLink>
+              </span>
             </TableCell>
           </TableRow>
 
@@ -498,26 +483,10 @@ async function onImportFile(event: Event) {
                 />
               </TableCell>
               <TableCell>
-                <div class="flex gap-3">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    @click="confirmEdit"
-                  >
-                    Confirm
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    @click="cancelEdit"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                <span class="inline-flex gap-3">
+                  <TableTextLink :disabled="busy" @click="confirmEdit">Confirm</TableTextLink>
+                  <TableTextLink :disabled="busy" @click="cancelEdit">Cancel</TableTextLink>
+                </span>
               </TableCell>
             </template>
             <template v-else>
@@ -525,26 +494,18 @@ async function onImportFile(event: Event) {
               <TableCell>{{ holidayTypeLabel(row.holidayType) }}</TableCell>
               <TableCell>{{ row.holidayName }}</TableCell>
               <TableCell v-if="!readOnly">
-                <div class="flex gap-3">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy || formLocked"
-                    @click="startEdit(row)"
-                  >
+                <span class="inline-flex gap-3">
+                  <TableTextLink :disabled="busy || formLocked" @click="startEdit(row)">
                     Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link-destructive"
-                    class="h-auto px-0 font-semibold"
+                  </TableTextLink>
+                  <TableTextLink
+                    destructive
                     :disabled="busy || formLocked"
                     @click="requestDelete(row)"
                   >
                     Delete
-                  </Button>
-                </div>
+                  </TableTextLink>
+                </span>
               </TableCell>
             </template>
           </TableRow>

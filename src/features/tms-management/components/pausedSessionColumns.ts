@@ -38,14 +38,12 @@ export function createPausedSessionColumns(
       enableHiding: false,
       header: () => h('div', { class: 'text-right' }, 'Action'),
       cell: ({ row }) =>
-        h('div', { class: 'relative' }, [
-          h(PausedSessionRowActions, {
-            resumeDisabled: options.hasRunningSession || options.resumePending,
-            discardDisabled: options.discardPending,
-            onResume: () => options.onResume?.(row.original.id),
-            onDiscard: () => options.onDiscard?.(row.original.id),
-          }),
-        ]),
+        h(PausedSessionRowActions, {
+          resumeDisabled: options.hasRunningSession || options.resumePending,
+          discardDisabled: options.discardPending,
+          onResume: () => options.onResume?.(row.original.id),
+          onDiscard: () => options.onDiscard?.(row.original.id),
+        }),
       meta: { headerClass: 'text-right', cellClass: 'text-right' },
     }),
   ] as ColumnDef<TmsSession>[]

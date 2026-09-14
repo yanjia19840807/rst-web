@@ -1,6 +1,7 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
+import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
 import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 
@@ -59,22 +60,22 @@ export function createToolkitColumns(
     columnHelper.accessor((row) => (row.enabled === false ? 'Disabled' : 'Enabled'), {
       id: 'enabled',
       header: 'Status',
+      cell: ({ row }) =>
+        h(StatusBadge, { status: row.original.enabled === false ? 'Disabled' : 'Enabled' }),
     }),
     columnHelper.display({
       id: 'actions',
       enableHiding: false,
       header: () => h('div', { class: 'text-right' }, 'Action'),
       cell: ({ row }) =>
-        h('div', { class: 'relative' }, [
-          h(ToolkitRowActions, {
-            exporting: options.exportingId === row.original.id,
-            exportDisabled: Boolean(options.exportingId),
-            createDisabled: Boolean(row.original.outOfSync) || row.original.enabled === false,
-            onCreate: () => options.onCreate?.(row.original),
-            onEdit: () => options.onEdit?.(row.original.id),
-            onExport: () => options.onExport?.(row.original),
-          }),
-        ]),
+        h(ToolkitRowActions, {
+          exporting: options.exportingId === row.original.id,
+          exportDisabled: Boolean(options.exportingId),
+          createDisabled: Boolean(row.original.outOfSync) || row.original.enabled === false,
+          onCreate: () => options.onCreate?.(row.original),
+          onEdit: () => options.onEdit?.(row.original.id),
+          onExport: () => options.onExport?.(row.original),
+        }),
       meta: { headerClass: 'text-right', cellClass: 'text-right' },
     }),
   ] as ColumnDef<SupervisorToolkit>[]

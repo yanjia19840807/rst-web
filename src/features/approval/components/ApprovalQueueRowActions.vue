@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
+import TableTextLink from '@/components/TableTextLink.vue'
 
 defineProps<{
   label: string
@@ -11,12 +11,5 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Button
-    size="sm"
-    variant="link"
-    class="h-auto px-0 font-semibold"
-    @click="emit('review')"
-  >
-    {{ label }}
-  </Button>
+  <TableTextLink @click="emit('review')">{{ label }}</TableTextLink>
 </template>

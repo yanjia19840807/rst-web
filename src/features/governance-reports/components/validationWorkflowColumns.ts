@@ -1,7 +1,7 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
-import { Badge } from '@/components/ui/badge'
+import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
 
 import { displayOrDash, formatSignedPct } from '../reportFormat'
@@ -28,14 +28,7 @@ export function createValidationWorkflowColumns(): ColumnDef<ValidationWorkflowR
     columnHelper.display({
       id: 'aging',
       header: 'Aging',
-      cell: ({ row }) =>
-        row.original.agingDays == null
-          ? '—'
-          : h(
-              Badge,
-              { variant: row.original.agingDays >= 14 ? 'destructive' : 'secondary' },
-              () => `${row.original.agingDays} days`,
-            ),
+      cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays }),
     }),
     columnHelper.display({
       id: 'capacityCreation',

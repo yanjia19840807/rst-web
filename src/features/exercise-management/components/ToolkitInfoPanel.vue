@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 import { formatHc } from '@/lib/hcFormat'
 
@@ -143,7 +143,7 @@ const mappingRows = computed(() => {
                 <TableCell>{{ Number(item.deliveryHc).toFixed(2) }}</TableCell>
                 <TableCell v-if="showCurrentMonthly">{{ currentHcFor(item) }}</TableCell>
                 <TableCell v-if="showCurrentMonthly">
-                  <Badge v-if="lineMissing(item)" variant="destructive">Missing</Badge>
+                  <StatusBadge v-if="lineMissing(item)" status="Missing" />
                 </TableCell>
               </TableRow>
               <TableRow class="bg-muted/40">
@@ -198,7 +198,9 @@ const mappingRows = computed(() => {
             <TableRow v-for="(subtask, index) in visibleSubtasks" :key="subtask.id">
               <TableCell class="text-muted-foreground">{{ index + 1 }}</TableCell>
               <TableCell>{{ subtask.name || '—' }}</TableCell>
-              <TableCell>{{ statusLabel('enabled' in subtask ? subtask.enabled : true) }}</TableCell>
+              <TableCell>
+                <StatusBadge :status="statusLabel('enabled' in subtask ? subtask.enabled : true)" />
+              </TableCell>
             </TableRow>
           </TableBody>
         </Table>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ListLoading from '@/components/ListLoading.vue'
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
 import {
   Table,
   TableBody,
@@ -19,11 +19,6 @@ defineProps<{
   pending?: boolean
 }>()
 
-function decisionTone(decision?: string | null) {
-  if (decision === 'Returned' || decision === 'Withdrawn') return 'bad' as const
-  if (decision === 'Approved') return 'good' as const
-  return 'muted' as const
-}
 </script>
 
 <template>
@@ -55,15 +50,7 @@ function decisionTone(decision?: string | null) {
             <TableCell>{{ row.role || '—' }}</TableCell>
             <TableCell>{{ row.actor || '—' }}</TableCell>
             <TableCell>
-              <Badge
-                :variant="decisionTone(row.decision) === 'bad' ? 'destructive' : 'outline'"
-                :class="{
-                  'border-emerald-200 bg-emerald-50 text-emerald-700':
-                    decisionTone(row.decision) === 'good',
-                }"
-              >
-                {{ row.decision }}
-              </Badge>
+              <StatusBadge :status="row.decision" />
             </TableCell>
             <TableCell class="max-w-xs wrap-break-word">{{ row.comments?.trim() || '—' }}</TableCell>
             <TableCell>{{ formatDateTime(row.completedAt) }}</TableCell>

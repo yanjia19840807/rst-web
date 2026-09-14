@@ -3,7 +3,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageActions from '@/components/PageActions.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import TablePager from '@/components/TablePager.vue'
@@ -11,9 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 import { useManagedToolkitsQuery } from '@/features/toolkit-management/api/queries'
-import { formatDate } from '@/lib/datetime'
 
-import { useExerciseMutations } from '../api/mutations'
 import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
 import { IN_PROGRESS_TAB, reviewStageQueryValue } from '../workflowLabels'
@@ -29,7 +26,6 @@ type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
 
 const route = useRoute()
 const router = useRouter()
-const { withdraw } = useExerciseMutations()
 
 function tabFromQuery(value: unknown): TabKey {
   return value === 'ARCHIVED' ? 'Archived' : IN_PROGRESS_TAB
@@ -37,8 +33,6 @@ function tabFromQuery(value: unknown): TabKey {
 
 const activeTab = ref<TabKey>(tabFromQuery(route.query.tab))
 const createOpen = ref(false)
-const withdrawOpen = ref(false)
-const withdrawTarget = ref<Exercise | null>(null)
 
 const applied = reactive(emptyExerciseListFilters())
 const page = ref(1)
@@ -59,16 +53,7 @@ const listQuery = computed<ExerciseListQuery>(() => {
         ? 'APPROVED'
         : undefined,
     reviewStage: inProgress ? reviewStageQueryValue(applied.reviewStage) : undefined,
-    handler:
-      !inProgress || applied.reviewer === 'All reviewers' ? undefined : applied.reviewer,
-    officialScenario:
-      !inProgress || applied.officialScenario === 'All scenarios'
-        ? undefined
-        : applied.officialScenario === 'Assigned'
-          ? 'ASSIGNED'
-          : 'UNASSIGNED',
-    createdFrom: inProgress ? applied.createdFrom || undefined : undefined,
-    createdTo: inProgress ? applied.createdTo || undefined : undefined,
+    handler: !inProgress || !applied.reviewer ? undefined : applied.reviewer,
     submittedFrom: inProgress ? applied.submittedFrom || undefined : undefined,
     submittedTo: inProgress ? applied.submittedTo || undefined : undefined,
     archivedFrom: inProgress ? undefined : applied.archivedFrom || undefined,
@@ -85,15 +70,13 @@ const total = computed(() => exercisesQuery.data.value?.total ?? 0)
 const toolkits = computed<SupervisorToolkit[]>(() => toolkitsQuery.data.value?.items ?? [])
 const toolkitNames = computed(() => exercisesQuery.data.value?.toolkitNames ?? [])
 const pl3Names = computed(() => exercisesQuery.data.value?.pl3Names ?? [])
-const reviewerNames = computed(() => exercisesQuery.data.value?.reviewerNames ?? [])
+const reviewers = computed(() => exercisesQuery.data.value?.reviewers ?? [])
 const loading = computed(
   () => exercisesQuery.isPending.value && !exercisesQuery.data.value,
 )
-const withdrawPending = computed(() => withdraw.isPending.value)
 
 const pl3Options = computed(() => pl3Names.value)
 const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
-const reviewerOptions = computed(() => ['All reviewers', ...reviewerNames.value])
 
 function resetPage() {
   page.value = 1
@@ -139,29 +122,12 @@ function onCreated(exercise: Exercise) {
 }
 
 function openExercise(exercise: Exercise) {
-  // Editable exercises (including after Return / Withdraw) open the workbench.
+  // Editable exercises (including after Return) open the workbench.
   if (exercise.workflowStatus === 'IN_PROGRESS') {
     void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
     return
   }
   void router.push({ name: 'supervisor-submission', params: { id: exercise.id } })
-}
-
-function askWithdraw(exercise: Exercise) {
-  withdrawTarget.value = exercise
-  withdrawOpen.value = true
-}
-
-async function confirmWithdraw() {
-  if (!withdrawTarget.value || withdrawPending.value) return
-  try {
-    await withdraw.mutateAsync(withdrawTarget.value.id)
-    toast.success('Submission withdrawn.')
-    withdrawOpen.value = false
-    withdrawTarget.value = null
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not withdraw submission.')
-  }
 }
 
 watch(
@@ -221,7 +187,7 @@ watch(
           :active-tab="activeTab"
           :pl3-options="pl3Options"
           :toolkit-options="toolkitOptions"
-          :reviewer-options="reviewerOptions"
+          :reviewers="reviewers"
           @search="applySearch"
           @clear="clearFilters"
         />
@@ -231,7 +197,6 @@ watch(
           :rows="exercises"
           :loading="loading"
           @open="openExercise"
-          @withdraw="askWithdraw"
         />
 
         <TablePager
@@ -254,24 +219,6 @@ watch(
       v-model:open="createOpen"
       :toolkits="toolkits"
       @created="onCreated"
-    />
-
-    <ConfirmDialog
-      v-model:open="withdrawOpen"
-      title="Withdraw Submission"
-      description="Withdraw this submission and return the exercise to Supervisor Sizing."
-      confirm-label="Withdraw"
-      :rows="
-        withdrawTarget
-          ? [
-              { label: 'Exercise', value: withdrawTarget.exerciseCode, strong: true },
-              { label: 'Toolkit', value: withdrawTarget.snapshot.toolkit.name },
-              { label: 'Submitted', value: formatDate(withdrawTarget.submittedAt) },
-            ]
-          : []
-      "
-      :pending="withdrawPending"
-      @confirm="confirmWithdraw"
     />
   </div>
 </template>

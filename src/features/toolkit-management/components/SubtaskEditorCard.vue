@@ -3,6 +3,8 @@ import { computed, nextTick, ref } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -260,26 +262,10 @@ function applyToolkit(toolkit: SupervisorToolkit) {
                 </TableCell>
                 <TableCell />
                 <TableCell class="text-right">
-                  <div class="flex justify-end gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy"
-                      @click="confirmAdd"
-                    >
-                      Confirm
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy"
-                      @click="cancelAdd"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  <span class="inline-flex justify-end gap-3">
+                    <TableTextLink :disabled="busy" @click="confirmAdd">Confirm</TableTextLink>
+                    <TableTextLink :disabled="busy" @click="cancelAdd">Cancel</TableTextLink>
+                  </span>
                 </TableCell>
               </TableRow>
 
@@ -309,58 +295,31 @@ function applyToolkit(toolkit: SupervisorToolkit) {
                   </p>
                 </TableCell>
                 <TableCell v-if="isEdit">
-                  {{ subtask.enabled === false ? 'Disabled' : 'Enabled' }}
+                  <StatusBadge :status="subtask.enabled === false ? 'Disabled' : 'Enabled'" />
                 </TableCell>
                 <TableCell class="text-right">
-                  <div v-if="isEdit && editingId === subtask.id" class="flex justify-end gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy"
-                      @click="confirmEdit"
-                    >
-                      Confirm
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy"
-                      @click="cancelEdit"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  <div v-else-if="isEdit" class="flex justify-end gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="formLocked || busy"
-                      @click="startEdit(subtask)"
-                    >
+                  <span
+                    v-if="isEdit && editingId === subtask.id"
+                    class="inline-flex justify-end gap-3"
+                  >
+                    <TableTextLink :disabled="busy" @click="confirmEdit">Confirm</TableTextLink>
+                    <TableTextLink :disabled="busy" @click="cancelEdit">Cancel</TableTextLink>
+                  </span>
+                  <span v-else-if="isEdit" class="inline-flex justify-end gap-3">
+                    <TableTextLink :disabled="formLocked || busy" @click="startEdit(subtask)">
                       Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
+                    </TableTextLink>
+                    <TableTextLink
+                      :destructive="subtask.enabled !== false"
                       :disabled="formLocked || busy"
                       @click="openToggle(subtask)"
                     >
                       {{ subtask.enabled === false ? 'Enable' : 'Disable' }}
-                    </Button>
-                  </div>
-                  <Button
-                    v-else
-                    size="sm"
-                    variant="link-destructive"
-                    class="h-auto px-0 font-semibold"
-                    @click="removeDraft(subtask)"
-                  >
+                    </TableTextLink>
+                  </span>
+                  <TableTextLink v-else destructive @click="removeDraft(subtask)">
                     Remove
-                  </Button>
+                  </TableTextLink>
                 </TableCell>
               </TableRow>
               <TableRow v-if="!visibleSubtasks.length && !(isEdit && adding)">

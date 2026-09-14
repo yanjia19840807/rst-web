@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
+import TableTextLink from '@/components/TableTextLink.vue'
 
 const emit = defineEmits<{
   open: []
@@ -7,14 +7,5 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center justify-end">
-    <Button
-      size="sm"
-      variant="link"
-      class="h-auto px-0 text-sm font-semibold"
-      @click="emit('open')"
-    >
-      View
-    </Button>
-  </div>
+  <TableTextLink @click="emit('open')">View</TableTextLink>
 </template>

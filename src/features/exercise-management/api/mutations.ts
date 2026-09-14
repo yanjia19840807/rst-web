@@ -215,11 +215,6 @@ export function useExerciseMutations() {
     onSuccess: (_data, { id }) => invalidateAfterDecision(queryClient, id),
   })
 
-  const withdraw = useMutation({
-    mutationFn: (id: string) => exerciseApi.withdraw(id),
-    onSuccess: (_data, id) => invalidateAfterDecision(queryClient, id),
-  })
-
   return {
     create,
     updatePeriods,
@@ -228,7 +223,6 @@ export function useExerciseMutations() {
     remove,
     clearCommittedResults,
     submit,
-    withdraw,
   }
 }
 

@@ -55,7 +55,7 @@ const props = withDefaults(
     loading: false,
     allowClear: false,
     emptyText: 'No people found',
-    searchPlaceholder: 'Search name or email',
+    searchPlaceholder: 'Search name, email or CCGID',
     size: 'default',
   },
 )

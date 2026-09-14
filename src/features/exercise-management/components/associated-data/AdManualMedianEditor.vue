@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import { Label } from '@/components/ui/label'
@@ -187,9 +188,7 @@ defineExpose({ toRequest })
                 <TableCell>{{ formatSize(file.sizeBytes) }}</TableCell>
                 <TableCell>Uploaded</TableCell>
                 <TableCell v-if="!readOnly">
-                  <Button type="button" size="sm" variant="outline" @click="removeFile(file.id)">
-                    Remove
-                  </Button>
+                  <TableTextLink destructive @click="removeFile(file.id)">Remove</TableTextLink>
                 </TableCell>
               </TableRow>
             </TableBody>

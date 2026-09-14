@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner'
 import { Info } from '@lucide/vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -999,7 +1000,7 @@ async function confirmSlotImport() {
         {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
       </Button>
       <Button
-        variant="outline"
+        variant="destructive"
         :disabled="busy || !periodSet"
         :loading="busyAction === 'clear-period'"
         @click="requestClearPeriod"
@@ -1116,50 +1117,26 @@ async function confirmSlotImport() {
               <span v-else>{{ formatPercent(row.commercialRatio) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
-              <div class="flex gap-3">
+              <span class="inline-flex gap-3">
                 <template v-if="editKey === row.key">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    :loading="busyAction === 'save'"
-                    @click="confirmEdit"
-                  >
+                  <TableTextLink :disabled="busy" @click="confirmEdit">
                     {{ busyAction === 'save' ? 'Saving…' : 'Confirm' }}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busyAction === 'save'"
-                    @click="cancelEdit"
-                  >
+                  </TableTextLink>
+                  <TableTextLink :disabled="busyAction === 'save'" @click="cancelEdit">
                     Cancel
-                  </Button>
+                  </TableTextLink>
                 </template>
                 <template v-else>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    @click="startEditMonth(row)"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link-destructive"
-                    class="h-auto px-0 font-semibold"
+                  <TableTextLink :disabled="busy" @click="startEditMonth(row)">Edit</TableTextLink>
+                  <TableTextLink
+                    destructive
                     :disabled="busy || !canDeleteMonth(row)"
-                    :loading="busyAction === 'delete'"
                     @click="removeMonth(row)"
                   >
-                    Delete
-                  </Button>
+                    {{ busyAction === 'delete' ? 'Deleting…' : 'Delete' }}
+                  </TableTextLink>
                 </template>
-              </div>
+              </span>
             </TableCell>
           </TableRow>
           <TableRow v-if="!monthDrafts.length">
@@ -1220,50 +1197,26 @@ async function confirmSlotImport() {
               <span v-else>{{ formatPercent(row.dailyAdjustmentRatio) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
-              <div class="flex gap-3">
+              <span class="inline-flex gap-3">
                 <template v-if="editKey === row.key">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    :loading="busyAction === 'save'"
-                    @click="confirmEdit"
-                  >
+                  <TableTextLink :disabled="busy" @click="confirmEdit">
                     {{ busyAction === 'save' ? 'Saving…' : 'Confirm' }}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busyAction === 'save'"
-                    @click="cancelEdit"
-                  >
+                  </TableTextLink>
+                  <TableTextLink :disabled="busyAction === 'save'" @click="cancelEdit">
                     Cancel
-                  </Button>
+                  </TableTextLink>
                 </template>
                 <template v-else>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    @click="startEditDay(row)"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link-destructive"
-                    class="h-auto px-0 font-semibold"
+                  <TableTextLink :disabled="busy" @click="startEditDay(row)">Edit</TableTextLink>
+                  <TableTextLink
+                    destructive
                     :disabled="busy || !canDeleteDay(row)"
-                    :loading="busyAction === 'delete'"
                     @click="removeDay(row)"
                   >
-                    Delete
-                  </Button>
+                    {{ busyAction === 'delete' ? 'Deleting…' : 'Delete' }}
+                  </TableTextLink>
                 </template>
-              </div>
+              </span>
             </TableCell>
           </TableRow>
           <TableRow v-if="!dayDrafts.length">
@@ -1298,39 +1251,23 @@ async function confirmSlotImport() {
               <span v-else>{{ formatNumber(row.actualVolume, 2) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
-              <div class="flex gap-3">
+              <span class="inline-flex gap-3">
                 <template v-if="slotEditingIndex === index">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    :loading="busyAction === 'save'"
-                    @click="confirmSlotEdit"
-                  >
+                  <TableTextLink :disabled="busy" @click="confirmSlotEdit">
                     {{ busyAction === 'save' ? 'Saving…' : 'Confirm' }}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busyAction === 'save'"
-                    @click="slotEditingIndex = null"
-                  >
+                  </TableTextLink>
+                  <TableTextLink :disabled="busyAction === 'save'" @click="slotEditingIndex = null">
                     Cancel
-                  </Button>
+                  </TableTextLink>
                 </template>
-                <Button
+                <TableTextLink
                   v-else
-                  size="sm"
-                  variant="link"
-                  class="h-auto px-0 font-semibold"
                   :disabled="busy"
                   @click="startEditSlot(index, row.actualVolume)"
                 >
                   Edit
-                </Button>
-              </div>
+                </TableTextLink>
+              </span>
             </TableCell>
           </TableRow>
           <TableRow v-if="!slotDrafts.length">

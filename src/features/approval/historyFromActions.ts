@@ -47,15 +47,13 @@ function decision(action: WorkflowActionView) {
       return 'Approved'
     case 'RETURNED':
       return 'Returned'
-    case 'WITHDRAWN':
-      return 'Withdrawn'
     default:
       return null
   }
 }
 
 function stepLabel(action: WorkflowActionView) {
-  if (isSubmit(action) || action.actionType === 'WITHDRAWN') {
+  if (isSubmit(action)) {
     return 'Supervisor Workbench'
   }
   const stepNo = action.stepNo ?? 0

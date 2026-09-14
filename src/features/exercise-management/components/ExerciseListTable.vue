@@ -17,13 +17,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: [exercise: Exercise]
-  withdraw: [exercise: Exercise]
 }>()
 
 const columns = computed(() =>
   createExerciseListColumns({
     onOpen: (exercise) => emit('open', exercise),
-    onWithdraw: (exercise) => emit('withdraw', exercise),
   }),
 )
 

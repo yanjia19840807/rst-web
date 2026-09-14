@@ -2,6 +2,7 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
 import { formatDate } from '@/lib/datetime'
 import {
@@ -20,7 +21,6 @@ import ExerciseRowActions from './ExerciseRowActions.vue'
 
 export type ExerciseListColumnOptions = {
   onOpen?: (exercise: Exercise) => void
-  onWithdraw?: (exercise: Exercise) => void
 }
 
 const columnHelper = createColumnHelper<Exercise>()
@@ -112,24 +112,19 @@ export function createExerciseListColumns(
       id: 'status',
       header: 'Status',
       cell: ({ row }) =>
-        h(
-          'span',
-          { title: row.original.lastDecisionComment || undefined },
-          currentStepLabel(row.original),
-        ),
+        h(StatusBadge, {
+          status: currentStepLabel(row.original),
+          title: row.original.lastDecisionComment || undefined,
+        }),
     }),
     columnHelper.display({
       id: 'actions',
       enableHiding: false,
       header: () => h('div', { class: 'text-right' }, 'Action'),
       cell: ({ row }) =>
-        h('div', { class: 'relative' }, [
-          h(ExerciseRowActions, {
-            canWithdraw: row.original.workflowStatus === 'UNDER_REVIEW',
-            onWithdraw: () => options.onWithdraw?.(row.original),
-            onOpen: () => options.onOpen?.(row.original),
-          }),
-        ]),
+        h(ExerciseRowActions, {
+          onOpen: () => options.onOpen?.(row.original),
+        }),
       meta: { headerClass: 'text-right', cellClass: 'text-right' },
     }),
   ] as ColumnDef<Exercise>[]

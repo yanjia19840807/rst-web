@@ -31,7 +31,7 @@ export function nextStepLabel(role?: string | null): string {
 
 /**
  * Current step for list / detail.
- * Return and Withdraw are actions, not steps — both land on Supervisor Sizing.
+ * Return is an action, not a step — it lands on Supervisor Sizing.
  */
 export function currentStepLabel(exercise: {
   workflowStatus: string

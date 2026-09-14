@@ -4,7 +4,7 @@ import { computed } from 'vue'
 
 import DetailTable from '@/components/DetailTable.vue'
 import { Alert, AlertDescription, infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate } from '@/lib/datetime'
@@ -94,7 +94,7 @@ const tmsHints = computed(() => tmsHintLines(props.exercise.tmsFrom, props.exerc
         <template #status="{ row }">
           <span class="inline-flex items-center gap-1.5">
             <span>{{ row.value || '—' }}</span>
-            <Badge v-if="isReturned(exercise)" variant="outline">Returned</Badge>
+            <StatusBadge v-if="isReturned(exercise)" status="Returned" />
           </span>
         </template>
       </DetailTable>

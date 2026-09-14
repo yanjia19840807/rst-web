@@ -133,12 +133,13 @@ export function createApprovalQueueColumns(
     columnHelper.display({
       id: 'actions',
       enableHiding: false,
-      header: 'Action',
+      header: () => h('div', { class: 'text-right' }, 'Action'),
       cell: ({ row }) =>
         h(ApprovalQueueRowActions, {
           label: options.tab === 'Awaiting Review' ? 'Review' : 'View',
           onReview: () => options.onReview?.(row.original),
         }),
+      meta: { headerClass: 'text-right', cellClass: 'text-right' },
     }),
   ] as ColumnDef<ApprovalQueueItem>[]
 }

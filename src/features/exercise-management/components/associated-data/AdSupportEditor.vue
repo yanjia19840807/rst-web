@@ -5,6 +5,7 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -477,26 +478,10 @@ async function onImportFile(event: Event) {
                 />
               </TableCell>
               <TableCell>
-                <div class="flex gap-3">
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    @click="confirmAdd"
-                  >
-                    Confirm
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="link"
-                    class="h-auto px-0 font-semibold"
-                    :disabled="busy"
-                    @click="cancelAdd"
-                  >
-                    Cancel
-                  </Button>
-                </div>
+                <span class="inline-flex gap-3">
+                  <TableTextLink :disabled="busy" @click="confirmAdd">Confirm</TableTextLink>
+                  <TableTextLink :disabled="busy" @click="cancelAdd">Cancel</TableTextLink>
+                </span>
               </TableCell>
             </TableRow>
 
@@ -593,26 +578,10 @@ async function onImportFile(event: Event) {
                   />
                 </TableCell>
                 <TableCell>
-                  <div class="flex gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy"
-                      @click="confirmEdit"
-                    >
-                      Confirm
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy"
-                      @click="cancelEdit"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  <span class="inline-flex gap-3">
+                    <TableTextLink :disabled="busy" @click="confirmEdit">Confirm</TableTextLink>
+                    <TableTextLink :disabled="busy" @click="cancelEdit">Cancel</TableTextLink>
+                  </span>
                 </TableCell>
               </template>
               <template v-else>
@@ -634,26 +603,18 @@ async function onImportFile(event: Event) {
                 </TableCell>
                 <TableCell>{{ item.comments || '—' }}</TableCell>
                 <TableCell v-if="!readOnly">
-                  <div class="flex gap-3">
-                    <Button
-                      size="sm"
-                      variant="link"
-                      class="h-auto px-0 font-semibold"
-                      :disabled="busy || formLocked"
-                      @click="startEdit(item)"
-                    >
+                  <span class="inline-flex gap-3">
+                    <TableTextLink :disabled="busy || formLocked" @click="startEdit(item)">
                       Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="link-destructive"
-                      class="h-auto px-0 font-semibold"
+                    </TableTextLink>
+                    <TableTextLink
+                      destructive
                       :disabled="busy || formLocked"
                       @click="requestDelete(item)"
                     >
                       Delete
-                    </Button>
-                  </div>
+                    </TableTextLink>
+                  </span>
                 </TableCell>
               </template>
             </TableRow>

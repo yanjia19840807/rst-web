@@ -165,7 +165,7 @@ function formatShiftTime(value?: string | null) {
             Add
           </Button>
           <Button
-            variant="outline"
+            variant="destructive"
             size="sm"
             :disabled="busy || shiftRows.length <= 1"
             @click="emit('removeShift')"
