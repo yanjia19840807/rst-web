@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { computed, watch } from 'vue'
 import { useForm } from 'vee-validate'
 
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import DetailTable from '@/components/DetailTable.vue'
 import { NativeSelect } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
@@ -271,6 +273,14 @@ defineExpose({ toRequest })
 
 <template>
   <div class="space-y-4">
+    <Alert variant="info">
+      <Info />
+      <AlertDescription>
+        These inputs are the capacity baseline shared by all scenarios. Cycle time comes from TMS.
+        Production Support FTE comes from the workload registry.
+      </AlertDescription>
+    </Alert>
+
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <AdMetric
         :label="withUnit('Cycle time', FieldUnit.seconds)"

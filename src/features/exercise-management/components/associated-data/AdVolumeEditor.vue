@@ -1,10 +1,9 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
-
-import { Info } from '@lucide/vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
@@ -13,7 +12,6 @@ import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Label } from '@/components/ui/label'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 import { NumberFieldControl } from '@/components/ui/number-field'
@@ -34,7 +32,15 @@ import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { useToolkitVolumePointsQuery } from '../../api/queries'
 import { triggerDownload } from '../../downloadBlob'
 import { useBeforeAssociatedDataWrite } from '../../composables/useAssociatedDataSaveGuard'
-import { addDaysIso, dailyTrainDates, deriveSlotPeriodLabel, shiftYearMonth } from '../../periodWindows'
+import {
+  addDaysIso,
+  dailyTrainDates,
+  deriveSlotPeriodLabel,
+  shiftYearMonth,
+  SLOT_PERIOD_HINT_DESCRIPTION,
+  VOLUME_DAILY_HINT_DESCRIPTION,
+  VOLUME_MONTHLY_HINT_DESCRIPTION,
+} from '../../periodWindows'
 import {
   dailyVolumeContextIssue,
   dailyVolumeRowSchema,
@@ -293,17 +299,10 @@ const currentTotal = computed(() => {
   return slotDrafts.value.length
 })
 
-const windowHint = computed(() => {
-  if (tab.value === 'monthly') {
-    return 'Months must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Commercial Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
-  }
-  if (tab.value === 'daily') {
-    return 'Dates must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
-  }
-  if (!periodSet.value) {
-    return 'Set a Slot Period or import Excel to infer Start date and Weeks (1–12). Each day is 09:00–22:00 in 30-minute slots. Dates in the file must be continuous.'
-  }
-  return `Slot window: ${deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)} · 09:00–22:00 / 30 min`
+const volumeHint = computed(() => {
+  if (tab.value === 'monthly') return VOLUME_MONTHLY_HINT_DESCRIPTION
+  if (tab.value === 'daily') return VOLUME_DAILY_HINT_DESCRIPTION
+  return SLOT_PERIOD_HINT_DESCRIPTION
 })
 
 function comparePeriod(a: string, b: string) {
@@ -949,9 +948,9 @@ async function confirmSlotImport() {
       @update:model-value="tab = $event"
     />
 
-    <Alert v-if="tab !== 'slot'" variant="info">
+    <Alert variant="info">
       <Info />
-      <AlertDescription>{{ windowHint }}</AlertDescription>
+      <AlertDescription>{{ volumeHint }}</AlertDescription>
     </Alert>
 
     <div
@@ -1022,7 +1021,6 @@ async function confirmSlotImport() {
       <div v-if="!readOnly" class="flex flex-wrap gap-2">
         <Button
           v-if="tab !== 'slot'"
-          size="sm"
           variant="outline"
           :disabled="busy || Boolean(editKey)"
           @click="addRow"
@@ -1030,7 +1028,6 @@ async function confirmSlotImport() {
           Add row
         </Button>
         <Button
-          size="sm"
           variant="outline"
           :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'template'"
@@ -1039,7 +1036,6 @@ async function confirmSlotImport() {
           {{ busyAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
         </Button>
         <Button
-          size="sm"
           variant="outline"
           :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'export'"
@@ -1048,7 +1044,6 @@ async function confirmSlotImport() {
           {{ busyAction === 'export' ? 'Exporting…' : 'Export Current' }}
         </Button>
         <Button
-          size="sm"
           :disabled="busy"
           :loading="busyAction === 'import'"
           @click="triggerImport"
@@ -1064,11 +1059,6 @@ async function confirmSlotImport() {
         />
       </div>
     </div>
-
-    <Alert v-if="tab === 'slot'" variant="info">
-      <Info />
-      <AlertDescription>{{ windowHint }}</AlertDescription>
-    </Alert>
 
     <div class="min-w-0 overflow-x-auto rounded-md border">
       <Table v-if="tab === 'monthly'">

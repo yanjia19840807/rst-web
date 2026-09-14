@@ -19,13 +19,11 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { showOperationNotices } from '@/composables/useOperationNotices'
 
 import { useExerciseMutations } from '../api/mutations'
-import { SIZING_MONTH_HINT_DESCRIPTION, sizingHintLines } from '../periodWindows'
 import {
   editExercisePeriodsSchema,
   emptyEditExercisePeriodsForm,
 } from '../schemas/exercisePeriods'
 import type { Exercise } from '../types'
-import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -48,8 +46,6 @@ const { defineField, errors, handleSubmit, resetForm, values } = useForm({
 })
 
 const [sizingMonth] = defineField('sizingMonth')
-
-const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
 
 const sizingChanged = computed(
   () => (values.sizingMonth ?? '') !== props.exercise.sizingMonth,
@@ -113,14 +109,7 @@ async function confirmSave() {
       <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <div class="grid gap-4 rounded-lg border bg-card p-4">
           <div class="grid gap-1.5">
-            <div class="inline-flex items-center gap-1.5">
-              <Label>Sizing Month</Label>
-              <PeriodDerivedHints
-                title="Sizing Month"
-                :description="SIZING_MONTH_HINT_DESCRIPTION"
-                :lines="sizingHints"
-              />
-            </div>
+            <Label>Sizing Month</Label>
             <MonthPicker
               v-model="sizingMonth"
               aria-label="Choose sizing month"

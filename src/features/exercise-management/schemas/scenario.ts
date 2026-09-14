@@ -35,17 +35,29 @@ export function toShiftRequests(rows: ShiftDraft[]) {
   return rows.filter((row) => !isBlankShift(row)).map((row, index) => ({
     shiftNo: index + 1,
     startTime: row.startTime.length === 5 ? `${row.startTime}:00` : row.startTime,
-    durationMinutes: Number(row.durationHours) * 60,
+    durationMinutes: Math.round(Number(row.durationHours) * 60),
     headcount: Number(row.headcount),
     weekendCode: row.weekendCode,
   }))
 }
 
+function nullableNumber() {
+  return z.preprocess((value) => {
+    if (value === '' || value == null) return null
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : value
+    }
+    return value
+  }, z.number().nullable())
+}
+
 const shiftDraftSchema = z.object({
   shiftNo: z.number(),
   startTime: z.string(),
-  durationHours: z.number().nullable(),
-  headcount: z.number().nullable(),
+  durationHours: nullableNumber(),
+  headcount: nullableNumber(),
   weekendCode: z.string().refine((value) => WEEKEND_CODES.includes(value as (typeof WEEKEND_CODES)[number]), {
     message: 'Select a weekend code.',
   }),

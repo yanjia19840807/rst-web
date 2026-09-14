@@ -36,19 +36,15 @@ function slotName(row: DetailRow) {
       cn(
         'grid text-sm',
         props.columns === 2
-          ? 'grid-cols-1 gap-x-8 sm:grid-cols-2'
+          ? 'grid-cols-[minmax(12.5rem,max-content)_minmax(0,1fr)] gap-x-4 sm:grid-cols-[minmax(12.5rem,max-content)_minmax(0,1fr)_minmax(12.5rem,max-content)_minmax(0,1fr)] sm:gap-x-8'
           : 'grid-cols-[minmax(5.5rem,max-content)_minmax(0,1fr)] gap-x-4',
         props.class,
       )
     "
   >
     <template v-if="props.columns === 2">
-      <div
-        v-for="row in rows"
-        :key="slotName(row)"
-        class="grid grid-cols-[minmax(5.5rem,max-content)_minmax(0,1fr)] gap-x-4"
-      >
-        <dt class="max-w-40 border-b py-2 pr-1 text-muted-foreground">{{ row.label }}</dt>
+      <template v-for="row in rows" :key="slotName(row)">
+        <dt class="border-b py-2 pr-1 text-muted-foreground">{{ row.label }}</dt>
         <dd
           class="min-w-0 border-b py-2 break-words"
           :class="row.strong ? 'font-medium' : undefined"
@@ -57,7 +53,7 @@ function slotName(row: DetailRow) {
             {{ displayValue(row.value) }}
           </slot>
         </dd>
-      </div>
+      </template>
     </template>
     <template v-else>
       <template v-for="row in rows" :key="slotName(row)">

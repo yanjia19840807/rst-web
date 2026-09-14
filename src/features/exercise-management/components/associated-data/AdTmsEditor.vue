@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
@@ -18,14 +20,10 @@ import { formatDate } from '@/lib/datetime'
 import { useExerciseMutations } from '../../api/mutations'
 import { useExerciseTmsSessionsQuery } from '../../api/queries'
 import { FieldUnit, withUnit } from '../../fieldUnits'
-import {
-  TMS_PERIOD_HINT_DESCRIPTION,
-  tmsHintLines,
-} from '../../periodWindows'
+import { TMS_PERIOD_HINT_DESCRIPTION } from '../../periodWindows'
 import { tmsPeriodSchema } from '../../schemas/exercisePeriods'
 import { tmsRatioDescription, tmsRatioLabel } from '../../tmsRatio'
 import type { CycleTimeBaseline, ExerciseTmsSession } from '../../types'
-import PeriodDerivedHints from '../PeriodDerivedHints.vue'
 import AdMetric from './AdMetric.vue'
 import { formatNumber } from './adTypes'
 
@@ -65,7 +63,6 @@ watch(
 const periodSet = computed(() => Boolean(props.tmsFrom && props.tmsTo))
 const periodReady = computed(() => Boolean(draftTmsFrom.value && draftTmsTo.value))
 const busy = computed(() => busyAction.value != null)
-const tmsHints = computed(() => tmsHintLines(draftTmsFrom.value, draftTmsTo.value))
 
 const sessionsQuery = useExerciseTmsSessionsQuery(
   () => props.exerciseId,
@@ -222,14 +219,12 @@ async function clearPeriod() {
 
 <template>
   <div class="space-y-4 rounded-lg border bg-card p-4">
-    <div class="inline-flex items-center gap-1.5">
-      <Label>TMS period</Label>
-      <PeriodDerivedHints
-        title="TMS period"
-        :description="TMS_PERIOD_HINT_DESCRIPTION"
-        :lines="tmsHints"
-      />
-    </div>
+    <Alert variant="info">
+      <Info />
+      <AlertDescription>{{ TMS_PERIOD_HINT_DESCRIPTION }}</AlertDescription>
+    </Alert>
+
+    <Label>TMS period</Label>
 
     <div
       v-if="readOnly"

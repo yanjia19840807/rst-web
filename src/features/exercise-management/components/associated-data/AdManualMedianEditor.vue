@@ -155,7 +155,6 @@ defineExpose({ toRequest })
             />
             <Button
               type="button"
-              size="sm"
               variant="outline"
               :disabled="uploading"
               @click="fileInput?.click()"

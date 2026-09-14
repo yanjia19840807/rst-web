@@ -108,14 +108,17 @@ export function deriveSlotPeriodLabel(
   return `${formatDate(startDate)} – ${formatDate(end)} (${weekLabel})`
 }
 
-export const SIZING_MONTH_HINT_DESCRIPTION =
-  'Volume Input months and dates must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required. Toolkit values are pre-filled when that period already exists. Monthly/Daily import resets the grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window. The ranges below are for charts and forecast only — they are not created as Volume rows.'
+export const VOLUME_MONTHLY_HINT_DESCRIPTION =
+  'Months must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Commercial Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window. The forecast ranges below are for charts only — they are not created as Volume rows.'
+
+export const VOLUME_DAILY_HINT_DESCRIPTION =
+  'Dates must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window. The forecast ranges below are for charts only — they are not created as Volume rows.'
 
 export const SLOT_PERIOD_HINT_DESCRIPTION =
   'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Applying a period rebuilds an empty grid.'
 
 export const TMS_PERIOD_HINT_DESCRIPTION =
-  'COMPLETED TMS sessions for this Toolkit whose session date falls in this inclusive range are linked to the Exercise. The SYSTEM Cycle Time baseline refreshes from those sessions. Changing the range adds newly included sessions and drops ones that fall outside it.'
+  'Links COMPLETED TMS sessions in this inclusive date range and refreshes the SYSTEM median. Changing the range adds or drops sessions.'
 
 export function sizingHintLines(sizingMonth: string): DerivedHintLine[] {
   const w = deriveSizingWindows(sizingMonth)

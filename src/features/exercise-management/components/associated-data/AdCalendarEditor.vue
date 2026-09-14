@@ -318,6 +318,13 @@ async function onImportFile(event: Event) {
 
 <template>
   <div class="space-y-4">
+    <Alert variant="info">
+      <Info />
+      <AlertDescription>
+        Holiday and Weekend are rest days. Normal is a makeup working day.
+      </AlertDescription>
+    </Alert>
+
     <div class="grid gap-3 sm:grid-cols-3">
       <AdMetric
         :label="withUnit('Holiday / Weekend days', FieldUnit.days)"
@@ -337,21 +344,13 @@ async function onImportFile(event: Event) {
     </div>
 
     <section class="space-y-4 rounded-lg border bg-card p-4">
-    <Alert variant="info">
-      <Info />
-      <AlertDescription>
-        Holiday and Weekend are rest days. Normal is a makeup working day.
-      </AlertDescription>
-    </Alert>
-
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3 class="text-sm font-bold">Holidays and Makeup Days</h3>
       <div v-if="!readOnly" class="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" :disabled="busy || formLocked" @click="startAdd">
+        <Button variant="outline" :disabled="busy || formLocked" @click="startAdd">
           Add day
         </Button>
         <Button
-          size="sm"
           variant="outline"
           :disabled="busy"
           :loading="busyAction === 'template'"
@@ -360,7 +359,6 @@ async function onImportFile(event: Event) {
           {{ busyAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
         </Button>
         <Button
-          size="sm"
           variant="outline"
           :disabled="busy"
           :loading="busyAction === 'export'"
@@ -369,7 +367,6 @@ async function onImportFile(event: Event) {
           {{ busyAction === 'export' ? 'Exporting…' : 'Export Current' }}
         </Button>
         <Button
-          size="sm"
           :disabled="busy || formLocked"
           :loading="busyAction === 'import'"
           @click="triggerImport"

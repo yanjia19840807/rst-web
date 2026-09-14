@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { computed, ref } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import TableTextLink from '@/components/TableTextLink.vue'
 import ReadOnlyField from '@/components/ReadOnlyField.vue'
 import { Button } from '@/components/ui/button'
@@ -317,6 +319,14 @@ async function onImportFile(event: Event) {
 
 <template>
   <div class="space-y-4">
+    <Alert variant="info">
+      <Info />
+      <AlertDescription>
+        Each workload row converts to annual hours and FTE. The total FTE feeds Team Setup
+        capacity.
+      </AlertDescription>
+    </Alert>
+
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <AdMetric
         :label="withUnit('Total support', FieldUnit.fte)"
@@ -334,11 +344,10 @@ async function onImportFile(event: Event) {
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-sm font-bold">Workload Registry</h3>
         <div v-if="!readOnly" class="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" :disabled="formLocked || excelBusy" @click="startAdd">
+          <Button variant="outline" :disabled="formLocked || excelBusy" @click="startAdd">
             Add Workload
           </Button>
           <Button
-            size="sm"
             variant="outline"
             :disabled="busy || excelBusy"
             :loading="excelAction === 'template'"
@@ -347,7 +356,6 @@ async function onImportFile(event: Event) {
             {{ excelAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
           </Button>
           <Button
-            size="sm"
             variant="outline"
             :disabled="busy || excelBusy"
             :loading="excelAction === 'export'"
@@ -356,7 +364,6 @@ async function onImportFile(event: Event) {
             {{ excelAction === 'export' ? 'Exporting…' : 'Export Current' }}
           </Button>
           <Button
-            size="sm"
             :disabled="busy || excelBusy || formLocked"
             :loading="excelAction === 'import'"
             @click="triggerImport"

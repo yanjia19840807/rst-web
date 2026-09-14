@@ -20,6 +20,12 @@ import type {
 import { useTheme } from '@/composables/useTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
+import {
+  DAILY_BACKLOG_AGING_HINT,
+  MONTHLY_SLA_GOAL_HINT,
+  MONTHLY_VOLUME_OT_HINT,
+} from '../scenarioHints'
+
 import { useDailyVolumesQuery, useMonthlyVolumesQuery } from '../api/queries'
 import { monthlyTrainMonths } from '../periodWindows'
 import {
@@ -32,6 +38,7 @@ import {
   slaGoalDays,
 } from '../sizingChartMath'
 import type { DailySizingView, MonthlySizingView, TeamSetup } from '../types'
+import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 use([
   CanvasRenderer,
@@ -467,7 +474,13 @@ const slaOption = computed<ChartOption>(() => {
 
     <div class="space-y-5">
       <div>
-        <h4 class="mb-2.5 text-sm font-bold">Monthly Volume vs Overtime</h4>
+        <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
+          Monthly Volume vs Overtime
+          <PeriodDerivedHints
+            title="Monthly Volume vs Overtime"
+            :description="MONTHLY_VOLUME_OT_HINT"
+          />
+        </h4>
         <div
           v-if="hasMonthly"
           class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
@@ -517,7 +530,13 @@ const slaOption = computed<ChartOption>(() => {
       </div>
 
       <div class="border-t pt-5">
-        <h4 class="mb-2.5 text-sm font-bold">Daily Volume vs Backlog Aging - Full Period</h4>
+        <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
+          Daily Volume vs Backlog Aging - Full Period
+          <PeriodDerivedHints
+            title="Daily Volume vs Backlog Aging - Full Period"
+            :description="DAILY_BACKLOG_AGING_HINT"
+          />
+        </h4>
         <div
           v-if="hasDaily"
           class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
@@ -555,7 +574,13 @@ const slaOption = computed<ChartOption>(() => {
       </div>
 
       <div class="border-t pt-5">
-        <h4 class="mb-2.5 text-sm font-bold">Monthly SLA% vs Goal</h4>
+        <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
+          Monthly SLA% vs Goal
+          <PeriodDerivedHints
+            title="Monthly SLA% vs Goal"
+            :description="MONTHLY_SLA_GOAL_HINT"
+          />
+        </h4>
         <div
           v-if="hasDailySimulation"
           class="h-44 overflow-hidden rounded-lg border bg-card px-1 pt-2"

@@ -13,11 +13,14 @@ import {
 
 import type { DerivedHintLine } from '../periodWindows'
 
-defineProps<{
-  title: string
-  description: string
-  lines: DerivedHintLine[]
-}>()
+withDefaults(
+  defineProps<{
+    title: string
+    description: string
+    lines?: DerivedHintLine[]
+  }>(),
+  { lines: () => [] },
+)
 </script>
 
 <template>
@@ -39,7 +42,7 @@ defineProps<{
           {{ description }}
         </PopoverDescription>
       </PopoverHeader>
-      <div class="space-y-2 border-t pt-2">
+      <div v-if="lines.length" class="space-y-2 border-t pt-2">
         <div v-for="line in lines" :key="line.label" class="grid gap-0.5">
           <div class="text-xs">
             <span class="font-medium text-foreground">{{ line.label }}</span>

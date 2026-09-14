@@ -26,13 +26,11 @@ import { showOperationNotices } from '@/composables/useOperationNotices'
 import { formatDate } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../api/mutations'
-import { SIZING_MONTH_HINT_DESCRIPTION, sizingHintLines } from '../periodWindows'
 import {
   createExercisePeriodsSchema,
   emptyCreateExercisePeriodsForm,
 } from '../schemas/exercisePeriods'
 import type { Exercise } from '../types'
-import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -55,7 +53,7 @@ const emit = defineEmits<{
 const { create: createMutation } = useExerciseMutations()
 const busy = computed(() => createMutation.isPending.value)
 
-const { defineField, errors, handleSubmit, resetForm, values } = useForm({
+const { defineField, errors, handleSubmit, resetForm } = useForm({
   validationSchema: toTypedSchema(createExercisePeriodsSchema),
   initialValues: emptyCreateExercisePeriodsForm(),
   validateOnMount: false,
@@ -86,9 +84,15 @@ const infoRows = computed(() => {
   if (props.lockToolkit) {
     rows.push({ label: 'Toolkit', value: lockedToolkit.value?.name ?? '' })
   }
+  if (selectedToolkit.value && !toolkitBlocked.value) {
+    const sync = freezeSyncDate.value
+    rows.push({
+      label: 'Delivery HC to freeze',
+      value: sync ? `${freezeHc.value} (ACTIVE Monthly sync ${sync})` : freezeHc.value,
+    })
+  }
   return rows
 })
-const sizingHints = computed(() => sizingHintLines(values.sizingMonth ?? ''))
 
 watch(open, (value) => {
   if (!value) return
@@ -140,8 +144,8 @@ const create = handleSubmit(
     >
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Create New Exercise</DialogTitle>
-        <DialogDescription>
-          Multiple In Progress exercises are allowed for the same Toolkit.
+        <DialogDescription class="sr-only">
+          Choose a Toolkit and Sizing Month.
         </DialogDescription>
       </DialogHeader>
 
@@ -150,16 +154,10 @@ const create = handleSubmit(
           <Alert variant="info">
             <Info />
             <AlertDescription>
-              Associated Data (Team Setup, Support, Calendar) and Volume Input are initialized
-              from the Toolkit when available. Creating the Exercise freezes the current Toolkit,
-              Subtasks, Shared KPI selections and Delivery HC from the ACTIVE Timesheet.
-              TMS period is set later in Associated Data if you use the system-calculated median.
-              <template v-if="selectedToolkit && !toolkitBlocked">
-                Delivery HC to freeze: {{ freezeHc }}
-                <template v-if="freezeSyncDate">
-                  (ACTIVE Monthly sync {{ freezeSyncDate }}).
-                </template>
-              </template>
+              The exercise copies Associated Data and Volume from the Toolkit, and freezes Shared
+              KPI scope and Delivery HC.
+              Toolkit is the source of that frozen scope and initial data. Sizing Month is the last
+              month of the exercise. Volume windows and forecast are calculated from it.
             </AlertDescription>
           </Alert>
 
@@ -191,14 +189,7 @@ const create = handleSubmit(
           </div>
 
           <div class="grid gap-1.5">
-            <div class="inline-flex items-center gap-1.5">
-              <Label>Sizing Month</Label>
-              <PeriodDerivedHints
-                title="Sizing Month"
-                :description="SIZING_MONTH_HINT_DESCRIPTION"
-                :lines="sizingHints"
-              />
-            </div>
+            <Label>Sizing Month</Label>
             <MonthPicker
               v-model="sizingMonth"
               aria-label="Choose sizing month"

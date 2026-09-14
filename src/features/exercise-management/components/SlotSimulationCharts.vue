@@ -27,7 +27,9 @@ import {
   shiftSeriesName,
   sortShiftKeys,
 } from '../slotChartMath'
+import { SLOT_FTE_CHART_HINT } from '../scenarioHints'
 import type { SlotRowView, SlotSimulationView } from '../types'
+import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -243,7 +245,13 @@ const legendItems = computed<LegendItem[]>(() => {
 
 <template>
   <div>
-    <h4 class="mb-2.5 text-sm font-bold">Per-Shift FTE Available vs Theoretical FTE Needed</h4>
+    <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
+      Per-Shift FTE Available vs Theoretical FTE Needed
+      <PeriodDerivedHints
+        title="Per-Shift FTE Available vs Theoretical FTE Needed"
+        :description="SLOT_FTE_CHART_HINT"
+      />
+    </h4>
     <div
       v-if="hasData"
       class="h-80 overflow-hidden rounded-lg border bg-card px-1 pt-2"

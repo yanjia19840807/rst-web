@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { formatMonth } from '@/lib/datetime'
 import { measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { useScenarioMutations } from '../api/mutations'
@@ -47,6 +46,7 @@ import {
   scenarioSlotSchema,
   toShiftRequests,
   type ScenarioFormValues,
+  type ShiftDraft,
 } from '../schemas/scenario'
 import { actualHeadcount } from '../sizingChartMath'
 import type {
@@ -137,14 +137,9 @@ const {
 const [name] = defineField('name')
 const [description] = defineField('description')
 const [rightSizingHc] = defineField('rightSizingHc')
-const [shiftRows] = defineField('shifts')
+const [shiftRows] = defineField('shifts', { validateOnModelUpdate: false })
 
 const readOnly = computed(() => !exercise.value?.canEdit)
-
-const periodHint = computed(() => {
-  if (!exercise.value) return ''
-  return formatMonth(exercise.value.sizingMonth)
-})
 
 const supportFte = computed(() => sumSupportFte(support.value))
 
@@ -229,7 +224,7 @@ function coverageLabel(
 }
 
 /** Exercise AD / snapshot inputs used by simulation (read-only on this page). */
-const baselineInputRows = computed(() => {
+const baselineInputGroups = computed(() => {
   const setup = teamSetup.value
   const holidays = countHolidayTypes(calendar.value?.holidays ?? [])
   const months = [...monthlyVolumes.value].sort((a, b) => a.month.localeCompare(b.month))
@@ -243,96 +238,119 @@ const baselineInputRows = computed(() => {
   const slotCount = slotVolumes.value.length
   return [
     {
-      label:
-        Number(setup?.totalAgents) > 0
-          ? withUnit('Team Setup Total Agents', FieldUnit.hc)
-          : 'Delivery HC',
-      value: formatNumber(actualSize.value, 2),
-    },
-    { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
-    { label: 'Median source', value: medianSourceLabel.value },
-    {
-      label: withUnit('Production support', FieldUnit.fte),
-      value: supportFte.value != null ? formatNumber(supportFte.value, 2) : '—',
-    },
-    { label: 'SLA type', value: slaTypeLabel(setup?.slaType) },
-    {
-      label: withUnit('SLA Turntime', FieldUnit.hours),
-      value: formatNumber(slaMinutesToHours(setup?.slaTurnaroundMinutes), 2),
-    },
-    { label: withUnit('SLA Target', FieldUnit.percent), value: formatRatioPercent(setup?.slaTargetRatio) },
-    {
-      label: withUnit('Working hours / day', FieldUnit.hours),
-      value: formatNumber(setup?.workingHoursPerDay, 2),
-    },
-    {
-      label: withUnit('Availability ratio', FieldUnit.percent),
-      value: formatRatioPercent(setup?.availabilityRatio),
-    },
-    {
-      label: withUnit('Capacity ratio', FieldUnit.percent),
-      value: formatRatioPercent(setup?.capacityRatio),
-    },
-    {
-      label: withUnit('Automation ratio', FieldUnit.percent),
-      value: formatRatioPercent(setup?.automationRatio),
-    },
-    {
-      label: withUnit('Working days / year', FieldUnit.days),
-      value: formatNumber(setup?.workingDaysPerYear, 2),
-    },
-    {
-      label: withUnit('Daily capacity / agent', FieldUnit.transactions),
-      value: formatNumber(setup?.dailyCapacityPerAgent, 0),
-    },
-    {
-      label: withUnit('Max daily overtime', FieldUnit.minutes),
-      value: formatNumber(setup?.maxOvertimeMinutes, 2),
-    },
-    {
-      label: withUnit('Weekend shift', FieldUnit.fte),
-      value: formatNumber(setup?.weekendShiftHc, 2),
-    },
-    { label: 'Weekend code', value: weekendCodeLabel(setup?.weekendCode) },
-    {
-      label: withUnit('Skeleton coverage', FieldUnit.percent),
-      value: formatRatioPercent(setup?.skeletonRatio),
-    },
-    { label: 'Holiday / Weekend days', value: String(holidays.rest) },
-    { label: 'Makeup (Normal) days', value: String(holidays.makeup) },
-    { label: 'Listed dates', value: String(holidays.total) },
-    {
-      label: withUnit('Sizing month actual', FieldUnit.transactions),
-      value:
-        sizingMonthRow?.actualVolume != null
-          ? formatNumber(sizingMonthRow.actualVolume, 2)
-          : '—',
+      title: 'Capacity',
+      rows: [
+        {
+          label:
+            Number(setup?.totalAgents) > 0
+              ? withUnit('Team Setup Total Agents', FieldUnit.hc)
+              : 'Delivery HC',
+          value: formatNumber(actualSize.value, 2),
+        },
+        { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
+        { label: 'Median source', value: medianSourceLabel.value },
+        {
+          label: withUnit('Production support', FieldUnit.fte),
+          value: supportFte.value != null ? formatNumber(supportFte.value, 2) : '—',
+        },
+        {
+          label: withUnit('Working hours / day', FieldUnit.hours),
+          value: formatNumber(setup?.workingHoursPerDay, 2),
+        },
+        {
+          label: withUnit('Availability ratio', FieldUnit.percent),
+          value: formatRatioPercent(setup?.availabilityRatio),
+        },
+        {
+          label: withUnit('Capacity ratio', FieldUnit.percent),
+          value: formatRatioPercent(setup?.capacityRatio),
+        },
+        {
+          label: withUnit('Automation ratio', FieldUnit.percent),
+          value: formatRatioPercent(setup?.automationRatio),
+        },
+        {
+          label: withUnit('Working days / year', FieldUnit.days),
+          value: formatNumber(setup?.workingDaysPerYear, 2),
+        },
+        {
+          label: withUnit('Daily capacity / agent', FieldUnit.transactions),
+          value: formatNumber(setup?.dailyCapacityPerAgent, 0),
+        },
+        {
+          label: withUnit('Max daily overtime', FieldUnit.minutes),
+          value: formatNumber(setup?.maxOvertimeMinutes, 2),
+        },
+        {
+          label: withUnit('Weekend shift', FieldUnit.fte),
+          value: formatNumber(setup?.weekendShiftHc, 2),
+        },
+        { label: 'Weekend code', value: weekendCodeLabel(setup?.weekendCode) },
+        {
+          label: withUnit('Skeleton coverage', FieldUnit.percent),
+          value: formatRatioPercent(setup?.skeletonRatio),
+        },
+      ],
     },
     {
-      label: 'Monthly volume',
-      value: coverageLabel(
-        months.length,
-        months[0]?.month,
-        months[months.length - 1]?.month,
-        months.length === 1 ? 'month' : 'months',
-      ),
+      title: 'SLA',
+      rows: [
+        { label: 'SLA type', value: slaTypeLabel(setup?.slaType) },
+        {
+          label: withUnit('SLA Turntime', FieldUnit.hours),
+          value: formatNumber(slaMinutesToHours(setup?.slaTurnaroundMinutes), 2),
+        },
+        {
+          label: withUnit('SLA Target', FieldUnit.percent),
+          value: formatRatioPercent(setup?.slaTargetRatio),
+        },
+      ],
     },
     {
-      label: 'Daily volume',
-      value: coverageLabel(
-        days.length,
-        days[0]?.volumeDate,
-        days[days.length - 1]?.volumeDate,
-        days.length === 1 ? 'day' : 'days',
-      ),
+      title: 'Calendar',
+      rows: [
+        { label: 'Holiday / Weekend days', value: String(holidays.rest) },
+        { label: 'Makeup (Normal) days', value: String(holidays.makeup) },
+        { label: 'Listed dates', value: String(holidays.total) },
+      ],
     },
     {
-      label: 'Slot volume',
-      value: slotPeriod
-        ? `${slotPeriod} · ${slotCount} ${slotCount === 1 ? 'slot' : 'slots'}`
-        : slotCount
-          ? `${slotCount} ${slotCount === 1 ? 'slot' : 'slots'}`
-          : 'Not set',
+      title: 'Volume',
+      rows: [
+        {
+          label: withUnit('Sizing month actual', FieldUnit.transactions),
+          value:
+            sizingMonthRow?.actualVolume != null
+              ? formatNumber(sizingMonthRow.actualVolume, 2)
+              : '—',
+        },
+        {
+          label: 'Monthly volume',
+          value: coverageLabel(
+            months.length,
+            months[0]?.month,
+            months[months.length - 1]?.month,
+            months.length === 1 ? 'month' : 'months',
+          ),
+        },
+        {
+          label: 'Daily volume',
+          value: coverageLabel(
+            days.length,
+            days[0]?.volumeDate,
+            days[days.length - 1]?.volumeDate,
+            days.length === 1 ? 'day' : 'days',
+          ),
+        },
+        {
+          label: 'Slot volume',
+          value: slotPeriod
+            ? `${slotPeriod} · ${slotCount} ${slotCount === 1 ? 'slot' : 'slots'}`
+            : slotCount
+              ? `${slotCount} ${slotCount === 1 ? 'slot' : 'slots'}`
+              : 'Not set',
+        },
+      ],
     },
   ]
 })
@@ -537,9 +555,32 @@ function removeShift() {
   if (slotLocked.value || readOnly.value || rows.length <= 1) return
   const next = rows.slice(0, -1).map((row, index) => ({ ...row, shiftNo: index + 1 }))
   shiftRows.value = next
+  clearShiftFieldErrors()
+}
+
+function updateShift({ index, patch }: { index: number; patch: Partial<ShiftDraft> }) {
+  const rows = [...(shiftRows.value ?? [])]
+  const current = rows[index]
+  if (!current) return
+  rows[index] = { ...current, ...patch }
+  shiftRows.value = rows
+  for (const field of Object.keys(patch) as (keyof ShiftDraft)[]) {
+    setFieldError(`shifts.${index}.${field}`, undefined)
+  }
+}
+
+function clearShiftFieldErrors() {
+  const count = Math.max(values.shifts?.length ?? 0, MAX_SCENARIO_SHIFTS)
+  for (let index = 0; index < count; index++) {
+    setFieldError(`shifts.${index}.startTime`, undefined)
+    setFieldError(`shifts.${index}.durationHours`, undefined)
+    setFieldError(`shifts.${index}.headcount`, undefined)
+    setFieldError(`shifts.${index}.weekendCode`, undefined)
+  }
 }
 
 function applyZodIssues(issues: { path: PropertyKey[]; message: string }[]) {
+  clearShiftFieldErrors()
   for (const issue of issues) {
     setFieldError(issue.path.join('.'), issue.message)
   }
@@ -665,6 +706,7 @@ async function runSlot() {
     toast.warning('Check the highlighted fields.')
     return
   }
+  clearShiftFieldErrors()
   try {
     const slotView = await runSlotSimulation.mutateAsync({
       exerciseId: props.exerciseId,
@@ -683,7 +725,12 @@ async function runSlot() {
     const tatPct = (Number(slotView.tatOnPeriod) * 100).toFixed(2)
     try {
       await persistScenario(
-        values,
+        {
+          name: slot.data.name,
+          description: slot.data.description,
+          rightSizingHc: slot.data.rightSizingHc,
+          shifts: slot.data.shifts,
+        },
         results,
         `Slot simulation saved (${slotView.rows.length} slots, TAT ${tatPct}%).`,
       )
@@ -795,23 +842,23 @@ const scenarioInfoRows = computed(() => {
         </div>
 
         <div class="rounded-lg border bg-card p-3.5">
-          <div class="mb-2 flex items-baseline justify-between gap-2">
+          <div class="mb-3 flex items-center justify-between gap-2">
             <h3 class="text-sm font-bold">Baseline inputs (from Exercise)</h3>
-            <RouterLink
+            <Button
+              :as="RouterLink"
               :to="exerciseBackTo"
-              class="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              variant="link"
+              class="h-auto px-0 font-semibold"
             >
               Read-only · {{ snapshotMode ? 'view' : 'edit' }} on Exercise
-            </RouterLink>
+            </Button>
           </div>
-          <DetailTable :rows="baselineInputRows" :columns="2" />
-        </div>
-
-        <div class="rounded-md border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-          Sizing Month and Associated Data are maintained on the Exercise
-          ({{ periodHint }}). TMS period is set in Associated Data when using the SYSTEM
-          median. Slot Period is set in Volume Input. This scenario only changes
-          Right Sizing HC, shifts, and simulation.
+          <div class="space-y-4">
+            <section v-for="group in baselineInputGroups" :key="group.title">
+              <h4 class="mb-1 text-xs font-medium text-muted-foreground">{{ group.title }}</h4>
+              <DetailTable :rows="group.rows" :columns="2" />
+            </section>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -845,6 +892,7 @@ const scenarioInfoRows = computed(() => {
         :team-setup="teamSetup"
         :shift-setup-label="shiftSetupLabel"
         @update:right-sizing-hc="rightSizingHc = $event"
+        @update:shift="updateShift"
         @run-sizing="runSizing"
         @run-slot="runSlot"
         @add-shift="addShift"

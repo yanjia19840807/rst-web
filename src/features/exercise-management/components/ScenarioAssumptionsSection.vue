@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import DetailTable from '@/components/DetailTable.vue'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -17,9 +16,11 @@ import {
 } from '@/components/ui/table'
 import { TimePicker } from '@/components/ui/time-picker'
 
+import { RIGHT_SIZING_HC_HINT, SHIFT_INPUT_HINT_LINES, SHIFT_INPUTS_HINT } from '../scenarioHints'
 import { MAX_SCENARIO_SHIFTS, type ShiftDraft } from '../schemas/scenario'
 import type { DailySizingView, MonthlySizingView, SlotSimulationView, TeamSetup } from '../types'
 import { WEEKEND_CODE_OPTIONS, weekendCodeLabel } from '../weekendCodes'
+import PeriodDerivedHints from './PeriodDerivedHints.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
 
@@ -55,12 +56,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:rightSizingHc': [value: number]
+  'update:shift': [payload: { index: number; patch: Partial<ShiftDraft> }]
   runSizing: []
   runSlot: []
   addShift: []
   removeShift: []
-  shiftEdited: []
 }>()
+
+function updateShift(index: number, patch: Partial<ShiftDraft>) {
+  emit('update:shift', { index, patch })
+}
 
 const showShiftInputs = computed(() => props.readOnly || !props.slotLocked)
 const atShiftLimit = computed(() => props.shiftRows.length >= MAX_SCENARIO_SHIFTS)
@@ -88,26 +93,30 @@ function formatShiftTime(value?: string | null) {
             {{ runningSizing ? 'Running…' : 'Run Simulation' }}
           </Button>
         </div>
-        <DetailTable
-          v-if="readOnly"
-          :rows="[
-            {
-              label: 'Right Sizing HC',
-              value: rightSizingHc > 0 ? rightSizingHc.toFixed(2) : '—',
-            },
-          ]"
-        />
-        <label v-else class="grid max-w-xs gap-1 text-sm">
-          Right Sizing HC
-          <NumberFieldControl
-            :model-value="rightSizingHc"
-            :min="0"
-            :disabled="busy"
-            :invalid="Boolean(rightSizingHcError)"
-            @update:model-value="emit('update:rightSizingHc', Number($event ?? 0))"
-          />
-          <p v-if="rightSizingHcError" class="text-xs text-destructive">{{ rightSizingHcError }}</p>
-        </label>
+        <div class="grid max-w-xs gap-1 text-sm">
+          <div class="inline-flex items-center gap-1.5">
+            <span>Right Sizing HC</span>
+            <PeriodDerivedHints
+              title="Right Sizing HC"
+              :description="RIGHT_SIZING_HC_HINT"
+            />
+          </div>
+          <p v-if="readOnly" class="font-medium">
+            {{ rightSizingHc > 0 ? rightSizingHc.toFixed(2) : '—' }}
+          </p>
+          <template v-else>
+            <NumberFieldControl
+              :model-value="rightSizingHc"
+              :min="0"
+              :disabled="busy"
+              :invalid="Boolean(rightSizingHcError)"
+              @update:model-value="emit('update:rightSizingHc', Number($event ?? 0))"
+            />
+            <p v-if="rightSizingHcError" class="text-xs text-destructive">
+              {{ rightSizingHcError }}
+            </p>
+          </template>
+        </div>
       </div>
 
       <SizingSimulationCharts
@@ -143,7 +152,14 @@ function formatShiftTime(value?: string | null) {
 
       <div v-if="showShiftInputs" class="mb-3.5 min-w-0 overflow-hidden rounded-lg border bg-card p-4">
         <div class="mb-3 flex items-center justify-between gap-2">
-          <h4 class="text-sm font-bold">Shift Inputs</h4>
+          <h4 class="inline-flex items-center gap-1.5 text-sm font-bold">
+            Shift Inputs
+            <PeriodDerivedHints
+              title="Shift Inputs"
+              :description="SHIFT_INPUTS_HINT"
+              :lines="SHIFT_INPUT_HINT_LINES"
+            />
+          </h4>
           <Button
             v-if="!readOnly"
             :disabled="busy"
@@ -204,12 +220,12 @@ function formatShiftTime(value?: string | null) {
                   <span v-if="readOnly">{{ formatShiftTime(row.startTime) }}</span>
                   <div v-else class="grid gap-1">
                     <TimePicker
-                      v-model="row.startTime"
+                      :model-value="row.startTime"
                       class="w-[140px]"
                       :disabled="busy"
                       :invalid="Boolean(shiftFieldErrors?.[index]?.startTime)"
                       :aria-label="`Shift ${row.shiftNo} start`"
-                      @update:model-value="emit('shiftEdited')"
+                      @update:model-value="updateShift(index, { startTime: $event })"
                     />
                     <p
                       v-if="shiftFieldErrors?.[index]?.startTime"
@@ -232,13 +248,13 @@ function formatShiftTime(value?: string | null) {
                   <span v-if="readOnly">{{ row.durationHours ?? '—' }}</span>
                   <div v-else class="grid gap-1">
                     <NumberFieldControl
-                      v-model="row.durationHours"
+                      :model-value="row.durationHours"
                       :min="0.25"
                       :step="0.25"
                       :decimals="2"
                       :disabled="busy"
                       :invalid="Boolean(shiftFieldErrors?.[index]?.durationHours)"
-                      @update:model-value="emit('shiftEdited')"
+                      @update:model-value="updateShift(index, { durationHours: $event })"
                     />
                     <p
                       v-if="shiftFieldErrors?.[index]?.durationHours"
@@ -261,11 +277,11 @@ function formatShiftTime(value?: string | null) {
                   <span v-if="readOnly">{{ row.headcount ?? '—' }}</span>
                   <div v-else class="grid gap-1">
                     <NumberFieldControl
-                      v-model="row.headcount"
+                      :model-value="row.headcount"
                       :min="0"
                       :disabled="busy"
                       :invalid="Boolean(shiftFieldErrors?.[index]?.headcount)"
-                      @update:model-value="emit('shiftEdited')"
+                      @update:model-value="updateShift(index, { headcount: $event })"
                     />
                     <p
                       v-if="shiftFieldErrors?.[index]?.headcount"
@@ -292,11 +308,11 @@ function formatShiftTime(value?: string | null) {
                     </Label>
                     <NativeSelect
                       :id="`shift-weekend-${row.shiftNo}`"
-                      v-model="row.weekendCode"
+                      :model-value="row.weekendCode"
                       class="w-full"
                       :disabled="busy"
                       :aria-invalid="Boolean(shiftFieldErrors?.[index]?.weekendCode)"
-                      @change="emit('shiftEdited')"
+                      @update:model-value="updateShift(index, { weekendCode: String($event ?? '') })"
                     >
                       <option
                         v-for="option in WEEKEND_CODE_OPTIONS"
