@@ -850,7 +850,7 @@ const scenarioInfoRows = computed(() => {
               variant="link"
               class="h-auto px-0 font-semibold"
             >
-              Read-only · {{ snapshotMode ? 'view' : 'edit' }} on Exercise
+              {{ snapshotMode ? 'View' : 'Edit' }} on Exercise
             </Button>
           </div>
           <div class="space-y-4">

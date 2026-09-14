@@ -8,7 +8,7 @@ export const DAILY_BACKLOG_AGING_HINT =
   'Daily volume and backlog aging across the full daily window. Points above SLA Turntime are KO.'
 
 export const MONTHLY_SLA_GOAL_HINT =
-  'Share of working days each month whose backlog aging stays within SLA Turntime, compared with the Team Setup SLA target.'
+  'Share of each month\'s manual volume that stays within SLA Turntime (1 - out-of-SLA volume / manual volume), compared with the Team Setup SLA target.'
 
 export const SHIFT_INPUTS_HINT =
   'Define shifts that cover the Slot Period from Volume. Run simulation to compare available FTE with theoretical FTE needed per slot.'

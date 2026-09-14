@@ -36,7 +36,7 @@ function slotName(row: DetailRow) {
       cn(
         'grid text-sm',
         props.columns === 2
-          ? 'grid-cols-[minmax(12.5rem,max-content)_minmax(0,1fr)] gap-x-4 sm:grid-cols-[minmax(12.5rem,max-content)_minmax(0,1fr)_minmax(12.5rem,max-content)_minmax(0,1fr)] sm:gap-x-8'
+          ? 'grid-cols-[minmax(12.5rem,1fr)_minmax(0,1fr)] gap-x-4 sm:grid-cols-[minmax(12.5rem,1fr)_minmax(0,1fr)_minmax(12.5rem,1fr)_minmax(0,1fr)] sm:gap-x-8'
           : 'grid-cols-[minmax(5.5rem,max-content)_minmax(0,1fr)] gap-x-4',
         props.class,
       )

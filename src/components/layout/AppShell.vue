@@ -84,7 +84,7 @@ const copyrightYear = new Date().getFullYear()
 
 <template>
   <div
-    class="flex h-svh flex-col overflow-hidden bg-background text-foreground"
+    class="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
     :class="compactWorkspace ? undefined : 'lg:grid lg:grid-cols-[240px_1fr]'"
   >
     <div
@@ -107,7 +107,7 @@ const copyrightYear = new Date().getFullYear()
 
     <aside
       v-if="!compactWorkspace"
-      class="relative z-40 shrink-0 bg-sidebar text-sidebar-foreground lg:z-auto lg:h-full lg:overflow-y-auto"
+      class="relative z-40 min-h-0 shrink-0 bg-sidebar text-sidebar-foreground lg:z-auto lg:h-full lg:overflow-y-auto"
     >
       <div
         class="hidden h-16 items-center justify-between gap-3 border-b border-sidebar-border px-4 lg:flex lg:px-5"

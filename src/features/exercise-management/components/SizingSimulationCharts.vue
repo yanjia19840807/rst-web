@@ -17,7 +17,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
-import { useTheme } from '@/composables/useTheme'
+import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import {
@@ -68,27 +68,7 @@ const props = defineProps<{
 const monthlyVolumesQuery = useMonthlyVolumesQuery(() => props.exerciseId)
 const dailyVolumesQuery = useDailyVolumesQuery(() => props.exerciseId)
 
-function themeColor(cssVar: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim()
-  return value || fallback
-}
-
-const { theme } = useTheme()
-
-const palette = computed(() => {
-  void theme.value
-  return {
-    volume: themeColor('--chart-1', '#071d49'),
-    forecast: themeColor('--chart-3', '#79a6d2'),
-    overtime: themeColor('--chart-5', '#4e7d69'),
-    overcapacity: themeColor('--chart-4', '#da291c'),
-    maxOt: themeColor('--chart-2', '#315f9b'),
-    minHc: themeColor('--chart-2', '#315f9b'),
-    axis: themeColor('--foreground', '#14233a'),
-    border: themeColor('--border', '#d4dde9'),
-  }
-})
+const { colors: palette } = useChartTheme()
 
 const hasMonthly = computed(
   () =>
@@ -224,7 +204,7 @@ const monthlyOption = computed<ChartOption>(() => {
       fteBar('Weekdays Overtime', weekdaysOt, colors.overtime),
       fteLine('Max HC (No OT)', maxHc, colors.axis),
       fteLine('Right Size HC', rsHc, colors.overtime),
-      fteLine('Min HC (Full OT)', minHc, colors.minHc, true),
+      fteLine('Min HC (Full OT)', minHc, colors.maxOt, true),
       {
         name: 'Volume',
         type: 'line',
@@ -485,7 +465,12 @@ const slaOption = computed<ChartOption>(() => {
           v-if="hasMonthly"
           class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
         >
-          <VChart class="h-full w-full" :option="monthlyOption" autoresize />
+          <VChart
+            class="h-full w-full"
+            :option="monthlyOption"
+            :update-options="CHART_UPDATE_OPTIONS"
+            autoresize
+          />
         </div>
         <div
           v-else
@@ -541,7 +526,12 @@ const slaOption = computed<ChartOption>(() => {
           v-if="hasDaily"
           class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
         >
-          <VChart class="h-full w-full" :option="dailyOption" autoresize />
+          <VChart
+            class="h-full w-full"
+            :option="dailyOption"
+            :update-options="CHART_UPDATE_OPTIONS"
+            autoresize
+          />
         </div>
         <div
           v-else
@@ -585,7 +575,12 @@ const slaOption = computed<ChartOption>(() => {
           v-if="hasDailySimulation"
           class="h-44 overflow-hidden rounded-lg border bg-card px-1 pt-2"
         >
-          <VChart class="h-full w-full" :option="slaOption" autoresize />
+          <VChart
+            class="h-full w-full"
+            :option="slaOption"
+            :update-options="CHART_UPDATE_OPTIONS"
+            autoresize
+          />
         </div>
         <div
           v-else

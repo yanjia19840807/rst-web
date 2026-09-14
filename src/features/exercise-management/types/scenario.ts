@@ -165,7 +165,6 @@ export interface SlotSimulationView {
   tatOnPeriod: number
   actualVsTheoretical: number
   shiftCount: number
-  applicability: boolean
   slaTargetRatio: number | null
   rows: SlotRowView[]
   chart: SlotChartView

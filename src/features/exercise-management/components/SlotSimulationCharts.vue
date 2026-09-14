@@ -17,7 +17,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
-import { useTheme } from '@/composables/useTheme'
+import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { n } from '../sizingChartMath'
@@ -54,24 +54,7 @@ const props = defineProps<{
   simulation: SlotSimulationView | null
 }>()
 
-function themeColor(cssVar: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim()
-  return value || fallback
-}
-
-const { theme } = useTheme()
-
-const palette = computed(() => {
-  void theme.value
-  return {
-    theoretical: themeColor('--foreground', '#14233a'),
-    target: '#A6A6A6',
-    cumulative: '#548235',
-    axis: themeColor('--foreground', '#14233a'),
-    border: themeColor('--border', '#d4dde9'),
-  }
-})
+const { colors: palette } = useChartTheme()
 
 const hasData = computed(() => (props.simulation?.chart?.labels?.length ?? 0) > 0)
 
@@ -256,7 +239,12 @@ const legendItems = computed<LegendItem[]>(() => {
       v-if="hasData"
       class="h-80 overflow-hidden rounded-lg border bg-card px-1 pt-2"
     >
-      <VChart class="h-full w-full" :option="option" autoresize />
+      <VChart
+        class="h-full w-full"
+        :option="option"
+        :update-options="CHART_UPDATE_OPTIONS"
+        autoresize
+      />
     </div>
     <div
       v-else

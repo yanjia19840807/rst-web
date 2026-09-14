@@ -170,17 +170,6 @@ const draftDailyCapacityPerAgent = computed(() => {
   return Math.round(((hours * availability * 3600) / cycleTime) * 1e6) / 1e6
 })
 
-const dailyCapacityDisplay = computed(() => {
-  if (draftDailyCapacityPerAgent.value != null) {
-    return formatNumber(draftDailyCapacityPerAgent.value, 0)
-  }
-  const cycleTime = props.cycleTimeSeconds != null ? Number(props.cycleTimeSeconds) : NaN
-  if (!Number.isFinite(cycleTime) || cycleTime <= 0) {
-    return '— (needs Cycle time from TMS)'
-  }
-  return '—'
-})
-
 /** NETWORKDAYS from Team Setup weekend code for the sizing year (no holidays). */
 const workingDaysPerYear = computed(() => {
   const year = Number(String(props.sizingMonth ?? '').slice(0, 4))
@@ -258,7 +247,7 @@ const capacityRows = computed(() => [
   },
   {
     label: withUnit('Daily capacity / agent', FieldUnit.transactions),
-    value: dailyCapacityDisplay.value,
+    value: formatNumber(draftDailyCapacityPerAgent.value, 0),
   },
 ])
 
@@ -294,8 +283,7 @@ defineExpose({ toRequest })
       />
       <AdMetric
         :label="withUnit('Daily capacity / agent', FieldUnit.transactions)"
-        :value="dailyCapacityDisplay"
-        hint="Working hours × availability × 3600 / cycle time"
+        :value="formatNumber(draftDailyCapacityPerAgent, 0)"
       />
       <AdMetric
         :label="withUnit('Working days', FieldUnit.days)"
@@ -634,7 +622,7 @@ defineExpose({ toRequest })
               <TableRow>
                 <TableCell>{{ withUnit('Daily capacity / agent', FieldUnit.transactions) }}</TableCell>
                 <TableCell>
-                  {{ dailyCapacityDisplay }}
+                  {{ formatNumber(draftDailyCapacityPerAgent, 0) }}
                 </TableCell>
               </TableRow>
             </TableBody>

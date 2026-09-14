@@ -19,7 +19,7 @@ import type {
 } from 'echarts/components'
 
 import ListLoading from '@/components/ListLoading.vue'
-import { useTheme } from '@/composables/useTheme'
+import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
 import { useCycleTimeChartQuery } from '../../api/queries'
@@ -51,25 +51,7 @@ const loadError = computed(() => {
     : 'Could not load the control chart.'
 })
 
-function themeColor(cssVar: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  const value = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim()
-  return value || fallback
-}
-
-const { theme } = useTheme()
-
-const palette = computed(() => {
-  void theme.value
-  return {
-    daily: themeColor('--foreground', '#14233a'),
-    rolling: '#0f6b78',
-    limit: themeColor('--destructive', '#da291c'),
-    center: '#315f9b',
-    border: themeColor('--border', '#d4dde9'),
-    outlier: '#d98b16',
-  }
-})
+const { colors: palette } = useChartTheme()
 
 const hasPoints = computed(() => (chart.value?.points.length ?? 0) > 0)
 const hasLimits = computed(
@@ -237,30 +219,50 @@ const option = computed<ChartOption>(() => {
       v-else
       class="h-56 overflow-hidden rounded-lg border bg-card px-1 pt-2"
     >
-      <VChart class="h-full w-full" :option="option" autoresize />
+      <VChart
+        class="h-full w-full"
+        :option="option"
+        :update-options="CHART_UPDATE_OPTIONS"
+        autoresize
+      />
     </div>
     <p v-if="hasPoints && !hasLimits" class="mt-2 text-xs text-muted-foreground">
       Control limits need at least two days of included samples.
     </p>
     <div v-else-if="hasPoints" class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-2 w-4 rounded-sm bg-foreground" />
+        <span
+          class="inline-block h-2 w-4 rounded-sm"
+          :style="{ background: palette.daily }"
+        />
         Daily median
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-2 w-4 rounded-sm" style="background: #0f6b78" />
+        <span
+          class="inline-block h-2 w-4 rounded-sm"
+          :style="{ background: palette.rolling }"
+        />
         Rolling median (7 days)
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-2 w-4 rounded-sm" style="background: #315f9b" />
+        <span
+          class="inline-block h-2 w-4 rounded-sm"
+          :style="{ background: palette.center }"
+        />
         CL (daily-median)
       </span>
       <span v-if="hasLimits" class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-2 w-4 rounded-sm bg-destructive" />
+        <span
+          class="inline-block h-2 w-4 rounded-sm"
+          :style="{ background: palette.limit }"
+        />
         UCL / LCL (±2σ)
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block size-2 rounded-full" style="background: #d98b16" />
+        <span
+          class="inline-block size-2 rounded-full"
+          :style="{ background: palette.outlier }"
+        />
         Outside control limit
       </span>
     </div>
