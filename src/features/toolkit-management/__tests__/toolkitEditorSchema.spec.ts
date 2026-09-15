@@ -4,7 +4,7 @@ import { emptyToolkitForm, toolkitEditorSchema } from '../schemas/toolkit'
 
 function validForm() {
   return {
-    ...emptyToolkitForm('GBS CHINA INDIA'),
+    ...emptyToolkitForm('GBS INDIA'),
     name: 'Bank Rec Manual Check',
     supervisorPositionId: 'POS-SUP-001',
     domain: 'Finance',

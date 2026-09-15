@@ -26,14 +26,14 @@ describe('dev identity override', () => {
       captureDevIdentityFromQuery({
         ccgid: 'S00813982',
         role: 'supervisor',
-        center: 'GBS CHINA INDIA',
+        center: 'GBS INDIA',
       }),
     ).toBe(true)
 
     expect(readDevIdentity()).toEqual({
       ccgid: 'S00813982',
       role: 'SUPERVISOR',
-      center: 'GBS CHINA INDIA',
+      center: 'GBS INDIA',
     })
   })
 
@@ -61,13 +61,13 @@ describe('dev identity override', () => {
   })
 
   it('writes identity headers for API calls', () => {
-    mergeDevIdentity({ ccgid: 'HO001', role: 'GOVERNANCE', center: 'GBS CHINA INDIA' })
+    mergeDevIdentity({ ccgid: 'HO001', role: 'GOVERNANCE', center: 'GBS INDIA' })
     const headers = new Headers()
     applyDevIdentityHeaders(headers)
 
     expect(headers.get(DEV_CCGID_HEADER)).toBe('HO001')
     expect(headers.get(DEV_ROLE_HEADER)).toBe('GOVERNANCE')
-    expect(headers.get(DEV_CENTER_HEADER)).toBe('GBS CHINA INDIA')
+    expect(headers.get(DEV_CENTER_HEADER)).toBe('GBS INDIA')
   })
 
   it('falls back to the frontend default when nothing is stored', () => {

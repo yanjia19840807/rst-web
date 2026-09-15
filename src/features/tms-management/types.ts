@@ -35,6 +35,7 @@ export interface TmsSession {
   startedAt: string
   pausedAt: string | null
   endedAt: string | null
+  center?: string | null
   netDurationSeconds: number
 }
 

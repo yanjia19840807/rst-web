@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatDateTime } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import type { ApprovalHistoryRow } from '../types'
 
@@ -17,6 +17,7 @@ defineProps<{
   rows?: ApprovalHistoryRow[] | null
   emptyMessage?: string
   pending?: boolean
+  center?: string | null
 }>()
 
 </script>
@@ -53,7 +54,7 @@ defineProps<{
               <StatusBadge :status="row.decision" />
             </TableCell>
             <TableCell class="max-w-xs wrap-break-word">{{ row.comments?.trim() || '—' }}</TableCell>
-            <TableCell>{{ formatDateTime(row.completedAt) }}</TableCell>
+            <TableCell>{{ formatInstantForCenter(row.completedAt, center) }}</TableCell>
           </TableRow>
           <TableRow v-if="!(rows ?? []).length">
             <TableCell colspan="6" class="h-24 text-center text-muted-foreground">

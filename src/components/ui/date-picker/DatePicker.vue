@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { DateValue } from '@internationalized/date'
-import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
+import { parseDate, today } from '@internationalized/date'
+
+import { useContextTimeZone } from '@/composables/useContextTimeZone'
 import { CalendarIcon } from '@lucide/vue'
 
 import { Button, type ButtonVariants } from '@/components/ui/button'
@@ -20,6 +22,7 @@ const props = withDefaults(
     invalid?: boolean
     size?: ButtonVariants['size']
     class?: string
+    timeZone?: string
   }>(),
   {
     placeholder: 'Pick a date',
@@ -28,8 +31,12 @@ const props = withDefaults(
     invalid: false,
     size: 'default',
     class: undefined,
+    timeZone: undefined,
   },
 )
+
+const contextTimeZone = useContextTimeZone()
+const resolvedTimeZone = computed(() => props.timeZone || contextTimeZone.value)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -52,10 +59,10 @@ const date = computed<DateValue | undefined>({
 })
 
 /** Drives month/year dropdowns; stays on selected date or today when empty. */
-const calendarPlaceholder = ref<DateValue>(today(getLocalTimeZone()))
+const calendarPlaceholder = ref<DateValue>(today(resolvedTimeZone.value))
 
 function syncPlaceholder() {
-  calendarPlaceholder.value = date.value ?? today(getLocalTimeZone())
+  calendarPlaceholder.value = date.value ?? today(resolvedTimeZone.value)
 }
 
 watch(() => props.modelValue, syncPlaceholder, { immediate: true })
@@ -92,6 +99,7 @@ watch(open, (isOpen) => {
         v-model="date"
         v-model:placeholder="calendarPlaceholder"
         :default-placeholder="calendarPlaceholder"
+        :time-zone="resolvedTimeZone"
         layout="month-and-year"
         initial-focus
         @update:model-value="close"

@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner'
 import { queryClient } from '@/api/query-client'
 import { DELEGATION_ENDED_EVENT } from '@/auth/delegation'
 import { useSessionStore } from '@/auth/session'
+import { useCenterCatalogStore } from '@/catalog/centerCatalog'
 import { isSsoEnabled } from '@/auth/sso'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ defineProps<{
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
+const catalog = useCenterCatalogStore()
 if (!isSsoEnabled() && !session.user && !session.signedOut) {
   session.applyLocalIdentity()
 }
@@ -40,6 +42,7 @@ async function onDelegationEnded() {
 
 onMounted(() => {
   void session.load()
+  void catalog.load()
   window.addEventListener(DELEGATION_ENDED_EVENT, onDelegationEnded)
 })
 
@@ -210,6 +213,16 @@ const copyrightYear = new Date().getFullYear()
           <AlertDescription>{{ session.error }}</AlertDescription>
         </Alert>
         <Alert
+          v-if="catalog.error && !catalog.ready"
+          variant="warning"
+          role="alert"
+          class="rounded-none border-x-0 border-b-0 px-4 py-2.5 sm:px-6"
+        >
+          <TriangleAlert />
+          <AlertTitle>Center catalog unavailable</AlertTitle>
+          <AlertDescription>{{ catalog.error }}</AlertDescription>
+        </Alert>
+        <Alert
           v-if="session.actingAs"
           variant="warning"
           role="status"
@@ -232,9 +245,9 @@ const copyrightYear = new Date().getFullYear()
       <main
         id="main-content"
         class="min-h-0 min-w-0 w-full flex-1 overflow-y-auto px-4 py-5 sm:px-6"
-        :aria-busy="busy ? 'true' : undefined"
+        :aria-busy="busy || catalog.loading ? 'true' : undefined"
       >
-        <slot />
+        <slot v-if="catalog.ready" />
       </main>
 
       <footer

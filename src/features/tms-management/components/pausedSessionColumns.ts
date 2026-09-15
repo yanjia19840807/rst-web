@@ -2,7 +2,7 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
-import { formatDateTime } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import type { TmsSession } from '../types'
 import PausedSessionRowActions from './PausedSessionRowActions.vue'
@@ -25,7 +25,7 @@ export function createPausedSessionColumns(
       header: 'Session No',
       cell: ({ row }) => h('span', { class: 'font-mono text-xs' }, row.original.id),
     }),
-    columnHelper.accessor((row) => formatDateTime(row.pausedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.pausedAt, row.center), {
       id: 'pausedAt',
       header: 'Pause Time',
     }),

@@ -232,10 +232,10 @@ export function slotTrainKeys(
       const endTotal = minutes + SLOT_MINUTES
       const endH = Math.floor(endTotal / 60)
       const endM = endTotal % 60
-      const slotStartAt = `${cur}T${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}:00.000Z`
+      const slotStartAt = `${cur}T${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}:00`
       const endDay = endH === 24 ? addDaysIso(cur, 1) : cur
       const endHour = endH === 24 ? 0 : endH
-      const slotEndAt = `${endDay}T${String(endHour).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00.000Z`
+      const slotEndAt = `${endDay}T${String(endHour).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`
       out.push({ slotStartAt, slotEndAt })
     }
     cur = addDaysIso(cur, 1)

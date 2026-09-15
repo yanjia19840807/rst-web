@@ -16,7 +16,7 @@ const SSO_ERROR_MESSAGES: Record<string, string> = {
   'sso-env-mismatch': 'SSO role does not match this environment.',
   'sso-timesheet-missing': 'CCGID is not in the ACTIVE Daily Timesheet.',
   'sso-timesheet-role': 'Timesheet role is not AGENT, SUPERVISOR, SR_MANAGER, or DOMAIN_HEAD.',
-  'sso-center-invalid': 'Center is missing or is not a GBS China center.',
+  'sso-center-invalid': 'Center is missing or is not a known GBS Center.',
   'sso-token-exchange': 'Could not complete sign-in with Azure AD.',
   'sso-id-token-missing': 'Azure AD did not return an ID token.',
   'sso-audience-invalid': 'The sign-in token is not for this application.',

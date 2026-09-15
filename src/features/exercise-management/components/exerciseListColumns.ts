@@ -4,7 +4,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import AgingBadge from '@/components/AgingBadge.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
-import { formatDate } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 import {
   formatHc,
   formatMeasuredCapacity,
@@ -77,11 +77,11 @@ export function createExerciseListColumns(
           formatMeasuredCapacity(row.original.rightSizingHc, row.original.capacityCreation),
         ),
     }),
-    columnHelper.accessor((row) => formatDate(row.createdAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.createdAt, row.snapshot.toolkit.center), {
       id: 'createdAt',
       header: 'Created Date',
     }),
-    columnHelper.accessor((row) => formatDate(row.submittedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.snapshot.toolkit.center), {
       id: 'submittedAt',
       header: 'Submitted Date',
     }),
@@ -104,7 +104,7 @@ export function createExerciseListColumns(
       header: 'Aging',
       cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays }),
     }),
-    columnHelper.accessor((row) => formatDate(row.archivedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {
       id: 'archivedAt',
       header: 'Archived Date',
     }),

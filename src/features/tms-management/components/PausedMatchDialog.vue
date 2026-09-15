@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import DetailTable from '@/components/DetailTable.vue'
 import { Spinner } from '@/components/ui/spinner'
-import { formatDateTime } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import { formatDuration } from '../composables/useTmsTimer'
 import type { TmsSession } from '../types'
@@ -41,7 +41,7 @@ const rows = computed(() => {
     { label: 'Subtask', value: item.subtaskName || '—' },
     { label: 'Reference', value: item.reference || '—' },
     { label: 'Duration', value: formatDuration(item.netDurationSeconds) },
-    { label: 'Paused', value: formatDateTime(item.pausedAt) },
+    { label: 'Paused', value: formatInstantForCenter(item.pausedAt, item.center) },
   ]
 })
 

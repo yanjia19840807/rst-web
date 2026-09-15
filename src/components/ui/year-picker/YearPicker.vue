@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { getLocalTimeZone, today } from '@internationalized/date'
+import { today } from '@internationalized/date'
+
+import { useContextTimeZone } from '@/composables/useContextTimeZone'
 import { CalendarIcon, ChevronLeft, ChevronRight } from '@lucide/vue'
 
 import { Button, type ButtonVariants } from '@/components/ui/button'
@@ -24,6 +26,7 @@ const props = withDefaults(
     class?: string
     minYear?: number
     maxYear?: number
+    timeZone?: string
   }>(),
   {
     placeholder: 'Pick a year',
@@ -34,25 +37,29 @@ const props = withDefaults(
     class: undefined,
     minYear: 2000,
     maxYear: 2100,
+    timeZone: undefined,
   },
 )
+
+const contextTimeZone = useContextTimeZone()
+const resolvedTimeZone = computed(() => props.timeZone || contextTimeZone.value)
 
 const emit = defineEmits<{
   'update:modelValue': [value: number | null]
 }>()
 
 const open = ref(false)
-const currentYear = today(getLocalTimeZone()).year
+const currentYear = computed(() => today(resolvedTimeZone.value).year)
 
 const selected = computed(() =>
   props.modelValue != null && Number.isFinite(props.modelValue) ? props.modelValue : null,
 )
 
-const decadeStart = ref(Math.floor((selected.value ?? currentYear) / 10) * 10)
+const decadeStart = ref(Math.floor((selected.value ?? currentYear.value) / 10) * 10)
 
 watch(open, (value) => {
   if (value) {
-    decadeStart.value = Math.floor((selected.value ?? currentYear) / 10) * 10
+    decadeStart.value = Math.floor((selected.value ?? currentYear.value) / 10) * 10
   }
 })
 

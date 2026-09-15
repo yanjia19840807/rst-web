@@ -25,7 +25,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatDateTime } from '@/lib/datetime'
+import { useContextTimeZone } from '@/composables/useContextTimeZone'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import { useCreateDelegation, useRevokeDelegation } from '../api/mutations'
 import { useGrantedDelegationsQuery, useReceivedDelegationsQuery } from '../api/queries'
@@ -38,6 +39,7 @@ import { isOpenDelegation, type Delegation } from '../types'
 import DelegateSelect from './DelegateSelect.vue'
 
 const session = useSessionStore()
+const contextTimeZone = useContextTimeZone()
 const router = useRouter()
 const grantedQuery = useGrantedDelegationsQuery(() => session.canManageDelegation)
 const receivedQuery = useReceivedDelegationsQuery()
@@ -48,8 +50,8 @@ const canGrant = computed(() => session.canManageDelegation && !isIncomingDelega
 const createDelegation = useCreateDelegation()
 const revokeDelegation = useRevokeDelegation()
 const { defineField, errors, handleSubmit, resetForm } = useForm({
-  validationSchema: toTypedSchema(grantDelegationSchema),
-  initialValues: emptyGrantDelegationForm(),
+  validationSchema: toTypedSchema(grantDelegationSchema(contextTimeZone.value)),
+  initialValues: emptyGrantDelegationForm(contextTimeZone.value),
   validateOnMount: false,
 })
 const [delegateCcgid] = defineField('delegateCcgid')
@@ -88,8 +90,8 @@ const grant = handleSubmit(async (formValues) => {
     return
   }
   try {
-    await createDelegation.mutateAsync(toCreateDelegationRequest(formValues))
-    resetForm({ values: emptyGrantDelegationForm() })
+    await createDelegation.mutateAsync(toCreateDelegationRequest(formValues, contextTimeZone.value))
+    resetForm({ values: emptyGrantDelegationForm(contextTimeZone.value) })
     toast.success('Delegation granted.')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not grant delegation.')
@@ -245,7 +247,7 @@ function selectTab(tab: TabKey) {
                     <div class="font-mono text-xs text-muted-foreground">{{ row.delegateCcgid }}</div>
                   </TableCell>
                   <TableCell class="text-sm">
-                    {{ formatDateTime(row.validFrom) }} – {{ formatDateTime(row.validUntil) }}
+                    {{ formatInstantForCenter(row.validFrom, row.delegatorCenter) }} – {{ formatInstantForCenter(row.validUntil, row.delegatorCenter) }}
                   </TableCell>
                   <TableCell>
                     <StatusBadge :status="statusLabel(row.status)" />
@@ -294,7 +296,7 @@ function selectTab(tab: TabKey) {
                   <div class="font-mono text-xs text-muted-foreground">{{ row.delegatorCcgid }}</div>
                 </TableCell>
                 <TableCell class="text-sm">
-                  {{ formatDateTime(row.validFrom) }} – {{ formatDateTime(row.validUntil) }}
+                  {{ formatInstantForCenter(row.validFrom, row.delegatorCenter) }} – {{ formatInstantForCenter(row.validUntil, row.delegatorCenter) }}
                 </TableCell>
                 <TableCell>
                   <StatusBadge :status="statusLabel(row.status)" />
@@ -339,12 +341,12 @@ function selectTab(tab: TabKey) {
                 <TableCell>{{ row.delegatorName || row.delegatorCcgid }}</TableCell>
                 <TableCell>{{ row.delegateName || row.delegateCcgid }}</TableCell>
                 <TableCell class="text-sm">
-                  {{ formatDateTime(row.validFrom) }} – {{ formatDateTime(row.validUntil) }}
+                  {{ formatInstantForCenter(row.validFrom, row.delegatorCenter) }} – {{ formatInstantForCenter(row.validUntil, row.delegatorCenter) }}
                 </TableCell>
                 <TableCell>
                   <StatusBadge :status="statusLabel(row.status)" />
                 </TableCell>
-                <TableCell>{{ formatDateTime(row.endedAt) }}</TableCell>
+                <TableCell>{{ formatInstantForCenter(row.endedAt, row.delegatorCenter) }}</TableCell>
               </TableRow>
               <TableRow v-if="!history.length">
                 <TableCell colspan="5" class="h-20 text-center text-muted-foreground">

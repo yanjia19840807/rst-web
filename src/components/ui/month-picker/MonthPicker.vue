@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date'
+import { CalendarDate, today } from '@internationalized/date'
+
+import { useContextTimeZone } from '@/composables/useContextTimeZone'
 import { CalendarIcon, ChevronLeft, ChevronRight } from '@lucide/vue'
 import { useDateFormatter } from 'reka-ui'
 import { createYear, createYearRange, toDate } from 'reka-ui/date'
@@ -27,6 +29,7 @@ const props = withDefaults(
     invalid?: boolean
     size?: ButtonVariants['size']
     class?: string
+    timeZone?: string
   }>(),
   {
     placeholder: 'Pick a month',
@@ -35,8 +38,12 @@ const props = withDefaults(
     invalid: false,
     size: 'default',
     class: undefined,
+    timeZone: undefined,
   },
 )
+
+const contextTimeZone = useContextTimeZone()
+const resolvedTimeZone = computed(() => props.timeZone || contextTimeZone.value)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -56,11 +63,11 @@ function parseMonthValue(value: string): CalendarDate | undefined {
 }
 
 const selected = computed(() => parseMonthValue(props.modelValue))
-const viewYear = ref((selected.value ?? today(getLocalTimeZone())).year)
+const viewYear = ref((selected.value ?? today(resolvedTimeZone.value)).year)
 
 watch(open, (value) => {
   if (value) {
-    viewYear.value = (selected.value ?? today(getLocalTimeZone())).year
+    viewYear.value = (selected.value ?? today(resolvedTimeZone.value)).year
   }
 })
 
@@ -69,7 +76,7 @@ const months = computed(() =>
 )
 
 const yearRange = computed(() => {
-  const anchor = selected.value ?? today(getLocalTimeZone())
+  const anchor = selected.value ?? today(resolvedTimeZone.value)
   return createYearRange({
     start: anchor.cycle('year', -100),
     end: anchor.cycle('year', 10),

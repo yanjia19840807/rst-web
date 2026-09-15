@@ -8,6 +8,7 @@ defineProps<{
   workspace?: ApprovalWorkspaceView | null
   emptyMessage?: string
   pending?: boolean
+  center?: string | null
 }>()
 
 function statusCaption(workspace: ApprovalWorkspaceView) {
@@ -30,6 +31,7 @@ function statusCaption(workspace: ApprovalWorkspaceView) {
         :rows="workspace?.history ?? []"
         :empty-message="emptyMessage"
         :pending="pending"
+        :center="center"
       />
     </CardContent>
   </Card>

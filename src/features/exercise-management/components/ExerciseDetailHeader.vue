@@ -6,7 +6,7 @@ import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatDate } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
@@ -35,7 +35,7 @@ const emit = defineEmits<{
         :rows="[
           { key: 'toolkit', label: 'Toolkit', value: exercise.snapshot.toolkit.name },
           { label: 'Exercise No', value: exercise.exerciseCode },
-          { label: 'Created', value: formatDate(exercise.createdAt) },
+          { label: 'Created', value: formatInstantForCenter(exercise.createdAt, exercise.snapshot.toolkit.center) },
           { label: 'Sizing Month', value: exercise.sizingMonth },
           { key: 'status', label: 'Current Step', value: currentStepLabel(exercise) },
         ]"

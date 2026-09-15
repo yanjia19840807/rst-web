@@ -4,7 +4,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import '@/components/ui/data-table/types'
-import { formatDateTimeSeconds } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import type { TimesheetSnapshotTab, TimesheetSyncRunHeader } from '../types'
 
@@ -141,7 +141,7 @@ export function createTimesheetRunColumns(
       id: 'errorCode',
       header: 'Error Code',
     }),
-    runHelper.accessor((row) => formatDateTimeSeconds(row.startedAt), {
+    runHelper.accessor((row) => formatInstantForCenter(row.startedAt, row.center, { seconds: true }), {
       id: 'startedAt',
       header: 'Started',
     }),

@@ -67,7 +67,7 @@ describe('SSO helpers', () => {
       },
       history: { replaceState, state: null },
     })
-    expect(consumeSsoCallbackError()).toBe('Center is missing or is not a GBS China center.')
+    expect(consumeSsoCallbackError()).toBe('Center is missing or is not a known GBS Center.')
     expect(replaceState).toHaveBeenCalled()
   })
 })

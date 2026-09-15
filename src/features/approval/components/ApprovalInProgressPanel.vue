@@ -16,6 +16,7 @@ const props = defineProps<{
   workspace: ApprovalWorkspaceView
   comments: string
   pending?: boolean
+  center?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -132,7 +133,7 @@ const approveRows = computed(() => {
         <CardTitle class="text-base">History</CardTitle>
       </CardHeader>
       <CardContent>
-        <ApprovalHistoryTable :rows="workspace.history ?? []" />
+        <ApprovalHistoryTable :rows="workspace.history ?? []" :center="center" />
       </CardContent>
     </Card>
 

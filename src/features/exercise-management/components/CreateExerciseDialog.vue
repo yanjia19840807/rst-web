@@ -23,7 +23,8 @@ import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/T
 import { formatHc } from '@/lib/hcFormat'
 import type { SupervisorToolkit } from '@/features/toolkit-management/types'
 import { showOperationNotices } from '@/composables/useOperationNotices'
-import { formatDate } from '@/lib/datetime'
+import { useContextTimeZone } from '@/composables/useContextTimeZone'
+import { formatToday } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../api/mutations'
 import {
@@ -75,7 +76,8 @@ const freezeHc = computed(() =>
 const freezeSyncDate = computed(
   () => selectedToolkit.value?.alignment?.currentMonthlySyncDate || '',
 )
-const createdLabel = computed(() => formatDate(new Date()))
+const contextTimeZone = useContextTimeZone()
+const createdLabel = computed(() => formatToday(contextTimeZone.value))
 const infoRows = computed(() => {
   const rows = [
     { label: 'Exercise No', value: 'Assigned on create' },

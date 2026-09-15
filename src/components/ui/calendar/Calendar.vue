@@ -2,7 +2,9 @@
 import type { CalendarRootEmits, CalendarRootProps, DateValue } from 'reka-ui'
 import type { HTMLAttributes, Ref } from 'vue'
 import type { LayoutTypes } from '.'
-import { getLocalTimeZone, today } from '@internationalized/date'
+import { today } from '@internationalized/date'
+
+import { useContextTimeZone } from '@/composables/useContextTimeZone'
 import { createReusableTemplate, reactiveOmit, useVModel } from '@vueuse/core'
 import { CalendarRoot, useDateFormatter, useForwardPropsEmits } from 'reka-ui'
 import { createYear, createYearRange, toDate } from 'reka-ui/date'
@@ -30,20 +32,25 @@ const props = withDefaults(
       class?: HTMLAttributes['class']
       layout?: LayoutTypes
       yearRange?: DateValue[]
+      timeZone?: string
     }
   >(),
   {
     modelValue: undefined,
     layout: undefined,
+    timeZone: undefined,
   },
 )
+
+const contextTimeZone = useContextTimeZone()
+const resolvedTimeZone = computed(() => props.timeZone || contextTimeZone.value)
 const emits = defineEmits<CalendarRootEmits>()
 
-const delegatedProps = reactiveOmit(props, 'class', 'layout', 'placeholder')
+const delegatedProps = reactiveOmit(props, 'class', 'layout', 'placeholder', 'timeZone')
 
 const placeholder = useVModel(props, 'placeholder', emits, {
   passive: true,
-  defaultValue: props.defaultPlaceholder ?? today(getLocalTimeZone()),
+  defaultValue: props.defaultPlaceholder ?? today(resolvedTimeZone.value),
 }) as Ref<DateValue>
 
 const formatter = useDateFormatter(props.locale ?? 'en')
@@ -51,7 +58,7 @@ const formatter = useDateFormatter(props.locale ?? 'en')
 const yearRange = computed(() => {
   if (props.yearRange) return props.yearRange
   const anchor =
-    toRaw(placeholder.value) ?? props.defaultPlaceholder ?? today(getLocalTimeZone())
+    toRaw(placeholder.value) ?? props.defaultPlaceholder ?? today(resolvedTimeZone.value)
   return createYearRange({
     start: props.minValue ?? anchor.cycle('year', -100),
     end: props.maxValue ?? anchor.cycle('year', 10),

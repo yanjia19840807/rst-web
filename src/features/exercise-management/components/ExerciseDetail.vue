@@ -379,6 +379,7 @@ watch(
         :workspace="workspace"
         :pending="historyLoading"
         :empty-message="historyError ? 'Approval history is unavailable.' : 'No approval history yet.'"
+        :center="exercise?.snapshot.toolkit.center"
       />
     </div>
 

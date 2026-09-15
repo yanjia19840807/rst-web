@@ -1,33 +1,36 @@
+import { parseDate } from '@internationalized/date'
 import { describe, expect, it } from 'vitest'
 
 import {
   emptyGrantDelegationForm,
   grantDelegationSchema,
   toCreateDelegationRequest,
-  toDateInput,
 } from '../schemas/grantDelegation'
 
-function addDays(value: Date, days: number) {
-  const next = new Date(value)
-  next.setDate(next.getDate() + days)
-  return next
+const ZONE = 'Asia/Kolkata'
+
+function addDays(date: string, days: number) {
+  return parseDate(date).add({ days }).toString()
 }
 
 function validGrant() {
+  const today = emptyGrantDelegationForm(ZONE).validFrom
   return {
     delegateCcgid: 'S00813982',
-    validFrom: toDateInput(new Date()),
-    validUntil: toDateInput(addDays(new Date(), 30)),
+    validFrom: today,
+    validUntil: addDays(today, 30),
   }
 }
 
 describe('grantDelegationSchema', () => {
+  const schema = grantDelegationSchema(ZONE)
+
   it('accepts a complete grant payload', () => {
-    expect(grantDelegationSchema.safeParse(validGrant()).success).toBe(true)
+    expect(schema.safeParse(validGrant()).success).toBe(true)
   })
 
   it('requires a delegate', () => {
-    const result = grantDelegationSchema.safeParse({
+    const result = schema.safeParse({
       ...validGrant(),
       delegateCcgid: null,
     })
@@ -39,8 +42,8 @@ describe('grantDelegationSchema', () => {
   })
 
   it('requires start and end dates', () => {
-    const blank = grantDelegationSchema.safeParse({
-      ...emptyGrantDelegationForm(),
+    const blank = schema.safeParse({
+      ...emptyGrantDelegationForm(ZONE),
       validFrom: '',
       validUntil: '',
     })
@@ -52,10 +55,11 @@ describe('grantDelegationSchema', () => {
   })
 
   it('requires end date on or after start date', () => {
-    const result = grantDelegationSchema.safeParse({
+    const today = emptyGrantDelegationForm(ZONE).validFrom
+    const result = schema.safeParse({
       ...validGrant(),
-      validFrom: toDateInput(addDays(new Date(), 10)),
-      validUntil: toDateInput(addDays(new Date(), 1)),
+      validFrom: addDays(today, 10),
+      validUntil: addDays(today, 1),
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -63,10 +67,11 @@ describe('grantDelegationSchema', () => {
   })
 
   it('rejects an end date in the past', () => {
-    const result = grantDelegationSchema.safeParse({
+    const today = emptyGrantDelegationForm(ZONE).validFrom
+    const result = schema.safeParse({
       ...validGrant(),
-      validFrom: toDateInput(addDays(new Date(), -7)),
-      validUntil: toDateInput(addDays(new Date(), -1)),
+      validFrom: addDays(today, -7),
+      validUntil: addDays(today, -1),
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -74,9 +79,9 @@ describe('grantDelegationSchema', () => {
   })
 
   it('accepts the same calendar day for start and end', () => {
-    const today = toDateInput(new Date())
+    const today = emptyGrantDelegationForm(ZONE).validFrom
     expect(
-      grantDelegationSchema.safeParse({
+      schema.safeParse({
         ...validGrant(),
         validFrom: today,
         validUntil: today,
@@ -86,14 +91,17 @@ describe('grantDelegationSchema', () => {
 })
 
 describe('toCreateDelegationRequest', () => {
-  it('sends start of day and end of day timestamps', () => {
-    const payload = toCreateDelegationRequest({
-      delegateCcgid: 'S00813982',
-      validFrom: '2026-08-27',
-      validUntil: '2026-09-26',
-    })
+  it('converts Center wall-clock day bounds to UTC instants', () => {
+    const payload = toCreateDelegationRequest(
+      {
+        delegateCcgid: 'S00813982',
+        validFrom: '2026-08-27',
+        validUntil: '2026-09-26',
+      },
+      ZONE,
+    )
     expect(payload.delegateCcgid).toBe('S00813982')
-    expect(new Date(payload.validFrom).getHours()).toBe(0)
-    expect(new Date(payload.validUntil).getHours()).toBe(23)
+    expect(payload.validFrom).toBe('2026-08-26T18:30:00.000Z')
+    expect(payload.validUntil).toBe('2026-09-26T18:29:59.000Z')
   })
 })

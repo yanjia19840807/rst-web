@@ -384,11 +384,11 @@ function dayName(date: string | null | undefined) {
 }
 
 function formatSlotTime(start: string, end: string) {
-  const s = new Date(start)
-  const e = new Date(end)
-  const fmt = (d: Date) =>
-    `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-  return `${fmt(s)}–${fmt(e)}`
+  const clock = (value: string) => {
+    const match = /T(\d{2}:\d{2})/.exec(value)
+    return match?.[1] ?? '—'
+  }
+  return `${clock(start)}–${clock(end)}`
 }
 
 function monthlyRequests(): MonthlyVolumeRequest[] {

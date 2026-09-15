@@ -3,7 +3,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
-import { formatDateTime } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import { formatDuration } from '../composables/useTmsTimer'
 import TmsSessionRowActions from './TmsSessionRowActions.vue'
@@ -15,6 +15,7 @@ export type TmsSessionTableRow = {
   subtaskName?: string | null
   startedAt: string
   endedAt?: string | null
+  center?: string | null
   netDurationSeconds: number
   processedVolume: number | null
   reference?: string | null
@@ -75,11 +76,11 @@ export function createTmsSessionColumns(
       id: 'subtaskName',
       header: 'Subtask',
     }),
-    columnHelper.accessor((row) => formatDateTime(row.startedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.startedAt, row.center), {
       id: 'startedAt',
       header: 'Start',
     }),
-    columnHelper.accessor((row) => formatDateTime(row.endedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.endedAt, row.center), {
       id: 'endedAt',
       header: 'End',
     }),

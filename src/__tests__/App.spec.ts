@@ -2,24 +2,36 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { clearDevIdentity, writeDevIdentity } from '@/auth/dev-identity'
+import { useCenterCatalogStore, writeCenterCatalog } from '@/catalog/centerCatalog'
 
 import App from '../App.vue'
 import { routes } from '../router/routes'
 
+function testPinia() {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  useCenterCatalogStore().hydrate([
+    { center: 'GBS CHINA', timeZone: 'Asia/Shanghai' },
+    { center: 'GBS INDIA', timeZone: 'Asia/Kolkata' },
+  ])
+  return pinia
+}
+
 describe('App', () => {
   afterEach(() => {
     clearDevIdentity()
+    writeCenterCatalog([])
   })
 
   it('renders the application shell and active route', async () => {
     writeDevIdentity({
       ccgid: 'S00628182',
       role: 'SUPERVISOR',
-      center: 'GBS CHINA INDIA',
+      center: 'GBS INDIA',
     })
     const router = createRouter({
       history: createMemoryHistory(),
@@ -35,7 +47,7 @@ describe('App', () => {
     const wrapper = mount(App, {
       attachTo: document.body,
       global: {
-        plugins: [createPinia(), router, [VueQueryPlugin, { queryClient }]],
+        plugins: [testPinia(), router, [VueQueryPlugin, { queryClient }]],
         // This test covers shell routing metadata, not feature-level API loading.
         stubs: { RouterView: true },
       },
@@ -91,7 +103,7 @@ describe('App', () => {
     const wrapper = mount(App, {
       attachTo: document.body,
       global: {
-        plugins: [createPinia(), router, [VueQueryPlugin, { queryClient }]],
+        plugins: [testPinia(), router, [VueQueryPlugin, { queryClient }]],
         stubs: { RouterView: true },
       },
     })

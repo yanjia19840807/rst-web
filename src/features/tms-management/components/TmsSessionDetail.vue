@@ -9,7 +9,7 @@ import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatDate } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionDetailQuery } from '../api/queries'
@@ -67,8 +67,8 @@ const rows = computed(() => {
   base.push(
     { label: 'Toolkit', value: item.toolkitName },
     { label: 'Subtask', value: item.subtaskName || '—' },
-    { label: 'Start', value: formatDate(item.startedAt) },
-    { label: 'End', value: formatDate(item.endedAt) },
+    { label: 'Start', value: formatInstantForCenter(item.startedAt, item.center) },
+    { label: 'End', value: formatInstantForCenter(item.endedAt, item.center) },
     { label: 'Duration', value: formatDuration(item.netDurationSeconds) },
     { label: 'Cycle Time', value: cycleTimeLabel() },
     { label: 'Volume', value: formatSessionVolume(item.processedVolume) },

@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
-import { formatDate, formatDateTime, formatMonth } from '@/lib/datetime'
+import { formatDate, formatInstantForCenter, formatMonth } from '@/lib/datetime'
 import { measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
 import { useApprovalDetailQuery } from '@/features/approval/api/queries'
@@ -393,7 +393,7 @@ function downloadSummary() {
     `Exercise: ${submitted.exerciseCode}`,
     `Toolkit: ${ex.snapshot.toolkit.name}`,
     `Official Scenario: ${submitted.scenarioName ?? submitted.scenarioId}`,
-    `Submitted at: ${formatDateTime(submitted.submittedAt)}`,
+    `Submitted at: ${formatInstantForCenter(submitted.submittedAt, ex.snapshot.toolkit.center)}`,
     `Delivery HC: ${deliveryHc.value.toFixed(2)}`,
     `Right Sizing HC: ${formatHc(rightSizingHc.value)}`,
     `Production Support: ${supportFte.value != null ? supportFte.value.toFixed(2) : '—'}`,
@@ -413,7 +413,7 @@ function downloadSummary() {
       : []),
     ...(workspace.value?.history ?? []).map(
       (row) =>
-        `${row.step}: ${row.decision} by ${row.actor ?? '—'} (${formatDateTime(row.completedAt)}) ${row.comments?.trim() || ''}`,
+        `${row.step}: ${row.decision} by ${row.actor ?? '—'} (${formatInstantForCenter(row.completedAt, ex.snapshot.toolkit.center)}) ${row.comments?.trim() || ''}`,
     ),
     `Submission status: ${submitted.submissionStatus}`,
   ]
@@ -688,11 +688,12 @@ function downloadSummary() {
         :workspace="workspace"
         :comments="comments"
         :pending="pending"
+        :center="exercise?.snapshot.toolkit.center"
         @update:comments="comments = $event"
         @approve="onApprove"
         @return="requestReturn"
       />
-      <ApprovalCompletedPanel v-else :workspace="workspace" />
+      <ApprovalCompletedPanel v-else :workspace="workspace" :center="exercise?.snapshot.toolkit.center" />
     </div>
 
     <ToolkitInfoDialog

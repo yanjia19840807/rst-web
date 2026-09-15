@@ -22,9 +22,9 @@ describe('instantTat', () => {
 describe('cumulativeDailyTat', () => {
   it('resets the running totals when the calendar date changes', () => {
     const values = cumulativeDailyTat([
-      { slotStartAt: '2026-03-01T08:00:00Z', rawVolume: 10, volumeOutsideSla: 2 },
-      { slotStartAt: '2026-03-01T08:30:00Z', rawVolume: 10, volumeOutsideSla: 0 },
-      { slotStartAt: '2026-03-02T08:00:00Z', rawVolume: 8, volumeOutsideSla: 4 },
+      { slotStartAt: '2026-03-01T08:00:00', rawVolume: 10, volumeOutsideSla: 2 },
+      { slotStartAt: '2026-03-01T08:30:00', rawVolume: 10, volumeOutsideSla: 0 },
+      { slotStartAt: '2026-03-02T08:00:00', rawVolume: 8, volumeOutsideSla: 4 },
     ])
     expect(values[0]).toBeCloseTo(0.8)
     expect(values[1]).toBeCloseTo(0.9)
@@ -34,7 +34,7 @@ describe('cumulativeDailyTat', () => {
   it('returns 1 when the day has no raw volume yet', () => {
     expect(
       cumulativeDailyTat([
-        { slotStartAt: '2026-03-01T00:00:00Z', rawVolume: 0, volumeOutsideSla: 0 },
+        { slotStartAt: '2026-03-01T00:00:00', rawVolume: 0, volumeOutsideSla: 0 },
       ]),
     ).toEqual([1])
   })

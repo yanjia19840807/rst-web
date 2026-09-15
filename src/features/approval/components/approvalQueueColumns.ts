@@ -3,7 +3,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
-import { formatDateTime } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 import {
   formatHc,
   formatMeasuredCapacity,
@@ -72,7 +72,7 @@ export function createApprovalQueueColumns(
       id: 'supervisor',
       header: 'Supervisor',
     }),
-    columnHelper.accessor((row) => formatDateTime(row.submittedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.center), {
       id: 'submittedAt',
       header: 'Submitted Date',
     }),
@@ -108,7 +108,7 @@ export function createApprovalQueueColumns(
       id: 'previousActor',
       header: 'Previous Actor',
     }),
-    columnHelper.accessor((row) => formatDateTime(row.previousStepAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.previousStepAt, row.center), {
       id: 'previousStepAt',
       header: 'Previous Step At',
     }),
@@ -122,7 +122,7 @@ export function createApprovalQueueColumns(
       header: 'My Decision',
       cell: ({ row }) => h(ApprovalDecisionBadge, { decision: row.original.myDecision }),
     }),
-    columnHelper.accessor((row) => formatDateTime(row.myCompletedAt), {
+    columnHelper.accessor((row) => formatInstantForCenter(row.myCompletedAt, row.center), {
       id: 'myCompletedAt',
       header: 'Completed On',
     }),
