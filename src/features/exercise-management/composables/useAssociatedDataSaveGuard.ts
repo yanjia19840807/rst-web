@@ -12,14 +12,18 @@ export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<stri
   const query = useCommittedResultsQuery(exerciseId)
   const { clearCommittedResults } = useExerciseMutations()
   const confirmOpen = ref(false)
+  const accepting = ref(false)
   let waiter: ((agreed: boolean) => void) | null = null
 
   const scenarioCount = computed(() => query.data.value?.scenarioCount ?? 0)
-  const pending = computed(() => clearCommittedResults.isPending.value)
+  const pending = computed(
+    () => accepting.value || clearCommittedResults.isPending.value,
+  )
 
   function finish(agreed: boolean) {
     const done = waiter
     waiter = null
+    accepting.value = false
     confirmOpen.value = false
     done?.(agreed)
   }
@@ -32,15 +36,20 @@ export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<stri
   }
 
   function cancel() {
+    // Confirm closes the dialog before mutate finishes; do not treat that as Cancel.
+    if (accepting.value || clearCommittedResults.isPending.value) return
     finish(false)
   }
 
   async function confirm() {
+    if (!waiter || accepting.value || clearCommittedResults.isPending.value) return
+    accepting.value = true
     try {
       await clearCommittedResults.mutateAsync(toValue(exerciseId))
       finish(true)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not clear saved results.')
+      finish(false)
     }
   }
 

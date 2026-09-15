@@ -78,7 +78,7 @@ const {
 const busy = ref(false)
 
 function onImpactOpenChange(open: boolean) {
-  if (!open) cancelClearResults()
+  if (!open && !clearingResults.value) cancelClearResults()
 }
 const teamEditor = ref<InstanceType<typeof AdTeamSetupEditor> | null>(null)
 const manualEditor = ref<InstanceType<typeof AdManualMedianEditor> | null>(null)
@@ -309,6 +309,7 @@ async function save() {
     "
     confirm-label="Clear results and continue"
     :pending="clearingResults"
+    @cancel="cancelClearResults"
     @confirm="confirmClearResults"
   />
 </template>

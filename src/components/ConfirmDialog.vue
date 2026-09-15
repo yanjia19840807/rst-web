@@ -49,10 +49,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   confirm: [reason: string]
+  cancel: []
 }>()
 
 const slots = useSlots()
 const reason = ref('')
+const submitted = ref(false)
 
 const headerDescription = computed(() => props.description || props.warning || props.title)
 const extraWarning = computed(() => (props.description && props.warning ? props.warning : ''))
@@ -64,13 +66,19 @@ const hasExtra = computed(
     Boolean(slots.default),
 )
 
-watch(open, (value) => {
-  if (!value) reason.value = ''
+watch(open, (value, previous) => {
+  if (value) {
+    submitted.value = false
+    return
+  }
+  reason.value = ''
+  if (previous && !submitted.value) emit('cancel')
 })
 
 function onConfirm() {
   const trimmed = reason.value.trim()
   if (props.requireReason && !trimmed) return
+  submitted.value = true
   emit('confirm', trimmed)
 }
 
@@ -112,7 +120,7 @@ function onConfirmAction(event: Event) {
           :variant="confirmVariant"
           :disabled="pending || (requireReason && !reason.trim())"
           :aria-busy="pending || undefined"
-          @click="onConfirmAction"
+          @click.capture="onConfirmAction"
         >
           <Spinner v-if="pending" />
           {{ confirmLabel }}
