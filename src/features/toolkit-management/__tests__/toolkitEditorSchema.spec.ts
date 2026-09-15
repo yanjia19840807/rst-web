@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { emptyToolkitForm, toolkitEditorSchema } from '../schemas/toolkit'
+import { hierarchyOptionKey } from '../types'
 
 function validForm() {
   return {
@@ -51,5 +52,13 @@ describe('toolkitEditorSchema', () => {
     if (!result.success) return
     expect(result.data.description).toBe('')
     expect(result.data.subtasks[0]?.description).toBe('')
+  })
+})
+
+describe('hierarchyOptionKey', () => {
+  it('keeps two PL3s under the same supervisor position distinct', () => {
+    expect(
+      hierarchyOptionKey({ supervisorPositionId: '175344', pl3Code: '367' }),
+    ).not.toBe(hierarchyOptionKey({ supervisorPositionId: '175344', pl3Code: '768' }))
   })
 })

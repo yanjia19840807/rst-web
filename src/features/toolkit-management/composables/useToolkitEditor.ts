@@ -55,6 +55,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   const [pl1] = defineField('pl1')
   const [pl2] = defineField('pl2')
   const [supervisorPositionId] = defineField('supervisorPositionId')
+  const [pl3Code] = defineField('pl3Code')
   const [combineSubtasksTime] = defineField('combineSubtasksTime')
 
   const countryCatalogQuery = useSharedKpiCandidatesQuery(
@@ -241,7 +242,12 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   })
   watch(pl2, () => {
     if (hydrating.value) return
-    if (!pl3s.value.some((item) => item.pl3Code === values.pl3Code)) {
+    if (
+      !pl3s.value.some(
+        (item) =>
+          item.supervisorPositionId === values.supervisorPositionId && item.pl3Code === values.pl3Code,
+      )
+    ) {
       setFieldValue('pl3Code', '', false)
       setFieldValue('pl3Name', '', false)
       setFieldValue('supervisorPositionId', '', false)
@@ -249,15 +255,19 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
       selectedCountries.value = []
     }
   })
-  watch(supervisorPositionId, (positionId) => {
+  watch([supervisorPositionId, pl3Code], ([positionId, code], [prevPosition, prevCode]) => {
     if (hydrating.value) return
-    const selected = pl3s.value.find((item) => item.supervisorPositionId === positionId)
+    const selected = pl3s.value.find(
+      (item) => item.supervisorPositionId === positionId && item.pl3Code === code,
+    )
     if (selected) {
-      setFieldValue('pl3Code', selected.pl3Code, false)
       setFieldValue('pl3Name', selected.pl3Name, false)
+      if ((prevPosition && prevPosition !== positionId) || (prevCode && prevCode !== code)) {
+        setFieldValue('sharedKpiSelections', [], false)
+        selectedCountries.value = []
+      }
       return
     }
-    setFieldValue('pl3Code', '', false)
     setFieldValue('pl3Name', '', false)
   })
   watch(selectedCountries, (next) => {
@@ -364,6 +374,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     pl1,
     pl2,
     supervisorPositionId,
+    pl3Code,
     combineSubtasksTime,
     values,
     errors: mappingErrors,

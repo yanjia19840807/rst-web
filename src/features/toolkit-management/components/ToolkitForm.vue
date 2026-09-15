@@ -28,6 +28,7 @@ const {
   pl1,
   pl2,
   supervisorPositionId,
+  pl3Code,
   combineSubtasksTime,
   selectedCountries,
   centers,
@@ -108,6 +109,7 @@ const {
         v-model:pl1="pl1"
         v-model:pl2="pl2"
         v-model:supervisor-position-id="supervisorPositionId"
+        v-model:pl3-code="pl3Code"
         v-model:selected-countries="selectedCountries"
         :centers="centers"
         :domains="domains"

@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { MultiSelect } from '@/components/ui/multi-select'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-import type { HierarchyOption } from '../types'
+import { hierarchyOptionKey, type HierarchyOption } from '../types'
 
 const name = defineModel<string>('name', { required: true })
 const center = defineModel<string>('center', { required: true })
@@ -12,6 +15,7 @@ const domain = defineModel<string>('domain', { required: true })
 const pl1 = defineModel<string>('pl1', { required: true })
 const pl2 = defineModel<string>('pl2', { required: true })
 const supervisorPositionId = defineModel<string>('supervisorPositionId', { required: true })
+const pl3Code = defineModel<string>('pl3Code', { required: true })
 const selectedCountries = defineModel<string[]>('selectedCountries', { required: true })
 
 const props = defineProps<{
@@ -25,8 +29,22 @@ const props = defineProps<{
   errors: Record<string, string | undefined>
 }>()
 
-const controlClass =
-  'h-9 w-full rounded-md border border-input bg-card px-2.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+const fieldClass = 'w-full'
+
+const pl3Selection = computed({
+  get() {
+    if (!supervisorPositionId.value || !pl3Code.value) return ''
+    return hierarchyOptionKey({
+      supervisorPositionId: supervisorPositionId.value,
+      pl3Code: pl3Code.value,
+    })
+  },
+  set(value: string) {
+    const selected = props.pl3s.find((item) => hierarchyOptionKey(item) === value)
+    supervisorPositionId.value = selected?.supervisorPositionId ?? ''
+    pl3Code.value = selected?.pl3Code ?? ''
+  },
+})
 </script>
 
 <template>
@@ -40,8 +58,8 @@ const controlClass =
       </div>
     </CardHeader>
     <CardContent class="grid gap-4">
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="grid gap-1.5 md:col-span-2">
+      <div class="grid max-w-xl gap-4">
+        <div class="grid gap-1.5">
           <Label for="toolkit-name">Toolkit name</Label>
           <Input
             id="toolkit-name"
@@ -53,33 +71,41 @@ const controlClass =
         </div>
         <div class="grid gap-1.5">
           <Label>GBS Center</Label>
-          <select v-model="center" :class="controlClass" :aria-invalid="Boolean(errors.center)">
+          <NativeSelect
+            v-model="center"
+            :class="fieldClass"
+            :aria-invalid="Boolean(errors.center)"
+          >
             <option value="">Select GBS Center</option>
             <option v-for="item in centers" :key="item" :value="item">{{ item }}</option>
-          </select>
+          </NativeSelect>
           <p v-if="errors.center" class="text-xs text-destructive">{{ errors.center }}</p>
         </div>
         <div class="grid gap-1.5">
           <Label>Domain</Label>
-          <select v-model="domain" :class="controlClass" :aria-invalid="Boolean(errors.domain)">
+          <NativeSelect
+            v-model="domain"
+            :class="fieldClass"
+            :aria-invalid="Boolean(errors.domain)"
+          >
             <option value="">Select Domain</option>
             <option v-for="item in domains" :key="item" :value="item">{{ item }}</option>
-          </select>
+          </NativeSelect>
           <p v-if="errors.domain" class="text-xs text-destructive">{{ errors.domain }}</p>
         </div>
         <div class="grid gap-1.5">
           <Label>Process Level 1</Label>
-          <select v-model="pl1" :class="controlClass" :aria-invalid="Boolean(errors.pl1)">
+          <NativeSelect v-model="pl1" :class="fieldClass" :aria-invalid="Boolean(errors.pl1)">
             <option value="">Select Process Level 1</option>
             <option v-for="item in pl1s" :key="item" :value="item">{{ item }}</option>
-          </select>
+          </NativeSelect>
           <p v-if="errors.pl1" class="text-xs text-destructive">{{ errors.pl1 }}</p>
         </div>
         <div class="grid gap-1.5">
           <Label>Process Level 2</Label>
-          <select
+          <NativeSelect
             v-model="pl2"
-            :class="controlClass"
+            :class="fieldClass"
             :disabled="Boolean(hasHierarchy) && !pl2s.length"
             :aria-invalid="Boolean(errors.pl2)"
           >
@@ -87,14 +113,14 @@ const controlClass =
               {{ hasHierarchy && !pl2s.length ? 'Select Process Level 1 first' : 'Select Process Level 2' }}
             </option>
             <option v-for="item in pl2s" :key="item" :value="item">{{ item }}</option>
-          </select>
+          </NativeSelect>
           <p v-if="errors.pl2" class="text-xs text-destructive">{{ errors.pl2 }}</p>
         </div>
         <div class="grid gap-1.5">
           <Label>Process Level 3</Label>
-          <select
-            v-model="supervisorPositionId"
-            :class="controlClass"
+          <NativeSelect
+            v-model="pl3Selection"
+            :class="fieldClass"
             :disabled="Boolean(hasHierarchy) && !pl3s.length"
             :aria-invalid="Boolean(errors.supervisorPositionId || errors.pl3Code)"
           >
@@ -103,12 +129,12 @@ const controlClass =
             </option>
             <option
               v-for="item in pl3s"
-              :key="`${item.supervisorPositionId}-${item.pl3Code}`"
-              :value="item.supervisorPositionId"
+              :key="hierarchyOptionKey(item)"
+              :value="hierarchyOptionKey(item)"
             >
-              {{ item.pl3Name }}
+              {{ item.pl3Name }} ({{ item.pl3Code }})
             </option>
-          </select>
+          </NativeSelect>
           <p v-if="errors.supervisorPositionId || errors.pl3Code" class="text-xs text-destructive">
             {{ errors.supervisorPositionId || errors.pl3Code }}
           </p>

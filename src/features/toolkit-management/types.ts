@@ -55,6 +55,13 @@ export interface HierarchyOption {
   pl3Name: string
 }
 
+/** One supervisor position can own multiple PL3s; the select value must include both. */
+export function hierarchyOptionKey(
+  item: Pick<HierarchyOption, 'supervisorPositionId' | 'pl3Code'>,
+): string {
+  return `${item.supervisorPositionId}::${item.pl3Code}`
+}
+
 export interface ToolkitEditorPayload {
   name: string
   description: string
