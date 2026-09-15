@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
+import { NativeSelect } from '@/components/ui/native-select'
 
 import { PERMISSIONS } from '@/auth/permissions'
 import { useSessionStore } from '@/auth/session'
@@ -33,9 +34,6 @@ const dateFrom = ref('')
 const dateTo = ref('')
 const page = ref(1)
 const pageSize = ref(10)
-
-const selectClass =
-  'h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground'
 
 const listQuery = computed<TimesheetSyncOverviewQuery>(() => ({
   kind: kindFilter.value || undefined,
@@ -218,21 +216,21 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
         <div class="flex flex-wrap items-end gap-2.5">
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Kind
-            <select v-model="kindFilter" :class="[selectClass, 'w-[160px]']">
+            <NativeSelect v-model="kindFilter" class="w-[160px]">
               <option value="">All kinds</option>
               <option value="DAILY">DAILY</option>
               <option value="MONTHLY">MONTHLY</option>
-            </select>
+            </NativeSelect>
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Status
-            <select v-model="statusFilter" :class="[selectClass, 'w-[180px]']">
+            <NativeSelect v-model="statusFilter" class="w-[180px]">
               <option value="">All statuses</option>
               <option value="ACTIVE">ACTIVE</option>
               <option value="FAILED">FAILED</option>
               <option value="LOADING">LOADING</option>
               <option value="ARCHIVED">ARCHIVED</option>
-            </select>
+            </NativeSelect>
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Date From

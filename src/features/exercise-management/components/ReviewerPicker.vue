@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 
 import PersonPicker, {
   type PersonPickerQuery,
   type PersonPickerRow,
 } from '@/components/PersonPicker.vue'
-import { personMatchesQuery } from '@/components/personPickerQuery'
 import type { ButtonVariants } from '@/components/ui/button'
-
-import type { ExerciseReviewerOption } from '../types'
+import { useSessionStore } from '@/auth/session'
+import { useTimesheetPeopleQuery } from '@/features/timesheet/api/queries'
 
 const props = defineProps<{
   modelValue: string
-  reviewers: ExerciseReviewerOption[]
   disabled?: boolean
   size?: ButtonVariants['size']
 }>()
@@ -21,6 +20,9 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
+const { user } = storeToRefs(useSessionStore())
+const center = computed(() => user.value?.center?.trim() ?? '')
+
 const pickerQuery = ref<PersonPickerQuery>({
   q: '',
   page: 1,
@@ -28,29 +30,33 @@ const pickerQuery = ref<PersonPickerQuery>({
   open: false,
 })
 
-const rows = computed<PersonPickerRow[]>(() =>
-  props.reviewers
-    .filter((reviewer) => reviewer.name.trim())
-    .map((reviewer) => ({
-      id: reviewer.name,
-      ccgid: reviewer.ccgid ?? '',
-      name: reviewer.name,
-      email: reviewer.email,
-    })),
+const listQuery = computed(() => ({
+  center: center.value,
+  q: pickerQuery.value.q || undefined,
+  page: pickerQuery.value.page,
+  pageSize: pickerQuery.value.pageSize,
+}))
+
+const peopleQuery = useTimesheetPeopleQuery(
+  listQuery,
+  () => pickerQuery.value.open && Boolean(center.value),
 )
 
-const filtered = computed(() =>
-  rows.value.filter((row) => personMatchesQuery(row, pickerQuery.value.q)),
+const items = computed(() =>
+  (peopleQuery.data.value?.items ?? []).map((item) => ({
+    id: item.name,
+    ccgid: item.ccgid,
+    name: item.name,
+    email: item.email,
+  })),
 )
-
-const items = computed(() => {
-  const start = (pickerQuery.value.page - 1) * pickerQuery.value.pageSize
-  return filtered.value.slice(start, start + pickerQuery.value.pageSize)
+const total = computed(() => peopleQuery.data.value?.total ?? 0)
+const loading = computed(() => peopleQuery.isFetching.value)
+const emptyText = computed(() => {
+  if (!center.value) return 'Current identity has no Center'
+  if (peopleQuery.isError.value) return 'Could not load people'
+  return pickerQuery.value.q ? 'No matching people' : 'No people in this Center'
 })
-
-const emptyText = computed(() =>
-  pickerQuery.value.q ? 'No matching people' : 'No reviewers in this list',
-)
 
 function formatLabel(row: PersonPickerRow) {
   return row.name.trim() || row.id.trim() || 'All reviewers'
@@ -63,7 +69,8 @@ function formatLabel(row: PersonPickerRow) {
     empty-label="All reviewers"
     allow-clear
     :items="items"
-    :total="filtered.length"
+    :total="total"
+    :loading="loading"
     :empty-text="emptyText"
     :disabled="disabled"
     :size="size"

@@ -20,8 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatInstantForCenter } from '@/lib/datetime'
-import { useSessionStore } from '@/auth/session'
 
 import {
   useCreateSupportCategory,
@@ -37,7 +35,6 @@ const createMutation = useCreateSupportCategory()
 const updateMutation = useUpdateSupportCategory()
 const reorderMutation = useReorderSupportCategories()
 const deleteMutation = useDeleteSupportCategory()
-const session = useSessionStore()
 
 const adding = ref(false)
 const editingId = ref<string | null>(null)
@@ -239,7 +236,6 @@ async function saveUpdate(
               <TableHead>Name</TableHead>
               <TableHead class="w-32">Status</TableHead>
               <TableHead class="w-24">Order</TableHead>
-              <TableHead class="w-44">Updated</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -259,7 +255,6 @@ async function saveUpdate(
               <TableCell>
                 <StatusBadge status="Enabled" />
               </TableCell>
-              <TableCell>—</TableCell>
               <TableCell>—</TableCell>
               <TableCell>
                 <span class="inline-flex gap-3">
@@ -317,7 +312,6 @@ async function saveUpdate(
                   <StatusBadge :status="categoryStatusLabel(row.status)" />
                 </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
-                <TableCell>{{ formatInstantForCenter(row.updatedAt, session.user?.center) }}</TableCell>
                 <TableCell>
                   <span class="inline-flex gap-3">
                     <TableTextLink :disabled="saving" @click="confirmEdit">
@@ -333,7 +327,6 @@ async function saveUpdate(
                   <StatusBadge :status="categoryStatusLabel(row.status)" />
                 </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
-                <TableCell>{{ formatInstantForCenter(row.updatedAt, session.user?.center) }}</TableCell>
                 <TableCell>
                   <span class="inline-flex flex-wrap gap-3">
                     <TableTextLink :disabled="saving || formLocked" @click="startEdit(row)">

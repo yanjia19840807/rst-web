@@ -7,6 +7,7 @@ describe('statusBadgeVariant', () => {
     expect(statusBadgeVariant('ACTIVE')).toBe('secondary')
     expect(statusBadgeVariant('Enabled')).toBe('secondary')
     expect(statusBadgeVariant('Approved')).toBe('secondary')
+    expect(statusBadgeVariant('Validated')).toBe('secondary')
   })
 
   it('uses destructive for failed or off states', () => {

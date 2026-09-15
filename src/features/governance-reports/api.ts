@@ -30,8 +30,9 @@ function repositoryFilters(params?: RepositoryListQuery) {
     if (params.domain) search.set('domain', params.domain)
     if (params.pl3Name) search.set('pl3Name', params.pl3Name)
     if (params.toolkitName) search.set('toolkitName', params.toolkitName)
-    if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
-    if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+    if (params.sizingMonth) search.set('sizingMonth', params.sizingMonth)
+    if (params.validatedFrom) search.set('validatedFrom', params.validatedFrom)
+    if (params.validatedTo) search.set('validatedTo', params.validatedTo)
   }
   return search
 }
@@ -48,8 +49,8 @@ function supportRepositoryFilters(params?: SupportRepositoryQuery) {
     if (params.center) search.set('center', params.center)
     if (params.categoryId) search.set('categoryId', params.categoryId)
     if (params.toolkitName) search.set('toolkitName', params.toolkitName)
-    if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
-    if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+    if (params.validatedFrom) search.set('validatedFrom', params.validatedFrom)
+    if (params.validatedTo) search.set('validatedTo', params.validatedTo)
   }
   return search
 }
@@ -85,8 +86,8 @@ function benchmarkingFilters(params?: BenchmarkingQuery) {
     if (params.pl1) search.set('pl1', params.pl1)
     if (params.pl2) search.set('pl2', params.pl2)
     if (params.pl3Code) search.set('pl3Code', params.pl3Code)
-    if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)
-    if (params.submittedTo) search.set('submittedTo', params.submittedTo)
+    if (params.validatedFrom) search.set('validatedFrom', params.validatedFrom)
+    if (params.validatedTo) search.set('validatedTo', params.validatedTo)
   }
   return search
 }

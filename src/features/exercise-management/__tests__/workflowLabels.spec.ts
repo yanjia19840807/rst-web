@@ -30,8 +30,8 @@ describe('currentStepLabel', () => {
     )
   })
 
-  it('uses Approved on Archived exercises', () => {
-    expect(currentStepLabel({ workflowStatus: 'APPROVED' })).toBe('Approved')
+  it('uses Validated on finished exercises', () => {
+    expect(currentStepLabel({ workflowStatus: 'APPROVED' })).toBe('Validated')
   })
 })
 
@@ -50,13 +50,13 @@ describe('exerciseListTabQuery', () => {
     expect(exerciseListBackLabel('UNDER_REVIEW')).toBe('← Back to In Progress')
   })
 
-  it('sends approved exercises back to Archived', () => {
-    expect(exerciseListTabQuery('APPROVED')).toBe('ARCHIVED')
+  it('sends approved exercises back to Validated', () => {
+    expect(exerciseListTabQuery('APPROVED')).toBe('VALIDATED')
     expect(exerciseListLocation('APPROVED')).toEqual({
       name: 'supervisor-exercises',
-      query: { tab: 'ARCHIVED' },
+      query: { tab: 'VALIDATED' },
     })
-    expect(exerciseListBackLabel('APPROVED')).toBe('← Back to Archived')
+    expect(exerciseListBackLabel('APPROVED')).toBe('← Back to Validated')
   })
 })
 

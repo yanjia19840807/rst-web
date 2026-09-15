@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -11,12 +12,14 @@ import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
+import type { Exercise } from '@/features/exercise-management/types'
 
 import { governanceApi } from '../api'
-import { useSupportRepositoryQuery } from '../api/queries'
+import { governanceQueryKeys, useSupportRepositoryQuery } from '../api/queries'
 import { formatHc } from '../reportFormat'
-import type { SupportRepositoryQuery } from '../types'
+import type { SupportRepositoryQuery, SupportRow } from '../types'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 import {
@@ -25,11 +28,11 @@ import {
 } from './supportRepositoryColumns'
 
 const emptyFilters = () => ({
-  gbs: 'All',
-  category: 'All',
-  toolkit: 'All',
-  submittedFrom: '',
-  submittedTo: '',
+  gbs: '',
+  category: '',
+  toolkit: '',
+  validatedFrom: '',
+  validatedTo: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -38,14 +41,17 @@ const page = ref(1)
 const pageSize = ref(10)
 const exportOpen = ref(false)
 const exporting = ref(false)
+const queryClient = useQueryClient()
+const toolkitInfoOpen = ref(false)
+const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
 const fieldClass = 'w-[220px]'
 
 const listQuery = computed<SupportRepositoryQuery>(() => ({
-  center: applied.gbs === 'All' ? undefined : applied.gbs,
-  categoryId: applied.category === 'All' ? undefined : applied.category,
-  toolkitName: applied.toolkit === 'All' ? undefined : applied.toolkit,
-  submittedFrom: applied.submittedFrom || undefined,
-  submittedTo: applied.submittedTo || undefined,
+  center: applied.gbs || undefined,
+  categoryId: applied.category || undefined,
+  toolkitName: applied.toolkit || undefined,
+  validatedFrom: applied.validatedFrom || undefined,
+  validatedTo: applied.validatedTo || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -55,13 +61,33 @@ const data = computed(() => supportQuery.data.value)
 const rows = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
 const categorySummaries = computed(() => data.value?.categorySummaries ?? [])
-const gbsOptions = computed(() => ['All', ...(data.value?.centers ?? [])])
+const gbsOptions = computed(() => data.value?.centers ?? [])
 const categoryOptions = computed(() => data.value?.categories ?? [])
-const toolkitOptions = computed(() => ['All', ...(data.value?.toolkitNames ?? [])])
+const toolkitOptions = computed(() => data.value?.toolkitNames ?? [])
 const loading = computed(() => supportQuery.isPending.value && !supportQuery.data.value)
 
 const categoryColumns = createSupportCategoryColumns()
-const rowColumns = createSupportRowColumns()
+const rowColumns = computed(() =>
+  createSupportRowColumns({
+    onToolkitInfo: onToolkitClick,
+  }),
+)
+
+async function onToolkitClick(row: SupportRow) {
+  if (!row.exerciseUuid) {
+    toast.error('Could not load toolkit info.')
+    return
+  }
+  try {
+    toolkitSnapshot.value = await queryClient.fetchQuery({
+      queryKey: governanceQueryKeys.repositoryToolkit(row.exerciseUuid),
+      queryFn: () => governanceApi.repositoryToolkitInfo(row.exerciseUuid),
+    })
+    toolkitInfoOpen.value = true
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
+  }
+}
 
 function applySearch() {
   Object.assign(applied, { ...draft })
@@ -120,6 +146,7 @@ watch(
     <QueryPanel show-export :exporting="exporting" @search="applySearch" @clear="clearFilters" @export="exportOpen = true">
       <FilterField label="GBS Center">
         <NativeSelect v-model="draft.gbs" :class="fieldClass">
+          <option value="">All</option>
           <option v-for="option in gbsOptions" :key="option" :value="option">
             {{ option }}
           </option>
@@ -127,7 +154,7 @@ watch(
       </FilterField>
       <FilterField label="Standard Category">
         <NativeSelect v-model="draft.category" :class="fieldClass">
-          <option value="All">All</option>
+          <option value="">All</option>
           <option
             v-for="option in categoryOptions"
             :key="option.id"
@@ -139,23 +166,24 @@ watch(
       </FilterField>
       <FilterField label="Toolkit">
         <NativeSelect v-model="draft.toolkit" :class="fieldClass">
+          <option value="">All</option>
           <option v-for="option in toolkitOptions" :key="option" :value="option">
             {{ option }}
           </option>
         </NativeSelect>
       </FilterField>
-      <FilterField label="Submitted Date From">
+      <FilterField label="Validated Date From">
         <DatePicker
-          v-model="draft.submittedFrom"
-          aria-label="Submitted date from"
+          v-model="draft.validatedFrom"
+          aria-label="Validated date from"
           placeholder="From"
           :class="fieldClass"
         />
       </FilterField>
-      <FilterField label="Submitted Date To">
+      <FilterField label="Validated Date To">
         <DatePicker
-          v-model="draft.submittedTo"
-          aria-label="Submitted date to"
+          v-model="draft.validatedTo"
+          aria-label="Validated date to"
           placeholder="To"
           :class="fieldClass"
         />
@@ -226,5 +254,7 @@ watch(
       :pending="exporting"
       @confirm="confirmExport"
     />
+
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
   </div>
 </template>

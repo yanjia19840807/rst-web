@@ -2,9 +2,8 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
-import { formatInstantForCenter } from '@/lib/datetime'
+import { formatInstantForCenter, formatMonth } from '@/lib/datetime'
 import {
   formatHc,
   formatMeasuredCapacity,
@@ -18,9 +17,11 @@ import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
 import ExerciseCurrentStepCell from './ExerciseCurrentStepCell.vue'
 import ExerciseRowActions from './ExerciseRowActions.vue'
+import ToolkitNameCell from './ToolkitNameCell.vue'
 
 export type ExerciseListColumnOptions = {
   onOpen?: (exercise: Exercise) => void
+  onToolkitInfo?: (exercise: Exercise) => void
 }
 
 const columnHelper = createColumnHelper<Exercise>()
@@ -51,9 +52,15 @@ export function createExerciseListColumns(
           row.original.timesheetAlignment?.structuralDrift ? h(ScopeChangedBadge) : null,
         ]),
     }),
-    columnHelper.accessor((row) => row.snapshot.toolkit.name, {
+    columnHelper.display({
       id: 'toolkitName',
       header: 'Toolkit',
+      cell: ({ row }) =>
+        h(ToolkitNameCell, {
+          name: row.original.snapshot.toolkit.name || '—',
+          canInfo: Boolean(row.original.snapshot.toolkit.name),
+          onInfo: () => options.onToolkitInfo?.(row.original),
+        }),
     }),
     columnHelper.accessor((row) => deliveryHc(row), {
       id: 'deliveryHc',
@@ -77,9 +84,9 @@ export function createExerciseListColumns(
           formatMeasuredCapacity(row.original.rightSizingHc, row.original.capacityCreation),
         ),
     }),
-    columnHelper.accessor((row) => formatInstantForCenter(row.createdAt, row.snapshot.toolkit.center), {
-      id: 'createdAt',
-      header: 'Created Date',
+    columnHelper.accessor((row) => formatMonth(row.sizingMonth), {
+      id: 'sizingMonth',
+      header: 'Sizing Month',
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.snapshot.toolkit.center), {
       id: 'submittedAt',
@@ -106,16 +113,7 @@ export function createExerciseListColumns(
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {
       id: 'archivedAt',
-      header: 'Archived Date',
-    }),
-    columnHelper.accessor((row) => currentStepLabel(row), {
-      id: 'status',
-      header: 'Status',
-      cell: ({ row }) =>
-        h(StatusBadge, {
-          status: currentStepLabel(row.original),
-          title: row.original.lastDecisionComment || undefined,
-        }),
+      header: 'Validated Date',
     }),
     columnHelper.display({
       id: 'actions',

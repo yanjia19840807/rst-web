@@ -13,6 +13,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { NativeSelect } from '@/components/ui/native-select'
+
 import { useDashboardQuery } from '../api/queries'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
@@ -165,22 +167,16 @@ watch(
           <CardContent class="space-y-3">
             <div class="grid gap-3 sm:grid-cols-2">
               <FilterField label="Selected GBS">
-                <select
-                  v-model="selectedGbs"
-                  class="h-9 w-full rounded-md border border-input bg-card px-2.5 text-sm text-foreground"
-                >
+                <NativeSelect v-model="selectedGbs" class="w-full">
                   <option v-for="center in centerOptions" :key="center" :value="center">
                     {{ center }}
                   </option>
-                </select>
+                </NativeSelect>
               </FilterField>
               <FilterField label="Comparison view">
-                <select
-                  v-model="comparisonView"
-                  class="h-9 w-full rounded-md border border-input bg-card px-2.5 text-sm text-foreground"
-                >
-                  <option>Completion by domain</option>
-                </select>
+                <NativeSelect v-model="comparisonView" class="w-full">
+                  <option value="Completion by domain">Completion by domain</option>
+                </NativeSelect>
               </FilterField>
             </div>
             <div class="min-w-0 overflow-x-auto rounded-lg border">

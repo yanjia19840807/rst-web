@@ -14,9 +14,10 @@ import {
 import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 
 import type { ApprovalQueueItem } from '../types'
+import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+
 import ApprovalDecisionBadge from './ApprovalDecisionBadge.vue'
 import ApprovalQueueRowActions from './ApprovalQueueRowActions.vue'
-import ApprovalToolkitCell from './ApprovalToolkitCell.vue'
 
 export type ApprovalQueueTab = 'Awaiting Review' | 'Completed Task'
 
@@ -62,7 +63,7 @@ export function createApprovalQueueColumns(
       id: 'toolkitName',
       header: 'Toolkit',
       cell: ({ row }) =>
-        h(ApprovalToolkitCell, {
+        h(ToolkitNameCell, {
           name: row.original.toolkitName || '—',
           canInfo: Boolean(row.original.exerciseId && row.original.toolkitName),
           onInfo: () => options.onToolkitInfo?.(row.original),

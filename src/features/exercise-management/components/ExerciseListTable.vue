@@ -4,10 +4,10 @@ import { computed } from 'vue'
 import { DataTable } from '@/components/ui/data-table'
 
 import type { Exercise } from '../types'
-import { IN_PROGRESS_TAB } from '../workflowLabels'
+import { IN_PROGRESS_TAB, VALIDATED_TAB } from '../workflowLabels'
 import { createExerciseListColumns } from './exerciseListColumns'
 
-type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
+type TabKey = typeof IN_PROGRESS_TAB | typeof VALIDATED_TAB
 
 const props = defineProps<{
   activeTab: TabKey
@@ -17,11 +17,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: [exercise: Exercise]
+  toolkitInfo: [exercise: Exercise]
 }>()
 
 const columns = computed(() =>
   createExerciseListColumns({
     onOpen: (exercise) => emit('open', exercise),
+    onToolkitInfo: (exercise) => emit('toolkitInfo', exercise),
   }),
 )
 
@@ -32,7 +34,6 @@ const columnVisibility = computed(() => {
     currentReviewer: inProgress,
     aging: inProgress,
     archivedAt: !inProgress,
-    status: !inProgress,
   }
 })
 </script>

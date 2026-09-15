@@ -13,45 +13,44 @@ import { useManagedToolkitsQuery } from '@/features/toolkit-management/api/queri
 
 import { useExercisesQuery } from '../api/queries'
 import type { Exercise, ExerciseListQuery } from '../types'
-import { IN_PROGRESS_TAB, reviewStageQueryValue } from '../workflowLabels'
+import { IN_PROGRESS_TAB, VALIDATED_TAB, reviewStageQueryValue } from '../workflowLabels'
 import CreateExerciseDialog from './CreateExerciseDialog.vue'
 import ExerciseListFilters from './ExerciseListFilters.vue'
+import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 import {
   emptyExerciseListFilters,
   type ExerciseListFilterValues,
 } from './exerciseListFilters'
 import ExerciseListTable from './ExerciseListTable.vue'
 
-type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
+type TabKey = typeof IN_PROGRESS_TAB | typeof VALIDATED_TAB
 
 const route = useRoute()
 const router = useRouter()
 
 function tabFromQuery(value: unknown): TabKey {
-  return value === 'ARCHIVED' ? 'Archived' : IN_PROGRESS_TAB
+  return value === 'VALIDATED' || value === 'ARCHIVED' ? VALIDATED_TAB : IN_PROGRESS_TAB
 }
 
 const activeTab = ref<TabKey>(tabFromQuery(route.query.tab))
 const createOpen = ref(false)
+const toolkitInfoOpen = ref(false)
+const toolkitExercise = ref<Exercise | null>(null)
 
 const applied = reactive(emptyExerciseListFilters())
 const page = ref(1)
 const pageSize = ref(10)
 
-const tabs: TabKey[] = [IN_PROGRESS_TAB, 'Archived']
+const tabs: TabKey[] = [IN_PROGRESS_TAB, VALIDATED_TAB]
 
 const listQuery = computed<ExerciseListQuery>(() => {
   const inProgress = activeTab.value === IN_PROGRESS_TAB
   return {
-    tab: inProgress ? 'IN_PROGRESS' : 'ARCHIVED',
+    tab: inProgress ? 'IN_PROGRESS' : 'VALIDATED',
     exerciseCode: applied.exerciseCode,
     toolkitName: applied.toolkit === 'All toolkits' ? undefined : applied.toolkit,
     pl3Name: applied.pl3 || undefined,
-    workflowStatus: inProgress
-      ? undefined
-      : applied.finalStatus === 'Approved'
-        ? 'APPROVED'
-        : undefined,
+    sizingMonth: applied.sizingMonth || undefined,
     reviewStage: inProgress ? reviewStageQueryValue(applied.reviewStage) : undefined,
     handler: !inProgress || !applied.reviewer ? undefined : applied.reviewer,
     submittedFrom: inProgress ? applied.submittedFrom || undefined : undefined,
@@ -70,7 +69,6 @@ const total = computed(() => exercisesQuery.data.value?.total ?? 0)
 const toolkits = computed<SupervisorToolkit[]>(() => toolkitsQuery.data.value?.items ?? [])
 const toolkitNames = computed(() => exercisesQuery.data.value?.toolkitNames ?? [])
 const pl3Names = computed(() => exercisesQuery.data.value?.pl3Names ?? [])
-const reviewers = computed(() => exercisesQuery.data.value?.reviewers ?? [])
 const loading = computed(
   () => exercisesQuery.isPending.value && !exercisesQuery.data.value,
 )
@@ -83,7 +81,7 @@ function resetPage() {
 }
 
 function persistTab(tab: TabKey) {
-  const next = tab === 'Archived' ? 'ARCHIVED' : 'IN_PROGRESS'
+  const next = tab === VALIDATED_TAB ? 'VALIDATED' : 'IN_PROGRESS'
   if (route.query.tab === next) return
   void router.replace({
     name: 'supervisor-exercises',
@@ -119,6 +117,11 @@ function openCreate() {
 function onCreated(exercise: Exercise) {
   activeTab.value = IN_PROGRESS_TAB
   void router.push({ name: 'supervisor-exercise-detail', params: { id: exercise.id } })
+}
+
+function openToolkitInfo(exercise: Exercise) {
+  toolkitExercise.value = exercise
+  toolkitInfoOpen.value = true
 }
 
 function openExercise(exercise: Exercise) {
@@ -187,7 +190,6 @@ watch(
           :active-tab="activeTab"
           :pl3-options="pl3Options"
           :toolkit-options="toolkitOptions"
-          :reviewers="reviewers"
           @search="applySearch"
           @clear="clearFilters"
         />
@@ -197,6 +199,7 @@ watch(
           :rows="exercises"
           :loading="loading"
           @open="openExercise"
+          @toolkit-info="openToolkitInfo"
         />
 
         <TablePager
@@ -219,6 +222,12 @@ watch(
       v-model:open="createOpen"
       :toolkits="toolkits"
       @created="onCreated"
+    />
+
+    <ToolkitInfoDialog
+      v-model:open="toolkitInfoOpen"
+      :snapshot="toolkitExercise?.snapshot ?? null"
+      :alignment="toolkitExercise?.timesheetAlignment"
     />
   </div>
 </template>

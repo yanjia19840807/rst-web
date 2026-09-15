@@ -83,7 +83,7 @@ export interface CommittedResultsStatus {
 }
 
 export interface ExerciseListQuery {
-  tab?: 'IN_PROGRESS' | 'ARCHIVED'
+  tab?: 'IN_PROGRESS' | 'VALIDATED' | 'ARCHIVED'
   exerciseCode?: string
   toolkitName?: string
   pl3Name?: string
@@ -91,6 +91,7 @@ export interface ExerciseListQuery {
   reviewStage?: string
   handler?: string
   officialScenario?: string
+  sizingMonth?: string
   createdFrom?: string
   createdTo?: string
   submittedFrom?: string

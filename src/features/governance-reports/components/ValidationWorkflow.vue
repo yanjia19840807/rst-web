@@ -17,10 +17,10 @@ import { createValidationWorkflowColumns } from './validationWorkflowColumns'
 
 const emptyFilters = () => ({
   exerciseCode: '',
-  gbs: 'All',
-  domain: 'All',
-  pl3: 'All',
-  toolkit: 'All',
+  gbs: '',
+  domain: '',
+  pl3: '',
+  toolkit: '',
   agingMinDays: '',
   submittedFrom: '',
   submittedTo: '',
@@ -39,10 +39,10 @@ const fieldClass = 'w-[220px]'
 
 const listQuery = computed<ValidationWorkflowQuery>(() => ({
   exerciseCode: applied.exerciseCode || undefined,
-  center: applied.gbs === 'All' ? undefined : applied.gbs,
-  domain: applied.domain === 'All' ? undefined : applied.domain,
-  pl3Name: applied.pl3 === 'All' ? undefined : applied.pl3,
-  toolkitName: applied.toolkit === 'All' ? undefined : applied.toolkit,
+  center: applied.gbs || undefined,
+  domain: applied.domain || undefined,
+  pl3Name: applied.pl3 || undefined,
+  toolkitName: applied.toolkit || undefined,
   agingMinDays: parseAgingMinDays(applied.agingMinDays),
   submittedFrom: applied.submittedFrom || undefined,
   submittedTo: applied.submittedTo || undefined,
@@ -53,10 +53,10 @@ const listQuery = computed<ValidationWorkflowQuery>(() => ({
 const workflowQuery = useValidationWorkflowQuery(listQuery)
 const rows = computed(() => workflowQuery.data.value?.items ?? [])
 const total = computed(() => workflowQuery.data.value?.total ?? 0)
-const gbsOptions = computed(() => ['All', ...(workflowQuery.data.value?.centers ?? [])])
-const domainOptions = computed(() => ['All', ...(workflowQuery.data.value?.domains ?? [])])
-const pl3Options = computed(() => ['All', ...(workflowQuery.data.value?.pl3Names ?? [])])
-const toolkitOptions = computed(() => ['All', ...(workflowQuery.data.value?.toolkitNames ?? [])])
+const gbsOptions = computed(() => workflowQuery.data.value?.centers ?? [])
+const domainOptions = computed(() => workflowQuery.data.value?.domains ?? [])
+const pl3Options = computed(() => workflowQuery.data.value?.pl3Names ?? [])
+const toolkitOptions = computed(() => workflowQuery.data.value?.toolkitNames ?? [])
 const loading = computed(() => workflowQuery.isPending.value && !workflowQuery.data.value)
 
 const columns = createValidationWorkflowColumns()
@@ -112,6 +112,7 @@ watch(
           </FilterField>
           <FilterField label="GBS Center">
             <NativeSelect v-model="draft.gbs" :class="fieldClass">
+              <option value="">All</option>
               <option v-for="option in gbsOptions" :key="option" :value="option">
                 {{ option }}
               </option>
@@ -119,6 +120,7 @@ watch(
           </FilterField>
           <FilterField label="Domain">
             <NativeSelect v-model="draft.domain" :class="fieldClass">
+              <option value="">All</option>
               <option v-for="option in domainOptions" :key="option" :value="option">
                 {{ option }}
               </option>
@@ -126,6 +128,7 @@ watch(
           </FilterField>
           <FilterField label="PL3">
             <NativeSelect v-model="draft.pl3" :class="fieldClass">
+              <option value="">All</option>
               <option v-for="option in pl3Options" :key="option" :value="option">
                 {{ option }}
               </option>
@@ -133,6 +136,7 @@ watch(
           </FilterField>
           <FilterField label="Toolkit">
             <NativeSelect v-model="draft.toolkit" :class="fieldClass">
+              <option value="">All</option>
               <option v-for="option in toolkitOptions" :key="option" :value="option">
                 {{ option }}
               </option>

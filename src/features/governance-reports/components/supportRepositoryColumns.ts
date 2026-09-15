@@ -1,9 +1,16 @@
+import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
 
+import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+
 import { formatHc, formatVolume } from '../reportFormat'
 import type { SupportCategorySummary, SupportRow } from '../types'
+
+export type SupportRowColumnOptions = {
+  onToolkitInfo?: (row: SupportRow) => void
+}
 
 const categoryHelper = createColumnHelper<SupportCategorySummary>()
 const rowHelper = createColumnHelper<SupportRow>()
@@ -22,13 +29,24 @@ export function createSupportCategoryColumns(): ColumnDef<SupportCategorySummary
   ] as ColumnDef<SupportCategorySummary>[]
 }
 
-export function createSupportRowColumns(): ColumnDef<SupportRow>[] {
+export function createSupportRowColumns(
+  options: SupportRowColumnOptions = {},
+): ColumnDef<SupportRow>[] {
   return [
     rowHelper.accessor('exerciseNo', { header: 'Exercise NO' }),
     rowHelper.accessor('center', { header: 'GBS Center' }),
     rowHelper.accessor('domain', { header: 'Domain' }),
     rowHelper.accessor('pl3', { header: 'PL3' }),
-    rowHelper.accessor('toolkit', { header: 'Toolkit' }),
+    rowHelper.display({
+      id: 'toolkit',
+      header: 'Toolkit',
+      cell: ({ row }) =>
+        h(ToolkitNameCell, {
+          name: row.original.toolkit || '—',
+          canInfo: Boolean(row.original.exerciseUuid && row.original.toolkit),
+          onInfo: () => options.onToolkitInfo?.(row.original),
+        }),
+    }),
     rowHelper.accessor('standardCategory', { header: 'Standard Category' }),
     rowHelper.accessor('activity', { header: 'Activity' }),
     rowHelper.accessor('frequency', { header: 'Frequency' }),

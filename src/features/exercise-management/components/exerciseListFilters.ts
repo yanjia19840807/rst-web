@@ -4,8 +4,8 @@ export type ExerciseListFilterValues = {
   exerciseCode: string
   pl3: string
   toolkit: string
+  sizingMonth: string
   reviewStage: CurrentStepFilter
-  finalStatus: string
   reviewer: string
   submittedFrom: string
   submittedTo: string
@@ -18,8 +18,8 @@ export function emptyExerciseListFilters(): ExerciseListFilterValues {
     exerciseCode: '',
     pl3: '',
     toolkit: 'All toolkits',
+    sizingMonth: '',
     reviewStage: 'All stages',
-    finalStatus: 'All statuses',
     reviewer: '',
     submittedFrom: '',
     submittedTo: '',

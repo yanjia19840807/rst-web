@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
@@ -24,12 +25,13 @@ import { createRstRepositoryColumns } from './rstRepositoryColumns'
 
 const emptyFilters = () => ({
   exerciseCode: '',
-  gbs: 'All',
-  domain: 'All',
-  pl3: 'All',
-  toolkit: 'All',
-  submittedFrom: '',
-  submittedTo: '',
+  gbs: '',
+  domain: '',
+  pl3: '',
+  toolkit: '',
+  sizingMonth: '',
+  validatedFrom: '',
+  validatedTo: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -45,12 +47,13 @@ const fieldClass = 'w-[220px]'
 
 const listQuery = computed<RepositoryListQuery>(() => ({
   exerciseCode: applied.exerciseCode || undefined,
-  center: applied.gbs === 'All' ? undefined : applied.gbs,
-  domain: applied.domain === 'All' ? undefined : applied.domain,
-  pl3Name: applied.pl3 === 'All' ? undefined : applied.pl3,
-  toolkitName: applied.toolkit === 'All' ? undefined : applied.toolkit,
-  submittedFrom: applied.submittedFrom || undefined,
-  submittedTo: applied.submittedTo || undefined,
+  center: applied.gbs || undefined,
+  domain: applied.domain || undefined,
+  pl3Name: applied.pl3 || undefined,
+  toolkitName: applied.toolkit || undefined,
+  sizingMonth: applied.sizingMonth || undefined,
+  validatedFrom: applied.validatedFrom || undefined,
+  validatedTo: applied.validatedTo || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -58,15 +61,15 @@ const listQuery = computed<RepositoryListQuery>(() => ({
 const repositoryQuery = useRepositoryQuery(listQuery)
 const rows = computed(() => repositoryQuery.data.value?.items ?? [])
 const total = computed(() => repositoryQuery.data.value?.total ?? 0)
-const gbsOptions = computed(() => ['All', ...(repositoryQuery.data.value?.centers ?? [])])
-const domainOptions = computed(() => ['All', ...(repositoryQuery.data.value?.domains ?? [])])
-const pl3Options = computed(() => ['All', ...(repositoryQuery.data.value?.pl3Names ?? [])])
-const toolkitOptions = computed(() => ['All', ...(repositoryQuery.data.value?.toolkitNames ?? [])])
+const gbsOptions = computed(() => repositoryQuery.data.value?.centers ?? [])
+const domainOptions = computed(() => repositoryQuery.data.value?.domains ?? [])
+const pl3Options = computed(() => repositoryQuery.data.value?.pl3Names ?? [])
+const toolkitOptions = computed(() => repositoryQuery.data.value?.toolkitNames ?? [])
 const loading = computed(() => repositoryQuery.isPending.value && !repositoryQuery.data.value)
 
 const columns = computed(() =>
   createRstRepositoryColumns({
-    onToolkitClick,
+    onToolkitInfo: onToolkitClick,
   }),
 )
 
@@ -161,8 +164,9 @@ watch(
             <NativeSelect
               :class="fieldClass"
               :model-value="draft.gbs"
-              @update:model-value="draft.gbs = String($event ?? 'All')"
+              @update:model-value="draft.gbs = String($event ?? '')"
             >
+              <option value="">All</option>
               <option v-for="option in gbsOptions" :key="option" :value="option">
                 {{ option }}
               </option>
@@ -172,8 +176,9 @@ watch(
             <NativeSelect
               :class="fieldClass"
               :model-value="draft.domain"
-              @update:model-value="draft.domain = String($event ?? 'All')"
+              @update:model-value="draft.domain = String($event ?? '')"
             >
+              <option value="">All</option>
               <option v-for="option in domainOptions" :key="option" :value="option">
                 {{ option }}
               </option>
@@ -183,8 +188,9 @@ watch(
             <NativeSelect
               :class="fieldClass"
               :model-value="draft.pl3"
-              @update:model-value="draft.pl3 = String($event ?? 'All')"
+              @update:model-value="draft.pl3 = String($event ?? '')"
             >
+              <option value="">All</option>
               <option v-for="option in pl3Options" :key="option" :value="option">
                 {{ option }}
               </option>
@@ -194,25 +200,34 @@ watch(
             <NativeSelect
               :class="fieldClass"
               :model-value="draft.toolkit"
-              @update:model-value="draft.toolkit = String($event ?? 'All')"
+              @update:model-value="draft.toolkit = String($event ?? '')"
             >
+              <option value="">All</option>
               <option v-for="option in toolkitOptions" :key="option" :value="option">
                 {{ option }}
               </option>
             </NativeSelect>
           </FilterField>
-          <FilterField label="Submitted Date From">
+          <FilterField label="Sizing Month">
+            <MonthPicker
+              v-model="draft.sizingMonth"
+              aria-label="Sizing month"
+              placeholder="All months"
+              :class="fieldClass"
+            />
+          </FilterField>
+          <FilterField label="Validated Date From">
             <DatePicker
-              v-model="draft.submittedFrom"
-              aria-label="Submitted date from"
+              v-model="draft.validatedFrom"
+              aria-label="Validated date from"
               placeholder="From"
               :class="fieldClass"
             />
           </FilterField>
-          <FilterField label="Submitted Date To">
+          <FilterField label="Validated Date To">
             <DatePicker
-              v-model="draft.submittedTo"
-              aria-label="Submitted date to"
+              v-model="draft.validatedTo"
+              aria-label="Validated date to"
               placeholder="To"
               :class="fieldClass"
             />

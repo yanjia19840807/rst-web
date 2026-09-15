@@ -4,12 +4,13 @@ import { reactive } from 'vue'
 import QueryPanel from '@/components/QueryPanel.vue'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
-import type { ExerciseReviewerOption } from '../types'
 import {
   CURRENT_STEP_FILTERS,
   IN_PROGRESS_TAB,
+  VALIDATED_TAB,
   type CurrentStepFilter,
 } from '../workflowLabels'
 import {
@@ -18,13 +19,12 @@ import {
 } from './exerciseListFilters'
 import ReviewerPicker from './ReviewerPicker.vue'
 
-type TabKey = typeof IN_PROGRESS_TAB | 'Archived'
+type TabKey = typeof IN_PROGRESS_TAB | typeof VALIDATED_TAB
 
 defineProps<{
   activeTab: TabKey
   pl3Options: string[]
   toolkitOptions: string[]
-  reviewers: ExerciseReviewerOption[]
 }>()
 
 const emit = defineEmits<{
@@ -80,6 +80,15 @@ function onClear() {
         </option>
       </NativeSelect>
     </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Sizing Month
+      <MonthPicker
+        v-model="draft.sizingMonth"
+        aria-label="Sizing month"
+        placeholder="All months"
+        :class="fieldClass"
+      />
+    </label>
     <template v-if="activeTab === IN_PROGRESS_TAB">
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Current Step
@@ -95,7 +104,7 @@ function onClear() {
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Current Reviewer
-        <ReviewerPicker v-model="draft.reviewer" :reviewers="reviewers" />
+        <ReviewerPicker v-model="draft.reviewer" />
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Submitted Date From
@@ -118,30 +127,19 @@ function onClear() {
     </template>
     <template v-else>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Final Status
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.finalStatus"
-          @update:model-value="draft.finalStatus = String($event ?? 'All statuses')"
-        >
-          <option>All statuses</option>
-          <option>Approved</option>
-        </NativeSelect>
-      </label>
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Archived Date From
+        Validated Date From
         <DatePicker
           v-model="draft.archivedFrom"
-          aria-label="Archived date from"
+          aria-label="Validated date from"
           placeholder="From"
           :class="fieldClass"
         />
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Archived Date To
+        Validated Date To
         <DatePicker
           v-model="draft.archivedTo"
-          aria-label="Archived date to"
+          aria-label="Validated date to"
           placeholder="To"
           :class="fieldClass"
         />

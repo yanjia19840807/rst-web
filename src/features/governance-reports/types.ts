@@ -51,7 +51,8 @@ export type RepositoryRow = {
   capacityCreation: number | string | null
   capacityPct: number | string | null
   volumeYoY: string | null
-  submittedDate: string
+  sizingMonth: string
+  validatedDate: string
 }
 
 export type RepositoryListQuery = {
@@ -60,8 +61,9 @@ export type RepositoryListQuery = {
   domain?: string
   pl3Name?: string
   toolkitName?: string
-  submittedFrom?: string
-  submittedTo?: string
+  sizingMonth?: string
+  validatedFrom?: string
+  validatedTo?: string
   page?: number
   pageSize?: number
 }
@@ -91,6 +93,7 @@ export type SupportCategoryOption = {
 
 export type SupportRow = {
   exerciseNo: string
+  exerciseUuid: string
   center: string
   domain: string
   pl3: string
@@ -102,15 +105,15 @@ export type SupportRow = {
   uom: string
   fte: number | string | null
   comments: string
-  submittedDate: string
+  validatedDate: string
 }
 
 export type SupportRepositoryQuery = {
   center?: string
   categoryId?: string
   toolkitName?: string
-  submittedFrom?: string
-  submittedTo?: string
+  validatedFrom?: string
+  validatedTo?: string
   page?: number
   pageSize?: number
 }
@@ -184,7 +187,7 @@ export type BenchmarkRow = {
   capacityCreation: number | string | null
   deliveryHc?: number | string | null
   productionSupport?: number | string | null
-  submittedDate?: string
+  validatedDate?: string
 }
 
 export type BenchmarkPl3Option = {
@@ -198,8 +201,8 @@ export type BenchmarkingQuery = {
   pl1?: string
   pl2?: string
   pl3Code?: string
-  submittedFrom?: string
-  submittedTo?: string
+  validatedFrom?: string
+  validatedTo?: string
   page?: number
   pageSize?: number
 }

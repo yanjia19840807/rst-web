@@ -102,6 +102,7 @@ function exerciseListQuery(params?: ExerciseListQuery) {
     if (params.reviewStage) search.set('reviewStage', params.reviewStage)
     if (params.handler) search.set('handler', params.handler)
     if (params.officialScenario) search.set('officialScenario', params.officialScenario)
+    if (params.sizingMonth) search.set('sizingMonth', params.sizingMonth)
     if (params.createdFrom) search.set('createdFrom', params.createdFrom)
     if (params.createdTo) search.set('createdTo', params.createdTo)
     if (params.submittedFrom) search.set('submittedFrom', params.submittedFrom)

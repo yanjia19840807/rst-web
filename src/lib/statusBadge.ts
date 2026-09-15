@@ -6,6 +6,7 @@ const POSITIVE = new Set([
   'ACTIVE',
   'ENABLED',
   'APPROVED',
+  'VALIDATED',
   'CONFIGURED',
   'SUBMITTED',
 ])

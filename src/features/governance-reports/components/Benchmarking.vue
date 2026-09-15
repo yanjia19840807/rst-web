@@ -22,13 +22,13 @@ import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 
 const emptyFilters = () => ({
-  gbs: 'All',
-  domain: 'All',
-  pl1: 'All',
-  pl2: 'All',
-  pl3: 'All',
-  submittedFrom: '',
-  submittedTo: '',
+  gbs: '',
+  domain: '',
+  pl1: '',
+  pl2: '',
+  pl3: '',
+  validatedFrom: '',
+  validatedTo: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -40,13 +40,13 @@ const exporting = ref(false)
 const fieldClass = 'w-[220px]'
 
 const listQuery = computed<BenchmarkingQuery>(() => ({
-  center: applied.gbs === 'All' ? undefined : applied.gbs,
-  domain: applied.domain === 'All' ? undefined : applied.domain,
-  pl1: applied.pl1 === 'All' ? undefined : applied.pl1,
-  pl2: applied.pl2 === 'All' ? undefined : applied.pl2,
-  pl3Code: applied.pl3 === 'All' ? undefined : applied.pl3,
-  submittedFrom: applied.submittedFrom || undefined,
-  submittedTo: applied.submittedTo || undefined,
+  center: applied.gbs || undefined,
+  domain: applied.domain || undefined,
+  pl1: applied.pl1 || undefined,
+  pl2: applied.pl2 || undefined,
+  pl3Code: applied.pl3 || undefined,
+  validatedFrom: applied.validatedFrom || undefined,
+  validatedTo: applied.validatedTo || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -55,13 +55,13 @@ const benchmarkingQuery = useBenchmarkingQuery(listQuery)
 const data = computed(() => benchmarkingQuery.data.value)
 const rows = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
-const gbsOptions = computed(() => ['All', ...(data.value?.centers ?? [])])
-const domainOptions = computed(() => ['All', ...(data.value?.domains ?? [])])
-const pl1Options = computed(() => ['All', ...(data.value?.pl1Names ?? [])])
-const pl2Options = computed(() => ['All', ...(data.value?.pl2Names ?? [])])
+const gbsOptions = computed(() => data.value?.centers ?? [])
+const domainOptions = computed(() => data.value?.domains ?? [])
+const pl1Options = computed(() => data.value?.pl1Names ?? [])
+const pl2Options = computed(() => data.value?.pl2Names ?? [])
 const pl3Options = computed(() => data.value?.pl3Options ?? [])
 const loading = computed(() => benchmarkingQuery.isPending.value && !benchmarkingQuery.data.value)
-const pl3Selected = computed(() => applied.pl3 !== 'All')
+const pl3Selected = computed(() => Boolean(applied.pl3))
 
 const columns = createBenchmarkingColumns()
 
@@ -122,6 +122,7 @@ watch(
     <QueryPanel show-export :exporting="exporting" @search="applySearch" @clear="clearFilters" @export="exportOpen = true">
       <FilterField label="GBS Center">
         <NativeSelect v-model="draft.gbs" :class="fieldClass">
+          <option value="">All</option>
           <option v-for="option in gbsOptions" :key="option" :value="option">
             {{ option }}
           </option>
@@ -129,6 +130,7 @@ watch(
       </FilterField>
       <FilterField label="Domain">
         <NativeSelect v-model="draft.domain" :class="fieldClass">
+          <option value="">All</option>
           <option v-for="option in domainOptions" :key="option" :value="option">
             {{ option }}
           </option>
@@ -136,6 +138,7 @@ watch(
       </FilterField>
       <FilterField label="PL1">
         <NativeSelect v-model="draft.pl1" :class="fieldClass">
+          <option value="">All</option>
           <option v-for="option in pl1Options" :key="option" :value="option">
             {{ option }}
           </option>
@@ -143,6 +146,7 @@ watch(
       </FilterField>
       <FilterField label="PL2">
         <NativeSelect v-model="draft.pl2" :class="fieldClass">
+          <option value="">All</option>
           <option v-for="option in pl2Options" :key="option" :value="option">
             {{ option }}
           </option>
@@ -150,24 +154,24 @@ watch(
       </FilterField>
       <FilterField label="PL3">
         <NativeSelect v-model="draft.pl3" :class="fieldClass">
-          <option value="All">All</option>
+          <option value="">All</option>
           <option v-for="option in pl3Options" :key="option.code" :value="option.code">
             {{ option.name }}
           </option>
         </NativeSelect>
       </FilterField>
-      <FilterField label="Submitted Date From">
+      <FilterField label="Validated Date From">
         <DatePicker
-          v-model="draft.submittedFrom"
-          aria-label="Submitted date from"
+          v-model="draft.validatedFrom"
+          aria-label="Validated date from"
           placeholder="From"
           :class="fieldClass"
         />
       </FilterField>
-      <FilterField label="Submitted Date To">
+      <FilterField label="Validated Date To">
         <DatePicker
-          v-model="draft.submittedTo"
-          aria-label="Submitted date to"
+          v-model="draft.validatedTo"
+          aria-label="Validated date to"
           placeholder="To"
           :class="fieldClass"
         />

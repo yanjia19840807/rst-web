@@ -1,6 +1,9 @@
 /** Lifecycle bucket (not a step). Matches the In Progress list tab. */
 export const IN_PROGRESS_TAB = 'In Progress' as const
 
+/** Finished list tab: LTH-approved Exercises. */
+export const VALIDATED_TAB = 'Validated' as const
+
 export const SUPERVISOR_SIZING_STEP = 'Supervisor Sizing'
 
 export const CURRENT_STEP_FILTERS = [
@@ -41,7 +44,7 @@ export function currentStepLabel(exercise: {
     case 'UNDER_REVIEW':
       return nextStepLabel(exercise.requiredRole)
     case 'APPROVED':
-      return 'Approved'
+      return 'Validated'
     default:
       return SUPERVISOR_SIZING_STEP
   }
@@ -54,15 +57,15 @@ export function isReturned(exercise: {
 }
 
 /** Maps the Current Step filter label to the list API `reviewStage` value. */
-export type ExerciseListTabQuery = 'IN_PROGRESS' | 'ARCHIVED'
+export type ExerciseListTabQuery = 'IN_PROGRESS' | 'VALIDATED'
 
 /**
  * Maps an Exercise {@code workflowStatus} to the list URL tab.
  * Do not use this to parse {@code ?tab=} — that query is already
- * {@code IN_PROGRESS} or {@code ARCHIVED}.
+ * {@code IN_PROGRESS} or {@code VALIDATED}.
  */
 export function exerciseListTabQuery(status?: string | null): ExerciseListTabQuery {
-  return status === 'APPROVED' ? 'ARCHIVED' : 'IN_PROGRESS'
+  return status === 'APPROVED' ? 'VALIDATED' : 'IN_PROGRESS'
 }
 
 export function exerciseListLocation(status?: string | null) {
@@ -73,8 +76,8 @@ export function exerciseListLocation(status?: string | null) {
 }
 
 export function exerciseListBackLabel(status?: string | null) {
-  return exerciseListTabQuery(status) === 'ARCHIVED'
-    ? '← Back to Archived'
+  return exerciseListTabQuery(status) === 'VALIDATED'
+    ? '← Back to Validated'
     : '← Back to In Progress'
 }
 
