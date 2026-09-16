@@ -3,6 +3,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
 
+import { formatMonth } from '@/lib/datetime'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 
 import { formatHc, formatVolume } from '../reportFormat'
@@ -34,9 +35,6 @@ export function createSupportRowColumns(
 ): ColumnDef<SupportRow>[] {
   return [
     rowHelper.accessor('exerciseNo', { header: 'Exercise NO' }),
-    rowHelper.accessor('center', { header: 'GBS Center' }),
-    rowHelper.accessor('domain', { header: 'Domain' }),
-    rowHelper.accessor('pl3', { header: 'PL3' }),
     rowHelper.display({
       id: 'toolkit',
       header: 'Toolkit',
@@ -47,6 +45,13 @@ export function createSupportRowColumns(
           onInfo: () => options.onToolkitInfo?.(row.original),
         }),
     }),
+    rowHelper.accessor((row) => formatMonth(row.sizingMonth), {
+      id: 'sizingMonth',
+      header: 'Sizing Month',
+    }),
+    rowHelper.accessor('center', { header: 'GBS Center' }),
+    rowHelper.accessor('domain', { header: 'Domain' }),
+    rowHelper.accessor('pl3', { header: 'PL3' }),
     rowHelper.accessor('standardCategory', { header: 'Standard Category' }),
     rowHelper.accessor('activity', { header: 'Activity' }),
     rowHelper.accessor('frequency', { header: 'Frequency' }),

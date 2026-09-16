@@ -258,7 +258,7 @@ watch(
             :columns="rowColumns"
             :data="rows"
             empty-text="No support rows found."
-            table-class="min-w-[900px]"
+            table-class="min-w-[1100px]"
             :get-row-id="(row, index) => `${row.exerciseNo}-${row.activity}-${index}`"
           />
           <TablePager

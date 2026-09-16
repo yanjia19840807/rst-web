@@ -20,11 +20,6 @@ export function createValidationWorkflowColumns(
 ): ColumnDef<ValidationWorkflowRow>[] {
   return [
     columnHelper.accessor('exerciseNo', { header: 'Exercise No' }),
-    columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
-    columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),
-    columnHelper.accessor((row) => displayOrDash(row.pl1), { id: 'pl1', header: 'PL1' }),
-    columnHelper.accessor((row) => displayOrDash(row.pl2), { id: 'pl2', header: 'PL2' }),
-    columnHelper.accessor((row) => displayOrDash(row.pl3), { id: 'pl3', header: 'PL3' }),
     columnHelper.display({
       id: 'toolkit',
       header: 'Toolkit',
@@ -35,6 +30,9 @@ export function createValidationWorkflowColumns(
           onInfo: () => options.onToolkitInfo?.(row.original),
         }),
     }),
+    columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
+    columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),
+    columnHelper.accessor((row) => displayOrDash(row.pl1), { id: 'pl1', header: 'PL1' }),
     columnHelper.accessor((row) => displayOrDash(row.currentStep), {
       id: 'currentStep',
       header: 'Current Step',

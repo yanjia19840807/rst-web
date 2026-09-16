@@ -21,14 +21,6 @@ export function createRstRepositoryColumns(
 ): ColumnDef<RepositoryRow>[] {
   return [
     columnHelper.accessor('exerciseId', { header: 'Exercise No' }),
-    columnHelper.accessor('country', { header: 'GBS Center' }),
-    columnHelper.accessor('kpi', { header: 'Customer Country' }),
-    columnHelper.accessor('carrier', { header: 'Carrier' }),
-    columnHelper.accessor('site', { header: 'GBS Site' }),
-    columnHelper.accessor('domain', { header: 'Domain' }),
-    columnHelper.accessor('pl1', { header: 'PL1' }),
-    columnHelper.accessor('pl2', { header: 'PL2' }),
-    columnHelper.accessor('pl3', { header: 'PL3' }),
     columnHelper.display({
       id: 'toolkit',
       header: 'Toolkit',
@@ -43,6 +35,12 @@ export function createRstRepositoryColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
+    columnHelper.accessor('country', { header: 'GBS Center' }),
+    columnHelper.accessor('kpi', { header: 'Customer Country' }),
+    columnHelper.accessor('carrier', { header: 'Carrier' }),
+    columnHelper.accessor('site', { header: 'GBS Site' }),
+    columnHelper.accessor('domain', { header: 'Domain' }),
+    columnHelper.accessor('pl3', { header: 'PL3' }),
     columnHelper.accessor((row) => formatHc(row.deliveryHc), {
       id: 'deliveryHc',
       header: 'Delivery HC',

@@ -105,6 +105,7 @@ export type SupportRow = {
   uom: string
   fte: number | string | null
   comments: string
+  sizingMonth: string
   validatedDate: string
 }
 
