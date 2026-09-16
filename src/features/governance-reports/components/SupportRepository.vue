@@ -10,6 +10,7 @@ import TablePager from '@/components/TablePager.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
@@ -29,8 +30,11 @@ import {
 
 const emptyFilters = () => ({
   gbs: '',
+  domain: '',
+  pl3: '',
   category: '',
   toolkit: '',
+  sizingMonth: '',
   validatedFrom: '',
   validatedTo: '',
 })
@@ -48,8 +52,11 @@ const fieldClass = 'w-[220px]'
 
 const listQuery = computed<SupportRepositoryQuery>(() => ({
   center: applied.gbs || undefined,
+  domain: applied.domain || undefined,
+  pl3Name: applied.pl3 || undefined,
   categoryId: applied.category || undefined,
   toolkitName: applied.toolkit || undefined,
+  sizingMonth: applied.sizingMonth || undefined,
   validatedFrom: applied.validatedFrom || undefined,
   validatedTo: applied.validatedTo || undefined,
   page: page.value,
@@ -62,6 +69,8 @@ const rows = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
 const categorySummaries = computed(() => data.value?.categorySummaries ?? [])
 const gbsOptions = computed(() => data.value?.centers ?? [])
+const domainOptions = computed(() => data.value?.domains ?? [])
+const pl3Options = computed(() => data.value?.pl3Names ?? [])
 const categoryOptions = computed(() => data.value?.categories ?? [])
 const toolkitOptions = computed(() => data.value?.toolkitNames ?? [])
 const loading = computed(() => supportQuery.isPending.value && !supportQuery.data.value)
@@ -152,6 +161,22 @@ watch(
           </option>
         </NativeSelect>
       </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect v-model="draft.domain" :class="fieldClass">
+          <option value="">All</option>
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect v-model="draft.pl3" :class="fieldClass">
+          <option value="">All</option>
+          <option v-for="option in pl3Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
       <FilterField label="Standard Category">
         <NativeSelect v-model="draft.category" :class="fieldClass">
           <option value="">All</option>
@@ -171,6 +196,14 @@ watch(
             {{ option }}
           </option>
         </NativeSelect>
+      </FilterField>
+      <FilterField label="Sizing Month">
+        <MonthPicker
+          v-model="draft.sizingMonth"
+          aria-label="Sizing month"
+          placeholder="All months"
+          :class="fieldClass"
+        />
       </FilterField>
       <FilterField label="Validated Date From">
         <DatePicker

@@ -176,7 +176,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
         variant="outline"
         @click="domainHeadOpen = true"
       >
-        Domain Head
+        Center Roles
       </Button>
       <Button :loading="uploadMutation.isPending.value" @click="fileInput?.click()">
         {{ uploadMutation.isPending.value ? 'Uploading…' : 'Upload and sync' }}

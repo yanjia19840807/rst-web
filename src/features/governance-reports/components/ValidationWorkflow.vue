@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { toast } from 'vue-sonner'
 
 import QueryPanel from '@/components/QueryPanel.vue'
@@ -10,8 +11,12 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 
-import { useValidationWorkflowQuery } from '../api/queries'
-import type { ValidationWorkflowQuery } from '../types'
+import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
+import type { Exercise } from '@/features/exercise-management/types'
+
+import { governanceApi } from '../api'
+import { governanceQueryKeys, useValidationWorkflowQuery } from '../api/queries'
+import type { ValidationWorkflowQuery, ValidationWorkflowRow } from '../types'
 import FilterField from './FilterField.vue'
 import { createValidationWorkflowColumns } from './validationWorkflowColumns'
 
@@ -35,6 +40,9 @@ const draft = reactive(emptyFilters())
 const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
+const queryClient = useQueryClient()
+const toolkitInfoOpen = ref(false)
+const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
 const fieldClass = 'w-[220px]'
 
 const listQuery = computed<ValidationWorkflowQuery>(() => ({
@@ -59,7 +67,27 @@ const pl3Options = computed(() => workflowQuery.data.value?.pl3Names ?? [])
 const toolkitOptions = computed(() => workflowQuery.data.value?.toolkitNames ?? [])
 const loading = computed(() => workflowQuery.isPending.value && !workflowQuery.data.value)
 
-const columns = createValidationWorkflowColumns()
+const columns = computed(() =>
+  createValidationWorkflowColumns({
+    onToolkitInfo: onToolkitClick,
+  }),
+)
+
+async function onToolkitClick(row: ValidationWorkflowRow) {
+  if (!row.exerciseUuid) {
+    toast.error('Could not load toolkit info.')
+    return
+  }
+  try {
+    toolkitSnapshot.value = await queryClient.fetchQuery({
+      queryKey: governanceQueryKeys.validationWorkflowToolkit(row.exerciseUuid),
+      queryFn: () => governanceApi.validationWorkflowToolkitInfo(row.exerciseUuid),
+    })
+    toolkitInfoOpen.value = true
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
+  }
+}
 
 function applySearch() {
   Object.assign(applied, { ...draft })
@@ -99,83 +127,83 @@ watch(
 </script>
 
 <template>
-  <div class="min-w-0">
-    <Card>
-      <CardContent class="space-y-3">
-        <QueryPanel @search="applySearch" @clear="clearFilters">
-          <FilterField label="Exercise No">
-            <Input
-              v-model="draft.exerciseCode"
-              :class="fieldClass"
-              placeholder="Search exercise no"
-            />
-          </FilterField>
-          <FilterField label="GBS Center">
-            <NativeSelect v-model="draft.gbs" :class="fieldClass">
-              <option value="">All</option>
-              <option v-for="option in gbsOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="Domain">
-            <NativeSelect v-model="draft.domain" :class="fieldClass">
-              <option value="">All</option>
-              <option v-for="option in domainOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="PL3">
-            <NativeSelect v-model="draft.pl3" :class="fieldClass">
-              <option value="">All</option>
-              <option v-for="option in pl3Options" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="Toolkit">
-            <NativeSelect v-model="draft.toolkit" :class="fieldClass">
-              <option value="">All</option>
-              <option v-for="option in toolkitOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="Aging (min days)">
-            <Input
-              v-model="draft.agingMinDays"
-              type="number"
-              min="0"
-              :class="fieldClass"
-              placeholder="e.g. 14"
-            />
-          </FilterField>
-          <FilterField label="Submitted Date From">
-            <DatePicker
-              v-model="draft.submittedFrom"
-              aria-label="Submitted date from"
-              placeholder="From"
-              :class="fieldClass"
-            />
-          </FilterField>
-          <FilterField label="Submitted Date To">
-            <DatePicker
-              v-model="draft.submittedTo"
-              aria-label="Submitted date to"
-              placeholder="To"
-              :class="fieldClass"
-            />
-          </FilterField>
-        </QueryPanel>
+  <div class="grid min-w-0 gap-4">
+    <QueryPanel title="Filters" @search="applySearch" @clear="clearFilters">
+      <FilterField label="Exercise No">
+        <Input
+          v-model="draft.exerciseCode"
+          :class="fieldClass"
+          placeholder="Search exercise no"
+        />
+      </FilterField>
+      <FilterField label="GBS Center">
+        <NativeSelect v-model="draft.gbs" :class="fieldClass">
+          <option value="">All</option>
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect v-model="draft.domain" :class="fieldClass">
+          <option value="">All</option>
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect v-model="draft.pl3" :class="fieldClass">
+          <option value="">All</option>
+          <option v-for="option in pl3Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Toolkit">
+        <NativeSelect v-model="draft.toolkit" :class="fieldClass">
+          <option value="">All</option>
+          <option v-for="option in toolkitOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Aging (min days)">
+        <Input
+          v-model="draft.agingMinDays"
+          type="number"
+          min="0"
+          :class="fieldClass"
+          placeholder="e.g. 14"
+        />
+      </FilterField>
+      <FilterField label="Submitted Date From">
+        <DatePicker
+          v-model="draft.submittedFrom"
+          aria-label="Submitted date from"
+          placeholder="From"
+          :class="fieldClass"
+        />
+      </FilterField>
+      <FilterField label="Submitted Date To">
+        <DatePicker
+          v-model="draft.submittedTo"
+          aria-label="Submitted date to"
+          placeholder="To"
+          :class="fieldClass"
+        />
+      </FilterField>
+    </QueryPanel>
 
+    <Card>
+      <CardContent>
         <DataTable
           :columns="columns"
           :data="rows"
           :pending="loading"
           empty-text="No stuck exercises found."
-          table-class="min-w-[900px]"
-          :get-row-id="(row) => row.exerciseNo"
+          table-class="min-w-[1280px]"
+          :get-row-id="(row) => row.exerciseUuid || row.exerciseNo"
         />
 
         <TablePager
@@ -193,5 +221,7 @@ watch(
         />
       </CardContent>
     </Card>
+
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
   </div>
 </template>

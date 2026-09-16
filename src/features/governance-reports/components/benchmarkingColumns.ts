@@ -11,8 +11,10 @@ const columnHelper = createColumnHelper<BenchmarkRow>()
 
 export function createBenchmarkingColumns(): ColumnDef<BenchmarkRow>[] {
   return [
-    columnHelper.accessor('gbs', { header: 'GBS' }),
-    columnHelper.accessor('sharedKpiLine', { header: 'Shared KPI Line' }),
+    columnHelper.accessor('gbs', { header: 'GBS Center' }),
+    columnHelper.accessor('carrier', { header: 'Carrier' }),
+    columnHelper.accessor('site', { header: 'GBS Site' }),
+    columnHelper.accessor('sharedKpiLine', { header: 'Customer country' }),
     columnHelper.accessor('domain', { header: 'Domain' }),
     columnHelper.accessor('pl3', { header: 'PL3' }),
     columnHelper.accessor((row) => formatSeconds(row.cycleTimeSeconds), {

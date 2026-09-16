@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
@@ -6,6 +7,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -22,7 +24,6 @@ import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
 
 const emptyFilters = () => ({
-  gbs: '',
   domain: '',
   pl1: '',
   pl2: '',
@@ -40,7 +41,6 @@ const exporting = ref(false)
 const fieldClass = 'w-[220px]'
 
 const listQuery = computed<BenchmarkingQuery>(() => ({
-  center: applied.gbs || undefined,
   domain: applied.domain || undefined,
   pl1: applied.pl1 || undefined,
   pl2: applied.pl2 || undefined,
@@ -55,17 +55,49 @@ const benchmarkingQuery = useBenchmarkingQuery(listQuery)
 const data = computed(() => benchmarkingQuery.data.value)
 const rows = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
-const gbsOptions = computed(() => data.value?.centers ?? [])
-const domainOptions = computed(() => data.value?.domains ?? [])
-const pl1Options = computed(() => data.value?.pl1Names ?? [])
-const pl2Options = computed(() => data.value?.pl2Names ?? [])
-const pl3Options = computed(() => data.value?.pl3Options ?? [])
+const processPaths = computed(() => data.value?.processPaths ?? [])
 const loading = computed(() => benchmarkingQuery.isPending.value && !benchmarkingQuery.data.value)
 const pl3Selected = computed(() => Boolean(applied.pl3))
+const pathReady = computed(() => Boolean(draft.pl3))
+
+const domainOptions = computed(() => unique(processPaths.value.map((path) => path.domain)))
+const pl1Options = computed(() =>
+  unique(
+    processPaths.value
+      .filter((path) => path.domain === draft.domain)
+      .map((path) => path.pl1),
+  ),
+)
+const pl2Options = computed(() =>
+  unique(
+    processPaths.value
+      .filter((path) => path.domain === draft.domain && path.pl1 === draft.pl1)
+      .map((path) => path.pl2),
+  ),
+)
+const pl3Options = computed(() => {
+  const seen = new Map<string, string>()
+  for (const path of processPaths.value) {
+    if (path.domain !== draft.domain || path.pl1 !== draft.pl1 || path.pl2 !== draft.pl2) {
+      continue
+    }
+    if (!seen.has(path.pl3Code)) {
+      seen.set(path.pl3Code, path.pl3Name)
+    }
+  }
+  return [...seen.entries()]
+    .map(([code, name]) => ({ code, name }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.code.localeCompare(b.code))
+})
 
 const columns = createBenchmarkingColumns()
 
+function unique(values: string[]) {
+  return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right))
+}
+
 function applySearch() {
+  if (!draft.pl3) return
   Object.assign(applied, { ...draft })
   page.value = 1
 }
@@ -76,7 +108,26 @@ function clearFilters() {
   page.value = 1
 }
 
+function onDomainChange(value: unknown) {
+  draft.domain = String(value ?? '')
+  draft.pl1 = ''
+  draft.pl2 = ''
+  draft.pl3 = ''
+}
+
+function onPl1Change(value: unknown) {
+  draft.pl1 = String(value ?? '')
+  draft.pl2 = ''
+  draft.pl3 = ''
+}
+
+function onPl2Change(value: unknown) {
+  draft.pl2 = String(value ?? '')
+  draft.pl3 = ''
+}
+
 async function confirmExport() {
+  if (!applied.pl3) return
   exporting.value = true
   try {
     const { page: _page, pageSize: _pageSize, ...filters } = listQuery.value
@@ -119,42 +170,67 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-4">
-    <QueryPanel show-export :exporting="exporting" @search="applySearch" @clear="clearFilters" @export="exportOpen = true">
-      <FilterField label="GBS Center">
-        <NativeSelect v-model="draft.gbs" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in gbsOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
+    <Alert variant="info">
+      <Info />
+      <AlertDescription>
+        Select Domain → PL1 → PL2 → PL3 to compare that work across GBS Centers.
+      </AlertDescription>
+    </Alert>
+    <QueryPanel
+      show-export
+      :exporting="exporting"
+      :search-disabled="!pathReady"
+      @search="applySearch"
+      @clear="clearFilters"
+      @export="exportOpen = true"
+    >
       <FilterField label="Domain">
-        <NativeSelect v-model="draft.domain" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect
+          :model-value="draft.domain"
+          :class="fieldClass"
+          @update:model-value="onDomainChange"
+        >
+          <option value="">Select Domain</option>
           <option v-for="option in domainOptions" :key="option" :value="option">
             {{ option }}
           </option>
         </NativeSelect>
       </FilterField>
       <FilterField label="PL1">
-        <NativeSelect v-model="draft.pl1" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect
+          :model-value="draft.pl1"
+          :class="fieldClass"
+          :disabled="!draft.domain"
+          @update:model-value="onPl1Change"
+        >
+          <option value="">
+            {{ draft.domain ? 'Select PL1' : 'Select Domain first' }}
+          </option>
           <option v-for="option in pl1Options" :key="option" :value="option">
             {{ option }}
           </option>
         </NativeSelect>
       </FilterField>
       <FilterField label="PL2">
-        <NativeSelect v-model="draft.pl2" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect
+          :model-value="draft.pl2"
+          :class="fieldClass"
+          :disabled="!draft.pl1"
+          @update:model-value="onPl2Change"
+        >
+          <option value="">
+            {{ draft.pl1 ? 'Select PL2' : 'Select PL1 first' }}
+          </option>
           <option v-for="option in pl2Options" :key="option" :value="option">
             {{ option }}
           </option>
         </NativeSelect>
       </FilterField>
       <FilterField label="PL3">
-        <NativeSelect v-model="draft.pl3" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect v-model="draft.pl3" :class="fieldClass" :disabled="!draft.pl2">
+          <option value="">
+            {{ draft.pl2 ? 'Select PL3' : 'Select PL2 first' }}
+          </option>
           <option v-for="option in pl3Options" :key="option.code" :value="option.code">
             {{ option.name }}
           </option>
@@ -189,14 +265,14 @@ watch(
           value-class="text-base"
         />
         <MetricCard
-          label="Best daily capacity / agent"
-          :value="formatCapacity(data.bestDailyCapacity)"
-          :hint="data.bestDailyCapacityHint || undefined"
+          label="Daily capacity / agent"
+          :value="formatCapacity(data.dailyCapacityPerAgent)"
+          hint="HC-weighted across centers"
         />
         <MetricCard
-          label="Median cycle time"
-          :value="formatSeconds(data.medianCycleTimeSeconds)"
-          hint="Same PL3 median"
+          label="Cycle time"
+          :value="formatSeconds(data.cycleTimeSeconds)"
+          hint="HC-weighted across centers"
         />
         <MetricCard
           label="Production support ratio"
@@ -214,11 +290,11 @@ watch(
             :columns="columns"
             :data="rows"
             table-class="min-w-[1100px]"
-            :get-row-id="(row, index) => `${row.pl3Code}-${row.gbs}-${row.sharedKpiLine}-${index}`"
+            :get-row-id="(row, index) => `${row.pl3Code}-${row.gbs}-${row.carrier}-${row.site}-${row.sharedKpiLine}-${index}`"
             :empty-text="
               pl3Selected
                 ? 'No benchmark rows found.'
-                : 'Select a PL3 to compare like-for-like work.'
+                : 'Select a PL3 to compare across GBS Centers.'
             "
           />
           <TablePager

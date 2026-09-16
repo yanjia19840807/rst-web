@@ -4,7 +4,7 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { domainHeadApi } from '../api'
 
 export const domainHeadQueryKeys = {
-  all: ['domain-heads'] as const,
+  all: ['center-roles'] as const,
   centers: () => [...domainHeadQueryKeys.all, 'centers'] as const,
   page: (center?: string) => [...domainHeadQueryKeys.all, 'page', center ?? ''] as const,
 }

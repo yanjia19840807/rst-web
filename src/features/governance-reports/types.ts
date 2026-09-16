@@ -110,8 +110,11 @@ export type SupportRow = {
 
 export type SupportRepositoryQuery = {
   center?: string
+  domain?: string
+  pl3Name?: string
   categoryId?: string
   toolkitName?: string
+  sizingMonth?: string
   validatedFrom?: string
   validatedTo?: string
   page?: number
@@ -129,14 +132,19 @@ export type SupportRepositoryResponse = {
   total: number
   totalPages: number
   centers: string[]
+  domains: string[]
+  pl3Names: string[]
   categories: SupportCategoryOption[]
   toolkitNames: string[]
 }
 
 export type ValidationWorkflowRow = {
   exerciseNo: string
+  exerciseUuid: string
   gbs: string
   domain: string
+  pl1: string
+  pl2: string
   pl3: string
   toolkit: string
   currentStep: string
@@ -175,6 +183,8 @@ export type ValidationWorkflowView = {
 
 export type BenchmarkRow = {
   gbs: string
+  carrier: string
+  site: string
   sharedKpiLine: string
   domain: string
   pl1?: string
@@ -190,13 +200,15 @@ export type BenchmarkRow = {
   validatedDate?: string
 }
 
-export type BenchmarkPl3Option = {
-  code: string
-  name: string
+export type BenchmarkProcessPath = {
+  domain: string
+  pl1: string
+  pl2: string
+  pl3Code: string
+  pl3Name: string
 }
 
 export type BenchmarkingQuery = {
-  center?: string
   domain?: string
   pl1?: string
   pl2?: string
@@ -209,18 +221,13 @@ export type BenchmarkingQuery = {
 
 export type BenchmarkingView = {
   selectedPl3: string
-  bestDailyCapacity: number | string | null
-  bestDailyCapacityHint: string
-  medianCycleTimeSeconds: number | string | null
+  dailyCapacityPerAgent: number | string | null
+  cycleTimeSeconds: number | string | null
   productionSupportRatioPct: number | string | null
   items: BenchmarkRow[]
   page: number
   pageSize: number
   total: number
   totalPages: number
-  centers: string[]
-  domains: string[]
-  pl1Names: string[]
-  pl2Names: string[]
-  pl3Options: BenchmarkPl3Option[]
+  processPaths: BenchmarkProcessPath[]
 }

@@ -143,97 +143,97 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-4">
-    <Card>
-      <CardContent class="space-y-3">
-        <QueryPanel
-          title="Filters"
-          show-export
-          :exporting="exporting"
-          @search="applySearch"
-          @clear="clearFilters"
-          @export="exportOpen = true"
+    <QueryPanel
+      title="Filters"
+      show-export
+      :exporting="exporting"
+      @search="applySearch"
+      @clear="clearFilters"
+      @export="exportOpen = true"
+    >
+      <FilterField label="Exercise No">
+        <Input
+          v-model="draft.exerciseCode"
+          :class="fieldClass"
+          placeholder="Search exercise no"
+        />
+      </FilterField>
+      <FilterField label="GBS Center">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.gbs"
+          @update:model-value="draft.gbs = String($event ?? '')"
         >
-          <FilterField label="Exercise No">
-            <Input
-              v-model="draft.exerciseCode"
-              :class="fieldClass"
-              placeholder="Search exercise no"
-            />
-          </FilterField>
-          <FilterField label="GBS Center">
-            <NativeSelect
-              :class="fieldClass"
-              :model-value="draft.gbs"
-              @update:model-value="draft.gbs = String($event ?? '')"
-            >
-              <option value="">All</option>
-              <option v-for="option in gbsOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="Domain">
-            <NativeSelect
-              :class="fieldClass"
-              :model-value="draft.domain"
-              @update:model-value="draft.domain = String($event ?? '')"
-            >
-              <option value="">All</option>
-              <option v-for="option in domainOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="PL3">
-            <NativeSelect
-              :class="fieldClass"
-              :model-value="draft.pl3"
-              @update:model-value="draft.pl3 = String($event ?? '')"
-            >
-              <option value="">All</option>
-              <option v-for="option in pl3Options" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="Toolkit">
-            <NativeSelect
-              :class="fieldClass"
-              :model-value="draft.toolkit"
-              @update:model-value="draft.toolkit = String($event ?? '')"
-            >
-              <option value="">All</option>
-              <option v-for="option in toolkitOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
-          </FilterField>
-          <FilterField label="Sizing Month">
-            <MonthPicker
-              v-model="draft.sizingMonth"
-              aria-label="Sizing month"
-              placeholder="All months"
-              :class="fieldClass"
-            />
-          </FilterField>
-          <FilterField label="Validated Date From">
-            <DatePicker
-              v-model="draft.validatedFrom"
-              aria-label="Validated date from"
-              placeholder="From"
-              :class="fieldClass"
-            />
-          </FilterField>
-          <FilterField label="Validated Date To">
-            <DatePicker
-              v-model="draft.validatedTo"
-              aria-label="Validated date to"
-              placeholder="To"
-              :class="fieldClass"
-            />
-          </FilterField>
-        </QueryPanel>
+          <option value="">All</option>
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.domain"
+          @update:model-value="draft.domain = String($event ?? '')"
+        >
+          <option value="">All</option>
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.pl3"
+          @update:model-value="draft.pl3 = String($event ?? '')"
+        >
+          <option value="">All</option>
+          <option v-for="option in pl3Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Toolkit">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.toolkit"
+          @update:model-value="draft.toolkit = String($event ?? '')"
+        >
+          <option value="">All</option>
+          <option v-for="option in toolkitOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Sizing Month">
+        <MonthPicker
+          v-model="draft.sizingMonth"
+          aria-label="Sizing month"
+          placeholder="All months"
+          :class="fieldClass"
+        />
+      </FilterField>
+      <FilterField label="Validated Date From">
+        <DatePicker
+          v-model="draft.validatedFrom"
+          aria-label="Validated date from"
+          placeholder="From"
+          :class="fieldClass"
+        />
+      </FilterField>
+      <FilterField label="Validated Date To">
+        <DatePicker
+          v-model="draft.validatedTo"
+          aria-label="Validated date to"
+          placeholder="To"
+          :class="fieldClass"
+        />
+      </FilterField>
+    </QueryPanel>
 
+    <Card>
+      <CardContent>
         <DataTable
           :columns="columns"
           :data="rows"

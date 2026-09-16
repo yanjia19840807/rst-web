@@ -169,10 +169,6 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/approver/domain-heads',
-    redirect: '/approver/timesheet-sync',
-  },
-  {
     path: '/approver/timesheet-sync',
     name: 'approver-timesheet-sync',
     component: () => import('@/pages/approver/TimesheetSyncPage.vue'),

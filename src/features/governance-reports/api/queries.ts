@@ -20,6 +20,8 @@ export const governanceQueryKeys = {
     [...governanceQueryKeys.all, 'support-repository', query] as const,
   validationWorkflow: (query: ValidationWorkflowQuery = {}) =>
     [...governanceQueryKeys.all, 'validation-workflow', query] as const,
+  validationWorkflowToolkit: (exerciseId: string) =>
+    [...governanceQueryKeys.all, 'validation-workflow-toolkit', exerciseId] as const,
   benchmarking: (query: BenchmarkingQuery = {}) =>
     [...governanceQueryKeys.all, 'benchmarking', query] as const,
 }

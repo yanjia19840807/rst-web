@@ -3,27 +3,45 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
+import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 
 import { displayOrDash, formatSignedPct } from '../reportFormat'
 import type { ValidationWorkflowRow } from '../types'
 import CapacityCell from './CapacityCell.vue'
 
+export type ValidationWorkflowColumnOptions = {
+  onToolkitInfo?: (row: ValidationWorkflowRow) => void
+}
+
 const columnHelper = createColumnHelper<ValidationWorkflowRow>()
 
-export function createValidationWorkflowColumns(): ColumnDef<ValidationWorkflowRow>[] {
+export function createValidationWorkflowColumns(
+  options: ValidationWorkflowColumnOptions = {},
+): ColumnDef<ValidationWorkflowRow>[] {
   return [
     columnHelper.accessor('exerciseNo', { header: 'Exercise No' }),
-    columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS' }),
+    columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
     columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),
+    columnHelper.accessor((row) => displayOrDash(row.pl1), { id: 'pl1', header: 'PL1' }),
+    columnHelper.accessor((row) => displayOrDash(row.pl2), { id: 'pl2', header: 'PL2' }),
     columnHelper.accessor((row) => displayOrDash(row.pl3), { id: 'pl3', header: 'PL3' }),
-    columnHelper.accessor((row) => displayOrDash(row.toolkit), { id: 'toolkit', header: 'Toolkit' }),
+    columnHelper.display({
+      id: 'toolkit',
+      header: 'Toolkit',
+      cell: ({ row }) =>
+        h(ToolkitNameCell, {
+          name: row.original.toolkit || '—',
+          canInfo: Boolean(row.original.exerciseUuid && row.original.toolkit),
+          onInfo: () => options.onToolkitInfo?.(row.original),
+        }),
+    }),
     columnHelper.accessor((row) => displayOrDash(row.currentStep), {
       id: 'currentStep',
-      header: 'Current step',
+      header: 'Current Step',
     }),
     columnHelper.accessor((row) => displayOrDash(row.currentOwner), {
       id: 'currentOwner',
-      header: 'Current owner',
+      header: 'Current Owner',
     }),
     columnHelper.display({
       id: 'aging',

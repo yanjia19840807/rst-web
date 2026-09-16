@@ -82,7 +82,7 @@ watch(
         />
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-[1.45fr_0.8fr]">
+      <div class="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle class="text-base">RST Completion And Aging By GBS Center</CardTitle>

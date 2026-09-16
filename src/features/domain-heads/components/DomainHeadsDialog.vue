@@ -44,6 +44,7 @@ const usesAdminPicker = computed(
 const selectedCenter = ref('')
 const pendingCenter = ref<string | null>(null)
 const drafts = ref<Record<string, string | null>>({})
+const lthDraft = ref<string | null>(null)
 const domainFilter = ref('')
 const confirmSaveOpen = ref(false)
 const confirmSwitchOpen = ref(false)
@@ -96,13 +97,19 @@ const dirtyMappings = computed(() => {
     }))
 })
 
-const dirty = computed(() => dirtyMappings.value.length > 0)
+const lthDirty = computed(() => {
+  const current = page.value?.lth?.positionId ?? null
+  return lthDraft.value !== current
+})
+
+const dirty = computed(() => dirtyMappings.value.length > 0 || lthDirty.value)
 
 watch(
   () => page.value,
   (value) => {
     if (!value) {
       drafts.value = {}
+      lthDraft.value = null
       return
     }
     const next: Record<string, string | null> = {}
@@ -110,6 +117,7 @@ watch(
       next[row.domain] = row.positionId
     }
     drafts.value = next
+    lthDraft.value = value.lth?.positionId ?? null
   },
   { immediate: true },
 )
@@ -142,7 +150,7 @@ watch(
       toast.error(
         pageQuery.error.value instanceof Error
           ? pageQuery.error.value.message
-          : 'Could not load Domain Head mappings.',
+          : 'Could not load Center Roles.',
       )
     }
   },
@@ -157,7 +165,7 @@ function statusLabel(status: DomainHeadStatus) {
 function emptyMessage() {
   if (usesAdminPicker.value && !selectedCenter.value.trim()) {
     return centers.value.length
-      ? 'Select a Center to configure Domain Heads.'
+      ? 'Select a Center to configure Center Roles.'
       : 'No ACTIVE Person or Scope Center is available.'
   }
   if (!center.value) return 'Current identity has no Center.'
@@ -197,17 +205,18 @@ async function confirmSave() {
   try {
     const result = await saveMutation.mutateAsync({
       center: usesAdminPicker.value ? center.value : undefined,
+      lthPositionId: lthDirty.value ? (lthDraft.value ?? '') : undefined,
       mappings: dirtyMappings.value,
     })
     confirmSaveOpen.value = false
     const remounted = result.remountedCount ?? 0
     toast.success(
       remounted > 0
-        ? `Saved. ${remounted} in-flight CDH review${remounted === 1 ? '' : 's'} remounted.`
-        : 'Domain Head mappings saved.',
+        ? `Saved. ${remounted} in-flight review${remounted === 1 ? '' : 's'} remounted.`
+        : 'Center Roles saved.',
     )
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not save Domain Head mappings.')
+    toast.error(error instanceof Error ? error.message : 'Could not save Center Roles.')
   }
 }
 </script>
@@ -216,10 +225,10 @@ async function confirmSave() {
   <Dialog v-model:open="open">
     <DialogContent class="flex h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
-        <DialogTitle>Domain Head</DialogTitle>
+        <DialogTitle>Center Roles</DialogTitle>
         <DialogDescription>
-          Each GBS Domain can have one CDH approver. Saving remounts in-flight CDH reviews for
-          changed Domains.
+          Assign one LTH per Center and one Domain Head per Domain. Saving remounts in-flight LTH
+          and CDH reviews for the mappings you change.
         </DialogDescription>
       </DialogHeader>
 
@@ -250,38 +259,63 @@ async function confirmSave() {
           <ListLoading v-if="usesAdminPicker && centersQuery.isPending.value && !centers.length" />
           <ListLoading v-else-if="loading" />
           <p
-            v-else-if="!page?.domains.length"
+            v-else-if="!page || !page.dailyAvailable || !page.monthlyAvailable"
             class="py-8 text-center text-sm text-muted-foreground"
           >
             {{ emptyMessage() }}
           </p>
-          <Table v-else>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Domain</TableHead>
-                <TableHead>Approver</TableHead>
-                <TableHead class="w-32">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="row in rows" :key="row.domain">
-                <TableCell class="font-medium">{{ row.domain }}</TableCell>
-                <TableCell>
-                  <ApproverSelect
-                    :model-value="drafts[row.domain] ?? null"
-                    :center="center"
-                    :fallback-name="row.name"
-                    :fallback-position-id="row.positionId"
-                    size="sm"
-                    @update:model-value="drafts[row.domain] = $event"
-                  />
-                </TableCell>
-                <TableCell>
-                  <StatusBadge :status="statusLabel(row.status)" />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <div v-else class="grid gap-5">
+            <div class="grid gap-2">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium">Local Transformation Head</p>
+                <StatusBadge :status="statusLabel(page.lth.status)" />
+              </div>
+              <ApproverSelect
+                :model-value="lthDraft"
+                :center="center"
+                :fallback-name="page.lth.name"
+                :fallback-position-id="page.lth.positionId"
+                size="sm"
+                @update:model-value="lthDraft = $event"
+              />
+            </div>
+            <div class="grid gap-2">
+              <p class="text-sm font-medium">Domain Heads</p>
+              <p
+                v-if="!page.domains.length"
+                class="py-6 text-center text-sm text-muted-foreground"
+              >
+                This Center has no GBS Domain in the ACTIVE Monthly Timesheet.
+              </p>
+              <Table v-else>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Domain</TableHead>
+                    <TableHead>Approver</TableHead>
+                    <TableHead class="w-32">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="row in rows" :key="row.domain">
+                    <TableCell class="font-medium">{{ row.domain }}</TableCell>
+                    <TableCell>
+                      <ApproverSelect
+                        :model-value="drafts[row.domain] ?? null"
+                        :center="center"
+                        :fallback-name="row.name"
+                        :fallback-position-id="row.positionId"
+                        size="sm"
+                        @update:model-value="drafts[row.domain] = $event"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge :status="statusLabel(row.status)" />
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -303,8 +337,8 @@ async function confirmSave() {
 
   <ConfirmDialog
     v-model:open="confirmSaveOpen"
-    title="Save Domain Head mappings?"
-    description="In-flight CDH reviews for the Domains you changed will move to the new approver. Approved steps stay as they are."
+    title="Save Center Roles?"
+    description="In-flight LTH and CDH reviews for the mappings you changed will move to the new approver. Approved steps stay as they are."
     confirm-label="Save"
     confirm-variant="default"
     :pending="saveMutation.isPending.value"
@@ -314,7 +348,7 @@ async function confirmSave() {
   <ConfirmDialog
     v-model:open="confirmSwitchOpen"
     title="Discard unsaved changes?"
-    description="Switching Center will discard your unsaved Domain Head edits."
+    description="Switching Center will discard your unsaved Center Roles edits."
     confirm-label="Discard"
     confirm-variant="destructive"
     @confirm="confirmSwitchCenter"

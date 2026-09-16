@@ -10,12 +10,14 @@ const props = withDefaults(
     defaultOpen?: boolean
     showExport?: boolean
     exporting?: boolean
+    searchDisabled?: boolean
   }>(),
   {
     title: 'Filters',
     defaultOpen: true,
     showExport: false,
     exporting: false,
+    searchDisabled: false,
   },
 )
 
@@ -61,13 +63,13 @@ function onSubmit(event: Event) {
         <slot />
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <Button type="submit">Search</Button>
+        <Button type="submit" :disabled="searchDisabled">Search</Button>
         <Button type="button" variant="outline" @click="emit('clear')">Clear</Button>
         <Button
           v-if="showExport"
           type="button"
           variant="outline"
-          :disabled="exporting"
+          :disabled="exporting || searchDisabled"
           @click="emit('export')"
         >
           Export

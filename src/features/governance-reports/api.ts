@@ -47,8 +47,11 @@ function supportRepositoryFilters(params?: SupportRepositoryQuery) {
   const search = new URLSearchParams()
   if (params) {
     if (params.center) search.set('center', params.center)
+    if (params.domain) search.set('domain', params.domain)
+    if (params.pl3Name) search.set('pl3Name', params.pl3Name)
     if (params.categoryId) search.set('categoryId', params.categoryId)
     if (params.toolkitName) search.set('toolkitName', params.toolkitName)
+    if (params.sizingMonth) search.set('sizingMonth', params.sizingMonth)
     if (params.validatedFrom) search.set('validatedFrom', params.validatedFrom)
     if (params.validatedTo) search.set('validatedTo', params.validatedTo)
   }
@@ -81,7 +84,6 @@ function validationWorkflowQuery(params?: ValidationWorkflowQuery) {
 function benchmarkingFilters(params?: BenchmarkingQuery) {
   const search = new URLSearchParams()
   if (params) {
-    if (params.center) search.set('center', params.center)
     if (params.domain) search.set('domain', params.domain)
     if (params.pl1) search.set('pl1', params.pl1)
     if (params.pl2) search.set('pl2', params.pl2)
@@ -114,6 +116,8 @@ export const governanceApi = {
     ),
   repositoryToolkitInfo: (exerciseId: string) =>
     apiRequest<Exercise['snapshot']>(`${base}/repository/${exerciseId}/toolkit-info`),
+  validationWorkflowToolkitInfo: (exerciseId: string) =>
+    apiRequest<Exercise['snapshot']>(`${base}/validation-workflow/${exerciseId}/toolkit-info`),
   exportRepository: (params?: RepositoryListQuery) =>
     downloadExcel(
       `${base}/repository/export?${repositoryFilters(params).toString()}`,

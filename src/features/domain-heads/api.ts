@@ -2,7 +2,7 @@ import { apiRequest } from '@/api/client'
 
 import type { DomainHeadPage, SaveDomainHeadsRequest } from './types'
 
-const base = '/api/v1/domain-heads'
+const base = '/api/v1/center-roles'
 
 export const domainHeadApi = {
   centers: () => apiRequest<string[]>(`${base}/centers`),
