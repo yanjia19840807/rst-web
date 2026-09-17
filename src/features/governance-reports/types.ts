@@ -9,7 +9,7 @@ export type DashboardMetric = {
 
 export type DashboardCenterRow = {
   center: string
-  applicablePl3: number
+  applicableHc: number
   completedThisQuarter: number
   completionPct: string
   completed3To6Months: number
@@ -21,7 +21,7 @@ export type DashboardCenterRow = {
 
 export type DashboardDomainRow = {
   domain: string
-  applicablePl3: number
+  applicableHc: number
   completed: number
   pct: string
   neverDone: number
