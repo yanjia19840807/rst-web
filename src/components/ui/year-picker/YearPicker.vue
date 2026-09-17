@@ -7,10 +7,13 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from '@lucide/vue'
 
 import { Button, type ButtonVariants } from '@/components/ui/button'
 import {
+  PickerClearButton,
+  pickerClearFooterClass,
   pickerNavButtonClass,
   pickerPanelClass,
   pickerPopoverClass,
   pickerTriggerClass,
+  pickerTriggerWrapClass,
 } from '@/components/ui/picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -74,6 +77,18 @@ function selectYear(year: number) {
   open.value = false
 }
 
+const canClear = computed(() => selected.value != null && !props.disabled)
+
+function clear() {
+  emit('update:modelValue', null)
+  open.value = false
+}
+
+function onClearKey() {
+  if (!canClear.value) return
+  clear()
+}
+
 function shiftDecade(delta: number) {
   decadeStart.value = Math.min(
     Math.max(decadeStart.value + delta * 10, Math.floor(props.minYear / 10) * 10),
@@ -84,26 +99,32 @@ function shiftDecade(delta: number) {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        variant="outline"
-        :size="size"
-        :disabled="disabled"
-        :aria-label="ariaLabel"
-        :aria-invalid="invalid || undefined"
-        :class="
-          cn(
-            pickerTriggerClass,
-            selected == null ? 'text-muted-foreground' : 'text-foreground',
-            props.class,
-          )
-        "
-      >
-        <CalendarIcon />
-        {{ selected != null ? selected : placeholder }}
-      </Button>
-    </PopoverTrigger>
+    <div :class="pickerTriggerWrapClass">
+      <PopoverTrigger as-child>
+        <Button
+          type="button"
+          variant="outline"
+          :size="size"
+          :disabled="disabled"
+          :aria-label="ariaLabel"
+          :aria-invalid="invalid || undefined"
+          :class="
+            cn(
+              pickerTriggerClass,
+              canClear && 'pr-8',
+              selected == null ? 'text-muted-foreground' : 'text-foreground',
+              props.class,
+            )
+          "
+          @keydown.delete.prevent="onClearKey"
+          @keydown.backspace.prevent="onClearKey"
+        >
+          <CalendarIcon />
+          {{ selected != null ? selected : placeholder }}
+        </Button>
+      </PopoverTrigger>
+      <PickerClearButton v-if="canClear" label="Clear year" @click="clear" />
+    </div>
     <PopoverContent :class="cn(pickerPopoverClass, 'min-w-64')" align="start">
       <div :class="pickerPanelClass">
         <div class="flex w-full items-center justify-between gap-1">
@@ -150,6 +171,11 @@ function shiftDecade(delta: number) {
             {{ year }}
           </Button>
         </div>
+      </div>
+      <div v-if="canClear" :class="pickerClearFooterClass">
+        <Button type="button" variant="ghost" size="sm" class="w-full" @click="clear">
+          Clear
+        </Button>
       </div>
     </PopoverContent>
   </Popover>

@@ -2,6 +2,10 @@
 
 export const pickerTriggerClass = 'w-[240px] justify-start text-left font-normal'
 
+export const pickerTriggerWrapClass = 'relative inline-flex'
+
+export const pickerClearFooterClass = 'border-t p-1.5'
+
 export const pickerPopoverClass = 'w-auto overflow-hidden p-0'
 
 export const pickerPanelClass = 'bg-transparent p-2'

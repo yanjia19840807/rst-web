@@ -3,8 +3,9 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
 
-import { formatMonth } from '@/lib/datetime'
+import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
 import { formatHc, formatVolume } from '../reportFormat'
 import type { SupportCategorySummary, SupportRow } from '../types'
@@ -21,7 +22,7 @@ export function createSupportCategoryColumns(): ColumnDef<SupportCategorySummary
     categoryHelper.accessor('category', { header: 'Standard Category' }),
     categoryHelper.accessor((row) => formatHc(row.supportFte), {
       id: 'supportFte',
-      header: 'Support FTE',
+      header: withUnit('Support', FieldUnit.fte),
     }),
     categoryHelper.accessor((row) => row.pctOfSupport || '—', {
       id: 'pctOfSupport',
@@ -49,15 +50,25 @@ export function createSupportRowColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
+    rowHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
+      id: 'validatedDate',
+      header: 'Validated Date',
+    }),
     rowHelper.accessor('center', { header: 'GBS Center' }),
     rowHelper.accessor('domain', { header: 'Domain' }),
     rowHelper.accessor('pl3', { header: 'PL3' }),
     rowHelper.accessor('standardCategory', { header: 'Standard Category' }),
     rowHelper.accessor('activity', { header: 'Activity' }),
     rowHelper.accessor('frequency', { header: 'Frequency' }),
-    rowHelper.accessor((row) => formatVolume(row.volume), { id: 'volume', header: 'Volume' }),
+    rowHelper.accessor((row) => formatVolume(row.volume), {
+      id: 'volume',
+      header: withUnit('Volume', FieldUnit.transactions),
+    }),
     rowHelper.accessor('uom', { header: 'UOM' }),
-    rowHelper.accessor((row) => formatHc(row.fte), { id: 'fte', header: 'FTE' }),
+    rowHelper.accessor((row) => formatHc(row.fte), {
+      id: 'fte',
+      header: withUnit('Support', FieldUnit.fte),
+    }),
     rowHelper.accessor((row) => row.comments || '—', { id: 'comments', header: 'Comments' }),
   ] as ColumnDef<SupportRow>[]
 }

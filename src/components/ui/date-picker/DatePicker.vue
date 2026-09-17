@@ -8,8 +8,14 @@ import { CalendarIcon } from '@lucide/vue'
 
 import { Button, type ButtonVariants } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
+import {
+  PickerClearButton,
+  pickerClearFooterClass,
+  pickerPopoverClass,
+  pickerTriggerClass,
+  pickerTriggerWrapClass,
+} from '@/components/ui/picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { pickerPopoverClass, pickerTriggerClass } from '@/components/ui/picker'
 import { formatDate } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
@@ -70,30 +76,48 @@ watch(() => props.modelValue, syncPlaceholder, { immediate: true })
 watch(open, (isOpen) => {
   if (isOpen) syncPlaceholder()
 })
+
+const canClear = computed(() => Boolean(date.value) && !props.disabled)
+
+function clear() {
+  emit('update:modelValue', '')
+  open.value = false
+}
+
+function onClearKey() {
+  if (!canClear.value) return
+  clear()
+}
 </script>
 
 <template>
   <Popover v-model:open="open" v-slot="{ close }">
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        variant="outline"
-        :size="size"
-        :disabled="disabled"
-        :aria-label="ariaLabel"
-        :aria-invalid="invalid || undefined"
-        :class="
-          cn(
-            pickerTriggerClass,
-            date ? 'text-foreground' : 'text-muted-foreground',
-            props.class,
-          )
-        "
-      >
-        <CalendarIcon />
-        {{ date ? formatDate(date.toString()) : placeholder }}
-      </Button>
-    </PopoverTrigger>
+    <div :class="pickerTriggerWrapClass">
+      <PopoverTrigger as-child>
+        <Button
+          type="button"
+          variant="outline"
+          :size="size"
+          :disabled="disabled"
+          :aria-label="ariaLabel"
+          :aria-invalid="invalid || undefined"
+          :class="
+            cn(
+              pickerTriggerClass,
+              canClear && 'pr-8',
+              date ? 'text-foreground' : 'text-muted-foreground',
+              props.class,
+            )
+          "
+          @keydown.delete.prevent="onClearKey"
+          @keydown.backspace.prevent="onClearKey"
+        >
+          <CalendarIcon />
+          {{ date ? formatDate(date.toString()) : placeholder }}
+        </Button>
+      </PopoverTrigger>
+      <PickerClearButton v-if="canClear" label="Clear date" @click="clear" />
+    </div>
     <PopoverContent :class="pickerPopoverClass" align="start">
       <Calendar
         v-model="date"
@@ -104,6 +128,11 @@ watch(open, (isOpen) => {
         initial-focus
         @update:model-value="close"
       />
+      <div v-if="canClear" :class="pickerClearFooterClass">
+        <Button type="button" variant="ghost" size="sm" class="w-full" @click="clear">
+          Clear
+        </Button>
+      </div>
     </PopoverContent>
   </Popover>
 </template>

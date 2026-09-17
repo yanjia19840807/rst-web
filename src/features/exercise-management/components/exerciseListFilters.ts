@@ -17,7 +17,7 @@ export function emptyExerciseListFilters(): ExerciseListFilterValues {
   return {
     exerciseCode: '',
     pl3: '',
-    toolkit: 'All toolkits',
+    toolkit: '',
     sizingMonth: '',
     reviewStage: 'All stages',
     reviewer: '',

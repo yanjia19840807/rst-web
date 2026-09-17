@@ -24,16 +24,13 @@ export function annualMultiplier(
 ): number | null {
   switch (frequencyCode.trim().toUpperCase()) {
     case 'DAILY':
-    case 'DAY':
       return workingDaysPerYear != null && workingDaysPerYear > 0 ? workingDaysPerYear : null
     case 'WEEKLY':
-    case 'WEEK':
       return 52
     case 'MONTHLY':
-    case 'MONTH':
       return 12
     default:
-      return null
+      throw new Error('frequencyCode must be DAILY, WEEKLY, or MONTHLY.')
   }
 }
 

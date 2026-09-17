@@ -4,6 +4,9 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
+
+import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 
 import { displayOrDash, formatSignedPct } from '../reportFormat'
 import type { ValidationWorkflowRow } from '../types'
@@ -30,6 +33,14 @@ export function createValidationWorkflowColumns(
           onInfo: () => options.onToolkitInfo?.(row.original),
         }),
     }),
+    columnHelper.accessor((row) => formatMonth(row.sizingMonth), {
+      id: 'sizingMonth',
+      header: 'Sizing Month',
+    }),
+    columnHelper.accessor((row) => formatCivilDateTime(row.submittedDate), {
+      id: 'submittedDate',
+      header: 'Submitted Date',
+    }),
     columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
     columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),
     columnHelper.accessor((row) => displayOrDash(row.pl1), { id: 'pl1', header: 'PL1' }),
@@ -43,21 +54,21 @@ export function createValidationWorkflowColumns(
     }),
     columnHelper.display({
       id: 'aging',
-      header: 'Aging',
+      header: withUnit('Aging', FieldUnit.days),
       cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays }),
     }),
     columnHelper.display({
       id: 'capacityCreation',
-      header: 'Capacity Creation',
+      header: withUnit('Capacity Creation', FieldUnit.hc),
       cell: ({ row }) => h(CapacityCell, { value: row.original.capacityCreation }),
     }),
     columnHelper.accessor((row) => formatSignedPct(row.capacityPct), {
       id: 'capacityPct',
-      header: 'Capacity Creation %',
+      header: withUnit('Capacity Creation', FieldUnit.percent),
     }),
     columnHelper.accessor((row) => row.volumeYoY || '—', {
       id: 'volumeYoY',
-      header: 'Volume Increase % YoY',
+      header: withUnit('Volume Increase YoY', FieldUnit.percent),
     }),
   ] as ColumnDef<ValidationWorkflowRow>[]
 }

@@ -131,7 +131,7 @@ watch(
                     <TableHead>GBS Center</TableHead>
                     <TableHead>RST Applicable PL3</TableHead>
                     <TableHead>Completed this quarter</TableHead>
-                    <TableHead>Completion %</TableHead>
+                    <TableHead>Completion (%)</TableHead>
                     <TableHead>Completed in 3-6 months</TableHead>
                     <TableHead>Never done</TableHead>
                     <TableHead>Completed in 6-12 months</TableHead>
@@ -186,7 +186,7 @@ watch(
                     <TableHead>Domain</TableHead>
                     <TableHead>RST Applicable PL3</TableHead>
                     <TableHead>Completed</TableHead>
-                    <TableHead>%</TableHead>
+                    <TableHead>Completion (%)</TableHead>
                     <TableHead>Never done</TableHead>
                   </TableRow>
                 </TableHeader>

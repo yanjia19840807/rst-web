@@ -78,6 +78,10 @@ export type RepositoryListView = {
   domains: string[]
   pl3Names: string[]
   toolkitNames: string[]
+  totalDeliveryHc: number | string | null
+  totalRightSizingHc: number | string | null
+  totalSupport: number | string | null
+  totalCapacityCreation: number | string | null
 }
 
 export type SupportCategorySummary = {
@@ -110,6 +114,7 @@ export type SupportRow = {
 }
 
 export type SupportRepositoryQuery = {
+  exerciseCode?: string
   center?: string
   domain?: string
   pl3Name?: string
@@ -154,6 +159,7 @@ export type ValidationWorkflowRow = {
   capacityCreation: number | string | null
   capacityPct: number | string | null
   volumeYoY: string | null
+  sizingMonth: string
   submittedDate: string
 }
 
@@ -163,6 +169,7 @@ export type ValidationWorkflowQuery = {
   domain?: string
   pl3Name?: string
   toolkitName?: string
+  sizingMonth?: string
   agingMinDays?: number
   submittedFrom?: string
   submittedTo?: string
@@ -198,6 +205,7 @@ export type BenchmarkRow = {
   capacityCreation: number | string | null
   deliveryHc?: number | string | null
   productionSupport?: number | string | null
+  sizingMonth?: string
   validatedDate?: string
 }
 
@@ -214,10 +222,19 @@ export type BenchmarkingQuery = {
   pl1?: string
   pl2?: string
   pl3Code?: string
+  sizingMonth?: string
   validatedFrom?: string
   validatedTo?: string
   page?: number
   pageSize?: number
+}
+
+export type BenchmarkCenterComparison = {
+  gbs: string
+  cycleTimeSeconds: number | string | null
+  dailyCapacityPerAgent: number | string | null
+  productionSupportRatioPct: number | string | null
+  capacityCreation: number | string | null
 }
 
 export type BenchmarkingView = {
@@ -231,4 +248,5 @@ export type BenchmarkingView = {
   total: number
   totalPages: number
   processPaths: BenchmarkProcessPath[]
+  centerComparisons: BenchmarkCenterComparison[]
 }

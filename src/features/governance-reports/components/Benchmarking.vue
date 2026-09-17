@@ -11,14 +11,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
+import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
 import { governanceApi } from '../api'
 import { useBenchmarkingQuery } from '../api/queries'
+
 import { formatCapacity, formatPct, formatSeconds } from '../reportFormat'
 import type { BenchmarkingQuery } from '../types'
+import BenchmarkingCenterCharts from './BenchmarkingCenterCharts.vue'
 import { createBenchmarkingColumns } from './benchmarkingColumns'
 import FilterField from './FilterField.vue'
 import MetricCard from './MetricCard.vue'
@@ -28,6 +32,7 @@ const emptyFilters = () => ({
   pl1: '',
   pl2: '',
   pl3: '',
+  sizingMonth: '',
   validatedFrom: '',
   validatedTo: '',
 })
@@ -45,6 +50,7 @@ const listQuery = computed<BenchmarkingQuery>(() => ({
   pl1: applied.pl1 || undefined,
   pl2: applied.pl2 || undefined,
   pl3Code: applied.pl3 || undefined,
+  sizingMonth: applied.sizingMonth || undefined,
   validatedFrom: applied.validatedFrom || undefined,
   validatedTo: applied.validatedTo || undefined,
   page: page.value,
@@ -236,6 +242,14 @@ watch(
           </option>
         </NativeSelect>
       </FilterField>
+      <FilterField label="Sizing Month">
+        <MonthPicker
+          v-model="draft.sizingMonth"
+          aria-label="Sizing month"
+          placeholder="All months"
+          :class="fieldClass"
+        />
+      </FilterField>
       <FilterField label="Validated Date From">
         <DatePicker
           v-model="draft.validatedFrom"
@@ -265,21 +279,23 @@ watch(
           value-class="text-base"
         />
         <MetricCard
-          label="Daily capacity / agent"
+          :label="withUnit('Daily capacity / agent', FieldUnit.transactions)"
           :value="formatCapacity(data.dailyCapacityPerAgent)"
           hint="HC-weighted across centers"
         />
         <MetricCard
-          label="Cycle time"
+          :label="withUnit('Cycle time', FieldUnit.seconds)"
           :value="formatSeconds(data.cycleTimeSeconds)"
           hint="HC-weighted across centers"
         />
         <MetricCard
-          label="Production support ratio"
+          :label="withUnit('Production support ratio', FieldUnit.percent)"
           :value="formatPct(data.productionSupportRatioPct)"
           hint="Support FTE / Delivery HC"
         />
       </div>
+
+      <BenchmarkingCenterCharts :centers="data.centerComparisons ?? []" />
 
       <Card>
         <CardHeader class="pb-3">

@@ -8,6 +8,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -117,6 +118,9 @@ const colCount = computed(() => {
           </TableCell>
         </TableRow>
       </TableBody>
+      <TableFooter v-if="rows.length && $slots.footer">
+        <slot name="footer" />
+      </TableFooter>
     </Table>
   </div>
 </template>

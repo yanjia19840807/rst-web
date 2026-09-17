@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
@@ -26,6 +27,7 @@ const emptyFilters = () => ({
   domain: '',
   pl3: '',
   toolkit: '',
+  sizingMonth: '',
   agingMinDays: '',
   submittedFrom: '',
   submittedTo: '',
@@ -51,6 +53,7 @@ const listQuery = computed<ValidationWorkflowQuery>(() => ({
   domain: applied.domain || undefined,
   pl3Name: applied.pl3 || undefined,
   toolkitName: applied.toolkit || undefined,
+  sizingMonth: applied.sizingMonth || undefined,
   agingMinDays: parseAgingMinDays(applied.agingMinDays),
   submittedFrom: applied.submittedFrom || undefined,
   submittedTo: applied.submittedTo || undefined,
@@ -168,13 +171,12 @@ watch(
           </option>
         </NativeSelect>
       </FilterField>
-      <FilterField label="Aging (min days)">
-        <Input
-          v-model="draft.agingMinDays"
-          type="number"
-          min="0"
+      <FilterField label="Sizing Month">
+        <MonthPicker
+          v-model="draft.sizingMonth"
+          aria-label="Sizing month"
+          placeholder="All months"
           :class="fieldClass"
-          placeholder="e.g. 14"
         />
       </FilterField>
       <FilterField label="Submitted Date From">
@@ -193,6 +195,15 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
+      <FilterField label="Aging (min days)">
+        <Input
+          v-model="draft.agingMinDays"
+          type="number"
+          min="0"
+          :class="fieldClass"
+          placeholder="e.g. 14"
+        />
+      </FilterField>
     </QueryPanel>
 
     <Card>
@@ -202,7 +213,7 @@ watch(
           :data="rows"
           :pending="loading"
           empty-text="No stuck exercises found."
-          table-class="min-w-[1280px]"
+          table-class="min-w-[1480px]"
           :get-row-id="(row) => row.exerciseUuid || row.exerciseNo"
         />
 

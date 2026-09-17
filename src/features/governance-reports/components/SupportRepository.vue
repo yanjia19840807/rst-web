@@ -9,12 +9,15 @@ import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
+import { TableCell, TableRow } from '@/components/ui/table'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
+import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 import type { Exercise } from '@/features/exercise-management/types'
 
 import { governanceApi } from '../api'
@@ -29,6 +32,7 @@ import {
 } from './supportRepositoryColumns'
 
 const emptyFilters = () => ({
+  exerciseCode: '',
   gbs: '',
   domain: '',
   pl3: '',
@@ -51,6 +55,7 @@ const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
 const fieldClass = 'w-[220px]'
 
 const listQuery = computed<SupportRepositoryQuery>(() => ({
+  exerciseCode: applied.exerciseCode || undefined,
   center: applied.gbs || undefined,
   domain: applied.domain || undefined,
   pl3Name: applied.pl3 || undefined,
@@ -153,6 +158,13 @@ watch(
 <template>
   <div class="grid min-w-0 gap-4">
     <QueryPanel show-export :exporting="exporting" @search="applySearch" @clear="clearFilters" @export="exportOpen = true">
+      <FilterField label="Exercise No">
+        <Input
+          v-model="draft.exerciseCode"
+          :class="fieldClass"
+          placeholder="Search exercise no"
+        />
+      </FilterField>
       <FilterField label="GBS Center">
         <NativeSelect v-model="draft.gbs" :class="fieldClass">
           <option value="">All</option>
@@ -174,18 +186,6 @@ watch(
           <option value="">All</option>
           <option v-for="option in pl3Options" :key="option" :value="option">
             {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="Standard Category">
-        <NativeSelect v-model="draft.category" :class="fieldClass">
-          <option value="">All</option>
-          <option
-            v-for="option in categoryOptions"
-            :key="option.id"
-            :value="option.id"
-          >
-            {{ option.name }}
           </option>
         </NativeSelect>
       </FilterField>
@@ -221,13 +221,28 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
+      <FilterField label="Standard Category">
+        <NativeSelect v-model="draft.category" :class="fieldClass">
+          <option value="">All</option>
+          <option
+            v-for="option in categoryOptions"
+            :key="option.id"
+            :value="option.id"
+          >
+            {{ option.name }}
+          </option>
+        </NativeSelect>
+      </FilterField>
     </QueryPanel>
 
     <ListLoading v-if="loading" class="h-48" />
 
     <template v-else-if="data">
       <div class="grid gap-3 sm:grid-cols-2">
-        <MetricCard label="Total support FTE" :value="formatHc(data.totalSupportFte)" />
+        <MetricCard
+          :label="withUnit('Total support', FieldUnit.fte)"
+          :value="formatHc(data.totalSupportFte)"
+        />
         <MetricCard
           label="Top category"
           :value="data.topCategory || '—'"
@@ -245,7 +260,15 @@ watch(
             :data="categorySummaries"
             empty-text="No support categories found."
             :get-row-id="(row) => row.category"
-          />
+          >
+            <template #footer>
+              <TableRow>
+                <TableCell>Total</TableCell>
+                <TableCell>{{ formatHc(data.totalSupportFte) }}</TableCell>
+                <TableCell>{{ Number(data.totalSupportFte) > 0 ? '100.0%' : '0.0%' }}</TableCell>
+              </TableRow>
+            </template>
+          </DataTable>
         </CardContent>
       </Card>
 
@@ -260,7 +283,26 @@ watch(
             empty-text="No support rows found."
             table-class="min-w-[1100px]"
             :get-row-id="(row, index) => `${row.exerciseNo}-${row.activity}-${index}`"
-          />
+          >
+            <template #footer>
+              <TableRow>
+                <TableCell>Total</TableCell>
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell>{{ formatHc(data.totalSupportFte) }}</TableCell>
+                <TableCell />
+              </TableRow>
+            </template>
+          </DataTable>
           <TablePager
             :total="total"
             :page="page"

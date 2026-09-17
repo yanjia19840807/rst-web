@@ -14,7 +14,8 @@ describe('supportOptions', () => {
     expect(annualMultiplier('DAILY', 0)).toBeNull()
     expect(annualMultiplier('DAILY', 250)).toBe(250)
     expect(annualMultiplier('WEEKLY', null)).toBe(52)
-    expect(annualMultiplier('UNKNOWN', 250)).toBeNull()
+    expect(annualMultiplier('MONTHLY', null)).toBe(12)
+    expect(() => annualMultiplier('UNKNOWN', 250)).toThrow(/DAILY, WEEKLY, or MONTHLY/)
   })
 
   it('does not invent 2080 annual hours', () => {

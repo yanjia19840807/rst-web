@@ -3,8 +3,9 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import '@/components/ui/data-table/types'
 
-import { formatMonth } from '@/lib/datetime'
+import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
 import { formatHc, formatSignedPct } from '../reportFormat'
 import type { RepositoryRow } from '../types'
@@ -35,6 +36,10 @@ export function createRstRepositoryColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
+    columnHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
+      id: 'validatedDate',
+      header: 'Validated Date',
+    }),
     columnHelper.accessor('country', { header: 'GBS Center' }),
     columnHelper.accessor('kpi', { header: 'Customer Country' }),
     columnHelper.accessor('carrier', { header: 'Carrier' }),
@@ -51,20 +56,20 @@ export function createRstRepositoryColumns(
     }),
     columnHelper.accessor((row) => formatHc(row.support), {
       id: 'support',
-      header: 'Production Support',
+      header: withUnit('Production Support', FieldUnit.fte),
     }),
     columnHelper.display({
       id: 'capacityCreation',
-      header: 'Capacity Creation',
+      header: withUnit('Capacity Creation', FieldUnit.hc),
       cell: ({ row }) => h(CapacityCell, { value: row.original.capacityCreation }),
     }),
     columnHelper.accessor((row) => formatSignedPct(row.capacityPct), {
       id: 'capacityPct',
-      header: 'Capacity Creation %',
+      header: withUnit('Capacity Creation', FieldUnit.percent),
     }),
     columnHelper.accessor((row) => row.volumeYoY || '—', {
       id: 'volumeYoY',
-      header: 'Volume Increase % YoY',
+      header: withUnit('Volume Increase YoY', FieldUnit.percent),
     }),
   ] as ColumnDef<RepositoryRow>[]
 }

@@ -8,6 +8,7 @@ import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
+import { TableCell, TableRow } from '@/components/ui/table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
@@ -19,7 +20,9 @@ import type { Exercise } from '@/features/exercise-management/types'
 
 import { governanceApi } from '../api'
 import { governanceQueryKeys, useRepositoryQuery } from '../api/queries'
+import { formatHc } from '../reportFormat'
 import type { RepositoryListQuery, RepositoryRow } from '../types'
+import CapacityCell from './CapacityCell.vue'
 import FilterField from './FilterField.vue'
 import { createRstRepositoryColumns } from './rstRepositoryColumns'
 
@@ -241,7 +244,30 @@ watch(
           empty-text="No repository records found."
           table-class="min-w-[1480px]"
           :get-row-id="(row, index) => `${row.exerciseId}-${row.site}-${row.toolkit}-${index}`"
-        />
+        >
+          <template #footer>
+            <TableRow>
+              <TableCell>Total</TableCell>
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell />
+              <TableCell>{{ formatHc(repositoryQuery.data.value?.totalDeliveryHc) }}</TableCell>
+              <TableCell>{{ formatHc(repositoryQuery.data.value?.totalRightSizingHc) }}</TableCell>
+              <TableCell>{{ formatHc(repositoryQuery.data.value?.totalSupport) }}</TableCell>
+              <TableCell>
+                <CapacityCell :value="repositoryQuery.data.value?.totalCapacityCreation" />
+              </TableCell>
+              <TableCell>—</TableCell>
+              <TableCell />
+            </TableRow>
+          </template>
+        </DataTable>
 
         <TablePager
           :total="total"

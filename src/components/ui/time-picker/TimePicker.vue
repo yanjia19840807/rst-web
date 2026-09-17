@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ClockIcon } from '@lucide/vue'
 
 import { Button, type ButtonVariants } from '@/components/ui/button'
 import { NativeSelectOption } from '@/components/ui/native-select'
 import {
+  PickerClearButton,
   PickerOverlaySelect,
+  pickerClearFooterClass,
   pickerPanelClass,
   pickerPopoverClass,
   pickerTriggerClass,
+  pickerTriggerWrapClass,
 } from '@/components/ui/picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -68,6 +71,19 @@ const hourOptions = Array.from({ length: 24 }, (_, index) => pad(index))
 const minuteOptions = Array.from({ length: 60 }, (_, index) => pad(index))
 const secondOptions = Array.from({ length: 60 }, (_, index) => pad(index))
 
+const open = ref(false)
+const canClear = computed(() => hasValue.value && !props.disabled)
+
+function clear() {
+  emit('update:modelValue', '')
+  open.value = false
+}
+
+function onClearKey() {
+  if (!canClear.value) return
+  clear()
+}
+
 function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) {
   const nextHours = (next.hours ?? hours.value) || '00'
   const nextMinutes = (next.minutes ?? minutes.value) || '00'
@@ -77,27 +93,33 @@ function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) 
 </script>
 
 <template>
-  <Popover>
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        variant="outline"
-        :size="size"
-        :disabled="disabled"
-        :aria-label="ariaLabel"
-        :aria-invalid="invalid || undefined"
-        :class="
-          cn(
-            pickerTriggerClass,
-            hasValue ? 'text-foreground' : 'text-muted-foreground',
-            props.class,
-          )
-        "
-      >
-        <ClockIcon />
-        {{ display }}
-      </Button>
-    </PopoverTrigger>
+  <Popover v-model:open="open">
+    <div :class="pickerTriggerWrapClass">
+      <PopoverTrigger as-child>
+        <Button
+          type="button"
+          variant="outline"
+          :size="size"
+          :disabled="disabled"
+          :aria-label="ariaLabel"
+          :aria-invalid="invalid || undefined"
+          :class="
+            cn(
+              pickerTriggerClass,
+              canClear && 'pr-8',
+              hasValue ? 'text-foreground' : 'text-muted-foreground',
+              props.class,
+            )
+          "
+          @keydown.delete.prevent="onClearKey"
+          @keydown.backspace.prevent="onClearKey"
+        >
+          <ClockIcon />
+          {{ display }}
+        </Button>
+      </PopoverTrigger>
+      <PickerClearButton v-if="canClear" label="Clear time" @click="clear" />
+    </div>
     <PopoverContent :class="pickerPopoverClass" align="start">
       <div :class="cn(pickerPanelClass, 'flex items-center justify-center gap-1')">
         <PickerOverlaySelect
@@ -134,6 +156,11 @@ function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) 
             </NativeSelectOption>
           </PickerOverlaySelect>
         </template>
+      </div>
+      <div v-if="canClear" :class="pickerClearFooterClass">
+        <Button type="button" variant="ghost" size="sm" class="w-full" @click="clear">
+          Clear
+        </Button>
       </div>
     </PopoverContent>
   </Popover>

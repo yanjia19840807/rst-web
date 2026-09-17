@@ -73,8 +73,9 @@ function onClear() {
       <NativeSelect
         :class="fieldClass"
         :model-value="draft.toolkit"
-        @update:model-value="draft.toolkit = String($event ?? 'All toolkits')"
+        @update:model-value="draft.toolkit = String($event ?? '')"
       >
+        <option value="">All toolkits</option>
         <option v-for="option in toolkitOptions" :key="option" :value="option">
           {{ option }}
         </option>

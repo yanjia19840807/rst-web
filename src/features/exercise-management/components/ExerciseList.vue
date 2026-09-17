@@ -48,7 +48,7 @@ const listQuery = computed<ExerciseListQuery>(() => {
   return {
     tab: inProgress ? 'IN_PROGRESS' : 'VALIDATED',
     exerciseCode: applied.exerciseCode,
-    toolkitName: applied.toolkit === 'All toolkits' ? undefined : applied.toolkit,
+    toolkitName: applied.toolkit || undefined,
     pl3Name: applied.pl3 || undefined,
     sizingMonth: applied.sizingMonth || undefined,
     reviewStage: inProgress ? reviewStageQueryValue(applied.reviewStage) : undefined,
@@ -74,7 +74,7 @@ const loading = computed(
 )
 
 const pl3Options = computed(() => pl3Names.value)
-const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
+const toolkitOptions = computed(() => toolkitNames.value)
 
 function resetPage() {
   page.value = 1
