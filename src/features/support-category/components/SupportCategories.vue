@@ -8,7 +8,6 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,8 +39,6 @@ const adding = ref(false)
 const editingId = ref<string | null>(null)
 const draftName = ref('')
 const nameInvalid = ref(false)
-const disableOpen = ref(false)
-const pendingDisable = ref<SupportCategoryAdminRow | null>(null)
 const deleteOpen = ref(false)
 const pendingDelete = ref<SupportCategoryAdminRow | null>(null)
 const localRows = ref<SupportCategoryAdminRow[]>([])
@@ -135,29 +132,6 @@ async function confirmEdit() {
   }
 }
 
-function categoryStatusLabel(status: SupportCategoryAdminRow['status']) {
-  return status === 'ACTIVE' ? 'Enabled' : 'Disabled'
-}
-
-function requestDisable(row: SupportCategoryAdminRow) {
-  if (formLocked.value || saving.value) return
-  pendingDisable.value = row
-  disableOpen.value = true
-}
-
-async function confirmDisable() {
-  const row = pendingDisable.value
-  if (!row) return
-  await saveUpdate(row, { status: 'INACTIVE' })
-  disableOpen.value = false
-  pendingDisable.value = null
-}
-
-async function enable(row: SupportCategoryAdminRow) {
-  if (formLocked.value || saving.value) return
-  await saveUpdate(row, { status: 'ACTIVE' })
-}
-
 function requestDelete(row: SupportCategoryAdminRow) {
   if (formLocked.value || saving.value) return
   pendingDelete.value = row
@@ -192,14 +166,13 @@ async function onDragEnd() {
 
 async function saveUpdate(
   row: SupportCategoryAdminRow,
-  patch: Partial<Pick<SupportCategoryAdminRow, 'name' | 'status' | 'displayOrder'>>,
+  patch: Partial<Pick<SupportCategoryAdminRow, 'name' | 'displayOrder'>>,
 ) {
   try {
     await updateMutation.mutateAsync({
       id: row.id,
       body: {
         name: patch.name ?? row.name,
-        status: patch.status ?? row.status,
         displayOrder: patch.displayOrder ?? row.displayOrder,
       },
     })
@@ -222,7 +195,7 @@ async function saveUpdate(
     <CardHeader>
       <CardDescription>
         Standard Production Support categories used in Workload Registry and Support Repository.
-        Drag the handle to reorder. Disabled names stay on existing rows but are hidden from new
+        Drag the handle to reorder. Deleted names stay on existing rows but are hidden from new
         selections.
       </CardDescription>
     </CardHeader>
@@ -234,7 +207,6 @@ async function saveUpdate(
             <TableRow>
               <TableHead class="w-10" />
               <TableHead>Name</TableHead>
-              <TableHead class="w-32">Status</TableHead>
               <TableHead class="w-24">Order</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -251,9 +223,6 @@ async function saveUpdate(
                   :aria-invalid="nameInvalid"
                   @keydown.enter.prevent="confirmAdd"
                 />
-              </TableCell>
-              <TableCell>
-                <StatusBadge status="Enabled" />
               </TableCell>
               <TableCell>—</TableCell>
               <TableCell>
@@ -308,9 +277,6 @@ async function saveUpdate(
                     @keydown.enter.prevent="confirmEdit"
                   />
                 </TableCell>
-                <TableCell>
-                  <StatusBadge :status="categoryStatusLabel(row.status)" />
-                </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
                 <TableCell>
                   <span class="inline-flex gap-3">
@@ -323,25 +289,11 @@ async function saveUpdate(
               </template>
               <template v-else>
                 <TableCell class="font-medium">{{ row.name }}</TableCell>
-                <TableCell>
-                  <StatusBadge :status="categoryStatusLabel(row.status)" />
-                </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
                 <TableCell>
                   <span class="inline-flex flex-wrap gap-3">
                     <TableTextLink :disabled="saving || formLocked" @click="startEdit(row)">
                       Edit
-                    </TableTextLink>
-                    <TableTextLink
-                      v-if="row.status === 'ACTIVE'"
-                      destructive
-                      :disabled="saving || formLocked"
-                      @click="requestDisable(row)"
-                    >
-                      Disable
-                    </TableTextLink>
-                    <TableTextLink v-else :disabled="saving || formLocked" @click="enable(row)">
-                      Enable
                     </TableTextLink>
                     <TableTextLink
                       destructive
@@ -358,7 +310,7 @@ async function saveUpdate(
           <TableBody v-if="!localRows.length && !adding">
             <TableRow>
               <TableCell
-                colspan="6"
+                colspan="4"
                 class="h-20 text-center text-sm text-muted-foreground italic"
               >
                 No Support Categories yet — click "Add category" to begin.
@@ -369,16 +321,6 @@ async function saveUpdate(
       </div>
     </CardContent>
   </Card>
-
-  <ConfirmDialog
-    v-model:open="disableOpen"
-    title="Disable this category?"
-    description="It will no longer appear in new Workload Registry rows. Existing rows keep it."
-    confirm-label="Disable"
-    confirm-variant="destructive"
-    :pending="updateMutation.isPending.value"
-    @confirm="confirmDisable"
-  />
 
   <ConfirmDialog
     v-model:open="deleteOpen"

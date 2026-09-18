@@ -18,9 +18,6 @@ const toneClass = computed(() => {
 </script>
 
 <template>
-  <span v-if="value != null" :class="toneClass">
-    {{ value }}
-    {{ value === 1 ? 'day' : 'days' }}
-  </span>
+  <span v-if="value != null" :class="toneClass">{{ value }}</span>
   <span v-else>—</span>
 </template>

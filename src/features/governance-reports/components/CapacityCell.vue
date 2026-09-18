@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps<{ value: string | number | null | undefined }>()
+import { capacityTone, parseSignedMetric } from '@/lib/hcFormat'
+
+const props = defineProps<{
+  value: string | number | null | undefined
+  percent?: boolean
+}>()
 
 const display = computed(() => {
-  if (props.value == null || props.value === '') return '—'
-  const n = Number.parseFloat(String(props.value).replace(/[+%]/g, ''))
-  if (!Number.isFinite(n)) return '—'
+  const n = parseSignedMetric(props.value)
+  if (n == null) return '—'
+  if (props.percent) return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}`
 })
 
-const toneClass = computed(() => {
-  const n = Number.parseFloat(String(props.value ?? '').replace(/[+%]/g, ''))
-  if (!Number.isFinite(n) || n === 0) return 'text-foreground'
-  return n > 0 ? 'text-emerald-600 font-semibold' : 'text-destructive font-semibold'
-})
+const toneClass = computed(() => capacityTone(props.value) || 'text-foreground')
 </script>
 
 <template>

@@ -7,7 +7,7 @@ import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
-import { formatHc, formatSignedPct } from '../reportFormat'
+import { formatHc } from '../reportFormat'
 import type { RepositoryRow } from '../types'
 import CapacityCell from './CapacityCell.vue'
 
@@ -63,9 +63,10 @@ export function createRstRepositoryColumns(
       header: withUnit('Capacity Creation', FieldUnit.hc),
       cell: ({ row }) => h(CapacityCell, { value: row.original.capacityCreation }),
     }),
-    columnHelper.accessor((row) => formatSignedPct(row.capacityPct), {
+    columnHelper.display({
       id: 'capacityPct',
       header: withUnit('Capacity Creation', FieldUnit.percent),
+      cell: ({ row }) => h(CapacityCell, { value: row.original.capacityPct, percent: true }),
     }),
     columnHelper.accessor((row) => row.volumeYoY || '—', {
       id: 'volumeYoY',

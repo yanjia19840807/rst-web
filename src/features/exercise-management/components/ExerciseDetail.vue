@@ -31,7 +31,7 @@ import {
   useSupportQuery,
   useTeamSetupQuery,
 } from '../api/queries'
-import { measuredRightSizingHc } from '@/lib/hcFormat'
+import { capacityTone, measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
@@ -449,11 +449,18 @@ watch(
                   value: supportFte != null ? supportFte.toFixed(2) : '—',
                 },
                 {
+                  key: 'capacityCreation',
                   label: withUnit('Capacity Creation', FieldUnit.hc),
                   value: formatSigned(capacityCreation(selectedScenario)),
                 },
               ]"
-            />
+            >
+              <template #capacityCreation="{ row }">
+                <span :class="capacityTone(capacityCreation(selectedScenario)) || 'font-semibold'">
+                  {{ row.value || '—' }}
+                </span>
+              </template>
+            </DetailTable>
           </div>
         </div>
         <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">

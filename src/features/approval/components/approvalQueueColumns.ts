@@ -3,6 +3,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
+import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 import { formatInstantForCenter } from '@/lib/datetime'
 import {
   formatHc,
@@ -115,7 +116,7 @@ export function createApprovalQueueColumns(
     }),
     columnHelper.display({
       id: 'aging',
-      header: 'Aging',
+      header: withUnit('Aging', FieldUnit.days),
       cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays, fallbackZero: true }),
     }),
     columnHelper.display({

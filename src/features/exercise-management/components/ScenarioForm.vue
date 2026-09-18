@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { measuredRightSizingHc } from '@/lib/hcFormat'
+import { capacityEmphasize, measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { useScenarioMutations } from '../api/mutations'
 import {
@@ -381,14 +381,8 @@ const resultRows = computed<ScenarioResultRow[]>(() => {
         ? `${Number(firstSizing.capacityCreation) >= 0 ? '+' : ''}${Number(firstSizing.capacityCreation).toFixed(2)}`
         : capacityLabel,
       emphasize: firstSizing
-        ? Number(firstSizing.capacityCreation) >= 0
-          ? 'good'
-          : 'bad'
-        : capacity == null
-          ? null
-          : capacity >= 0
-            ? 'good'
-            : 'bad',
+        ? capacityEmphasize(firstSizing.capacityCreation)
+        : capacityEmphasize(capacity),
     },
     { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
   ]

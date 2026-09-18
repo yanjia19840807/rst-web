@@ -20,11 +20,26 @@ export function formatSigned(value?: number | string | null, digits = 1): string
   return `${n >= 0 ? '+' : ''}${n.toFixed(digits)}`
 }
 
+/** Parses HC / percent strings such as "+1.20" or "-17.0%". */
+export function parseSignedMetric(value?: number | string | null): number | null {
+  if (value == null || value === '') return null
+  const n = Number.parseFloat(String(value).replace(/[+%]/g, ''))
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Capacity Creation color: gain green, loss red, zero / empty default.
+ */
 export function capacityTone(value?: number | string | null): string {
-  if (value == null || value === '') return ''
-  const n = Number(value)
-  if (!Number.isFinite(n)) return ''
+  const n = parseSignedMetric(value)
+  if (n == null || n === 0) return ''
   return n < 0 ? 'text-destructive font-semibold' : 'text-emerald-600 font-semibold'
+}
+
+export function capacityEmphasize(value?: number | string | null): 'good' | 'bad' | null {
+  const n = parseSignedMetric(value)
+  if (n == null || n === 0) return null
+  return n < 0 ? 'bad' : 'good'
 }
 
 export function formatMeasuredHc(value?: number | string | null, digits = 1): string {

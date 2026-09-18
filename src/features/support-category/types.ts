@@ -27,7 +27,6 @@ export interface CreateSupportCategoryRequest {
 
 export interface UpdateSupportCategoryRequest {
   name: string
-  status: SupportCategoryStatus
   displayOrder: number
 }
 

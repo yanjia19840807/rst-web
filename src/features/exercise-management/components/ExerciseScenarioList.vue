@@ -13,6 +13,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { capacityTone } from '@/lib/hcFormat'
+
 import type { Scenario } from '../types'
 
 const props = defineProps<{
@@ -104,13 +106,7 @@ function shiftSetupLabel(scenario: Scenario) {
                   assumptionHc(scenario) != null ? assumptionHc(scenario)!.toFixed(2) : '—'
                 }}
               </TableCell>
-              <TableCell
-                :class="{
-                  'font-semibold text-emerald-600':
-                    (capacityCreation(scenario) ?? 0) >= 0 && capacityCreation(scenario) != null,
-                  'font-semibold text-destructive': (capacityCreation(scenario) ?? 0) < 0,
-                }"
-              >
+              <TableCell :class="capacityTone(capacityCreation(scenario))">
                 {{ formatSigned(capacityCreation(scenario)) }}
               </TableCell>
               <TableCell class="text-right" @click.stop>

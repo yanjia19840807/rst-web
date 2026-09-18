@@ -8,7 +8,7 @@ import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
 import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 
-import { displayOrDash, formatSignedPct } from '../reportFormat'
+import { displayOrDash } from '../reportFormat'
 import type { ValidationWorkflowRow } from '../types'
 import CapacityCell from './CapacityCell.vue'
 
@@ -62,9 +62,10 @@ export function createValidationWorkflowColumns(
       header: withUnit('Capacity Creation', FieldUnit.hc),
       cell: ({ row }) => h(CapacityCell, { value: row.original.capacityCreation }),
     }),
-    columnHelper.accessor((row) => formatSignedPct(row.capacityPct), {
+    columnHelper.display({
       id: 'capacityPct',
       header: withUnit('Capacity Creation', FieldUnit.percent),
+      cell: ({ row }) => h(CapacityCell, { value: row.original.capacityPct, percent: true }),
     }),
     columnHelper.accessor((row) => row.volumeYoY || '—', {
       id: 'volumeYoY',

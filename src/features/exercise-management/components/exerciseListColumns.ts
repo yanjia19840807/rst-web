@@ -4,6 +4,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
 import { formatInstantForCenter, formatMonth } from '@/lib/datetime'
+import { FieldUnit, withUnit } from '../fieldUnits'
 import {
   formatHc,
   formatMeasuredCapacity,
@@ -108,7 +109,7 @@ export function createExerciseListColumns(
     }),
     columnHelper.display({
       id: 'aging',
-      header: 'Aging',
+      header: withUnit('Aging', FieldUnit.days),
       cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays }),
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {

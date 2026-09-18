@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table'
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
 import { formatDate, formatInstantForCenter, formatMonth } from '@/lib/datetime'
-import { measuredRightSizingHc } from '@/lib/hcFormat'
+import { capacityTone, measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
 import { useApprovalDetailQuery } from '@/features/approval/api/queries'
 import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
@@ -511,13 +511,7 @@ function downloadSummary() {
               </Badge>
             </template>
             <template #capacityCreation="{ row }">
-              <span
-                class="font-semibold"
-                :class="{
-                  'text-emerald-600': (capacityCreation ?? 0) >= 0 && capacityCreation != null,
-                  'text-destructive': (capacityCreation ?? 0) < 0,
-                }"
-              >
+              <span :class="capacityTone(capacityCreation) || 'font-semibold'">
                 {{ row.value || '—' }}
               </span>
             </template>
@@ -549,13 +543,7 @@ function downloadSummary() {
                   <TableCell>{{ row.customerCountry }}</TableCell>
                   <TableCell>{{ row.deliveryHc }}</TableCell>
                   <TableCell>{{ row.rightSizingHc }}</TableCell>
-                  <TableCell
-                    class="font-semibold"
-                    :class="{
-                      'text-emerald-600': (row.capacityValue ?? 0) >= 0 && row.capacityValue != null,
-                      'text-destructive': (row.capacityValue ?? 0) < 0,
-                    }"
-                  >
+                  <TableCell :class="capacityTone(row.capacityValue) || 'font-semibold'">
                     {{ row.capacityCreation }}
                   </TableCell>
                 </TableRow>
@@ -666,13 +654,7 @@ function downloadSummary() {
           <CardContent>
             <DetailTable :rows="resultRows">
               <template #capacityCreation="{ row }">
-                <span
-                  class="font-semibold"
-                  :class="{
-                    'text-emerald-600': (capacityCreation ?? 0) >= 0 && capacityCreation != null,
-                    'text-destructive': (capacityCreation ?? 0) < 0,
-                  }"
-                >
+                <span :class="capacityTone(capacityCreation) || 'font-semibold'">
                   {{ row.value || '—' }}
                 </span>
               </template>

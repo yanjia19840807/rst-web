@@ -9,14 +9,14 @@ export function formatPct(value: number | string | null | undefined): string {
   if (value == null || value === '') return '—'
   const n = Number(value)
   if (!Number.isFinite(n)) return '—'
-  return `${n.toFixed(1)}%`
+  return n.toFixed(1)
 }
 
 export function formatSignedPct(value: number | string | null | undefined): string {
   if (value == null || value === '') return '—'
   const n = Number(String(value).replace(/[%+]/g, ''))
   if (!Number.isFinite(n)) return '—'
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`
 }
 
 export function formatVolume(value: number | string | null | undefined): string {
@@ -31,7 +31,7 @@ export function formatSeconds(value: number | string | null | undefined): string
   const n = Number(value)
   if (!Number.isFinite(n)) return '—'
   const rounded = Math.round(n * 10) / 10
-  return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
 export function formatCapacity(value: number | string | null | undefined): string {
