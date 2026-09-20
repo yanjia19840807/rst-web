@@ -33,6 +33,7 @@ describe('session test login', () => {
 
     expect(session.ccgid).toBe('ADMIN001')
     expect(session.roles).toEqual(['ADMIN'])
+    expect(session.jobRole).toBe('')
     expect(session.hasPermission('timesheet:sync')).toBe(true)
     expect(session.hasPermission('exercise:manage')).toBe(false)
   })

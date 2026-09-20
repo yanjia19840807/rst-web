@@ -20,6 +20,7 @@ const details = computed(() => [
   { label: 'CCGID', value: session.ccgid || '—' },
   { label: 'Email', value: session.email || '—' },
   { label: 'Role', value: session.rolesLabel || '—' },
+  { label: 'Job role', value: session.jobRole || '—' },
 ])
 
 const actAsOptions = computed(() =>

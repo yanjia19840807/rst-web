@@ -33,6 +33,7 @@ export type CurrentUser = {
   roles: string[]
   scopes: string[]
   center?: string | null
+  jobRole?: string | null
   actor?: { ccgid: string; displayName: string } | null
   delegationId?: string | null
   /** Present on {@code dev}/{@code test} when test-login override is on. */
@@ -61,6 +62,7 @@ function userFromDevIdentity(): CurrentUser {
     roles: [role],
     scopes: ['TIMESHEET', 'SELF'],
     center: identity.center ?? null,
+    jobRole: null,
     actor: { ccgid, displayName },
     delegationId: null,
     devOverrideEnabled: true,
@@ -81,6 +83,7 @@ export const useSessionStore = defineStore('session', () => {
   const displayName = computed(() => user.value?.displayName ?? '')
   const ccgid = computed(() => user.value?.ccgid ?? '')
   const email = computed(() => user.value?.email ?? '')
+  const jobRole = computed(() => user.value?.jobRole ?? '')
   const roles = computed<AppRole[]>(() =>
     (user.value?.roles ?? []).map((role) => role.toUpperCase()).filter(isAppRole),
   )
@@ -160,6 +163,7 @@ export const useSessionStore = defineStore('session', () => {
           displayName: me.ccgid === local.ccgid && me.displayName ? me.displayName : local.displayName,
           email: me.ccgid === local.ccgid && me.email ? me.email : local.email,
           center: me.ccgid === local.ccgid && me.center ? me.center : local.center,
+          jobRole: me.ccgid === local.ccgid && me.jobRole ? me.jobRole : local.jobRole,
           scopes: me.scopes?.length ? me.scopes : local.scopes,
           actor: me.ccgid === local.ccgid && me.actor ? me.actor : local.actor,
           delegationId: me.delegationId ?? null,
@@ -235,6 +239,7 @@ export const useSessionStore = defineStore('session', () => {
     displayName,
     ccgid,
     email,
+    jobRole,
     roles,
     permissions,
     rolesLabel,

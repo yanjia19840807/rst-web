@@ -35,6 +35,7 @@ import {
 const props = defineProps<{
   kind: 'DAILY' | 'MONTHLY'
   initialTab: TimesheetSnapshotTab
+  initialCenter?: string
 }>()
 
 const allTabs: Array<{ key: TimesheetSnapshotTab; label: string; kind: 'DAILY' | 'MONTHLY' }> = [
@@ -158,7 +159,7 @@ const searchPlaceholders: Record<TimesheetSnapshotTab, string> = {
 }
 
 const tableClasses: Record<TimesheetSnapshotTab, string> = {
-  people: 'min-w-[960px]',
+  people: 'min-w-[1080px]',
   positions: 'min-w-[1200px]',
   scopes: 'min-w-[1080px]',
   kpis: 'min-w-[1080px]',
@@ -224,10 +225,12 @@ watch(activeTab, () => {
 })
 
 watch(
-  () => [open.value, props.kind, props.initialTab] as const,
-  ([isOpen, , tab]) => {
+  () => [open.value, props.kind, props.initialTab, props.initialCenter] as const,
+  ([isOpen, , tab, center]) => {
     if (!isOpen) return
     activeTab.value = tab
+    peopleCenter.value = center ?? ''
+    scopeCenter.value = center ?? ''
   },
   { immediate: true, flush: 'sync' },
 )

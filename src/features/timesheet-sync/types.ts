@@ -44,8 +44,8 @@ export type TimesheetSyncOverviewQuery = {
 }
 
 export type TimesheetSyncOverview = {
-  daily: TimesheetSyncRunHeader | null
-  monthly: TimesheetSyncRunHeader | null
+  daily: TimesheetSyncRunHeader[]
+  monthly: TimesheetSyncRunHeader[]
   runs: TimesheetSyncRunsPage
 }
 
@@ -96,6 +96,7 @@ export type TimesheetSnapshotPerson = {
   email: string | null
   center: string | null
   positionId: string | null
+  jobRole: string | null
 }
 
 export type TimesheetSnapshotPosition = {

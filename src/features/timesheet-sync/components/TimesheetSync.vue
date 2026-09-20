@@ -51,6 +51,7 @@ const selectedRun = ref<TimesheetSyncRunHeader | null>(null)
 const issuesOpen = ref(false)
 const mappedOpen = ref(false)
 const mappedKind = ref<'DAILY' | 'MONTHLY'>('DAILY')
+const mappedCenter = ref('')
 const mappedTab = ref<TimesheetSnapshotTab>('people')
 const alertOpen = ref(false)
 const domainHeadOpen = ref(false)
@@ -68,8 +69,8 @@ const hasFilters = computed(
 const snapshots = computed<TimesheetActiveRow[]>(() =>
   overview.value
     ? [
-        { kind: 'DAILY', run: overview.value.daily },
-        { kind: 'MONTHLY', run: overview.value.monthly },
+        ...(overview.value.daily ?? []).map((run) => ({ kind: 'DAILY' as const, run })),
+        ...(overview.value.monthly ?? []).map((run) => ({ kind: 'MONTHLY' as const, run })),
       ]
     : [],
 )
@@ -77,8 +78,8 @@ const snapshots = computed<TimesheetActiveRow[]>(() =>
 const missingActiveKinds = computed(() => {
   if (!overviewQuery.isSuccess.value || !overview.value) return []
   const missing: Array<'Daily' | 'Monthly'> = []
-  if (!overview.value.daily) missing.push('Daily')
-  if (!overview.value.monthly) missing.push('Monthly')
+  if ((overview.value.daily ?? []).length === 0) missing.push('Daily')
+  if ((overview.value.monthly ?? []).length === 0) missing.push('Monthly')
   return missing
 })
 
@@ -146,6 +147,7 @@ function openIssues(row: TimesheetSyncRunHeader) {
 function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
   if (!row.run) return
   mappedKind.value = row.kind
+  mappedCenter.value = row.run.center ?? ''
   mappedTab.value = tab
   mappedOpen.value = true
 }
@@ -188,8 +190,8 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
         <div>
           <CardTitle>ACTIVE snapshots</CardTitle>
           <CardDescription>
-            Latest successful Daily and Monthly snapshots. Auto-sync still reads SharePoint;
-            uploads go to Manual.
+            Latest successful Daily and Monthly snapshot per Center. Auto-sync still reads
+            SharePoint; uploads go to Manual.
           </CardDescription>
         </div>
       </CardHeader>
@@ -200,7 +202,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
           :pending="loading"
           empty-text="No ACTIVE snapshots."
           table-class="min-w-[1180px]"
-          :get-row-id="(row) => row.kind"
+          :get-row-id="(row) => `${row.kind}:${row.run?.center ?? ''}`"
         />
       </CardContent>
     </Card>
@@ -282,6 +284,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
     <TimesheetSnapshotTables
       v-model:open="mappedOpen"
       :kind="mappedKind"
+      :initial-center="mappedCenter"
       :initial-tab="mappedTab"
     />
     <TimesheetSyncIssuesDialog

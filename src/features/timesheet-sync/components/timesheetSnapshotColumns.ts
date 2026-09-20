@@ -34,6 +34,7 @@ export function createSnapshotPersonColumns(): ColumnDef<TimesheetSnapshotPerson
     personHelper.accessor((row) => dash(row.empId), { id: 'empId', header: 'Emp ID' }),
     personHelper.accessor('name', { header: 'Name' }),
     personHelper.accessor((row) => dash(row.email), { id: 'email', header: 'Email' }),
+    personHelper.accessor((row) => dash(row.jobRole), { id: 'jobRole', header: 'Job role' }),
     personHelper.accessor((row) => dash(row.positionId), { id: 'positionId', header: 'Position' }),
   ]
 }
