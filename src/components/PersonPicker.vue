@@ -187,15 +187,24 @@ watch(
       </PopoverTrigger>
       <PickerClearButton v-if="canClear" label="Clear person" @click="clear" />
     </div>
-    <PopoverContent :class="cn(pickerPopoverClass, 'w-96')" align="start">
-      <div class="p-2">
+    <PopoverContent
+      :class="
+        cn(
+          pickerPopoverClass,
+          'flex w-96 min-h-0 max-h-(--reka-popover-content-available-height) max-w-(--reka-popover-content-available-width) flex-col gap-0',
+        )
+      "
+      align="start"
+      :collision-padding="8"
+    >
+      <div class="shrink-0 p-2">
         <Input
           v-model="queryInput"
           size="sm"
           :placeholder="searchPlaceholder"
         />
       </div>
-      <div class="relative h-72 overflow-hidden border-y">
+      <div class="relative min-h-0 max-h-72 flex-1 overflow-hidden border-y">
         <div class="h-full overflow-y-auto">
           <Table>
             <TableHeader>
@@ -232,7 +241,7 @@ watch(
         </div>
       </div>
       <TablePager
-        class="mt-0 px-2 py-1.5"
+        class="mt-0 shrink-0 px-2 py-1.5"
         hide-summary
         size="xs"
         :total="total"
@@ -247,7 +256,7 @@ watch(
           }
         "
       />
-      <div v-if="canClear" :class="pickerClearFooterClass">
+      <div v-if="canClear" :class="cn(pickerClearFooterClass, 'shrink-0')">
         <Button type="button" variant="ghost" size="sm" class="w-full" @click="clear">
           Clear
         </Button>

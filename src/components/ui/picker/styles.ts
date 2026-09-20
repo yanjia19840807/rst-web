@@ -3,7 +3,7 @@
 export const pickerTriggerClass =
   'w-[240px] justify-start text-left font-normal text-foreground data-placeholder:text-muted-foreground'
 
-export const pickerTriggerWrapClass = 'relative inline-flex'
+export const pickerTriggerWrapClass = 'relative isolate inline-flex'
 
 export const pickerClearFooterClass = 'border-t p-1.5'
 

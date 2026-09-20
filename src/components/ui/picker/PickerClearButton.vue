@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { XIcon } from '@lucide/vue'
 
-import { Button } from '@/components/ui/button'
-
 defineProps<{
   label: string
 }>()
@@ -10,17 +8,28 @@ defineProps<{
 const emit = defineEmits<{
   click: []
 }>()
+
+/** Keep the trigger from seeing this press; do not preventDefault or click never fires in Edge. */
+function stopBubble(event: Event) {
+  event.stopPropagation()
+}
+
+function onClear(event: Event) {
+  event.preventDefault()
+  event.stopPropagation()
+  emit('click')
+}
 </script>
 
 <template>
-  <Button
+  <button
     type="button"
-    variant="ghost"
-    size="icon-xs"
-    class="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+    class="absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
     :aria-label="label"
-    @click.stop="emit('click')"
+    @pointerdown="stopBubble"
+    @mousedown="stopBubble"
+    @click="onClear"
   >
-    <XIcon />
-  </Button>
+    <XIcon class="size-3" />
+  </button>
 </template>
