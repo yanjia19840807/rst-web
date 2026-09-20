@@ -7,7 +7,9 @@ import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
-import { formatHc, formatVolume } from '../reportFormat'
+import { joinCommaTokens } from '@/lib/commaTokens'
+
+import { displayOrDash, formatHc, formatVolume } from '../reportFormat'
 import type { SupportCategorySummary, SupportRow } from '../types'
 
 export type SupportRowColumnOptions = {
@@ -16,6 +18,14 @@ export type SupportRowColumnOptions = {
 
 const categoryHelper = createColumnHelper<SupportCategorySummary>()
 const rowHelper = createColumnHelper<SupportRow>()
+
+function joined(values: string[] | null | undefined) {
+  return displayOrDash(values?.filter((item) => item.trim()).join(', '))
+}
+
+function joinedCountries(values: string[] | null | undefined) {
+  return displayOrDash(joinCommaTokens(values))
+}
 
 export function createSupportCategoryColumns(): ColumnDef<SupportCategorySummary>[] {
   return [
@@ -35,7 +45,7 @@ export function createSupportRowColumns(
   options: SupportRowColumnOptions = {},
 ): ColumnDef<SupportRow>[] {
   return [
-    rowHelper.accessor('exerciseNo', { header: 'Exercise NO' }),
+    rowHelper.accessor('exerciseNo', { header: 'Exercise No' }),
     rowHelper.display({
       id: 'toolkit',
       header: 'Toolkit',
@@ -56,7 +66,15 @@ export function createSupportRowColumns(
     }),
     rowHelper.accessor('center', { header: 'GBS Center' }),
     rowHelper.accessor('domain', { header: 'Domain' }),
+    rowHelper.accessor('pl1', { header: 'PL1' }),
+    rowHelper.accessor('pl2', { header: 'PL2' }),
     rowHelper.accessor('pl3', { header: 'PL3' }),
+    rowHelper.accessor((row) => joined(row.carriers), { id: 'carriers', header: 'Carrier' }),
+    rowHelper.accessor((row) => joined(row.sites), { id: 'sites', header: 'GBS Site' }),
+    rowHelper.accessor((row) => joinedCountries(row.customerCountries), {
+      id: 'customerCountries',
+      header: 'Customer Country',
+    }),
     rowHelper.accessor('standardCategory', { header: 'Standard Category' }),
     rowHelper.accessor('activity', { header: 'Activity' }),
     rowHelper.accessor('frequency', { header: 'Frequency' }),

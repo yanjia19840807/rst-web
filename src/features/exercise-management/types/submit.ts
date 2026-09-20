@@ -80,4 +80,5 @@ export interface SubmittedDetails {
   actions: ActionView[]
   canDecide?: boolean
   workspace?: ApprovalWorkspaceView
+  findings?: ValidationFinding[]
 }

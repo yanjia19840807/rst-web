@@ -63,6 +63,6 @@ describe('exerciseListTabQuery', () => {
 describe('reviewStageQueryValue', () => {
   it('maps Supervisor Sizing to SUPERVISOR', () => {
     expect(reviewStageQueryValue(SUPERVISOR_SIZING_STEP)).toBe('SUPERVISOR')
-    expect(reviewStageQueryValue('All stages')).toBeUndefined()
+    expect(reviewStageQueryValue('')).toBeUndefined()
   })
 })

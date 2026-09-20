@@ -5,8 +5,14 @@ export interface ApprovalQueueItem {
   exerciseCode: string
   center?: string | null
   domain?: string | null
+  pl1?: string | null
+  pl2?: string | null
   pl3Name?: string | null
   toolkitName?: string | null
+  sizingMonth?: string | null
+  carriers?: string[] | null
+  sites?: string[] | null
+  customerCountries?: string[] | null
   supervisor?: string | null
   deliveryHc?: number | string | null
   rightSizingHc?: number | string | null
@@ -44,6 +50,11 @@ export interface ApprovalQueueView {
   metrics: ApprovalQueueMetrics
   toolkitNames: string[]
   pl3Names: string[]
+  centers: string[]
+  domains: string[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
 }
 
 export interface ApprovalQueueQuery {
@@ -51,7 +62,13 @@ export interface ApprovalQueueQuery {
   completed?: boolean
   exerciseCode?: string
   toolkitName?: string
+  center?: string
+  domain?: string
   pl3Name?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
+  sizingMonth?: string
   submittedFrom?: string
   submittedTo?: string
   completedFrom?: string
@@ -143,6 +160,7 @@ export interface ApprovalDetailView {
   actions: ActionView[]
   canDecide?: boolean
   workspace: ApprovalWorkspaceView
+  findings?: import('@/features/exercise-management/types').ValidationFinding[]
 }
 
 export interface ApproveRequest {

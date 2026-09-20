@@ -9,6 +9,7 @@ import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatInstantForCenter } from '@/lib/datetime'
 
 import { useTmsSessionMutations } from '../api/mutations'
@@ -66,6 +67,14 @@ const rows = computed(() => {
   }
   base.push(
     { label: 'Toolkit', value: item.toolkitName },
+    { label: 'GBS Center', value: item.center || '—' },
+    { label: 'Domain', value: item.domain || '—' },
+    { label: 'PL1', value: item.pl1 || '—' },
+    { label: 'PL2', value: item.pl2 || '—' },
+    { label: 'PL3', value: item.pl3 || '—' },
+    { label: 'Carrier', value: item.carriers?.filter(Boolean).join(', ') || '—' },
+    { label: 'GBS Site', value: item.sites?.filter(Boolean).join(', ') || '—' },
+    { label: 'Customer Country', value: joinCommaTokens(item.customerCountries) || '—' },
     { label: 'Subtask', value: item.subtaskName || '—' },
     { label: 'Start', value: formatInstantForCenter(item.startedAt, item.center) },
     { label: 'End', value: formatInstantForCenter(item.endedAt, item.center) },

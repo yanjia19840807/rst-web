@@ -43,7 +43,6 @@ import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
 import ExerciseDetailHeader from './ExerciseDetailHeader.vue'
 import ExerciseScenarioList from './ExerciseScenarioList.vue'
 import SubmitDialog from './SubmitDialog.vue'
-import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
 const props = defineProps<{
   exerciseId: string
@@ -81,7 +80,6 @@ const deleteOpen = ref(false)
 const newScenarioOpen = ref(false)
 const officialOpen = ref(false)
 const submitOpen = ref(false)
-const toolkitInfoOpen = ref(false)
 const periodsEditOpen = ref(false)
 const pageTab = ref<'exercise' | 'approval'>('exercise')
 
@@ -328,7 +326,6 @@ watch(
         :exercise="exercise"
         :locked="locked"
         @edit-periods="periodsEditOpen = true"
-        @toolkit-info="toolkitInfoOpen = true"
       />
 
       <EditExercisePeriodsDialog
@@ -336,12 +333,6 @@ watch(
         v-model:open="periodsEditOpen"
         :exercise="exercise"
         @saved="onPeriodsSaved"
-      />
-
-      <ToolkitInfoDialog
-        v-model:open="toolkitInfoOpen"
-        :snapshot="exercise.snapshot"
-        :alignment="exercise.timesheetAlignment"
       />
 
       <AssociatedDataPanel

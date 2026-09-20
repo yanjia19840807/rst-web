@@ -14,7 +14,10 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import CreateExerciseDialog from '@/features/exercise-management/components/CreateExerciseDialog.vue'
+import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
+import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
 import type { Exercise } from '@/features/exercise-management/types'
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 
 import { toolkitApi } from '../api'
 import { useManagedToolkitsQuery } from '../api/queries'
@@ -25,7 +28,12 @@ const router = useRouter()
 
 const emptyFilters = () => ({
   name: '',
-  pl3: '',
+  center: '',
+  domain: '',
+  pl3Code: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
   enabled: '',
 })
 
@@ -37,7 +45,12 @@ const fieldClass = 'w-[220px]'
 
 const listQuery = computed<ToolkitListQuery>(() => ({
   name: applied.name.trim() || undefined,
-  pl3Name: applied.pl3 || undefined,
+  center: applied.center || undefined,
+  domain: applied.domain || undefined,
+  pl3Code: applied.pl3Code || undefined,
+  carrier: applied.carrier || undefined,
+  site: applied.site || undefined,
+  customerCountry: applied.customerCountry || undefined,
   enabled:
     applied.enabled === 'true' ? true : applied.enabled === 'false' ? false : undefined,
   page: page.value,
@@ -47,7 +60,12 @@ const listQuery = computed<ToolkitListQuery>(() => ({
 const toolkitsQuery = useManagedToolkitsQuery(listQuery)
 const toolkits = computed(() => toolkitsQuery.data.value?.items ?? [])
 const total = computed(() => toolkitsQuery.data.value?.total ?? 0)
-const pl3Options = computed(() => toolkitsQuery.data.value?.pl3Names ?? [])
+const centerOptions = computed(() => toolkitsQuery.data.value?.centers ?? [])
+const domainOptions = computed(() => toolkitsQuery.data.value?.domains ?? [])
+const pl3Options = computed(() => toolkitsQuery.data.value?.pl3s ?? [])
+const carrierOptions = computed(() => toolkitsQuery.data.value?.carriers ?? [])
+const siteOptions = computed(() => toolkitsQuery.data.value?.sites ?? [])
+const countryOptions = computed(() => toolkitsQuery.data.value?.customerCountries ?? [])
 const loading = computed(() => toolkitsQuery.isPending.value && !toolkitsQuery.data.value)
 const exportingId = ref<string | null>(null)
 const exportTarget = ref<SupervisorToolkit | null>(null)
@@ -55,6 +73,9 @@ const exportOpen = ref(false)
 const createOpen = ref(false)
 const createToolkit = ref<SupervisorToolkit | null>(null)
 const createToolkits = computed(() => (createToolkit.value ? [createToolkit.value] : []))
+const toolkitInfoOpen = ref(false)
+const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
+const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
 
 function applySearch() {
   Object.assign(applied, { ...draft })
@@ -102,8 +123,15 @@ const columns = computed(() =>
         name: 'supervisor-toolkit-edit',
         params: { id },
       }),
+    onToolkitInfo: openToolkitInfo,
   }),
 )
+
+function openToolkitInfo(toolkit: SupervisorToolkit) {
+  toolkitSnapshot.value = snapshotFromToolkit(toolkit)
+  toolkitAlignment.value = toolkit.alignment ?? null
+  toolkitInfoOpen.value = true
+}
 
 function createExercise(toolkit: SupervisorToolkit) {
   if (toolkit.outOfSync || toolkit.enabled === false) return
@@ -153,7 +181,7 @@ async function confirmExport() {
       <CardContent class="space-y-3">
         <QueryPanel @search="applySearch" @clear="clearFilters">
           <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Toolkit name
+            Toolkit
             <Input
               v-model="draft.name"
               :class="fieldClass"
@@ -161,15 +189,78 @@ async function confirmExport() {
             />
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
+            GBS Center
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.center"
+              @update:model-value="draft.center = String($event ?? '')"
+             placeholder="All">
+              <option v-for="center in centerOptions" :key="center" :value="center">
+                {{ center }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Domain
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.domain"
+              @update:model-value="draft.domain = String($event ?? '')"
+             placeholder="All">
+              <option v-for="domain in domainOptions" :key="domain" :value="domain">
+                {{ domain }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
             PL3
             <NativeSelect
               :class="fieldClass"
-              :model-value="draft.pl3"
-              @update:model-value="draft.pl3 = String($event ?? '')"
-            >
-              <option value="">All PL3</option>
-              <option v-for="option in pl3Options" :key="option" :value="option">
-                {{ option }}
+              :model-value="draft.pl3Code"
+              @update:model-value="draft.pl3Code = String($event ?? '')"
+             placeholder="All">
+              <option v-for="pl3 in pl3Options" :key="pl3.code" :value="pl3.code">
+                {{ pl3.name }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Carrier
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.carrier"
+              @update:model-value="draft.carrier = String($event ?? '')"
+             placeholder="All">
+              <option v-for="carrier in carrierOptions" :key="carrier" :value="carrier">
+                {{ carrier }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            GBS Site
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.site"
+              @update:model-value="draft.site = String($event ?? '')"
+             placeholder="All">
+              <option v-for="site in siteOptions" :key="site" :value="site">
+                {{ site }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Customer Country
+            <NativeSelect
+              :class="fieldClass"
+              :model-value="draft.customerCountry"
+              @update:model-value="draft.customerCountry = String($event ?? '')"
+             placeholder="All">
+              <option
+                v-for="country in countryOptions"
+                :key="country"
+                :value="country"
+              >
+                {{ country }}
               </option>
             </NativeSelect>
           </label>
@@ -179,8 +270,7 @@ async function confirmExport() {
               :class="fieldClass"
               :model-value="draft.enabled"
               @update:model-value="draft.enabled = String($event ?? '')"
-            >
-              <option value="">All</option>
+             placeholder="All">
               <option value="true">Enabled</option>
               <option value="false">Disabled</option>
             </NativeSelect>
@@ -192,7 +282,7 @@ async function confirmExport() {
           :data="toolkits"
           :pending="loading"
           empty-text="No Toolkit is currently available."
-          table-class="min-w-[1080px]"
+          table-class="min-w-[2160px]"
           :get-row-id="(row) => row.id"
         />
 
@@ -218,6 +308,12 @@ async function confirmExport() {
       :toolkits="createToolkits"
       :initial-toolkit-id="createToolkit?.id"
       @created="onCreated"
+    />
+
+    <ToolkitInfoDialog
+      v-model:open="toolkitInfoOpen"
+      :snapshot="toolkitSnapshot"
+      :alignment="toolkitAlignment"
     />
 
     <ConfirmDialog

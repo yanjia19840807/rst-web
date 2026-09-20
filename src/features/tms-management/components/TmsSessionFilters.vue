@@ -5,8 +5,9 @@ import QueryPanel from '@/components/QueryPanel.vue'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
+import { distinctCommaTokens } from '@/lib/commaTokens'
 
-import type { Pl3Option, TeamAgentOption, Toolkit } from '../types'
+import type { TeamAgentOption, Toolkit } from '../types'
 import TeamAgentPicker from './TeamAgentPicker.vue'
 
 export type TmsSessionEnabledFilter = '' | 'true' | 'false'
@@ -18,7 +19,12 @@ export type TmsSessionFilterValues = {
   dateTo: string
   agentCcgid: string
   toolkitId: string
+  center: string
+  domain: string
   pl3Code: string
+  carrier: string
+  site: string
+  customerCountry: string
   enabled: TmsSessionEnabledFilter
 }
 
@@ -29,7 +35,12 @@ const emptyFilters = (): TmsSessionFilterValues => ({
   dateTo: '',
   agentCcgid: '',
   toolkitId: '',
+  center: '',
+  domain: '',
   pl3Code: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
   enabled: '',
 })
 
@@ -39,7 +50,6 @@ const props = defineProps<{
   exporting?: boolean
   agents?: TeamAgentOption[]
   toolkits?: Toolkit[]
-  pl3Options?: Pl3Option[]
 }>()
 
 const emit = defineEmits<{
@@ -51,28 +61,48 @@ const emit = defineEmits<{
 const draft = reactive(emptyFilters())
 
 const fieldClass = 'w-[220px]'
+const visibleToolkits = computed(() => props.toolkits ?? [])
 
-const toolkitOptions = computed(() => {
-  const all = props.toolkits ?? []
-  if (!draft.pl3Code) return all
-  return all.filter((toolkit) => toolkit.pl3Code === draft.pl3Code)
+const toolkitOptions = computed(() =>
+  [...visibleToolkits.value].sort((left, right) => left.name.localeCompare(right.name)),
+)
+
+const centerOptions = computed(() => uniqueSorted(visibleToolkits.value.map((toolkit) => toolkit.center)))
+const domainOptions = computed(() => uniqueSorted(visibleToolkits.value.map((toolkit) => toolkit.domain)))
+const pl3Options = computed(() => {
+  const map = new Map<string, string>()
+  for (const toolkit of visibleToolkits.value) {
+    if (!toolkit.pl3Code) continue
+    if (!map.has(toolkit.pl3Code)) {
+      map.set(toolkit.pl3Code, toolkit.pl3Name || toolkit.pl3Code)
+    }
+  }
+  return [...map.entries()]
+    .map(([code, name]) => ({ code, name }))
+    .sort((left, right) => left.name.localeCompare(right.name))
 })
+const carrierOptions = computed(() => uniqueSorted(kpiValues((selection) => selection.carrier)))
+const siteOptions = computed(() => uniqueSorted(kpiValues((selection) => selection.site)))
+const countryOptions = computed(() =>
+  distinctCommaTokens(kpiValues((selection) => selection.customerCountry)).sort((left, right) =>
+    left.localeCompare(right),
+  ),
+)
+
+function kpiValues(pick: (selection: NonNullable<Toolkit['sharedKpiSelections']>[number]) => string) {
+  return visibleToolkits.value.flatMap((toolkit) =>
+    (toolkit.sharedKpiSelections ?? []).map(pick).filter(Boolean),
+  )
+}
+
+function uniqueSorted(values: Array<string | null | undefined>) {
+  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))].sort(
+    (left, right) => left.localeCompare(right),
+  )
+}
 
 function onEnabledChange(value: unknown) {
   draft.enabled = value === 'true' || value === 'false' ? value : ''
-}
-
-function onPl3Change(value: string) {
-  draft.pl3Code = value
-  if (
-    draft.toolkitId &&
-    value &&
-    !(props.toolkits ?? []).some(
-      (toolkit) => toolkit.id === draft.toolkitId && toolkit.pl3Code === value,
-    )
-  ) {
-    draft.toolkitId = ''
-  }
 }
 
 function onSearch() {
@@ -103,23 +133,99 @@ function onClear() {
       />
     </label>
     <label class="grid gap-1.5 text-xs text-muted-foreground">
-      Reference
-      <Input
-        v-model="draft.reference"
-        :class="fieldClass"
-        placeholder="Search reference"
-      />
-    </label>
-    <label class="grid gap-1.5 text-xs text-muted-foreground">
-      Status
+      Toolkit
       <NativeSelect
         :class="fieldClass"
-        :model-value="draft.enabled"
-        @update:model-value="onEnabledChange($event)"
-      >
-        <option value="">All</option>
-        <option value="true">Enabled</option>
-        <option value="false">Disabled</option>
+        :model-value="draft.toolkitId"
+        @update:model-value="draft.toolkitId = String($event ?? '')"
+       placeholder="All">
+        <option
+          v-for="toolkit in toolkitOptions"
+          :key="toolkit.id"
+          :value="toolkit.id"
+        >
+          {{ toolkit.name }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      GBS Center
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.center"
+        @update:model-value="draft.center = String($event ?? '')"
+       placeholder="All">
+        <option v-for="center in centerOptions" :key="center" :value="center">
+          {{ center }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Domain
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.domain"
+        @update:model-value="draft.domain = String($event ?? '')"
+       placeholder="All">
+        <option v-for="domain in domainOptions" :key="domain" :value="domain">
+          {{ domain }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      PL3
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.pl3Code"
+        @update:model-value="draft.pl3Code = String($event ?? '')"
+       placeholder="All">
+        <option
+          v-for="pl3 in pl3Options"
+          :key="pl3.code"
+          :value="pl3.code"
+        >
+          {{ pl3.name }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Carrier
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.carrier"
+        @update:model-value="draft.carrier = String($event ?? '')"
+       placeholder="All">
+        <option v-for="carrier in carrierOptions" :key="carrier" :value="carrier">
+          {{ carrier }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      GBS Site
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.site"
+        @update:model-value="draft.site = String($event ?? '')"
+       placeholder="All">
+        <option v-for="site in siteOptions" :key="site" :value="site">
+          {{ site }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Customer Country
+      <NativeSelect
+        :class="fieldClass"
+        :model-value="draft.customerCountry"
+        @update:model-value="draft.customerCountry = String($event ?? '')"
+       placeholder="All">
+        <option
+          v-for="country in countryOptions"
+          :key="country"
+          :value="country"
+        >
+          {{ country }}
+        </option>
       </NativeSelect>
     </label>
     <label
@@ -133,44 +239,23 @@ function onClear() {
         @update:model-value="draft.agentCcgid = $event ?? ''"
       />
     </label>
-    <label
-      v-if="showTeamFilters"
-      class="grid gap-1.5 text-xs text-muted-foreground"
-    >
-      Toolkit
-      <NativeSelect
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Reference
+      <Input
+        v-model="draft.reference"
         :class="fieldClass"
-        :model-value="draft.toolkitId"
-        @update:model-value="draft.toolkitId = String($event ?? '')"
-      >
-        <option value="">All toolkits</option>
-        <option
-          v-for="toolkit in toolkitOptions"
-          :key="toolkit.id"
-          :value="toolkit.id"
-        >
-          {{ toolkit.name }}
-        </option>
-      </NativeSelect>
+        placeholder="Search reference"
+      />
     </label>
-    <label
-      v-if="showTeamFilters"
-      class="grid gap-1.5 text-xs text-muted-foreground"
-    >
-      PL3
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Status
       <NativeSelect
         :class="fieldClass"
-        :model-value="draft.pl3Code"
-        @update:model-value="onPl3Change(String($event ?? ''))"
-      >
-        <option value="">All PL3</option>
-        <option
-          v-for="pl3 in pl3Options ?? []"
-          :key="pl3.code"
-          :value="pl3.code"
-        >
-          {{ pl3.name }}
-        </option>
+        :model-value="draft.enabled"
+        @update:model-value="onEnabledChange($event)"
+       placeholder="All">
+        <option value="true">Enabled</option>
+        <option value="false">Disabled</option>
       </NativeSelect>
     </label>
     <label class="grid gap-1.5 text-xs text-muted-foreground">

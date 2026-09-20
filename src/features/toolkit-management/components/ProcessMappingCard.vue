@@ -60,7 +60,7 @@ const pl3Selection = computed({
     <CardContent class="grid gap-4">
       <div class="grid max-w-xl gap-4">
         <div class="grid gap-1.5">
-          <Label for="toolkit-name">Toolkit name</Label>
+          <Label for="toolkit-name">Toolkit</Label>
           <Input
             id="toolkit-name"
             v-model="name"
@@ -94,15 +94,15 @@ const pl3Selection = computed({
           <p v-if="errors.domain" class="text-xs text-destructive">{{ errors.domain }}</p>
         </div>
         <div class="grid gap-1.5">
-          <Label>Process Level 1</Label>
+          <Label>PL1</Label>
           <NativeSelect v-model="pl1" :class="fieldClass" :aria-invalid="Boolean(errors.pl1)">
-            <option value="">Select Process Level 1</option>
+            <option value="">Select PL1</option>
             <option v-for="item in pl1s" :key="item" :value="item">{{ item }}</option>
           </NativeSelect>
           <p v-if="errors.pl1" class="text-xs text-destructive">{{ errors.pl1 }}</p>
         </div>
         <div class="grid gap-1.5">
-          <Label>Process Level 2</Label>
+          <Label>PL2</Label>
           <NativeSelect
             v-model="pl2"
             :class="fieldClass"
@@ -110,14 +110,14 @@ const pl3Selection = computed({
             :aria-invalid="Boolean(errors.pl2)"
           >
             <option value="">
-              {{ hasHierarchy && !pl2s.length ? 'Select Process Level 1 first' : 'Select Process Level 2' }}
+              {{ hasHierarchy && !pl2s.length ? 'Select PL1 first' : 'Select PL2' }}
             </option>
             <option v-for="item in pl2s" :key="item" :value="item">{{ item }}</option>
           </NativeSelect>
           <p v-if="errors.pl2" class="text-xs text-destructive">{{ errors.pl2 }}</p>
         </div>
         <div class="grid gap-1.5">
-          <Label>Process Level 3</Label>
+          <Label>PL3</Label>
           <NativeSelect
             v-model="pl3Selection"
             :class="fieldClass"
@@ -125,7 +125,7 @@ const pl3Selection = computed({
             :aria-invalid="Boolean(errors.supervisorPositionId || errors.pl3Code)"
           >
             <option value="">
-              {{ hasHierarchy && !pl3s.length ? 'Select Process Level 2 first' : 'Select Process Level 3' }}
+              {{ hasHierarchy && !pl3s.length ? 'Select PL2 first' : 'Select PL3' }}
             </option>
             <option
               v-for="item in pl3s"
@@ -145,7 +145,7 @@ const pl3Selection = computed({
             v-model="selectedCountries"
             :options="countries"
             placeholder="Select customer countries…"
-            empty-text="Select Process Level 3 to load countries."
+            empty-text="Select PL3 to load countries."
             :disabled="Boolean(hasHierarchy) && !countries.length"
           />
         </div>

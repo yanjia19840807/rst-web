@@ -3,6 +3,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
+import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatInstantForCenter, formatMonth } from '@/lib/datetime'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import {
@@ -41,12 +42,33 @@ export function currentReviewerName(exercise: Exercise) {
   return exercise.currentReviewer || '—'
 }
 
+function displayOrDash(value: string | null | undefined) {
+  return value && value.trim() ? value : '—'
+}
+
+function distinctJoined(values: Array<string | null | undefined>) {
+  const items: string[] = []
+  const seen = new Set<string>()
+  for (const value of values) {
+    const token = value?.trim()
+    if (token && !seen.has(token)) {
+      seen.add(token)
+      items.push(token)
+    }
+  }
+  return items.length ? items.join(', ') : '—'
+}
+
+function kpiValues(exercise: Exercise, getter: (line: Exercise['snapshot']['sharedKpis'][number]) => string) {
+  return (exercise.snapshot.sharedKpis ?? []).map(getter)
+}
+
 export function createExerciseListColumns(
   options: ExerciseListColumnOptions = {},
 ): ColumnDef<Exercise>[] {
   return [
     columnHelper.accessor('exerciseCode', {
-      header: 'Exercise Code',
+      header: 'Exercise No',
       cell: ({ row }) =>
         h('span', { class: 'inline-flex flex-wrap items-center gap-1.5' }, [
           h('span', row.original.exerciseCode),
@@ -62,6 +84,50 @@ export function createExerciseListColumns(
           canInfo: Boolean(row.original.snapshot.toolkit.name),
           onInfo: () => options.onToolkitInfo?.(row.original),
         }),
+    }),
+    columnHelper.accessor((row) => formatMonth(row.sizingMonth), {
+      id: 'sizingMonth',
+      header: 'Sizing Month',
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.snapshot.toolkit.center), {
+      id: 'submittedAt',
+      header: 'Submitted Date',
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {
+      id: 'archivedAt',
+      header: 'Validated Date',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.snapshot.toolkit.center), {
+      id: 'center',
+      header: 'GBS Center',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.snapshot.toolkit.domain), {
+      id: 'domain',
+      header: 'Domain',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.snapshot.toolkit.pl1), {
+      id: 'pl1',
+      header: 'PL1',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.snapshot.toolkit.pl2), {
+      id: 'pl2',
+      header: 'PL2',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.snapshot.toolkit.pl3Name), {
+      id: 'pl3',
+      header: 'PL3',
+    }),
+    columnHelper.accessor((row) => distinctJoined(kpiValues(row, (line) => line.carrier)), {
+      id: 'carriers',
+      header: 'Carrier',
+    }),
+    columnHelper.accessor((row) => distinctJoined(kpiValues(row, (line) => line.site)), {
+      id: 'sites',
+      header: 'GBS Site',
+    }),
+    columnHelper.accessor((row) => joinCommaTokens(kpiValues(row, (line) => line.customerCountry)) || '—', {
+      id: 'customerCountries',
+      header: 'Customer Country',
     }),
     columnHelper.accessor((row) => deliveryHc(row), {
       id: 'deliveryHc',
@@ -85,14 +151,6 @@ export function createExerciseListColumns(
           formatMeasuredCapacity(row.original.rightSizingHc, row.original.capacityCreation),
         ),
     }),
-    columnHelper.accessor((row) => formatMonth(row.sizingMonth), {
-      id: 'sizingMonth',
-      header: 'Sizing Month',
-    }),
-    columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.snapshot.toolkit.center), {
-      id: 'submittedAt',
-      header: 'Submitted Date',
-    }),
     columnHelper.display({
       id: 'currentStep',
       header: 'Current Step',
@@ -111,10 +169,6 @@ export function createExerciseListColumns(
       id: 'aging',
       header: withUnit('Aging', FieldUnit.days),
       cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays }),
-    }),
-    columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {
-      id: 'archivedAt',
-      header: 'Validated Date',
     }),
     columnHelper.display({
       id: 'actions',

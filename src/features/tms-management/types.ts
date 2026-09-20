@@ -1,5 +1,11 @@
 export type TmsSessionStatus = 'running' | 'paused' | 'completed' | 'discarded'
 
+export type ToolkitSharedKpi = {
+  carrier: string
+  site: string
+  customerCountry: string
+}
+
 export interface Toolkit {
   id: string
   name: string
@@ -12,6 +18,7 @@ export interface Toolkit {
   combineSubtasksTime: boolean
   enabled?: boolean
   subtasks: Array<{ id: string; name: string; deletedAt: string | null; enabled?: boolean }>
+  sharedKpiSelections?: ToolkitSharedKpi[]
 }
 
 export interface Pl3Option {
@@ -36,6 +43,14 @@ export interface TmsSession {
   pausedAt: string | null
   endedAt: string | null
   center?: string | null
+  domain?: string | null
+  pl1?: string | null
+  pl2?: string | null
+  pl3?: string | null
+  pl3Code?: string | null
+  carriers?: string[]
+  sites?: string[]
+  customerCountries?: string[]
   netDurationSeconds: number
 }
 
@@ -69,7 +84,12 @@ export interface SessionFilters {
   dateTo?: string
   agentCcgid?: string
   toolkitId?: string
+  center?: string
+  domain?: string
   pl3Code?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
   enabled?: boolean
   page: number
   pageSize: number

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import PersonPicker, { type PersonPickerQuery } from '@/components/PersonPicker.vue'
+import PersonPicker, {
+  type PersonPickerQuery,
+  type PersonPickerRow,
+} from '@/components/PersonPicker.vue'
 import { personMatchesQuery } from '@/components/personPickerQuery'
-import type { ButtonVariants } from '@/components/ui/button'
 
 import type { TeamAgentOption } from '../types'
 
 const props = defineProps<{
   modelValue: string | null
   agents: TeamAgentOption[]
-  disabled?: boolean
-  size?: ButtonVariants['size']
 }>()
 
 const emit = defineEmits<{
@@ -25,36 +25,38 @@ const pickerQuery = ref<PersonPickerQuery>({
   open: false,
 })
 
-const filtered = computed(() => {
-  const rows = props.agents.map((agent) => ({
+const matched = computed(() =>
+  props.agents.filter((agent) =>
+    personMatchesQuery({ name: agent.name, ccgid: agent.ccgid }, pickerQuery.value.q),
+  ),
+)
+
+const items = computed<PersonPickerRow[]>(() => {
+  const start = (pickerQuery.value.page - 1) * pickerQuery.value.pageSize
+  return matched.value.slice(start, start + pickerQuery.value.pageSize).map((agent) => ({
     id: agent.ccgid,
     ccgid: agent.ccgid,
     name: agent.name,
-    email: agent.email,
   }))
-  return rows.filter((agent) => personMatchesQuery(agent, pickerQuery.value.q))
 })
 
-const items = computed(() => {
-  const start = (pickerQuery.value.page - 1) * pickerQuery.value.pageSize
-  return filtered.value.slice(start, start + pickerQuery.value.pageSize)
-})
+const total = computed(() => matched.value.length)
 
-const emptyText = computed(() =>
-  pickerQuery.value.q ? 'No matching people' : 'No agents on this team',
-)
+function formatLabel(row: PersonPickerRow) {
+  const agent = props.agents.find((item) => item.ccgid === row.ccgid)
+  return (agent?.name || row.name).trim() || row.ccgid || 'All'
+}
 </script>
 
 <template>
   <PersonPicker
     :model-value="props.modelValue"
-    empty-label="All agents"
+    empty-label="All"
     allow-clear
     :items="items"
-    :total="filtered.length"
-    :empty-text="emptyText"
-    :disabled="disabled"
-    :size="size"
+    :total="total"
+    :format-label="formatLabel"
+    empty-text="No matching agents"
     trigger-class="w-[220px]"
     @update:model-value="emit('update:modelValue', $event)"
     @query="pickerQuery = $event"

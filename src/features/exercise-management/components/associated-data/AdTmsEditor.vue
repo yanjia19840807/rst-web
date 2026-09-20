@@ -284,7 +284,7 @@ async function clearPeriod() {
       <AdMetric
         label="Sessions"
         :value="sessionTotalLabel"
-        hint="Included sessions used for the SYSTEM median. When Combine subtask time is Yes, each subtask's median is summed."
+        hint="Included sessions used for the SYSTEM median. When Combine Subtask Time is Yes, each subtask's median is summed."
       />
       <AdMetric
         :label="withUnit('Median cycle time', FieldUnit.seconds)"

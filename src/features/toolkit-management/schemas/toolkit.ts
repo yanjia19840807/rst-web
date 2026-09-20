@@ -25,13 +25,13 @@ export const toolkitEditorSchema = z.object({
   description: z
     .union([z.string(), z.null()])
     .transform((value) => value ?? ''),
-  supervisorPositionId: z.string().min(1, 'Select Process Level 3.'),
+  supervisorPositionId: z.string().min(1, 'Select PL3.'),
   center: z.string().min(1, 'Select a GBS Center.'),
   domain: z.string().min(1, 'Select a Domain.'),
-  pl1: z.string().min(1, 'Select Process Level 1.'),
-  pl2: z.string().min(1, 'Select Process Level 2.'),
-  pl3Code: z.string().min(1, 'Select Process Level 3.'),
-  pl3Name: z.string().min(1, 'Select Process Level 3.'),
+  pl1: z.string().min(1, 'Select PL1.'),
+  pl2: z.string().min(1, 'Select PL2.'),
+  pl3Code: z.string().min(1, 'Select PL3.'),
+  pl3Name: z.string().min(1, 'Select PL3.'),
   combineSubtasksTime: z.boolean(),
   subtasks: z.array(toolkitSubtaskSchema),
   sharedKpiSelections: z

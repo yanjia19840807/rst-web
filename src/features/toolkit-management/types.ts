@@ -81,9 +81,20 @@ export interface ToolkitEditorPayload {
 export interface ToolkitListQuery {
   name?: string
   pl3Name?: string
+  pl3Code?: string
+  center?: string
+  domain?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
   enabled?: boolean
   page?: number
   pageSize?: number
+}
+
+export type ToolkitPl3Option = {
+  code: string
+  name: string
 }
 
 export interface ToolkitListView {
@@ -93,4 +104,10 @@ export interface ToolkitListView {
   total: number
   totalPages: number
   pl3Names: string[]
+  centers: string[]
+  domains: string[]
+  pl3s: ToolkitPl3Option[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
 }

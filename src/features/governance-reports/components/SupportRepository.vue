@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import { distinctCommaTokens } from '@/lib/commaTokens'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
@@ -33,14 +34,17 @@ import {
 
 const emptyFilters = () => ({
   exerciseCode: '',
-  gbs: '',
-  domain: '',
-  pl3: '',
-  category: '',
   toolkit: '',
   sizingMonth: '',
   validatedFrom: '',
   validatedTo: '',
+  gbs: '',
+  domain: '',
+  pl3: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
+  category: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -56,14 +60,17 @@ const fieldClass = 'w-[220px]'
 
 const listQuery = computed<SupportRepositoryQuery>(() => ({
   exerciseCode: applied.exerciseCode || undefined,
-  center: applied.gbs || undefined,
-  domain: applied.domain || undefined,
-  pl3Name: applied.pl3 || undefined,
-  categoryId: applied.category || undefined,
   toolkitName: applied.toolkit || undefined,
   sizingMonth: applied.sizingMonth || undefined,
   validatedFrom: applied.validatedFrom || undefined,
   validatedTo: applied.validatedTo || undefined,
+  center: applied.gbs || undefined,
+  domain: applied.domain || undefined,
+  pl3Name: applied.pl3 || undefined,
+  carrier: applied.carrier || undefined,
+  site: applied.site || undefined,
+  customerCountry: applied.customerCountry || undefined,
+  categoryId: applied.category || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
@@ -78,6 +85,11 @@ const domainOptions = computed(() => data.value?.domains ?? [])
 const pl3Options = computed(() => data.value?.pl3Names ?? [])
 const categoryOptions = computed(() => data.value?.categories ?? [])
 const toolkitOptions = computed(() => data.value?.toolkitNames ?? [])
+const carrierOptions = computed(() => data.value?.carriers ?? [])
+const siteOptions = computed(() => data.value?.sites ?? [])
+const customerCountryOptions = computed(() =>
+  [...distinctCommaTokens(data.value?.customerCountries)].sort((left, right) => left.localeCompare(right)),
+)
 const loading = computed(() => supportQuery.isPending.value && !supportQuery.data.value)
 
 const categoryColumns = createSupportCategoryColumns()
@@ -165,33 +177,8 @@ watch(
           placeholder="Search exercise no"
         />
       </FilterField>
-      <FilterField label="GBS Center">
-        <NativeSelect v-model="draft.gbs" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in gbsOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="Domain">
-        <NativeSelect v-model="draft.domain" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in domainOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="PL3">
-        <NativeSelect v-model="draft.pl3" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in pl3Options" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
       <FilterField label="Toolkit">
-        <NativeSelect v-model="draft.toolkit" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect v-model="draft.toolkit" :class="fieldClass" placeholder="All">
           <option v-for="option in toolkitOptions" :key="option" :value="option">
             {{ option }}
           </option>
@@ -221,9 +208,50 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
+      <FilterField label="GBS Center">
+        <NativeSelect v-model="draft.gbs" :class="fieldClass" placeholder="All">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect v-model="draft.domain" :class="fieldClass" placeholder="All">
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect v-model="draft.pl3" :class="fieldClass" placeholder="All">
+          <option v-for="option in pl3Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Carrier">
+        <NativeSelect v-model="draft.carrier" :class="fieldClass" placeholder="All">
+          <option v-for="option in carrierOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="GBS Site">
+        <NativeSelect v-model="draft.site" :class="fieldClass" placeholder="All">
+          <option v-for="option in siteOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Customer Country">
+        <NativeSelect v-model="draft.customerCountry" :class="fieldClass" placeholder="All">
+          <option v-for="option in customerCountryOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
       <FilterField label="Standard Category">
-        <NativeSelect v-model="draft.category" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect v-model="draft.category" :class="fieldClass" placeholder="All">
           <option
             v-for="option in categoryOptions"
             :key="option.id"
@@ -281,12 +309,17 @@ watch(
             :columns="rowColumns"
             :data="rows"
             empty-text="No support rows found."
-            table-class="min-w-[1100px]"
+            table-class="min-w-[1960px]"
             :get-row-id="(row, index) => `${row.exerciseNo}-${row.activity}-${index}`"
           >
             <template #footer>
               <TableRow>
                 <TableCell>Total</TableCell>
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
+                <TableCell />
                 <TableCell />
                 <TableCell />
                 <TableCell />
@@ -330,6 +363,6 @@ watch(
       @confirm="confirmExport"
     />
 
-    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" show-delivery-hc :snapshot="toolkitSnapshot" />
   </div>
 </template>

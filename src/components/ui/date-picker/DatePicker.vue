@@ -101,14 +101,8 @@ function onClearKey() {
           :disabled="disabled"
           :aria-label="ariaLabel"
           :aria-invalid="invalid || undefined"
-          :class="
-            cn(
-              pickerTriggerClass,
-              canClear && 'pr-8',
-              date ? 'text-foreground' : 'text-muted-foreground',
-              props.class,
-            )
-          "
+          :data-placeholder="date ? undefined : ''"
+          :class="cn(pickerTriggerClass, canClear && 'pr-8', props.class)"
           @keydown.delete.prevent="onClearKey"
           @keydown.backspace.prevent="onClearKey"
         >

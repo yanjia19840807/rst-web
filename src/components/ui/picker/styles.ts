@@ -1,6 +1,7 @@
 /** Shared Date / Month / Year / Time picker chrome — matches shadcn-vue Date Picker. */
 
-export const pickerTriggerClass = 'w-[240px] justify-start text-left font-normal'
+export const pickerTriggerClass =
+  'w-[240px] justify-start text-left font-normal text-foreground data-placeholder:text-muted-foreground'
 
 export const pickerTriggerWrapClass = 'relative inline-flex'
 

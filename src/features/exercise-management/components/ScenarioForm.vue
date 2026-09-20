@@ -859,6 +859,7 @@ const scenarioInfoRows = computed(() => {
 
     <ToolkitInfoDialog
       v-model:open="toolkitInfoOpen"
+      show-delivery-hc
       :snapshot="exercise.snapshot"
       :alignment="exercise.timesheetAlignment"
     />

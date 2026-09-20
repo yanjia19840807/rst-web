@@ -28,10 +28,11 @@ export const tmsQueryKeys = {
     [...tmsQueryKeys.all, 'sessions', mode, filters] as const,
 }
 
-export function useToolkitsQuery() {
+export function useToolkitsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: tmsQueryKeys.toolkits(),
     queryFn: () => apiRequest<Toolkit[]>('/api/v1/toolkits'),
+    enabled: computed(() => toValue(enabled)),
   })
 }
 
@@ -110,7 +111,12 @@ export function useTmsSessionsQuery(
         dateTo,
         agentCcgid,
         toolkitId,
+        center,
+        domain,
         pl3Code,
+        carrier,
+        site,
+        customerCountry,
         enabled,
         page,
         pageSize,
@@ -130,7 +136,12 @@ export function useTmsSessionsQuery(
       if (dateTo) params.set('dateTo', dateTo)
       if (agentCcgid) params.set('agentCcgid', agentCcgid)
       if (toolkitId) params.set('toolkitId', toolkitId)
+      if (center) params.set('center', center)
+      if (domain) params.set('domain', domain)
       if (pl3Code) params.set('pl3Code', pl3Code)
+      if (carrier) params.set('carrier', carrier)
+      if (site) params.set('site', site)
+      if (customerCountry) params.set('customerCountry', customerCountry)
       if (enabled === true) params.set('enabled', 'true')
       if (enabled === false) params.set('enabled', 'false')
       const path =

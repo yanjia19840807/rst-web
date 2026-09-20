@@ -86,7 +86,12 @@ export interface ExerciseListQuery {
   tab?: 'IN_PROGRESS' | 'VALIDATED' | 'ARCHIVED'
   exerciseCode?: string
   toolkitName?: string
+  center?: string
+  domain?: string
   pl3Name?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
   workflowStatus?: string
   reviewStage?: string
   handler?: string
@@ -116,6 +121,11 @@ export interface ExerciseListView {
   totalPages: number
   toolkitNames: string[]
   pl3Names: string[]
+  centers: string[]
+  domains: string[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
   reviewers: ExerciseReviewerOption[]
 }
 

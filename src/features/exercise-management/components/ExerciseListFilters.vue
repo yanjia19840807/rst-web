@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import type { ExerciseReviewerOption } from '../types'
 import {
   CURRENT_STEP_FILTERS,
   IN_PROGRESS_TAB,
@@ -23,8 +24,14 @@ type TabKey = typeof IN_PROGRESS_TAB | typeof VALIDATED_TAB
 
 defineProps<{
   activeTab: TabKey
-  pl3Options: string[]
   toolkitOptions: string[]
+  centerOptions: string[]
+  domainOptions: string[]
+  pl3Options: string[]
+  carrierOptions: string[]
+  siteOptions: string[]
+  customerCountryOptions: string[]
+  reviewers: ExerciseReviewerOption[]
 }>()
 
 const emit = defineEmits<{
@@ -48,34 +55,21 @@ function onClear() {
 <template>
   <QueryPanel title="Filters" @search="onSearch" @clear="onClear">
     <label class="grid gap-1.5 text-xs text-muted-foreground">
-      Exercise Code
+      Exercise No
       <Input
         v-model="draft.exerciseCode"
         :class="fieldClass"
-        placeholder="Search exercise code"
+        placeholder="Search exercise no"
       />
-    </label>
-    <label class="grid gap-1.5 text-xs text-muted-foreground">
-      PL3
-      <NativeSelect
-        :class="fieldClass"
-        :model-value="draft.pl3"
-        @update:model-value="draft.pl3 = String($event ?? '')"
-      >
-        <option value="">All PL3</option>
-        <option v-for="option in pl3Options" :key="option" :value="option">
-          {{ option }}
-        </option>
-      </NativeSelect>
     </label>
     <label class="grid gap-1.5 text-xs text-muted-foreground">
       Toolkit
       <NativeSelect
+        placeholder="All"
         :class="fieldClass"
         :model-value="draft.toolkit"
         @update:model-value="draft.toolkit = String($event ?? '')"
       >
-        <option value="">All toolkits</option>
         <option v-for="option in toolkitOptions" :key="option" :value="option">
           {{ option }}
         </option>
@@ -91,22 +85,6 @@ function onClear() {
       />
     </label>
     <template v-if="activeTab === IN_PROGRESS_TAB">
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Current Step
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.reviewStage"
-          @update:model-value="draft.reviewStage = String($event ?? 'All stages') as CurrentStepFilter"
-        >
-          <option v-for="option in CURRENT_STEP_FILTERS" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </label>
-      <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Current Reviewer
-        <ReviewerPicker v-model="draft.reviewer" />
-      </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
         Submitted Date From
         <DatePicker
@@ -144,6 +122,103 @@ function onClear() {
           placeholder="To"
           :class="fieldClass"
         />
+      </label>
+    </template>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      GBS Center
+      <NativeSelect
+        placeholder="All"
+        :class="fieldClass"
+        :model-value="draft.center"
+        @update:model-value="draft.center = String($event ?? '')"
+      >
+        <option v-for="option in centerOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Domain
+      <NativeSelect
+        placeholder="All"
+        :class="fieldClass"
+        :model-value="draft.domain"
+        @update:model-value="draft.domain = String($event ?? '')"
+      >
+        <option v-for="option in domainOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      PL3
+      <NativeSelect
+        placeholder="All"
+        :class="fieldClass"
+        :model-value="draft.pl3"
+        @update:model-value="draft.pl3 = String($event ?? '')"
+      >
+        <option v-for="option in pl3Options" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Carrier
+      <NativeSelect
+        placeholder="All"
+        :class="fieldClass"
+        :model-value="draft.carrier"
+        @update:model-value="draft.carrier = String($event ?? '')"
+      >
+        <option v-for="option in carrierOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      GBS Site
+      <NativeSelect
+        placeholder="All"
+        :class="fieldClass"
+        :model-value="draft.site"
+        @update:model-value="draft.site = String($event ?? '')"
+      >
+        <option v-for="option in siteOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </NativeSelect>
+    </label>
+    <label class="grid gap-1.5 text-xs text-muted-foreground">
+      Customer Country
+      <NativeSelect
+        placeholder="All"
+        :class="fieldClass"
+        :model-value="draft.customerCountry"
+        @update:model-value="draft.customerCountry = String($event ?? '')"
+      >
+        <option v-for="option in customerCountryOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </NativeSelect>
+    </label>
+    <template v-if="activeTab === IN_PROGRESS_TAB">
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Current Step
+        <NativeSelect
+          placeholder="All"
+          :class="fieldClass"
+          :model-value="draft.reviewStage"
+          @update:model-value="draft.reviewStage = String($event ?? '') as CurrentStepFilter"
+        >
+          <option v-for="option in CURRENT_STEP_FILTERS" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </label>
+      <label class="grid gap-1.5 text-xs text-muted-foreground">
+        Current Reviewer
+        <ReviewerPicker v-model="draft.reviewer" :reviewers="reviewers" />
       </label>
     </template>
   </QueryPanel>

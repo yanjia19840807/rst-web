@@ -218,16 +218,14 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
         <div class="flex flex-wrap items-end gap-2.5">
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Kind
-            <NativeSelect v-model="kindFilter" class="w-[160px]">
-              <option value="">All kinds</option>
+            <NativeSelect v-model="kindFilter" class="w-[160px]" placeholder="All">
               <option value="DAILY">DAILY</option>
               <option value="MONTHLY">MONTHLY</option>
             </NativeSelect>
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Status
-            <NativeSelect v-model="statusFilter" class="w-[180px]">
-              <option value="">All statuses</option>
+            <NativeSelect v-model="statusFilter" class="w-[180px]" placeholder="All">
               <option value="ACTIVE">ACTIVE</option>
               <option value="FAILED">FAILED</option>
               <option value="LOADING">LOADING</option>

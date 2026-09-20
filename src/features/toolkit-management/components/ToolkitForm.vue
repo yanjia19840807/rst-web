@@ -39,11 +39,9 @@ const {
   countries,
   candidates,
   candidatesLoading,
-  syncDate,
   subtasks,
   sharedKpiSelections,
   selectedKpiRows,
-  totalHc,
   hasMissingKpis,
   alignment,
   noTimesheetHierarchy,
@@ -122,12 +120,9 @@ const {
       >
         <SharedKpiCard
           :rows="selectedKpiRows"
-          :total-hc="totalHc"
-          :sync-date="syncDate"
           :can-select="selectedCountries.length > 0"
           :has-countries="selectedCountries.length > 0"
           :error="sharedKpiError"
-          :show-delivery-hc="Boolean(toolkitId)"
           @select="kpiOpen = true"
           @remove="removeKpi"
         />
@@ -148,7 +143,6 @@ const {
       :pending="candidatesLoading"
       :selected="sharedKpiSelections"
       :countries="selectedCountries"
-      :show-delivery-hc="Boolean(toolkitId)"
       @confirm="applyKpiSelection"
     />
 

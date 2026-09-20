@@ -313,8 +313,7 @@ function rowId(row: {
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <NativeSelect v-model="peopleCenter" class="w-full min-w-0 sm:w-[200px]">
-                <option value="">All centers</option>
+              <NativeSelect v-model="peopleCenter" class="w-full min-w-0 sm:w-[200px]" placeholder="All">
                 <option v-for="center in peopleCenters" :key="center" :value="center">{{ center }}</option>
               </NativeSelect>
             </label>
@@ -359,8 +358,7 @@ function rowId(row: {
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Center
-              <NativeSelect v-model="scopeCenter" class="w-full min-w-0 sm:w-[200px]">
-                <option value="">All centers</option>
+              <NativeSelect v-model="scopeCenter" class="w-full min-w-0 sm:w-[200px]" placeholder="All">
                 <option v-for="center in scopeCenters" :key="center" :value="center">{{ center }}</option>
               </NativeSelect>
             </label>

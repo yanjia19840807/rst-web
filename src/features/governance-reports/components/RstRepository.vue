@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import { distinctCommaTokens } from '@/lib/commaTokens'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 import type { Exercise } from '@/features/exercise-management/types'
@@ -28,13 +29,16 @@ import { createRstRepositoryColumns } from './rstRepositoryColumns'
 
 const emptyFilters = () => ({
   exerciseCode: '',
-  gbs: '',
-  domain: '',
-  pl3: '',
   toolkit: '',
   sizingMonth: '',
   validatedFrom: '',
   validatedTo: '',
+  gbs: '',
+  domain: '',
+  pl3: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -50,10 +54,13 @@ const fieldClass = 'w-[220px]'
 
 const listQuery = computed<RepositoryListQuery>(() => ({
   exerciseCode: applied.exerciseCode || undefined,
+  toolkitName: applied.toolkit || undefined,
   center: applied.gbs || undefined,
   domain: applied.domain || undefined,
   pl3Name: applied.pl3 || undefined,
-  toolkitName: applied.toolkit || undefined,
+  carrier: applied.carrier || undefined,
+  site: applied.site || undefined,
+  customerCountry: applied.customerCountry || undefined,
   sizingMonth: applied.sizingMonth || undefined,
   validatedFrom: applied.validatedFrom || undefined,
   validatedTo: applied.validatedTo || undefined,
@@ -68,6 +75,13 @@ const gbsOptions = computed(() => repositoryQuery.data.value?.centers ?? [])
 const domainOptions = computed(() => repositoryQuery.data.value?.domains ?? [])
 const pl3Options = computed(() => repositoryQuery.data.value?.pl3Names ?? [])
 const toolkitOptions = computed(() => repositoryQuery.data.value?.toolkitNames ?? [])
+const carrierOptions = computed(() => repositoryQuery.data.value?.carriers ?? [])
+const siteOptions = computed(() => repositoryQuery.data.value?.sites ?? [])
+const customerCountryOptions = computed(() =>
+  [...distinctCommaTokens(repositoryQuery.data.value?.customerCountries)].sort((left, right) =>
+    left.localeCompare(right),
+  ),
+)
 const loading = computed(() => repositoryQuery.isPending.value && !repositoryQuery.data.value)
 
 const columns = computed(() =>
@@ -161,49 +175,12 @@ watch(
           placeholder="Search exercise no"
         />
       </FilterField>
-      <FilterField label="GBS Center">
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.gbs"
-          @update:model-value="draft.gbs = String($event ?? '')"
-        >
-          <option value="">All</option>
-          <option v-for="option in gbsOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="Domain">
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.domain"
-          @update:model-value="draft.domain = String($event ?? '')"
-        >
-          <option value="">All</option>
-          <option v-for="option in domainOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="PL3">
-        <NativeSelect
-          :class="fieldClass"
-          :model-value="draft.pl3"
-          @update:model-value="draft.pl3 = String($event ?? '')"
-        >
-          <option value="">All</option>
-          <option v-for="option in pl3Options" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
       <FilterField label="Toolkit">
         <NativeSelect
           :class="fieldClass"
           :model-value="draft.toolkit"
           @update:model-value="draft.toolkit = String($event ?? '')"
-        >
-          <option value="">All</option>
+         placeholder="All">
           <option v-for="option in toolkitOptions" :key="option" :value="option">
             {{ option }}
           </option>
@@ -233,6 +210,72 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
+      <FilterField label="GBS Center">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.gbs"
+          @update:model-value="draft.gbs = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.domain"
+          @update:model-value="draft.domain = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.pl3"
+          @update:model-value="draft.pl3 = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in pl3Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Carrier">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.carrier"
+          @update:model-value="draft.carrier = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in carrierOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="GBS Site">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.site"
+          @update:model-value="draft.site = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in siteOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Customer Country">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.customerCountry"
+          @update:model-value="draft.customerCountry = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in customerCountryOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
     </QueryPanel>
 
     <Card>
@@ -242,12 +285,14 @@ watch(
           :data="rows"
           :pending="loading"
           empty-text="No repository records found."
-          table-class="min-w-[1480px]"
+          table-class="min-w-[2200px]"
           :get-row-id="(row, index) => `${row.exerciseId}-${row.site}-${row.toolkit}-${index}`"
         >
           <template #footer>
             <TableRow>
               <TableCell>Total</TableCell>
+              <TableCell />
+              <TableCell />
               <TableCell />
               <TableCell />
               <TableCell />
@@ -295,6 +340,6 @@ watch(
       @confirm="confirmExport"
     />
 
-    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" show-delivery-hc :snapshot="toolkitSnapshot" />
   </div>
 </template>

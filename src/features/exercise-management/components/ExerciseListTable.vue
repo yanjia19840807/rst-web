@@ -30,10 +30,11 @@ const columns = computed(() =>
 const columnVisibility = computed(() => {
   const inProgress = props.activeTab === IN_PROGRESS_TAB
   return {
+    submittedAt: inProgress,
+    archivedAt: !inProgress,
     currentStep: inProgress,
     currentReviewer: inProgress,
     aging: inProgress,
-    archivedAt: !inProgress,
   }
 })
 </script>
@@ -44,7 +45,7 @@ const columnVisibility = computed(() => {
     :data="rows"
     :pending="loading"
     :empty-text="`No ${activeTab} exercises.`"
-    :table-class="activeTab === IN_PROGRESS_TAB ? 'min-w-[1280px]' : 'min-w-[1200px]'"
+    :table-class="activeTab === IN_PROGRESS_TAB ? 'min-w-[2400px]' : 'min-w-[2100px]'"
     :get-row-id="(row) => row.id"
     :column-visibility="columnVisibility"
   />

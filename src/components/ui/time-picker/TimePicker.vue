@@ -103,14 +103,8 @@ function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) 
           :disabled="disabled"
           :aria-label="ariaLabel"
           :aria-invalid="invalid || undefined"
-          :class="
-            cn(
-              pickerTriggerClass,
-              canClear && 'pr-8',
-              hasValue ? 'text-foreground' : 'text-muted-foreground',
-              props.class,
-            )
-          "
+          :data-placeholder="hasValue ? undefined : ''"
+          :class="cn(pickerTriggerClass, canClear && 'pr-8', props.class)"
           @keydown.delete.prevent="onClearKey"
           @keydown.backspace.prevent="onClearKey"
         >

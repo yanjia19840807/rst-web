@@ -61,6 +61,9 @@ export type RepositoryListQuery = {
   domain?: string
   pl3Name?: string
   toolkitName?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
   sizingMonth?: string
   validatedFrom?: string
   validatedTo?: string
@@ -78,6 +81,9 @@ export type RepositoryListView = {
   domains: string[]
   pl3Names: string[]
   toolkitNames: string[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
   totalDeliveryHc: number | string | null
   totalRightSizingHc: number | string | null
   totalSupport: number | string | null
@@ -100,8 +106,13 @@ export type SupportRow = {
   exerciseUuid: string
   center: string
   domain: string
+  pl1: string
+  pl2: string
   pl3: string
   toolkit: string
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
   standardCategory: string
   activity: string
   frequency: string
@@ -120,6 +131,9 @@ export type SupportRepositoryQuery = {
   pl3Name?: string
   categoryId?: string
   toolkitName?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
   sizingMonth?: string
   validatedFrom?: string
   validatedTo?: string
@@ -142,6 +156,9 @@ export type SupportRepositoryResponse = {
   pl3Names: string[]
   categories: SupportCategoryOption[]
   toolkitNames: string[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
 }
 
 export type ValidationWorkflowRow = {
@@ -153,8 +170,12 @@ export type ValidationWorkflowRow = {
   pl2: string
   pl3: string
   toolkit: string
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
   currentStep: string
   currentOwner: string
+  currentOwnerCcgid: string
   agingDays: number | null
   capacityCreation: number | string | null
   capacityPct: number | string | null
@@ -169,6 +190,11 @@ export type ValidationWorkflowQuery = {
   domain?: string
   pl3Name?: string
   toolkitName?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
+  currentStep?: string
+  currentOwner?: string
   sizingMonth?: string
   agingMinDays?: number
   submittedFrom?: string
@@ -187,9 +213,20 @@ export type ValidationWorkflowView = {
   domains: string[]
   pl3Names: string[]
   toolkitNames: string[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
+  currentSteps: string[]
+  currentOwners: ValidationPersonOption[]
+}
+
+export type ValidationPersonOption = {
+  ccgid: string
+  name: string
 }
 
 export type BenchmarkRow = {
+  exerciseNo: string
   gbs: string
   carrier: string
   site: string
@@ -218,10 +255,15 @@ export type BenchmarkProcessPath = {
 }
 
 export type BenchmarkingQuery = {
+  exerciseCode?: string
+  center?: string
   domain?: string
   pl1?: string
   pl2?: string
   pl3Code?: string
+  carrier?: string
+  site?: string
+  customerCountry?: string
   sizingMonth?: string
   validatedFrom?: string
   validatedTo?: string
@@ -248,5 +290,9 @@ export type BenchmarkingView = {
   total: number
   totalPages: number
   processPaths: BenchmarkProcessPath[]
+  centers: string[]
+  carriers: string[]
+  sites: string[]
+  customerCountries: string[]
   centerComparisons: BenchmarkCenterComparison[]
 }

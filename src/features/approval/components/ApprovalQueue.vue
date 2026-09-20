@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query'
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import QueryPanel from '@/components/QueryPanel.vue'
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 import AdMetric from '@/features/exercise-management/components/associated-data/AdMetric.vue'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
@@ -19,6 +20,13 @@ import { exerciseQueryKeys } from '@/features/exercise-management/api/queries'
 import type { Exercise } from '@/features/exercise-management/types'
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 
+import {
+  AWAITING_REVIEW_TAB,
+  COMPLETED_TASK_TAB,
+  approvalQueueTabFromQuery,
+  approvalQueueTabQuery,
+  type ApprovalQueueTab,
+} from '../approvalQueueTabs'
 import { useApprovalQueueQuery } from '../api/queries'
 import type { ApprovalQueueItem, ApprovalQueueQuery } from '../types'
 import {
@@ -26,21 +34,26 @@ import {
   createApprovalQueueColumns,
 } from './approvalQueueColumns'
 
-type TabKey = 'Awaiting Review' | 'Completed Task'
-
 const router = useRouter()
+const route = useRoute()
 const queryClient = useQueryClient()
-const activeTab = ref<TabKey>('Awaiting Review')
+const activeTab = ref<ApprovalQueueTab>(approvalQueueTabFromQuery(route.query.tab))
 
 const emptyFilters = () => ({
   exerciseCode: '',
-  toolkit: 'All toolkits',
-  pl3: '',
+  toolkit: '',
+  sizingMonth: '',
   submittedFrom: '',
   submittedTo: '',
-  decision: 'All decisions',
   completedFrom: '',
   completedTo: '',
+  center: '',
+  domain: '',
+  pl3: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
+  decision: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -52,7 +65,7 @@ const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
 const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
 const fieldClass = 'w-[220px]'
 
-const tabs: TabKey[] = ['Awaiting Review', 'Completed Task']
+const tabs: ApprovalQueueTab[] = [AWAITING_REVIEW_TAB, COMPLETED_TASK_TAB]
 
 const columns = computed(() =>
   createApprovalQueueColumns({
@@ -67,18 +80,24 @@ const columns = computed(() =>
 const columnVisibility = computed(() => approvalQueueVisibility(activeTab.value))
 
 const listQuery = computed<ApprovalQueueQuery>(() => {
-  const completed = activeTab.value === 'Completed Task'
+  const completed = activeTab.value === COMPLETED_TASK_TAB
   return {
     status: 'AWAITING',
     completed,
     exerciseCode: applied.exerciseCode || undefined,
-    toolkitName: applied.toolkit === 'All toolkits' ? undefined : applied.toolkit,
+    toolkitName: applied.toolkit || undefined,
+    center: applied.center || undefined,
+    domain: applied.domain || undefined,
     pl3Name: applied.pl3 || undefined,
+    carrier: applied.carrier || undefined,
+    site: applied.site || undefined,
+    customerCountry: applied.customerCountry || undefined,
+    sizingMonth: applied.sizingMonth || undefined,
     submittedFrom: completed ? undefined : applied.submittedFrom || undefined,
     submittedTo: completed ? undefined : applied.submittedTo || undefined,
     completedFrom: completed ? applied.completedFrom || undefined : undefined,
     completedTo: completed ? applied.completedTo || undefined : undefined,
-    decision: !completed || applied.decision === 'All decisions' ? undefined : applied.decision,
+    decision: !completed || !applied.decision ? undefined : applied.decision,
     page: page.value,
     pageSize: pageSize.value,
   }
@@ -96,13 +115,14 @@ const metrics = computed(
       highRisk: 0,
     },
 )
-const toolkitNames = computed(() => queueQuery.data.value?.toolkitNames ?? [])
-const pl3Names = computed(() => queueQuery.data.value?.pl3Names ?? [])
+const toolkitOptions = computed(() => queueQuery.data.value?.toolkitNames ?? [])
+const centerOptions = computed(() => queueQuery.data.value?.centers ?? [])
+const domainOptions = computed(() => queueQuery.data.value?.domains ?? [])
+const pl3Options = computed(() => queueQuery.data.value?.pl3Names ?? [])
+const carrierOptions = computed(() => queueQuery.data.value?.carriers ?? [])
+const siteOptions = computed(() => queueQuery.data.value?.sites ?? [])
+const customerCountryOptions = computed(() => queueQuery.data.value?.customerCountries ?? [])
 const loading = computed(() => queueQuery.isPending.value && !queueQuery.data.value)
-
-const pl3Options = computed(() => pl3Names.value)
-
-const toolkitOptions = computed(() => ['All toolkits', ...toolkitNames.value])
 
 function applySearch() {
   Object.assign(applied, { ...draft })
@@ -115,10 +135,22 @@ function clearFilters() {
   page.value = 1
 }
 
+function persistTab(tab: ApprovalQueueTab) {
+  const next = approvalQueueTabQuery(tab)
+  if (route.query.tab === next) return
+  void router.replace({
+    name: 'approver-queue',
+    query: { ...route.query, tab: next },
+  })
+}
+
+persistTab(activeTab.value)
+
 function openReview(item: ApprovalQueueItem) {
   void router.push({
     name: 'approver-review',
     params: { submissionId: item.submissionId },
+    query: { tab: approvalQueueTabQuery(activeTab.value) },
   })
 }
 
@@ -137,12 +169,16 @@ async function openToolkit(item: ApprovalQueueItem) {
   }
 }
 
-function onTabChange(tab: TabKey) {
-  if (tab === activeTab.value) return
+function onTabChange(tab: ApprovalQueueTab) {
+  if (tab === activeTab.value) {
+    persistTab(tab)
+    return
+  }
   activeTab.value = tab
   Object.assign(draft, emptyFilters())
   Object.assign(applied, emptyFilters())
   page.value = 1
+  persistTab(tab)
 }
 
 watch(
@@ -167,6 +203,18 @@ watch(
           : 'Could not load approval queue.',
       )
     }
+  },
+)
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    const next = approvalQueueTabFromQuery(tab)
+    if (next === activeTab.value) return
+    activeTab.value = next
+    Object.assign(draft, emptyFilters())
+    Object.assign(applied, emptyFilters())
+    page.value = 1
   },
 )
 </script>
@@ -199,19 +247,20 @@ watch(
       <CardContent class="space-y-3">
         <QueryPanel :key="activeTab" @search="applySearch" @clear="clearFilters">
           <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Exercise Code
+            Exercise No
             <Input
               v-model="draft.exerciseCode"
               :class="fieldClass"
-              placeholder="Search exercise code"
+              placeholder="Search exercise no"
             />
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
             Toolkit
             <NativeSelect
+              placeholder="All"
               :class="fieldClass"
               :model-value="draft.toolkit"
-              @update:model-value="draft.toolkit = String($event ?? 'All toolkits')"
+              @update:model-value="draft.toolkit = String($event ?? '')"
             >
               <option v-for="option in toolkitOptions" :key="option" :value="option">
                 {{ option }}
@@ -219,17 +268,13 @@ watch(
             </NativeSelect>
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
-            PL3
-            <NativeSelect
+            Sizing Month
+            <MonthPicker
+              v-model="draft.sizingMonth"
+              aria-label="Sizing month"
+              placeholder="All months"
               :class="fieldClass"
-              :model-value="draft.pl3"
-              @update:model-value="draft.pl3 = String($event ?? '')"
-            >
-              <option value="">All PL3</option>
-              <option v-for="option in pl3Options" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </NativeSelect>
+            />
           </label>
           <template v-if="activeTab === 'Awaiting Review'">
             <label class="grid gap-1.5 text-xs text-muted-foreground">
@@ -253,18 +298,6 @@ watch(
           </template>
           <template v-else>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
-              My Decision
-              <NativeSelect
-                :class="fieldClass"
-                :model-value="draft.decision"
-                @update:model-value="draft.decision = String($event ?? 'All decisions')"
-              >
-                <option>All decisions</option>
-                <option>Approved</option>
-                <option>Returned</option>
-              </NativeSelect>
-            </label>
-            <label class="grid gap-1.5 text-xs text-muted-foreground">
               Completed Date From
               <DatePicker
                 v-model="draft.completedFrom"
@@ -283,6 +316,99 @@ watch(
               />
             </label>
           </template>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            GBS Center
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.center"
+              @update:model-value="draft.center = String($event ?? '')"
+            >
+              <option v-for="option in centerOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Domain
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.domain"
+              @update:model-value="draft.domain = String($event ?? '')"
+            >
+              <option v-for="option in domainOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            PL3
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.pl3"
+              @update:model-value="draft.pl3 = String($event ?? '')"
+            >
+              <option v-for="option in pl3Options" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Carrier
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.carrier"
+              @update:model-value="draft.carrier = String($event ?? '')"
+            >
+              <option v-for="option in carrierOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            GBS Site
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.site"
+              @update:model-value="draft.site = String($event ?? '')"
+            >
+              <option v-for="option in siteOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1.5 text-xs text-muted-foreground">
+            Customer Country
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.customerCountry"
+              @update:model-value="draft.customerCountry = String($event ?? '')"
+            >
+              <option v-for="option in customerCountryOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </NativeSelect>
+          </label>
+          <label
+            v-if="activeTab === 'Completed Task'"
+            class="grid gap-1.5 text-xs text-muted-foreground"
+          >
+            My Decision
+            <NativeSelect
+              placeholder="All"
+              :class="fieldClass"
+              :model-value="draft.decision"
+              @update:model-value="draft.decision = String($event ?? '')"
+            >
+              <option>Approved</option>
+              <option>Returned</option>
+            </NativeSelect>
+          </label>
         </QueryPanel>
 
         <DataTable
@@ -294,7 +420,7 @@ watch(
               ? 'No submitted records found.'
               : 'No completed tasks found.'
           "
-          :table-class="activeTab === 'Awaiting Review' ? 'min-w-[1520px]' : 'min-w-[1320px]'"
+          :table-class="activeTab === 'Awaiting Review' ? 'min-w-[2600px]' : 'min-w-[2400px]'"
           :get-row-id="(row) => row.completedTaskId || row.submissionId"
           :column-visibility="columnVisibility"
         />
@@ -317,6 +443,7 @@ watch(
 
     <ToolkitInfoDialog
       v-model:open="toolkitInfoOpen"
+      show-delivery-hc
       :snapshot="toolkitSnapshot"
       :alignment="toolkitAlignment"
     />

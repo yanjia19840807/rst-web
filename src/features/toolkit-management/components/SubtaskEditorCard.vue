@@ -200,7 +200,7 @@ function applyToolkit(toolkit: SupervisorToolkit) {
     </CardHeader>
     <CardContent class="grid gap-4">
       <div class="grid gap-1.5">
-        <Label>Combine subtask time</Label>
+        <Label>Combine Subtask Time</Label>
         <div class="flex h-9 items-center gap-4 text-sm">
           <label class="inline-flex cursor-pointer items-center gap-2">
             <input

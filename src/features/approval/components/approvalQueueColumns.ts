@@ -4,7 +4,8 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import AgingBadge from '@/components/AgingBadge.vue'
 import '@/components/ui/data-table/types'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
-import { formatInstantForCenter } from '@/lib/datetime'
+import { joinCommaTokens } from '@/lib/commaTokens'
+import { formatInstantForCenter, formatMonth } from '@/lib/datetime'
 import {
   formatHc,
   formatMeasuredCapacity,
@@ -14,13 +15,17 @@ import {
 
 import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 
+import {
+  AWAITING_REVIEW_TAB,
+  type ApprovalQueueTab,
+} from '../approvalQueueTabs'
 import type { ApprovalQueueItem } from '../types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 
 import ApprovalDecisionBadge from './ApprovalDecisionBadge.vue'
 import ApprovalQueueRowActions from './ApprovalQueueRowActions.vue'
 
-export type ApprovalQueueTab = 'Awaiting Review' | 'Completed Task'
+export type { ApprovalQueueTab }
 
 export type ApprovalQueueColumnOptions = {
   tab: ApprovalQueueTab
@@ -36,29 +41,34 @@ export function previousStepLabel(step?: string | null) {
   return value
 }
 
+function displayOrDash(value: string | null | undefined) {
+  return value && value.trim() ? value : '—'
+}
+
+function distinctJoined(values: string[] | null | undefined) {
+  const items: string[] = []
+  const seen = new Set<string>()
+  for (const value of values ?? []) {
+    const token = value?.trim()
+    if (token && !seen.has(token)) {
+      seen.add(token)
+      items.push(token)
+    }
+  }
+  return items.length ? items.join(', ') : '—'
+}
+
 export function createApprovalQueueColumns(
   options: ApprovalQueueColumnOptions,
 ): ColumnDef<ApprovalQueueItem>[] {
   return [
     columnHelper.accessor('exerciseCode', {
-      header: 'Exercise code',
+      header: 'Exercise No',
       cell: ({ row }) =>
         h('span', { class: 'inline-flex flex-wrap items-center gap-1.5 font-semibold' }, [
           row.original.exerciseCode,
           row.original.scopeChanged ? h(ScopeChangedBadge) : null,
         ]),
-    }),
-    columnHelper.accessor((row) => row.center || '—', {
-      id: 'center',
-      header: 'GBS',
-    }),
-    columnHelper.accessor((row) => row.domain || '—', {
-      id: 'domain',
-      header: 'Domain',
-    }),
-    columnHelper.accessor((row) => row.pl3Name || '—', {
-      id: 'pl3Name',
-      header: 'PL3',
     }),
     columnHelper.display({
       id: 'toolkitName',
@@ -70,13 +80,53 @@ export function createApprovalQueueColumns(
           onInfo: () => options.onToolkitInfo?.(row.original),
         }),
     }),
-    columnHelper.accessor((row) => row.supervisor || '—', {
-      id: 'supervisor',
-      header: 'Supervisor',
+    columnHelper.accessor((row) => formatMonth(row.sizingMonth), {
+      id: 'sizingMonth',
+      header: 'Sizing Month',
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.center), {
       id: 'submittedAt',
       header: 'Submitted Date',
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.myCompletedAt, row.center), {
+      id: 'myCompletedAt',
+      header: 'Completed On',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.center), {
+      id: 'center',
+      header: 'GBS Center',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.domain), {
+      id: 'domain',
+      header: 'Domain',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.pl1), {
+      id: 'pl1',
+      header: 'PL1',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.pl2), {
+      id: 'pl2',
+      header: 'PL2',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.pl3Name), {
+      id: 'pl3Name',
+      header: 'PL3',
+    }),
+    columnHelper.accessor((row) => distinctJoined(row.carriers), {
+      id: 'carriers',
+      header: 'Carrier',
+    }),
+    columnHelper.accessor((row) => distinctJoined(row.sites), {
+      id: 'sites',
+      header: 'GBS Site',
+    }),
+    columnHelper.accessor((row) => joinCommaTokens(row.customerCountries) || '—', {
+      id: 'customerCountries',
+      header: 'Customer Country',
+    }),
+    columnHelper.accessor((row) => displayOrDash(row.supervisor), {
+      id: 'supervisor',
+      header: 'Supervisor',
     }),
     columnHelper.accessor((row) => formatHc(row.deliveryHc), {
       id: 'deliveryHc',
@@ -88,11 +138,11 @@ export function createApprovalQueueColumns(
     }),
     columnHelper.accessor((row) => formatHc(row.productionSupport), {
       id: 'productionSupport',
-      header: 'Production Support',
+      header: 'Production Support (FTE)',
     }),
     columnHelper.accessor((row) => formatMeasuredCapacity(row.rightSizingHc, row.capacityCreation), {
       id: 'capacityCreation',
-      header: 'Capacity Creation',
+      header: 'Capacity Creation (HC)',
       cell: ({ row }) =>
         h(
           'span',
@@ -124,10 +174,6 @@ export function createApprovalQueueColumns(
       header: 'My Decision',
       cell: ({ row }) => h(ApprovalDecisionBadge, { decision: row.original.myDecision }),
     }),
-    columnHelper.accessor((row) => formatInstantForCenter(row.myCompletedAt, row.center), {
-      id: 'myCompletedAt',
-      header: 'Completed On',
-    }),
     columnHelper.accessor((row) => row.completedStep || '—', {
       id: 'completedStep',
       header: 'Completed Step',
@@ -138,7 +184,7 @@ export function createApprovalQueueColumns(
       header: () => h('div', { class: 'text-right' }, 'Action'),
       cell: ({ row }) =>
         h(ApprovalQueueRowActions, {
-          label: options.tab === 'Awaiting Review' ? 'Review' : 'View',
+          label: options.tab === AWAITING_REVIEW_TAB ? 'Review' : 'View',
           onReview: () => options.onReview?.(row.original),
         }),
       meta: { headerClass: 'text-right', cellClass: 'text-right' },
@@ -147,14 +193,15 @@ export function createApprovalQueueColumns(
 }
 
 export function approvalQueueVisibility(tab: ApprovalQueueTab) {
-  const awaiting = tab === 'Awaiting Review'
+  const awaiting = tab === AWAITING_REVIEW_TAB
   return {
+    submittedAt: awaiting,
+    myCompletedAt: !awaiting,
     previousStep: awaiting,
     previousActor: awaiting,
     previousStepAt: awaiting,
     aging: awaiting,
     myDecision: !awaiting,
-    myCompletedAt: !awaiting,
     completedStep: !awaiting,
   }
 }

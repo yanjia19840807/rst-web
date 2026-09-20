@@ -12,25 +12,32 @@ import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import { distinctCommaTokens } from '@/lib/commaTokens'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import type { Exercise } from '@/features/exercise-management/types'
 
 import { governanceApi } from '../api'
 import { governanceQueryKeys, useValidationWorkflowQuery } from '../api/queries'
 import type { ValidationWorkflowQuery, ValidationWorkflowRow } from '../types'
+import CurrentOwnerPicker from './CurrentOwnerPicker.vue'
 import FilterField from './FilterField.vue'
 import { createValidationWorkflowColumns } from './validationWorkflowColumns'
 
 const emptyFilters = () => ({
   exerciseCode: '',
+  toolkit: '',
+  sizingMonth: '',
+  submittedFrom: '',
+  submittedTo: '',
   gbs: '',
   domain: '',
   pl3: '',
-  toolkit: '',
-  sizingMonth: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
+  currentStep: '',
+  currentOwner: '',
   agingMinDays: '',
-  submittedFrom: '',
-  submittedTo: '',
 })
 
 function parseAgingMinDays(value: string): number | undefined {
@@ -53,6 +60,11 @@ const listQuery = computed<ValidationWorkflowQuery>(() => ({
   domain: applied.domain || undefined,
   pl3Name: applied.pl3 || undefined,
   toolkitName: applied.toolkit || undefined,
+  carrier: applied.carrier || undefined,
+  site: applied.site || undefined,
+  customerCountry: applied.customerCountry || undefined,
+  currentStep: applied.currentStep || undefined,
+  currentOwner: applied.currentOwner || undefined,
   sizingMonth: applied.sizingMonth || undefined,
   agingMinDays: parseAgingMinDays(applied.agingMinDays),
   submittedFrom: applied.submittedFrom || undefined,
@@ -68,6 +80,15 @@ const gbsOptions = computed(() => workflowQuery.data.value?.centers ?? [])
 const domainOptions = computed(() => workflowQuery.data.value?.domains ?? [])
 const pl3Options = computed(() => workflowQuery.data.value?.pl3Names ?? [])
 const toolkitOptions = computed(() => workflowQuery.data.value?.toolkitNames ?? [])
+const carrierOptions = computed(() => workflowQuery.data.value?.carriers ?? [])
+const siteOptions = computed(() => workflowQuery.data.value?.sites ?? [])
+const customerCountryOptions = computed(() =>
+  [...distinctCommaTokens(workflowQuery.data.value?.customerCountries)].sort((left, right) =>
+    left.localeCompare(right),
+  ),
+)
+const currentStepOptions = computed(() => workflowQuery.data.value?.currentSteps ?? [])
+const currentOwnerOptions = computed(() => workflowQuery.data.value?.currentOwners ?? [])
 const loading = computed(() => workflowQuery.isPending.value && !workflowQuery.data.value)
 
 const columns = computed(() =>
@@ -139,33 +160,8 @@ watch(
           placeholder="Search exercise no"
         />
       </FilterField>
-      <FilterField label="GBS Center">
-        <NativeSelect v-model="draft.gbs" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in gbsOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="Domain">
-        <NativeSelect v-model="draft.domain" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in domainOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
-      <FilterField label="PL3">
-        <NativeSelect v-model="draft.pl3" :class="fieldClass">
-          <option value="">All</option>
-          <option v-for="option in pl3Options" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
-      </FilterField>
       <FilterField label="Toolkit">
-        <NativeSelect v-model="draft.toolkit" :class="fieldClass">
-          <option value="">All</option>
+        <NativeSelect v-model="draft.toolkit" :class="fieldClass" placeholder="All">
           <option v-for="option in toolkitOptions" :key="option" :value="option">
             {{ option }}
           </option>
@@ -195,6 +191,58 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
+      <FilterField label="GBS Center">
+        <NativeSelect v-model="draft.gbs" :class="fieldClass" placeholder="All">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Domain">
+        <NativeSelect v-model="draft.domain" :class="fieldClass" placeholder="All">
+          <option v-for="option in domainOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="PL3">
+        <NativeSelect v-model="draft.pl3" :class="fieldClass" placeholder="All">
+          <option v-for="option in pl3Options" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Carrier">
+        <NativeSelect v-model="draft.carrier" :class="fieldClass" placeholder="All">
+          <option v-for="option in carrierOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="GBS Site">
+        <NativeSelect v-model="draft.site" :class="fieldClass" placeholder="All">
+          <option v-for="option in siteOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Customer Country">
+        <NativeSelect v-model="draft.customerCountry" :class="fieldClass" placeholder="All">
+          <option v-for="option in customerCountryOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Current Step">
+        <NativeSelect v-model="draft.currentStep" :class="fieldClass" placeholder="All">
+          <option v-for="option in currentStepOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Current Owner">
+        <CurrentOwnerPicker v-model="draft.currentOwner" :owners="currentOwnerOptions" />
+      </FilterField>
       <FilterField label="Aging (min days)">
         <Input
           v-model="draft.agingMinDays"
@@ -213,7 +261,7 @@ watch(
           :data="rows"
           :pending="loading"
           empty-text="No stuck exercises found."
-          table-class="min-w-[1480px]"
+          table-class="min-w-[2200px]"
           :get-row-id="(row) => row.exerciseUuid || row.exerciseNo"
         />
 
@@ -233,6 +281,6 @@ watch(
       </CardContent>
     </Card>
 
-    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" :snapshot="toolkitSnapshot" />
+    <ToolkitInfoDialog v-model:open="toolkitInfoOpen" show-delivery-hc :snapshot="toolkitSnapshot" />
   </div>
 </template>

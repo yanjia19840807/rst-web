@@ -95,6 +95,15 @@ const approveRows = computed(() => {
   <div class="grid gap-4">
     <Card>
       <CardHeader>
+        <CardTitle class="text-base">History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ApprovalHistoryTable :rows="workspace.history ?? []" :center="center" />
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
         <CardTitle class="text-base">Current approval</CardTitle>
       </CardHeader>
       <CardContent class="grid gap-4">
@@ -119,21 +128,6 @@ const approveRows = computed(() => {
             Return To Supervisor
           </Button>
         </div>
-        <p v-if="workspace.nextStep" class="text-sm text-muted-foreground">
-          After approve → {{ workspace.nextStep }}
-          <template v-if="handlerLabel(workspace.nextReviewer, workspace.nextHandlerCcgid)">
-            · {{ handlerLabel(workspace.nextReviewer, workspace.nextHandlerCcgid) }}
-          </template>
-        </p>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle class="text-base">History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ApprovalHistoryTable :rows="workspace.history ?? []" :center="center" />
       </CardContent>
     </Card>
 

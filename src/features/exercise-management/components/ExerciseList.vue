@@ -49,7 +49,12 @@ const listQuery = computed<ExerciseListQuery>(() => {
     tab: inProgress ? 'IN_PROGRESS' : 'VALIDATED',
     exerciseCode: applied.exerciseCode,
     toolkitName: applied.toolkit || undefined,
+    center: applied.center || undefined,
+    domain: applied.domain || undefined,
     pl3Name: applied.pl3 || undefined,
+    carrier: applied.carrier || undefined,
+    site: applied.site || undefined,
+    customerCountry: applied.customerCountry || undefined,
     sizingMonth: applied.sizingMonth || undefined,
     reviewStage: inProgress ? reviewStageQueryValue(applied.reviewStage) : undefined,
     handler: !inProgress || !applied.reviewer ? undefined : applied.reviewer,
@@ -69,6 +74,12 @@ const total = computed(() => exercisesQuery.data.value?.total ?? 0)
 const toolkits = computed<SupervisorToolkit[]>(() => toolkitsQuery.data.value?.items ?? [])
 const toolkitNames = computed(() => exercisesQuery.data.value?.toolkitNames ?? [])
 const pl3Names = computed(() => exercisesQuery.data.value?.pl3Names ?? [])
+const centerOptions = computed(() => exercisesQuery.data.value?.centers ?? [])
+const domainOptions = computed(() => exercisesQuery.data.value?.domains ?? [])
+const carrierOptions = computed(() => exercisesQuery.data.value?.carriers ?? [])
+const siteOptions = computed(() => exercisesQuery.data.value?.sites ?? [])
+const customerCountryOptions = computed(() => exercisesQuery.data.value?.customerCountries ?? [])
+const reviewers = computed(() => exercisesQuery.data.value?.reviewers ?? [])
 const loading = computed(
   () => exercisesQuery.isPending.value && !exercisesQuery.data.value,
 )
@@ -188,8 +199,14 @@ watch(
         <ExerciseListFilters
           :key="activeTab"
           :active-tab="activeTab"
-          :pl3-options="pl3Options"
           :toolkit-options="toolkitOptions"
+          :center-options="centerOptions"
+          :domain-options="domainOptions"
+          :pl3-options="pl3Options"
+          :carrier-options="carrierOptions"
+          :site-options="siteOptions"
+          :customer-country-options="customerCountryOptions"
+          :reviewers="reviewers"
           @search="applySearch"
           @clear="clearFilters"
         />
@@ -226,6 +243,7 @@ watch(
 
     <ToolkitInfoDialog
       v-model:open="toolkitInfoOpen"
+      show-delivery-hc
       :snapshot="toolkitExercise?.snapshot ?? null"
       :alignment="toolkitExercise?.timesheetAlignment"
     />

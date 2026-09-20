@@ -30,11 +30,9 @@ const props = withDefaults(
     candidates: SharedKpiCandidate[]
     selected: SharedKpiKey[]
     countries: string[]
-    showDeliveryHc?: boolean
     pending?: boolean
   }>(),
   {
-    showDeliveryHc: true,
     pending: false,
   },
 )
@@ -122,12 +120,11 @@ function confirm() {
                 <TableHead>Carrier</TableHead>
                 <TableHead>GBS Site</TableHead>
                 <TableHead>Customer Country</TableHead>
-                <TableHead v-if="showDeliveryHc">Delivery HC</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-if="pending && !candidates.length">
-                <TableCell :colspan="showDeliveryHc ? 5 : 4" class="p-0">
+                <TableCell colspan="4" class="p-0">
                   <ListLoading />
                 </TableCell>
               </TableRow>
@@ -151,10 +148,9 @@ function confirm() {
                   <TableCell>{{ item.carrier }}</TableCell>
                   <TableCell>{{ item.site }}</TableCell>
                   <TableCell>{{ item.customerCountry }}</TableCell>
-                  <TableCell v-if="showDeliveryHc">{{ item.deliveryHc }}</TableCell>
                 </TableRow>
                 <TableRow v-if="!candidates.length">
-                  <TableCell :colspan="showDeliveryHc ? 5 : 4" class="h-20 text-center text-muted-foreground italic">
+                  <TableCell colspan="4" class="h-20 text-center text-muted-foreground italic">
                     No KPI lines available for the selected countries.
                   </TableCell>
                 </TableRow>

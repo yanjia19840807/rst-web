@@ -11,11 +11,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
+import { distinctCommaTokens } from '@/lib/commaTokens'
 
 import { governanceApi } from '../api'
 import { useBenchmarkingQuery } from '../api/queries'
@@ -32,9 +34,14 @@ const emptyFilters = () => ({
   pl1: '',
   pl2: '',
   pl3: '',
+  exerciseCode: '',
   sizingMonth: '',
   validatedFrom: '',
   validatedTo: '',
+  gbs: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
 })
 
 const draft = reactive(emptyFilters())
@@ -50,6 +57,11 @@ const listQuery = computed<BenchmarkingQuery>(() => ({
   pl1: applied.pl1 || undefined,
   pl2: applied.pl2 || undefined,
   pl3Code: applied.pl3 || undefined,
+  exerciseCode: applied.exerciseCode || undefined,
+  center: applied.gbs || undefined,
+  carrier: applied.carrier || undefined,
+  site: applied.site || undefined,
+  customerCountry: applied.customerCountry || undefined,
   sizingMonth: applied.sizingMonth || undefined,
   validatedFrom: applied.validatedFrom || undefined,
   validatedTo: applied.validatedTo || undefined,
@@ -62,6 +74,14 @@ const data = computed(() => benchmarkingQuery.data.value)
 const rows = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
 const processPaths = computed(() => data.value?.processPaths ?? [])
+const gbsOptions = computed(() => data.value?.centers ?? [])
+const carrierOptions = computed(() => data.value?.carriers ?? [])
+const siteOptions = computed(() => data.value?.sites ?? [])
+const customerCountryOptions = computed(() =>
+  [...distinctCommaTokens(data.value?.customerCountries)].sort((left, right) =>
+    left.localeCompare(right),
+  ),
+)
 const loading = computed(() => benchmarkingQuery.isPending.value && !benchmarkingQuery.data.value)
 const pl3Selected = computed(() => Boolean(applied.pl3))
 const pathReady = computed(() => Boolean(draft.pl3))
@@ -242,6 +262,13 @@ watch(
           </option>
         </NativeSelect>
       </FilterField>
+      <FilterField label="Exercise No">
+        <Input
+          v-model="draft.exerciseCode"
+          :class="fieldClass"
+          placeholder="Search exercise no"
+        />
+      </FilterField>
       <FilterField label="Sizing Month">
         <MonthPicker
           v-model="draft.sizingMonth"
@@ -265,6 +292,50 @@ watch(
           placeholder="To"
           :class="fieldClass"
         />
+      </FilterField>
+      <FilterField label="GBS Center">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.gbs"
+          @update:model-value="draft.gbs = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in gbsOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Carrier">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.carrier"
+          @update:model-value="draft.carrier = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in carrierOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="GBS Site">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.site"
+          @update:model-value="draft.site = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in siteOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
+      </FilterField>
+      <FilterField label="Customer Country">
+        <NativeSelect
+          :class="fieldClass"
+          :model-value="draft.customerCountry"
+          @update:model-value="draft.customerCountry = String($event ?? '')"
+         placeholder="All">
+          <option v-for="option in customerCountryOptions" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </NativeSelect>
       </FilterField>
     </QueryPanel>
 
@@ -305,8 +376,8 @@ watch(
           <DataTable
             :columns="columns"
             :data="rows"
-            table-class="min-w-[1100px]"
-            :get-row-id="(row, index) => `${row.pl3Code}-${row.gbs}-${row.carrier}-${row.site}-${row.sharedKpiLine}-${index}`"
+            table-class="min-w-[1800px]"
+            :get-row-id="(row, index) => `${row.exerciseNo}-${row.pl3Code}-${row.gbs}-${row.carrier}-${row.site}-${row.sharedKpiLine}-${index}`"
             :empty-text="
               pl3Selected
                 ? 'No benchmark rows found.'

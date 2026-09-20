@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
-import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,10 +19,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
-import { formatDate, formatInstantForCenter, formatMonth } from '@/lib/datetime'
+import { formatInstantForCenter } from '@/lib/datetime'
 import { capacityTone, measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
 import { useApprovalDetailQuery } from '@/features/approval/api/queries'
+import {
+  approvalQueueBackLabel,
+  approvalQueueLocation,
+} from '@/features/approval/approvalQueueTabs'
 import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
 import ApprovalInProgressPanel from '@/features/approval/components/ApprovalInProgressPanel.vue'
 import { historyFromActions } from '@/features/approval/historyFromActions'
@@ -43,15 +45,16 @@ import {
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { slaMinutesToHours } from '../schemas/teamSetup'
-import { deriveSizingWindows, deriveSlotPeriodLabel, formatTmsPeriodLabel } from '../periodWindows'
+import { deriveSlotPeriodLabel, formatTmsPeriodLabel } from '../periodWindows'
 import { actualHeadcount } from '../sizingChartMath'
 import type { SubmittedDetails } from '../types'
 import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
 import { sumSupportFte } from './associated-data/supportOptions'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
+import ExerciseDetailHeader from './ExerciseDetailHeader.vue'
+import ValidationFindingsTable from './ValidationFindingsTable.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
-import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -65,9 +68,9 @@ const props = withDefaults(
 const isApprover = computed(() => props.mode === 'approver')
 
 const router = useRouter()
+const route = useRoute()
 const pageTab = ref<'exercise' | 'approval'>('exercise')
 const simulationTab = ref<'sizing' | 'slot'>('sizing')
-const toolkitInfoOpen = ref(false)
 const comments = ref('')
 const redirected = ref(false)
 
@@ -99,6 +102,7 @@ function toSubmittedDetails(detail: ApprovalDetailView): SubmittedDetails {
     actions: detail.actions,
     canDecide: detail.canDecide,
     workspace: detail.workspace,
+    findings: detail.findings ?? [],
   }
 }
 
@@ -155,10 +159,11 @@ function redirectAway(message: string) {
   if (redirected.value) return
   redirected.value = true
   toast.error(message)
-  void router.push({
-    name: isApprover.value ? 'approver-queue' : 'supervisor-exercise-detail',
-    params: isApprover.value ? undefined : { id: props.exerciseId },
-  })
+  void router.push(
+    isApprover.value
+      ? queueLocation.value
+      : { name: 'supervisor-exercise-detail', params: { id: props.exerciseId } },
+  )
 }
 
 watch(
@@ -186,9 +191,11 @@ const workspace = computed(() => {
   }
 })
 const inProgress = computed(() => workspace.value?.mode === 'IN_PROGRESS')
-
-const sizingWindows = computed(() =>
-  exercise.value ? deriveSizingWindows(exercise.value.sizingMonth) : null,
+const queueLocation = computed(() =>
+  approvalQueueLocation(route.query.tab, workspace.value?.mode),
+)
+const queueBackLabel = computed(() =>
+  approvalQueueBackLabel(route.query.tab, workspace.value?.mode),
 )
 
 const deliveryHc = computed(() =>
@@ -272,19 +279,11 @@ const hasSlot = computed(
 )
 
 const packageRows = computed(() => {
-  const windows = sizingWindows.value
   const ex = exercise.value
   const submitted = details.value
   if (!ex || !submitted) return []
   return [
-    { label: 'Exercise', value: submitted.exerciseCode, strong: true },
-    { label: 'Official Scenario', value: submitted.scenarioName ?? submitted.scenarioId },
-    { key: 'toolkit', label: 'Toolkit', value: ex.snapshot.toolkit.name },
-    { label: 'Sizing Month', value: formatMonth(ex.sizingMonth) },
-    { label: 'Month chart history', value: windows?.monthTrain },
-    { label: 'Month forecast', value: windows?.monthForecast },
-    { label: 'Daily chart history', value: windows?.dailyTrain },
-    { label: 'Daily forecast', value: windows?.dailyForecast },
+    { label: 'Official Scenario', value: submitted.scenarioName ?? submitted.scenarioId, strong: true },
     {
       label: 'Slot Period',
       value: deriveSlotPeriodLabel(ex.slotStartDate, ex.slotWeeks),
@@ -438,14 +437,14 @@ function downloadSummary() {
           @click="
             router.push(
               isApprover
-                ? { name: 'approver-queue' }
+                ? queueLocation
                 : exerciseListLocation(exercise?.workflowStatus ?? details?.workflowStatus),
             )
           "
         >
           {{
             isApprover
-              ? '← Back to Approval Queue'
+              ? queueBackLabel
               : exerciseListBackLabel(exercise?.workflowStatus ?? details?.workflowStatus)
           }}
         </Button>
@@ -469,6 +468,7 @@ function downloadSummary() {
     </PageActions>
 
     <TimesheetAlignmentAlert
+      v-if="!isApprover || inProgress"
       :audience="isApprover ? 'approval' : 'exercise'"
       :alignment="exercise.timesheetAlignment"
       :frozen-delivery-hc="exercise.deliveryHc ?? deliveryHc"
@@ -485,26 +485,14 @@ function downloadSummary() {
     />
 
     <div v-if="pageTab === 'exercise'" class="grid gap-4">
+      <ExerciseDetailHeader :exercise="exercise" locked :show-current-step="false" />
+
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Official Scenario</CardTitle>
         </CardHeader>
         <CardContent>
           <DetailTable :rows="packageRows" :columns="2">
-            <template #toolkit="{ row }">
-              <span class="inline-flex items-center gap-1.5">
-                <span>{{ row.value || '—' }}</span>
-                <button
-                  type="button"
-                  :class="infoHintButtonClass"
-                  title="Toolkit info"
-                  @click="toolkitInfoOpen = true"
-                >
-                  <Info :class="infoHintIconClass" />
-                  <span class="sr-only">Toolkit info</span>
-                </button>
-              </span>
-            </template>
             <template #medianSource="{ row }">
               <Badge :variant="medianSourceLabel === 'Manual' ? 'secondary' : 'outline'">
                 {{ row.value || '—' }}
@@ -665,6 +653,21 @@ function downloadSummary() {
     </div>
 
     <div v-else-if="workspace" class="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">Validation Result</CardTitle>
+        </CardHeader>
+        <CardContent class="grid gap-3">
+          <p class="text-xs text-muted-foreground">
+            Captured at Submit. Daily vs Monthly and TMS ratio on this exercise.
+          </p>
+          <ValidationFindingsTable
+            :findings="details.findings ?? []"
+            empty-text="No submit-time validation findings were stored for this exercise."
+          />
+        </CardContent>
+      </Card>
+
       <ApprovalInProgressPanel
         v-if="inProgress"
         :workspace="workspace"
@@ -678,11 +681,6 @@ function downloadSummary() {
       <ApprovalCompletedPanel v-else :workspace="workspace" :center="exercise?.snapshot.toolkit.center" />
     </div>
 
-    <ToolkitInfoDialog
-      v-model:open="toolkitInfoOpen"
-      :snapshot="exercise.snapshot"
-      :alignment="exercise.timesheetAlignment"
-    />
   </div>
   <div v-else class="py-16 text-center text-sm text-muted-foreground">
     Submitted details are unavailable for this exercise.

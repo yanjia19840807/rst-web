@@ -67,10 +67,10 @@ function clear() {
         type="button"
         variant="outline"
         :disabled="disabled"
+        :data-placeholder="modelValue.length ? undefined : ''"
         :class="
           cn(
-            'h-9 w-full justify-between px-3 font-normal',
-            !modelValue.length && 'text-muted-foreground',
+            'h-9 w-full justify-between px-3 font-normal text-foreground data-placeholder:text-muted-foreground',
             props.class,
           )
         "

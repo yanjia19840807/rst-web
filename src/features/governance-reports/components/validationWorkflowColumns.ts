@@ -6,6 +6,7 @@ import '@/components/ui/data-table/types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
+import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 
 import { displayOrDash } from '../reportFormat'
@@ -17,6 +18,14 @@ export type ValidationWorkflowColumnOptions = {
 }
 
 const columnHelper = createColumnHelper<ValidationWorkflowRow>()
+
+function joined(values: string[] | null | undefined) {
+  return displayOrDash(values?.filter((item) => item.trim()).join(', '))
+}
+
+function joinedCountries(values: string[] | null | undefined) {
+  return displayOrDash(joinCommaTokens(values))
+}
 
 export function createValidationWorkflowColumns(
   options: ValidationWorkflowColumnOptions = {},
@@ -44,6 +53,14 @@ export function createValidationWorkflowColumns(
     columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
     columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),
     columnHelper.accessor((row) => displayOrDash(row.pl1), { id: 'pl1', header: 'PL1' }),
+    columnHelper.accessor((row) => displayOrDash(row.pl2), { id: 'pl2', header: 'PL2' }),
+    columnHelper.accessor((row) => displayOrDash(row.pl3), { id: 'pl3', header: 'PL3' }),
+    columnHelper.accessor((row) => joined(row.carriers), { id: 'carriers', header: 'Carrier' }),
+    columnHelper.accessor((row) => joined(row.sites), { id: 'sites', header: 'GBS Site' }),
+    columnHelper.accessor((row) => joinedCountries(row.customerCountries), {
+      id: 'customerCountries',
+      header: 'Customer Country',
+    }),
     columnHelper.accessor((row) => displayOrDash(row.currentStep), {
       id: 'currentStep',
       header: 'Current Step',

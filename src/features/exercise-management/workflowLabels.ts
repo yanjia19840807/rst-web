@@ -7,14 +7,13 @@ export const VALIDATED_TAB = 'Validated' as const
 export const SUPERVISOR_SIZING_STEP = 'Supervisor Sizing'
 
 export const CURRENT_STEP_FILTERS = [
-  'All stages',
   SUPERVISOR_SIZING_STEP,
   'Manager Review',
   'Center Delivery Head Review',
   'Local Transformation Head Review',
 ] as const
 
-export type CurrentStepFilter = (typeof CURRENT_STEP_FILTERS)[number]
+export type CurrentStepFilter = (typeof CURRENT_STEP_FILTERS)[number] | ''
 
 /** Approval role → review-stage label. */
 export function nextStepLabel(role?: string | null): string {
@@ -81,7 +80,7 @@ export function exerciseListBackLabel(status?: string | null) {
     : '← Back to In Progress'
 }
 
-export function reviewStageQueryValue(label: CurrentStepFilter): string | undefined {
+export function reviewStageQueryValue(label: string): string | undefined {
   switch (label) {
     case SUPERVISOR_SIZING_STEP:
       return 'SUPERVISOR'

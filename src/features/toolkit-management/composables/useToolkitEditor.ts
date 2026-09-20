@@ -137,9 +137,6 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     }),
   )
 
-  const totalHc = computed(() =>
-    selectedKpiRows.value.reduce((sum, item) => sum + (item.deliveryHc ?? 0), 0).toFixed(2),
-  )
   const hasMissingKpis = computed(() => selectedKpiRows.value.some((item) => item.missing))
 
   const loading = computed(
@@ -394,7 +391,6 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
     subtasks,
     sharedKpiSelections,
     selectedKpiRows,
-    totalHc,
     hasMissingKpis,
     alignment: computed(() => toolkitQuery.data.value?.alignment ?? null),
     noTimesheetHierarchy,

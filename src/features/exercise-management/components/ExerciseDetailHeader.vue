@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
+import { computed } from 'vue'
 
 import DetailTable from '@/components/DetailTable.vue'
-import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,16 +9,42 @@ import { formatInstantForCenter } from '@/lib/datetime'
 
 import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
+import ToolkitInfoPanel from './ToolkitInfoPanel.vue'
 
-defineProps<{
-  exercise: Exercise
-  locked: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    exercise: Exercise
+    locked: boolean
+    showCurrentStep?: boolean
+  }>(),
+  { showCurrentStep: true },
+)
 
 const emit = defineEmits<{
   editPeriods: []
-  toolkitInfo: []
 }>()
+
+const exerciseRows = computed(() => {
+  const rows: Array<{ key?: string; label: string; value: string }> = [
+    { label: 'Exercise No', value: props.exercise.exerciseCode },
+    {
+      label: 'Created',
+      value: formatInstantForCenter(
+        props.exercise.createdAt,
+        props.exercise.snapshot.toolkit.center,
+      ),
+    },
+    { label: 'Sizing Month', value: props.exercise.sizingMonth },
+  ]
+  if (props.showCurrentStep) {
+    rows.push({
+      key: 'status',
+      label: 'Current Step',
+      value: currentStepLabel(props.exercise),
+    })
+  }
+  return rows
+})
 </script>
 
 <template>
@@ -30,30 +55,8 @@ const emit = defineEmits<{
         <Button variant="outline" @click="emit('editPeriods')">Edit Periods</Button>
       </CardAction>
     </CardHeader>
-    <CardContent class="grid gap-3">
-      <DetailTable
-        :rows="[
-          { key: 'toolkit', label: 'Toolkit', value: exercise.snapshot.toolkit.name },
-          { label: 'Exercise No', value: exercise.exerciseCode },
-          { label: 'Created', value: formatInstantForCenter(exercise.createdAt, exercise.snapshot.toolkit.center) },
-          { label: 'Sizing Month', value: exercise.sizingMonth },
-          { key: 'status', label: 'Current Step', value: currentStepLabel(exercise) },
-        ]"
-      >
-        <template #toolkit="{ row }">
-          <span class="inline-flex items-center gap-1.5">
-            <span>{{ row.value || '—' }}</span>
-            <button
-              type="button"
-              :class="infoHintButtonClass"
-              title="Toolkit info"
-              @click="emit('toolkitInfo')"
-            >
-              <Info :class="infoHintIconClass" />
-              <span class="sr-only">Toolkit info</span>
-            </button>
-          </span>
-        </template>
+    <CardContent class="grid gap-4">
+      <DetailTable :rows="exerciseRows">
         <template #status="{ row }">
           <span class="inline-flex items-center gap-1.5">
             <span>{{ row.value || '—' }}</span>
@@ -61,6 +64,13 @@ const emit = defineEmits<{
           </span>
         </template>
       </DetailTable>
+
+      <ToolkitInfoPanel
+        embedded
+        show-delivery-hc
+        :snapshot="exercise.snapshot"
+        :alignment="exercise.timesheetAlignment"
+      />
     </CardContent>
   </Card>
 </template>

@@ -15,10 +15,14 @@ import ToolkitInfoPanel from './ToolkitInfoPanel.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
-defineProps<{
-  snapshot: Exercise['snapshot'] | null
-  alignment?: TimesheetAlignmentView | null
-}>()
+withDefaults(
+  defineProps<{
+    snapshot: Exercise['snapshot'] | null
+    alignment?: TimesheetAlignmentView | null
+    showDeliveryHc?: boolean
+  }>(),
+  { showDeliveryHc: false },
+)
 </script>
 
 <template>
@@ -34,7 +38,11 @@ defineProps<{
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
-        <ToolkitInfoPanel :snapshot="snapshot" :alignment="alignment" />
+        <ToolkitInfoPanel
+          :snapshot="snapshot"
+          :alignment="alignment"
+          :show-delivery-hc="showDeliveryHc"
+        />
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">

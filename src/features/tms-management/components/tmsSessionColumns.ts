@@ -3,6 +3,8 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
+import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatInstantForCenter } from '@/lib/datetime'
 
 import { formatDuration } from '../composables/useTmsTimer'
@@ -10,12 +12,20 @@ import TmsSessionRowActions from './TmsSessionRowActions.vue'
 
 export type TmsSessionTableRow = {
   id: string
+  toolkitId?: string | null
   agentName?: string | null
   toolkitName?: string | null
   subtaskName?: string | null
   startedAt: string
   endedAt?: string | null
   center?: string | null
+  domain?: string | null
+  pl1?: string | null
+  pl2?: string | null
+  pl3?: string | null
+  carriers?: string[]
+  sites?: string[]
+  customerCountries?: string[]
   netDurationSeconds: number
   processedVolume: number | null
   reference?: string | null
@@ -27,12 +37,23 @@ export type TmsSessionTableRow = {
 export type TmsSessionColumnOptions = {
   showActions?: boolean
   showStatus?: boolean
+  showToolkitScope?: boolean
   canToggleEnabled?: boolean
   togglingId?: string
   cycleTimeHeader?: string
   cycleTimeWithUnit?: boolean
   onOpen?: (id: string) => void
   onToggleEnabled?: (id: string) => void
+  onToolkitInfo?: (row: TmsSessionTableRow) => void
+}
+
+function joined(values: string[] | null | undefined) {
+  const text = values?.filter((item) => item.trim()).join(', ')
+  return text || '—'
+}
+
+function joinedCountries(values: string[] | null | undefined) {
+  return joinCommaTokens(values) || '—'
 }
 
 const columnHelper = createColumnHelper<TmsSessionTableRow>()
@@ -68,10 +89,54 @@ export function createTmsSessionColumns(
       id: 'agent',
       header: 'Agent',
     }),
-    columnHelper.accessor((row) => row.toolkitName || '—', {
+    columnHelper.display({
       id: 'toolkitName',
       header: 'Toolkit',
+      cell: ({ row }) =>
+        h(ToolkitNameCell, {
+          name: row.original.toolkitName || '—',
+          canInfo: Boolean(options.onToolkitInfo && row.original.toolkitId && row.original.toolkitName),
+          onInfo: () => options.onToolkitInfo?.(row.original),
+        }),
     }),
+  ]
+  if (options.showToolkitScope) {
+    columns.push(
+      columnHelper.accessor((row) => row.center || '—', {
+        id: 'center',
+        header: 'GBS Center',
+      }),
+      columnHelper.accessor((row) => row.domain || '—', {
+        id: 'domain',
+        header: 'Domain',
+      }),
+      columnHelper.accessor((row) => row.pl1 || '—', {
+        id: 'pl1',
+        header: 'PL1',
+      }),
+      columnHelper.accessor((row) => row.pl2 || '—', {
+        id: 'pl2',
+        header: 'PL2',
+      }),
+      columnHelper.accessor((row) => row.pl3 || '—', {
+        id: 'pl3',
+        header: 'PL3',
+      }),
+      columnHelper.accessor((row) => joined(row.carriers), {
+        id: 'carriers',
+        header: 'Carrier',
+      }),
+      columnHelper.accessor((row) => joined(row.sites), {
+        id: 'sites',
+        header: 'GBS Site',
+      }),
+      columnHelper.accessor((row) => joinedCountries(row.customerCountries), {
+        id: 'customerCountries',
+        header: 'Customer Country',
+      }),
+    )
+  }
+  columns.push(
     columnHelper.accessor((row) => row.subtaskName || '—', {
       id: 'subtaskName',
       header: 'Subtask',
@@ -107,7 +172,7 @@ export function createTmsSessionColumns(
       header: 'Remarks',
       meta: { cellClass: 'max-w-52 truncate' },
     }),
-  ]
+  )
   if (options.showStatus) {
     columns.push(
       columnHelper.accessor((row) => (row.enabled === false ? 'Disabled' : 'Enabled'), {

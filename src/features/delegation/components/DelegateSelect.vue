@@ -55,6 +55,7 @@ const emptyText = computed(() => {
     :empty-text="emptyText"
     :disabled="disabled"
     :invalid="invalid"
+    trigger-class="w-full"
     @update:model-value="emit('update:modelValue', $event)"
     @query="pickerQuery = $event"
   />

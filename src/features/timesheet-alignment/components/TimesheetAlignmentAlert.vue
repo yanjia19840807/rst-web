@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Info, TriangleAlert } from '@lucide/vue'
+import { TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -86,8 +86,8 @@ const lead = computed(() => {
       </ul>
     </AlertDescription>
   </Alert>
-  <Alert v-else-if="hcChanged" variant="info">
-    <Info />
+  <Alert v-else-if="hcChanged" variant="warning">
+    <TriangleAlert />
     <AlertTitle>{{ title }}</AlertTitle>
     <AlertDescription>{{ lead }}</AlertDescription>
   </Alert>

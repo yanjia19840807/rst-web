@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table'
 import StatusBadge from '@/components/StatusBadge.vue'
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
+import { distinctCommaTokens } from '@/lib/commaTokens'
 import { formatHc } from '@/lib/hcFormat'
 
 import type { Exercise } from '../types'
@@ -21,15 +22,16 @@ const props = withDefaults(
     snapshot: Exercise['snapshot'] | null
     alignment?: TimesheetAlignmentView | null
     embedded?: boolean
+    showDeliveryHc?: boolean
   }>(),
-  { embedded: false },
+  { embedded: false, showDeliveryHc: false },
 )
 
 const toolkit = computed(() => props.snapshot?.toolkit ?? null)
 
 const countries = computed(() => {
   const items = props.snapshot?.sharedKpis ?? []
-  return [...new Set(items.map((item) => item.customerCountry).filter(Boolean))]
+  return distinctCommaTokens(items.map((item) => item.customerCountry))
 })
 
 const visibleSubtasks = computed(() =>
@@ -38,51 +40,31 @@ const visibleSubtasks = computed(() =>
 
 const kpiRows = computed(() => props.snapshot?.sharedKpis ?? [])
 
-const showCurrentMonthly = computed(() => Boolean(props.alignment))
-
-function currentHcFor(line: Exercise['snapshot']['sharedKpis'][number]) {
-  const match = props.alignment?.lines.find(
-    (item) =>
-      item.carrier === line.carrier &&
-      item.site === line.site &&
-      item.customerCountry === line.customerCountry,
-  )
-  if (!match || match.missing) return '—'
-  return formatHc(match.currentDeliveryHc, 2)
-}
-
-function lineMissing(line: Exercise['snapshot']['sharedKpis'][number]) {
-  return Boolean(
-    props.alignment?.lines.some(
-      (item) =>
-        item.missing &&
-        item.carrier === line.carrier &&
-        item.site === line.site &&
-        item.customerCountry === line.customerCountry,
-    ),
-  )
-}
+const totalDeliveryHc = computed(() =>
+  kpiRows.value.reduce((sum, item) => sum + Number(item.deliveryHc || 0), 0),
+)
 
 function statusLabel(enabled: boolean | undefined) {
   return enabled === false ? 'Disabled' : 'Enabled'
 }
 
-const totalDeliveryHc = computed(() =>
-  kpiRows.value.reduce((sum, item) => sum + Number(item.deliveryHc || 0), 0),
-)
-
 const mappingRows = computed(() => {
   if (!toolkit.value) return []
-  return [
-    { label: 'Toolkit name', value: toolkit.value.name, strong: true },
-    { label: 'Status', value: statusLabel(toolkit.value.enabled) },
+  const rows: Array<{ label: string; value: string; strong?: boolean }> = [
+    { label: 'Toolkit', value: toolkit.value.name, strong: true },
+  ]
+  if (!props.showDeliveryHc) {
+    rows.push({ label: 'Status', value: statusLabel(toolkit.value.enabled) })
+  }
+  rows.push(
     { label: 'GBS Center', value: toolkit.value.center },
     { label: 'Domain', value: toolkit.value.domain },
-    { label: 'Process Level 1', value: toolkit.value.pl1 },
-    { label: 'Process Level 2', value: toolkit.value.pl2 },
-    { label: 'Process Level 3', value: toolkit.value.pl3Name },
+    { label: 'PL1', value: toolkit.value.pl1 },
+    { label: 'PL2', value: toolkit.value.pl2 },
+    { label: 'PL3', value: toolkit.value.pl3Name },
     { label: 'Customer Country', value: countries.value.join(', ') || '—' },
-  ]
+  )
+  return rows
 })
 </script>
 
@@ -103,11 +85,11 @@ const mappingRows = computed(() => {
         <div class="flex items-baseline justify-between gap-2">
           <h4 class="text-sm font-semibold">Shared KPI Scope Split</h4>
           <span class="text-xs text-muted-foreground">
-            <template v-if="kpiRows.length">
-              {{ kpiRows.length }} lines · Delivery HC
-              {{ totalDeliveryHc.toFixed(2) }}
+            <template v-if="!kpiRows.length">Not configured</template>
+            <template v-else-if="showDeliveryHc">
+              {{ kpiRows.length }} lines · Delivery HC {{ formatHc(totalDeliveryHc, 2) }}
             </template>
-            <template v-else>Not configured</template>
+            <template v-else>{{ kpiRows.length }} lines</template>
           </span>
         </div>
 
@@ -124,15 +106,13 @@ const mappingRows = computed(() => {
           No KPI lines selected for this toolkit.
         </div>
         <div v-else class="min-w-0 overflow-x-auto rounded-lg border">
-          <Table class="min-w-[720px]">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Carrier</TableHead>
                 <TableHead>GBS Site</TableHead>
                 <TableHead>Customer Country</TableHead>
-                <TableHead>Delivery HC</TableHead>
-                <TableHead v-if="showCurrentMonthly">Current Monthly</TableHead>
-                <TableHead v-if="showCurrentMonthly">Line</TableHead>
+                <TableHead v-if="showDeliveryHc">Delivery HC</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -140,21 +120,13 @@ const mappingRows = computed(() => {
                 <TableCell>{{ item.carrier }}</TableCell>
                 <TableCell>{{ item.site }}</TableCell>
                 <TableCell>{{ item.customerCountry }}</TableCell>
-                <TableCell>{{ Number(item.deliveryHc).toFixed(2) }}</TableCell>
-                <TableCell v-if="showCurrentMonthly">{{ currentHcFor(item) }}</TableCell>
-                <TableCell v-if="showCurrentMonthly">
-                  <StatusBadge v-if="lineMissing(item)" status="Missing" />
-                </TableCell>
+                <TableCell v-if="showDeliveryHc">{{ formatHc(item.deliveryHc, 2) }}</TableCell>
               </TableRow>
-              <TableRow class="bg-muted/40">
+              <TableRow v-if="showDeliveryHc" class="bg-muted/40">
                 <TableCell>Total</TableCell>
                 <TableCell />
                 <TableCell />
-                <TableCell>{{ totalDeliveryHc.toFixed(2) }}</TableCell>
-                <TableCell v-if="showCurrentMonthly">
-                  {{ formatHc(alignment?.currentDeliveryHc, 2) }}
-                </TableCell>
-                <TableCell v-if="showCurrentMonthly" />
+                <TableCell>{{ formatHc(totalDeliveryHc, 2) }}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -171,7 +143,7 @@ const mappingRows = computed(() => {
       </div>
 
       <div class="grid gap-1.5 text-sm">
-        <div class="text-xs text-muted-foreground">Combine subtask time</div>
+        <div class="text-xs text-muted-foreground">Combine Subtask Time</div>
         <div>{{ toolkit.combineSubtasksTime ? 'Yes' : 'No' }}</div>
         <p class="text-xs text-muted-foreground">
           Yes: SYSTEM baseline is the sum of each subtask's median.

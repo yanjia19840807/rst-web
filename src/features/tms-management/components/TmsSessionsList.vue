@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
@@ -7,6 +8,12 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
+import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
+import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
+import type { Exercise } from '@/features/exercise-management/types'
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
+import { toolkitApi } from '@/features/toolkit-management/api'
+import { toolkitQueryKeys } from '@/features/toolkit-management/api/queries'
 
 import { tmsApi } from '../api'
 import { useTmsSessionMutations } from '../api/mutations'
@@ -14,8 +21,9 @@ import {
   useManagedToolkitsQuery,
   useTeamAgentsQuery,
   useTmsSessionsQuery,
+  useToolkitsQuery,
 } from '../api/queries'
-import type { TmsListMode } from '../types'
+import type { TmsListMode, TmsSession } from '../types'
 import TmsSessionFilters, {
   type TmsSessionFilterValues,
 } from './TmsSessionFilters.vue'
@@ -31,9 +39,11 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   open: [id: string]
+  toolkitInfo: [toolkitId: string]
 }>()
 
 const router = useRouter()
+const queryClient = useQueryClient()
 const isSupervisor = computed(() => props.mode === 'supervisor')
 
 const emptyFilterValues = (): TmsSessionFilterValues => ({
@@ -43,7 +53,12 @@ const emptyFilterValues = (): TmsSessionFilterValues => ({
   dateTo: '',
   agentCcgid: '',
   toolkitId: '',
+  center: '',
+  domain: '',
   pl3Code: '',
+  carrier: '',
+  site: '',
+  customerCountry: '',
   enabled: '',
 })
 
@@ -64,26 +79,22 @@ const queryFilters = computed(() => ({
 
 const sessionsQuery = useTmsSessionsQuery(queryFilters, () => props.mode)
 const teamAgentsQuery = useTeamAgentsQuery(isSupervisor)
-const toolkitsQuery = useManagedToolkitsQuery(isSupervisor)
+const agentToolkitsQuery = useToolkitsQuery(() => !isSupervisor.value)
+const managedToolkitsQuery = useManagedToolkitsQuery(isSupervisor)
+const visibleToolkits = computed(() =>
+  isSupervisor.value
+    ? managedToolkitsQuery.data.value ?? []
+    : agentToolkitsQuery.data.value ?? [],
+)
 const { setEnabled } = useTmsSessionMutations()
 const togglingId = ref('')
 const toggleTarget = ref<{ id: string; enabled: boolean } | null>(null)
 const toggleOpen = ref(false)
 const exportOpen = ref(false)
 const exporting = ref(false)
-
-const pl3Options = computed(() => {
-  const map = new Map<string, string>()
-  for (const toolkit of toolkitsQuery.data.value ?? []) {
-    if (!toolkit.pl3Code) continue
-    if (!map.has(toolkit.pl3Code)) {
-      map.set(toolkit.pl3Code, toolkit.pl3Name || toolkit.pl3Code)
-    }
-  }
-  return [...map.entries()]
-    .map(([code, name]) => ({ code, name }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-})
+const toolkitInfoOpen = ref(false)
+const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
+const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
 
 function applySearch(values: TmsSessionFilterValues) {
   Object.assign(applied, values)
@@ -133,6 +144,28 @@ async function confirmExport() {
   }
 }
 
+async function openToolkitInfo(session: TmsSession) {
+  if (!session.toolkitId) {
+    toast.error('Could not load toolkit info.')
+    return
+  }
+  if (props.embedded) {
+    emit('toolkitInfo', session.toolkitId)
+    return
+  }
+  try {
+    const toolkit = await queryClient.fetchQuery({
+      queryKey: toolkitQueryKeys.detail(session.toolkitId),
+      queryFn: () => toolkitApi.get(session.toolkitId),
+    })
+    toolkitSnapshot.value = snapshotFromToolkit(toolkit)
+    toolkitAlignment.value = toolkit.alignment ?? null
+    toolkitInfoOpen.value = true
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
+  }
+}
+
 function openDetail(id: string) {
   if (props.embedded) {
     emit('open', id)
@@ -154,8 +187,7 @@ function openDetail(id: string) {
           :show-export="true"
           :exporting="exporting"
           :agents="teamAgentsQuery.data.value ?? []"
-          :toolkits="toolkitsQuery.data.value ?? []"
-          :pl3-options="pl3Options"
+          :toolkits="visibleToolkits"
           @search="applySearch"
           @clear="clearFilters"
           @export="exportOpen = true"
@@ -166,9 +198,11 @@ function openDetail(id: string) {
           :pending="sessionsQuery.isPending.value"
           :toggling-id="togglingId"
           :show-agent="isSupervisor"
+          :show-toolkit-info="true"
           :can-toggle-enabled="isSupervisor"
           @toggle-enabled="openToggle"
           @open="openDetail"
+          @toolkit-info="openToolkitInfo"
         />
 
         <TablePager
@@ -195,6 +229,13 @@ function openDetail(id: string) {
       confirm-variant="default"
       :pending="exporting"
       @confirm="confirmExport"
+    />
+
+    <ToolkitInfoDialog
+      v-if="!embedded"
+      v-model:open="toolkitInfoOpen"
+      :snapshot="toolkitSnapshot"
+      :alignment="toolkitAlignment"
     />
 
     <ConfirmDialog

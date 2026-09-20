@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDownIcon } from '@lucide/vue'
+import { UserIcon } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 
@@ -7,6 +7,13 @@ import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button, type ButtonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  PickerClearButton,
+  pickerClearFooterClass,
+  pickerPopoverClass,
+  pickerTriggerClass,
+  pickerTriggerWrapClass,
+} from '@/components/ui/picker'
 import {
   Popover,
   PopoverContent,
@@ -38,7 +45,7 @@ export type PersonPickerQuery = {
 
 const props = withDefaults(
   defineProps<{
-    emptyLabel: string
+    emptyLabel?: string
     items: PersonPickerRow[]
     total: number
     loading?: boolean
@@ -52,6 +59,7 @@ const props = withDefaults(
     formatLabel?: (row: PersonPickerRow) => string
   }>(),
   {
+    emptyLabel: 'All',
     loading: false,
     allowClear: false,
     emptyText: 'No people found',
@@ -93,10 +101,24 @@ function labelOf(row: PersonPickerRow | null) {
   return props.formatLabel ? props.formatLabel(row) : row.name.trim() || props.emptyLabel
 }
 
+const canClear = computed(
+  () => Boolean(props.allowClear && model.value) && !props.disabled,
+)
+
 function choose(row: PersonPickerRow | null) {
   picked.value = row
   model.value = row?.id ?? null
   open.value = false
+}
+
+function clear() {
+  if (!canClear.value) return
+  choose(null)
+}
+
+function onClearKey() {
+  if (!canClear.value) return
+  clear()
 }
 
 function emitQuery() {
@@ -146,48 +168,34 @@ watch(
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        variant="outline"
-        :size="size"
-        :class="
-          cn(
-            'relative w-full justify-start pr-8 pl-2.5 font-normal',
-            selected ? 'text-foreground' : 'text-muted-foreground',
-            triggerClass,
-          )
-        "
-        :disabled="disabled"
-        :aria-invalid="invalid || undefined"
-      >
-        <span class="min-w-0 truncate">{{ labelOf(selected) }}</span>
-        <ChevronDownIcon
-          class="text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 select-none"
-        />
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent class="w-96 gap-2 p-2" align="start">
-      <div class="flex items-center gap-2">
-        <div class="min-w-0 flex-1">
-          <Input
-            v-model="queryInput"
-            size="sm"
-            :placeholder="searchPlaceholder"
-          />
-        </div>
+    <div :class="pickerTriggerWrapClass">
+      <PopoverTrigger as-child>
         <Button
-          v-if="allowClear"
-          size="xs"
-          variant="link"
-          class="h-auto shrink-0 px-0"
-          :disabled="!model"
-          @click="choose(null)"
+          type="button"
+          variant="outline"
+          :size="size"
+          :disabled="disabled"
+          :aria-invalid="invalid || undefined"
+          :data-placeholder="selected ? undefined : ''"
+          :class="cn(pickerTriggerClass, canClear && 'pr-8', triggerClass)"
+          @keydown.delete.prevent="onClearKey"
+          @keydown.backspace.prevent="onClearKey"
         >
-          Clear
+          <UserIcon />
+          <span class="min-w-0 truncate">{{ labelOf(selected) }}</span>
         </Button>
+      </PopoverTrigger>
+      <PickerClearButton v-if="canClear" label="Clear person" @click="clear" />
+    </div>
+    <PopoverContent :class="cn(pickerPopoverClass, 'w-96')" align="start">
+      <div class="p-2">
+        <Input
+          v-model="queryInput"
+          size="sm"
+          :placeholder="searchPlaceholder"
+        />
       </div>
-      <div class="relative h-72 overflow-hidden rounded-md border">
+      <div class="relative h-72 overflow-hidden border-y">
         <div class="h-full overflow-y-auto">
           <Table>
             <TableHeader>
@@ -224,7 +232,7 @@ watch(
         </div>
       </div>
       <TablePager
-        class="mt-0"
+        class="mt-0 px-2 py-1.5"
         hide-summary
         size="xs"
         :total="total"
@@ -239,6 +247,11 @@ watch(
           }
         "
       />
+      <div v-if="canClear" :class="pickerClearFooterClass">
+        <Button type="button" variant="ghost" size="sm" class="w-full" @click="clear">
+          Clear
+        </Button>
+      </div>
     </PopoverContent>
   </Popover>
 </template>
