@@ -19,14 +19,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
 export type PersonPickerRow = {
@@ -168,7 +160,7 @@ watch(
 
 <template>
   <Popover v-model:open="open">
-    <div :class="pickerTriggerWrapClass">
+    <div :class="cn(pickerTriggerWrapClass, 'w-[240px]', triggerClass)">
       <PopoverTrigger as-child>
         <Button
           type="button"
@@ -177,7 +169,7 @@ watch(
           :disabled="disabled"
           :aria-invalid="invalid || undefined"
           :data-placeholder="selected ? undefined : ''"
-          :class="cn(pickerTriggerClass, canClear && 'pr-8', triggerClass)"
+          :class="cn(pickerTriggerClass, 'w-full', canClear && 'pr-8')"
           @keydown.delete.prevent="onClearKey"
           @keydown.backspace.prevent="onClearKey"
         >
@@ -191,7 +183,7 @@ watch(
       :class="
         cn(
           pickerPopoverClass,
-          'flex w-96 min-h-0 max-h-(--reka-popover-content-available-height) max-w-(--reka-popover-content-available-width) flex-col gap-0',
+          'z-60 flex w-96 min-h-0 max-h-(--reka-popover-content-available-height) max-w-(--reka-popover-content-available-width) flex-col gap-0',
         )
       "
       align="start"
@@ -204,40 +196,37 @@ watch(
           :placeholder="searchPlaceholder"
         />
       </div>
-      <div class="relative min-h-0 max-h-72 flex-1 overflow-hidden border-y">
-        <div class="h-full overflow-y-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead class="h-8">Name</TableHead>
-                <TableHead class="h-8">Email</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="row in items"
-                :key="row.id"
-                class="cursor-pointer"
-                :class="row.id === model ? 'bg-muted' : undefined"
-                @click="choose(row)"
-              >
-                <TableCell class="py-1.5">{{ row.name || '—' }}</TableCell>
-                <TableCell class="py-1.5 text-muted-foreground">{{ row.email || '—' }}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+      <div class="relative min-h-40 max-h-72 flex-1 overflow-hidden border-y">
+        <div class="flex h-full min-h-40 flex-col overflow-y-auto">
+          <div
+            class="sticky top-0 z-10 grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-3 border-b bg-popover px-2 py-1.5 text-xs font-medium text-muted-foreground"
+          >
+            <span>Name</span>
+            <span>Email</span>
+          </div>
+          <button
+            v-for="row in items"
+            :key="row.id"
+            type="button"
+            class="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-3 px-2 py-1.5 text-left text-sm hover:bg-muted/50"
+            :class="row.id === model ? 'bg-muted' : undefined"
+            @click="choose(row)"
+          >
+            <span class="min-w-0 truncate" :title="row.name || undefined">{{ row.name || '—' }}</span>
+            <span class="min-w-0 truncate text-muted-foreground" :title="row.email || undefined">{{ row.email || '—' }}</span>
+          </button>
+          <div
+            v-if="!loading && !items.length"
+            class="flex flex-1 items-center justify-center px-3 py-8 text-sm text-muted-foreground"
+          >
+            {{ emptyText }}
+          </div>
         </div>
         <div
           v-if="loading"
           class="absolute inset-0 z-10 flex items-center justify-center bg-background/70"
         >
           <ListLoading class="h-auto" />
-        </div>
-        <div
-          v-else-if="!items.length"
-          class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
-        >
-          {{ emptyText }}
         </div>
       </div>
       <TablePager

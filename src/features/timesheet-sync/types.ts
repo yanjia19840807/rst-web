@@ -73,7 +73,7 @@ export type TimesheetSyncAlertConfig = {
   recipients: string[]
 }
 
-export type TimesheetSnapshotTab = 'people' | 'positions' | 'scopes' | 'kpis'
+export type TimesheetSnapshotTab = 'people' | 'positions' | 'occupancies' | 'scopes' | 'kpis'
 
 export type TimesheetSnapshotPage<T> = {
   items: T[]
@@ -94,18 +94,24 @@ export type TimesheetSnapshotPerson = {
   empId: string | null
   name: string
   email: string | null
-  center: string | null
-  positionId: string | null
   jobRole: string | null
+  center: string | null
 }
 
 export type TimesheetSnapshotPosition = {
-  agentPositionId: string
-  agentName: string | null
-  supervisorPositionId: string | null
-  supervisorName: string | null
-  srManagerPositionId: string | null
-  srManagerName: string | null
+  positionId: string
+  roleType: string
+  parentPositionId: string | null
+  parentRoleType: string | null
+  occupantName: string | null
+  center: string | null
+}
+
+export type TimesheetSnapshotOccupancy = {
+  ccgid: string
+  name: string
+  positionId: string
+  roleType: string
   center: string | null
 }
 
@@ -155,6 +161,8 @@ export type TimesheetSnapshotPositionsQuery = {
   page: number
   pageSize: number
 }
+
+export type TimesheetSnapshotOccupanciesQuery = TimesheetSnapshotPositionsQuery
 
 export type TimesheetSnapshotScopesQuery = {
   center?: string

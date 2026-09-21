@@ -15,6 +15,7 @@ const props = defineProps<{
   fallbackPositionId?: string | null
   disabled?: boolean
   size?: ButtonVariants['size']
+  triggerClass?: string
 }>()
 
 const emit = defineEmits<{
@@ -41,7 +42,7 @@ const peopleQuery = useTimesheetPeopleQuery(
 )
 const items = computed(() =>
   (peopleQuery.data.value?.items ?? []).map((item) => ({
-    id: item.positionId,
+    id: item.positionId || item.ccgid,
     ccgid: item.ccgid,
     name: item.name,
     email: item.email,
@@ -71,6 +72,7 @@ function formatLabel(row: PersonPickerRow) {
     :empty-text="emptyText"
     :disabled="disabled"
     :size="size"
+    :trigger-class="triggerClass"
     :format-label="formatLabel"
     @update:model-value="emit('update:modelValue', $event)"
     @query="pickerQuery = $event"

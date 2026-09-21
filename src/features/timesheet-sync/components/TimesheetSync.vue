@@ -52,6 +52,7 @@ const issuesOpen = ref(false)
 const mappedOpen = ref(false)
 const mappedKind = ref<'DAILY' | 'MONTHLY'>('DAILY')
 const mappedCenter = ref('')
+const mappedFileDate = ref('')
 const mappedTab = ref<TimesheetSnapshotTab>('people')
 const alertOpen = ref(false)
 const domainHeadOpen = ref(false)
@@ -148,6 +149,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
   if (!row.run) return
   mappedKind.value = row.kind
   mappedCenter.value = row.run.center ?? ''
+  mappedFileDate.value = row.run.syncDate ?? ''
   mappedTab.value = tab
   mappedOpen.value = true
 }
@@ -282,7 +284,8 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
     <TimesheetSnapshotTables
       v-model:open="mappedOpen"
       :kind="mappedKind"
-      :initial-center="mappedCenter"
+      :center="mappedCenter"
+      :file-date="mappedFileDate"
       :initial-tab="mappedTab"
     />
     <TimesheetSyncIssuesDialog

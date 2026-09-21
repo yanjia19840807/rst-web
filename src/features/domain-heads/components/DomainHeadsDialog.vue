@@ -266,18 +266,33 @@ async function confirmSave() {
           </p>
           <div v-else class="grid gap-5">
             <div class="grid gap-2">
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-sm font-medium">Local Transformation Head</p>
-                <StatusBadge :status="statusLabel(page.lth.status)" />
-              </div>
-              <ApproverSelect
-                :model-value="lthDraft"
-                :center="center"
-                :fallback-name="page.lth.name"
-                :fallback-position-id="page.lth.positionId"
-                size="sm"
-                @update:model-value="lthDraft = $event"
-              />
+              <p class="text-sm font-medium">Local Transformation Head</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Approver</TableHead>
+                    <TableHead class="w-32">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      <ApproverSelect
+                        :model-value="lthDraft"
+                        :center="center"
+                        :fallback-name="page.lth.name"
+                        :fallback-position-id="page.lth.positionId"
+                        size="sm"
+                        trigger-class="w-full"
+                        @update:model-value="lthDraft = $event"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge :status="statusLabel(page.lth.status)" />
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
             <div class="grid gap-2">
               <p class="text-sm font-medium">Domain Heads</p>
@@ -305,6 +320,7 @@ async function confirmSave() {
                         :fallback-name="row.name"
                         :fallback-position-id="row.positionId"
                         size="sm"
+                        trigger-class="w-full"
                         @update:model-value="drafts[row.domain] = $event"
                       />
                     </TableCell>

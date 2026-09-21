@@ -5,6 +5,7 @@ import { timesheetSyncApi } from '../api'
 import type {
   TimesheetSnapshotAssignmentsQuery,
   TimesheetSnapshotKpisQuery,
+  TimesheetSnapshotOccupanciesQuery,
   TimesheetSnapshotPeopleQuery,
   TimesheetSnapshotPositionsQuery,
   TimesheetSnapshotScopesQuery,
@@ -24,6 +25,8 @@ export const timesheetSyncQueryKeys = {
     ['timesheet-sync', 'tables', 'people', query] as const,
   positions: (query: TimesheetSnapshotPositionsQuery) =>
     ['timesheet-sync', 'tables', 'positions', query] as const,
+  occupancies: (query: TimesheetSnapshotOccupanciesQuery) =>
+    ['timesheet-sync', 'tables', 'occupancies', query] as const,
   scopes: (query: TimesheetSnapshotScopesQuery) =>
     ['timesheet-sync', 'tables', 'scopes', query] as const,
   assignments: (query: TimesheetSnapshotAssignmentsQuery) =>
@@ -92,6 +95,19 @@ export function useTimesheetSnapshotPositionsQuery(
   return useQuery({
     queryKey: computed(() => timesheetSyncQueryKeys.positions(resolved.value)),
     queryFn: () => timesheetSyncApi.positions(resolved.value),
+    enabled: computed(() => toValue(enabled)),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useTimesheetSnapshotOccupanciesQuery(
+  query: MaybeRefOrGetter<TimesheetSnapshotOccupanciesQuery>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  const resolved = computed(() => toValue(query))
+  return useQuery({
+    queryKey: computed(() => timesheetSyncQueryKeys.occupancies(resolved.value)),
+    queryFn: () => timesheetSyncApi.occupancies(resolved.value),
     enabled: computed(() => toValue(enabled)),
     placeholderData: keepPreviousData,
   })

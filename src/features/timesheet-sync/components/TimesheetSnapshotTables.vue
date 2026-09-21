@@ -15,11 +15,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { NativeSelect } from '@/components/ui/native-select'
 
 import {
-  useTimesheetSnapshotFiltersQuery,
   useTimesheetSnapshotKpisQuery,
+  useTimesheetSnapshotOccupanciesQuery,
   useTimesheetSnapshotPeopleQuery,
   useTimesheetSnapshotPositionsQuery,
   useTimesheetSnapshotScopesQuery,
@@ -27,6 +26,7 @@ import {
 import type { TimesheetSnapshotTab } from '../types'
 import {
   createSnapshotKpiColumns,
+  createSnapshotOccupancyColumns,
   createSnapshotPersonColumns,
   createSnapshotPositionColumns,
   createSnapshotScopeColumns,
@@ -35,21 +35,24 @@ import {
 const props = defineProps<{
   kind: 'DAILY' | 'MONTHLY'
   initialTab: TimesheetSnapshotTab
-  initialCenter?: string
+  center?: string
+  fileDate?: string
 }>()
 
 const allTabs: Array<{ key: TimesheetSnapshotTab; label: string; kind: 'DAILY' | 'MONTHLY' }> = [
   { key: 'people', label: 'People', kind: 'DAILY' },
   { key: 'positions', label: 'Positions', kind: 'DAILY' },
+  { key: 'occupancies', label: 'Occupancy', kind: 'DAILY' },
   { key: 'scopes', label: 'Process', kind: 'MONTHLY' },
   { key: 'kpis', label: 'Delivery HC', kind: 'MONTHLY' },
 ]
 
 const descriptions: Record<TimesheetSnapshotTab, string> = {
-  people: 'ACTIVE Daily identities. Search name, CCGID, emp ID, email or position.',
-  positions: 'ACTIVE Daily org tree. Search Agent, Supervisor or SR Manager by position ID or name, and Center.',
-  scopes: 'ACTIVE Monthly process coverage. Filter Supervisor, PL3 and Center.',
-  kpis: 'ACTIVE Monthly Delivery HC. Filter Supervisor, PL3 and Center.',
+  people: 'ACTIVE Daily identities. Search name, CCGID, emp ID, job role, email or occupied position.',
+  positions: 'ACTIVE Daily position nodes. Search position, parent, role or occupant.',
+  occupancies: 'ACTIVE Daily seats. Search name, CCGID, position or role.',
+  scopes: 'ACTIVE Monthly process coverage. Filter Supervisor and PL3.',
+  kpis: 'ACTIVE Monthly Delivery HC. Filter Supervisor and PL3.',
 }
 
 const open = defineModel<boolean>('open', { default: false })
@@ -59,7 +62,7 @@ const title = computed(() =>
 )
 const subtitle = computed(() =>
   props.kind === 'DAILY'
-    ? 'People and Positions from the ACTIVE Daily snapshot.'
+    ? 'People, Positions and Occupancy from the ACTIVE Daily snapshot.'
     : 'Process and Delivery HC from the ACTIVE Monthly snapshot.',
 )
 
@@ -75,38 +78,43 @@ const draftQ = ref('')
 const appliedQ = ref('')
 const page = ref(1)
 const pageSize = ref(10)
-const peopleCenter = ref('')
-const scopeCenter = ref('')
 const draftPl3Code = ref('')
 const pl3Code = ref('')
 const draftSupervisor = ref('')
 const supervisor = ref('')
 
-const filtersQuery = useTimesheetSnapshotFiltersQuery(() => open.value)
-const peopleCenters = computed(() => filtersQuery.data.value?.peopleCenters ?? [])
-const scopeCenters = computed(() => filtersQuery.data.value?.scopeCenters ?? [])
+const fileCenter = computed(() => props.center?.trim() || undefined)
+const fileDate = computed(() => props.fileDate?.trim() || '')
+const fileCenterLabel = computed(() => fileCenter.value || '—')
+const fileDateLabel = computed(() => fileDate.value || '—')
 
 const peopleQuery = computed(() => ({
-  center: peopleCenter.value || undefined,
+  center: fileCenter.value,
   q: appliedQ.value || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
 const positionsQuery = computed(() => ({
-  center: peopleCenter.value || undefined,
+  center: fileCenter.value,
+  q: appliedQ.value || undefined,
+  page: page.value,
+  pageSize: pageSize.value,
+}))
+const occupanciesQuery = computed(() => ({
+  center: fileCenter.value,
   q: appliedQ.value || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
 const scopesQuery = computed(() => ({
-  center: scopeCenter.value || undefined,
+  center: fileCenter.value,
   supervisor: supervisor.value || undefined,
   pl3Code: pl3Code.value || undefined,
   page: page.value,
   pageSize: pageSize.value,
 }))
 const kpisQuery = computed(() => ({
-  center: scopeCenter.value || undefined,
+  center: fileCenter.value,
   supervisor: supervisor.value || undefined,
   pl3Code: pl3Code.value || undefined,
   page: page.value,
@@ -121,6 +129,10 @@ const positionsResult = useTimesheetSnapshotPositionsQuery(
   positionsQuery,
   () => open.value && resolvedTab.value === 'positions',
 )
+const occupanciesResult = useTimesheetSnapshotOccupanciesQuery(
+  occupanciesQuery,
+  () => open.value && resolvedTab.value === 'occupancies',
+)
 const scopesResult = useTimesheetSnapshotScopesQuery(
   scopesQuery,
   () => open.value && resolvedTab.value === 'scopes',
@@ -133,6 +145,7 @@ const kpisResult = useTimesheetSnapshotKpisQuery(
 const results = {
   people: peopleResult,
   positions: positionsResult,
+  occupancies: occupanciesResult,
   scopes: scopesResult,
   kpis: kpisResult,
 }
@@ -140,6 +153,7 @@ const results = {
 const columns = {
   people: createSnapshotPersonColumns(),
   positions: createSnapshotPositionColumns(),
+  occupancies: createSnapshotOccupancyColumns(),
   scopes: createSnapshotScopeColumns(),
   kpis: createSnapshotKpiColumns(),
 }
@@ -147,22 +161,25 @@ const columns = {
 const pagerLabels: Record<TimesheetSnapshotTab, string> = {
   people: 'people',
   positions: 'positions',
+  occupancies: 'occupancies',
   scopes: 'processes',
   kpis: 'Delivery HC rows',
 }
 
 const searchPlaceholders: Record<TimesheetSnapshotTab, string> = {
-  people: 'Name, CCGID, emp ID, email or position',
-  positions: 'Position ID or name on Agent, Supervisor or SR Manager',
+  people: 'Name, CCGID, emp ID, job role, email or position',
+  positions: 'Position, parent, role or occupant',
+  occupancies: 'Name, CCGID, position or role',
   scopes: 'PL3, supervisor ID or name, PL1, PL2',
   kpis: 'Carrier, site or country',
 }
 
 const tableClasses: Record<TimesheetSnapshotTab, string> = {
-  people: 'min-w-[1080px]',
-  positions: 'min-w-[1200px]',
-  scopes: 'min-w-[1080px]',
-  kpis: 'min-w-[1080px]',
+  people: 'min-w-[880px]',
+  positions: 'min-w-[960px]',
+  occupancies: 'min-w-[760px]',
+  scopes: 'min-w-[960px]',
+  kpis: 'min-w-[960px]',
 }
 
 const activeResult = computed(() => results[resolvedTab.value])
@@ -173,12 +190,10 @@ const loading = computed(
 )
 const hasFilters = computed(() => {
   if (appliedQ.value) return true
-  if (resolvedTab.value === 'people') return Boolean(peopleCenter.value)
-  if (resolvedTab.value === 'positions') return Boolean(peopleCenter.value)
-  if (resolvedTab.value === 'scopes') {
-    return Boolean(scopeCenter.value || supervisor.value || pl3Code.value)
+  if (resolvedTab.value === 'scopes' || resolvedTab.value === 'kpis') {
+    return Boolean(supervisor.value || pl3Code.value)
   }
-  return Boolean(scopeCenter.value || supervisor.value || pl3Code.value)
+  return false
 })
 
 watchDebounced(
@@ -208,16 +223,10 @@ watchDebounced(
   { debounce: 400 },
 )
 
-watch([peopleCenter, scopeCenter], () => {
-  page.value = 1
-})
-
 watch(activeTab, () => {
   draftQ.value = ''
   appliedQ.value = ''
   page.value = 1
-  peopleCenter.value = ''
-  scopeCenter.value = ''
   draftPl3Code.value = ''
   pl3Code.value = ''
   draftSupervisor.value = ''
@@ -225,12 +234,10 @@ watch(activeTab, () => {
 })
 
 watch(
-  () => [open.value, props.kind, props.initialTab, props.initialCenter] as const,
-  ([isOpen, , tab, center]) => {
+  () => [open.value, props.kind, props.initialTab] as const,
+  ([isOpen, , tab]) => {
     if (!isOpen) return
     activeTab.value = tab
-    peopleCenter.value = center ?? ''
-    scopeCenter.value = center ?? ''
   },
   { immediate: true, flush: 'sync' },
 )
@@ -250,6 +257,7 @@ watch(
 function rowId(row: {
   ccgid?: string
   positionId?: string
+  roleType?: string
   agentPositionId?: string
   supervisorPositionId?: string
   srManagerPositionId?: string
@@ -262,6 +270,7 @@ function rowId(row: {
   return [
     row.ccgid,
     row.positionId,
+    row.roleType,
     row.agentPositionId,
     row.supervisorPositionId,
     row.srManagerPositionId,
@@ -288,6 +297,17 @@ function rowId(row: {
 
       <div class="min-h-0 min-w-0 flex-1 overflow-hidden px-4 py-3 sm:px-5 sm:py-4">
         <div class="flex h-full min-h-0 min-w-0 flex-col gap-3 rounded-lg border bg-card p-3 sm:gap-4 sm:p-4">
+          <div class="flex shrink-0 flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
+            <div class="grid gap-0.5">
+              <span class="text-xs text-muted-foreground">Center</span>
+              <span class="font-medium">{{ fileCenterLabel }}</span>
+            </div>
+            <div class="grid gap-0.5">
+              <span class="text-xs text-muted-foreground">File date</span>
+              <span class="font-medium">{{ fileDateLabel }}</span>
+            </div>
+          </div>
+
           <TabStrip
             class="shrink-0"
             :tabs="tabs"
@@ -298,7 +318,7 @@ function rowId(row: {
           <p class="shrink-0 text-sm text-muted-foreground">{{ descriptions[resolvedTab] }}</p>
           <div class="grid shrink-0 grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-end">
             <label
-              v-if="resolvedTab === 'people' || resolvedTab === 'positions'"
+              v-if="resolvedTab === 'people' || resolvedTab === 'positions' || resolvedTab === 'occupancies'"
               class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
             >
               Search
@@ -308,16 +328,7 @@ function rowId(row: {
                 :placeholder="searchPlaceholders[resolvedTab]"
               />
             </label>
-            <label
-              v-if="resolvedTab === 'people' || resolvedTab === 'positions'"
-              class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
-            >
-              Center
-              <NativeSelect v-model="peopleCenter" class="w-full min-w-0 sm:w-[200px]" placeholder="All">
-                <option v-for="center in peopleCenters" :key="center" :value="center">{{ center }}</option>
-              </NativeSelect>
-            </label>
-            <template v-if="resolvedTab === 'scopes'">
+            <template v-if="resolvedTab === 'scopes' || resolvedTab === 'kpis'">
               <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
                 Supervisor
                 <Input
@@ -335,33 +346,6 @@ function rowId(row: {
                 />
               </label>
             </template>
-            <template v-if="resolvedTab === 'kpis'">
-              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
-                Supervisor
-                <Input
-                  v-model="draftSupervisor"
-                  class="w-full min-w-0 sm:w-[200px]"
-                  placeholder="Position ID or name"
-                />
-              </label>
-              <label class="grid min-w-0 gap-1.5 text-xs text-muted-foreground">
-                PL3
-                <Input
-                  v-model="draftPl3Code"
-                  class="w-full min-w-0 sm:w-[200px]"
-                  placeholder="PL3 code or name"
-                />
-              </label>
-            </template>
-            <label
-              v-if="resolvedTab === 'scopes' || resolvedTab === 'kpis'"
-              class="grid min-w-0 gap-1.5 text-xs text-muted-foreground"
-            >
-              Center
-              <NativeSelect v-model="scopeCenter" class="w-full min-w-0 sm:w-[200px]" placeholder="All">
-                <option v-for="center in scopeCenters" :key="center" :value="center">{{ center }}</option>
-              </NativeSelect>
-            </label>
           </div>
 
           <div class="min-h-0 min-w-0 flex-1 overflow-auto">

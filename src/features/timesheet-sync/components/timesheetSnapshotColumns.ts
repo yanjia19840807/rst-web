@@ -5,6 +5,7 @@ import '@/components/ui/data-table/types'
 import type {
   TimesheetSnapshotAssignment,
   TimesheetSnapshotKpi,
+  TimesheetSnapshotOccupancy,
   TimesheetSnapshotPerson,
   TimesheetSnapshotPosition,
   TimesheetSnapshotScope,
@@ -12,6 +13,7 @@ import type {
 
 const personHelper = createColumnHelper<TimesheetSnapshotPerson>()
 const positionHelper = createColumnHelper<TimesheetSnapshotPosition>()
+const occupancyHelper = createColumnHelper<TimesheetSnapshotOccupancy>()
 const scopeHelper = createColumnHelper<TimesheetSnapshotScope>()
 const assignmentHelper = createColumnHelper<TimesheetSnapshotAssignment>()
 const kpiHelper = createColumnHelper<TimesheetSnapshotKpi>()
@@ -29,37 +31,41 @@ function positionWithName(id: string | null | undefined, name: string | null | u
 
 export function createSnapshotPersonColumns(): ColumnDef<TimesheetSnapshotPerson>[] {
   return [
-    personHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     personHelper.accessor('ccgid', { header: 'CCGID' }),
     personHelper.accessor((row) => dash(row.empId), { id: 'empId', header: 'Emp ID' }),
     personHelper.accessor('name', { header: 'Name' }),
-    personHelper.accessor((row) => dash(row.email), { id: 'email', header: 'Email' }),
     personHelper.accessor((row) => dash(row.jobRole), { id: 'jobRole', header: 'Job role' }),
-    personHelper.accessor((row) => dash(row.positionId), { id: 'positionId', header: 'Position' }),
+    personHelper.accessor((row) => dash(row.email), { id: 'email', header: 'Email' }),
   ]
 }
 
 export function createSnapshotPositionColumns(): ColumnDef<TimesheetSnapshotPosition>[] {
   return [
-    positionHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
-    positionHelper.accessor((row) => positionWithName(row.agentPositionId, row.agentName), {
-      id: 'agentPositionId',
-      header: 'Agent position',
+    positionHelper.accessor((row) => dash(row.positionId), { id: 'positionId', header: 'Position' }),
+    positionHelper.accessor((row) => dash(row.roleType), { id: 'roleType', header: 'Role' }),
+    positionHelper.accessor((row) => dash(row.parentPositionId), {
+      id: 'parentPositionId',
+      header: 'Parent position',
     }),
-    positionHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
-      id: 'supervisorPositionId',
-      header: 'Supervisor position',
+    positionHelper.accessor((row) => dash(row.parentRoleType), {
+      id: 'parentRoleType',
+      header: 'Parent role',
     }),
-    positionHelper.accessor((row) => positionWithName(row.srManagerPositionId, row.srManagerName), {
-      id: 'srManagerPositionId',
-      header: 'SR Manager position',
-    }),
+    positionHelper.accessor((row) => dash(row.occupantName), { id: 'occupantName', header: 'Occupant' }),
+  ]
+}
+
+export function createSnapshotOccupancyColumns(): ColumnDef<TimesheetSnapshotOccupancy>[] {
+  return [
+    occupancyHelper.accessor('ccgid', { header: 'CCGID' }),
+    occupancyHelper.accessor('name', { header: 'Name' }),
+    occupancyHelper.accessor((row) => dash(row.positionId), { id: 'positionId', header: 'Position' }),
+    occupancyHelper.accessor((row) => dash(row.roleType), { id: 'roleType', header: 'Role' }),
   ]
 }
 
 export function createSnapshotScopeColumns(): ColumnDef<TimesheetSnapshotScope>[] {
   return [
-    scopeHelper.accessor('center', { header: 'Center' }),
     scopeHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
       id: 'supervisorPositionId',
       header: 'Supervisor position',
@@ -90,7 +96,6 @@ export function createSnapshotAssignmentColumns(): ColumnDef<TimesheetSnapshotAs
 
 export function createSnapshotKpiColumns(): ColumnDef<TimesheetSnapshotKpi>[] {
   return [
-    kpiHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
     kpiHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
       id: 'supervisorPositionId',
       header: 'Supervisor position',

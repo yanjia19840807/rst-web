@@ -48,6 +48,7 @@ function mappedTableLinks(
       ? ([
           { key: 'people', label: 'People' },
           { key: 'positions', label: 'Positions' },
+          { key: 'occupancies', label: 'Occupancy' },
         ] as const)
       : ([
           { key: 'scopes', label: 'Process' },

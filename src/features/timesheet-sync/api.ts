@@ -8,6 +8,8 @@ import type {
   TimesheetSnapshotFilters,
   TimesheetSnapshotKpi,
   TimesheetSnapshotKpisQuery,
+  TimesheetSnapshotOccupanciesQuery,
+  TimesheetSnapshotOccupancy,
   TimesheetSnapshotPage,
   TimesheetSnapshotPeopleQuery,
   TimesheetSnapshotPerson,
@@ -69,6 +71,10 @@ export const timesheetSyncApi = {
   positions: (query: TimesheetSnapshotPositionsQuery) =>
     apiRequest<TimesheetSnapshotPage<TimesheetSnapshotPosition>>(
       `${base}/tables/positions?${snapshotParams(query)}`,
+    ),
+  occupancies: (query: TimesheetSnapshotOccupanciesQuery) =>
+    apiRequest<TimesheetSnapshotPage<TimesheetSnapshotOccupancy>>(
+      `${base}/tables/occupancies?${snapshotParams(query)}`,
     ),
   scopes: (query: TimesheetSnapshotScopesQuery) =>
     apiRequest<TimesheetSnapshotPage<TimesheetSnapshotScope>>(
