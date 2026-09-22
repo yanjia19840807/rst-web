@@ -19,6 +19,15 @@ describe('menu order', () => {
     ])
   })
 
+  it('unions Supervisor, Sr Manager and Domain Head without agent or admin tools', () => {
+    expect(visibleLabels(['SUPERVISOR', 'SR_MANAGER', 'DOMAIN_HEAD'])).toEqual([
+      'Team TMS',
+      'Toolkits',
+      'Exercises',
+      'Approval Queue',
+    ])
+  })
+
   it('puts Global Dashboard first and admin tools last for Admin', () => {
     expect(visibleLabels(['ADMIN'])).toEqual([
       'Global Dashboard',

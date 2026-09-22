@@ -53,13 +53,13 @@ const MAIL_ROLES: readonly AppRole[] = ['SUPERVISOR', 'SR_MANAGER', 'DOMAIN_HEAD
 function userFromDevIdentity(): CurrentUser {
   const identity = resolveDevIdentity()
   const ccgid = (identity.ccgid || 'ADMIN001').toUpperCase()
-  const role = (identity.role || 'ADMIN').toUpperCase()
+  const role = identity.role?.toUpperCase()
   const displayName = displayNameForCcgid(ccgid)
   return {
     ccgid,
     displayName,
     email: `${ccgid.toLowerCase()}@dev.local`,
-    roles: [role],
+    roles: role ? [role] : [],
     scopes: ['TIMESHEET', 'SELF'],
     center: identity.center ?? null,
     jobRole: null,
@@ -164,6 +164,7 @@ export const useSessionStore = defineStore('session', () => {
           email: me.ccgid === local.ccgid && me.email ? me.email : local.email,
           center: me.ccgid === local.ccgid && me.center ? me.center : local.center,
           jobRole: me.ccgid === local.ccgid && me.jobRole ? me.jobRole : local.jobRole,
+          roles: me.ccgid === local.ccgid && me.roles?.length ? me.roles : local.roles,
           scopes: me.scopes?.length ? me.scopes : local.scopes,
           actor: me.ccgid === local.ccgid && me.actor ? me.actor : local.actor,
           delegationId: me.delegationId ?? null,

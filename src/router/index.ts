@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { queryClient } from '@/api/query-client'
-import { captureDevIdentityFromQuery, stripDevIdentityQuery } from '@/auth/dev-identity'
+import { captureDevIdentityFromQuery, resolveDevIdentity, stripDevIdentityQuery } from '@/auth/dev-identity'
 import { isSsoEnabled } from '@/auth/sso'
 import { useSessionStore } from '@/auth/session'
 import { useCenterCatalogStore } from '@/catalog/centerCatalog'
@@ -38,7 +38,11 @@ router.beforeEach(async (to) => {
   await useCenterCatalogStore().load()
   if (to.name !== 'home' && to.name !== 'not-found') return
   const session = useSessionStore()
-  session.applyLocalIdentity()
+  if (resolveDevIdentity().role) {
+    session.applyLocalIdentity()
+  } else {
+    await session.load()
+  }
   return session.homePath
 })
 

@@ -118,7 +118,7 @@ function goBack() {
           class="h-auto px-0 font-semibold"
           @click="goBack"
         >
-          {{ isSupervisor ? '← Back to TMS List' : '← Back to TMS Session' }}
+          {{ isSupervisor ? '← Back to Team TMS' : '← Back to TMS Session' }}
         </Button>
       </template>
       <template v-if="canToggleEnabled">

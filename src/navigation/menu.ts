@@ -16,13 +16,13 @@ export const menuItems: readonly MenuItem[] = [
     permission: PERMISSIONS.tmsSession,
   },
   {
-    label: 'TMS List',
+    label: 'My TMS',
     to: '/agent/sessions',
     permission: PERMISSIONS.tmsList,
     match: ['/agent/sessions'],
   },
   {
-    label: 'TMS List',
+    label: 'Team TMS',
     to: '/supervisor/sessions',
     permission: PERMISSIONS.tmsTeamList,
     match: ['/supervisor/sessions'],

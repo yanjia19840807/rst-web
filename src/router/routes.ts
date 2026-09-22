@@ -25,7 +25,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'agent-sessions',
     component: () => import('@/pages/agent/TmsListPage.vue'),
     meta: {
-      title: 'TMS List',
+      title: 'My TMS',
       subtitle: 'My recent timing sessions',
       roles: ['agent'],
     },
@@ -49,7 +49,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'supervisor-sessions',
     component: () => import('@/pages/supervisor/TmsListPage.vue'),
     meta: {
-      title: 'TMS List',
+      title: 'Team TMS',
       subtitle: 'Team timing sessions across your agents and toolkits',
       roles: ['supervisor'],
     },

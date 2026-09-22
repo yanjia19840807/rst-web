@@ -113,7 +113,8 @@ export function captureDevIdentityFromQuery(query: Record<string, unknown>): boo
   if (!ccgid && !role && !center) return false
   mergeDevIdentity({
     ...(ccgid ? { ccgid } : {}),
-    ...(role ? { role } : {}),
+    // A CCGID without a role means every Timesheet seat. Clear a previously pinned role.
+    ...(role ? { role } : ccgid ? { role: '' } : {}),
     ...(center ? { center } : {}),
   })
   return true
@@ -146,9 +147,12 @@ export function stripDevIdentityQuery<T extends Record<string, unknown>>(query: 
  */
 export function resolveDevIdentity(): DevIdentity {
   const stored = readDevIdentity()
+  const ccgid = stored?.ccgid?.trim() || DEFAULT_DEV_IDENTITY.ccgid
+  const role = productRole(stored?.role)
+  const pinnedRole = role || (stored?.ccgid?.trim() ? undefined : DEFAULT_DEV_IDENTITY.role)
   return {
-    ccgid: stored?.ccgid?.trim() || DEFAULT_DEV_IDENTITY.ccgid,
-    role: productRole(stored?.role) || DEFAULT_DEV_IDENTITY.role,
+    ccgid,
+    ...(pinnedRole ? { role: pinnedRole } : {}),
     ...(stored?.center?.trim() ? { center: stored.center.trim() } : {}),
   }
 }

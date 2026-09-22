@@ -83,15 +83,25 @@ describe('dev identity override', () => {
   it('drops stored roles that are not product codes', () => {
     sessionStorage.setItem(DEV_IDENTITY_STORAGE_KEY, JSON.stringify({ ccgid: 'LTH001', role: 'LTH' }))
 
-    expect(resolveDevIdentity()).toEqual({
-      ccgid: 'LTH001',
-      role: 'ADMIN',
-    })
+    expect(resolveDevIdentity()).toEqual({ ccgid: 'LTH001' })
     expect(readDevIdentity()?.role).toBeUndefined()
 
     const headers = new Headers()
     applyDevIdentityHeaders(headers)
-    expect(headers.get(DEV_ROLE_HEADER)).toBe('ADMIN')
+    expect(headers.get(DEV_ROLE_HEADER)).toBeNull()
+  })
+
+  it('clears a pinned role when the query names only a CCGID', () => {
+    writeDevIdentity({ ccgid: 'S00580242', role: 'SUPERVISOR' })
+    expect(captureDevIdentityFromQuery({ ccgid: 'S00580242' })).toBe(true)
+
+    expect(readDevIdentity()).toEqual({ ccgid: 'S00580242' })
+    expect(resolveDevIdentity()).toEqual({ ccgid: 'S00580242' })
+
+    const headers = new Headers()
+    applyDevIdentityHeaders(headers)
+    expect(headers.get(DEV_CCGID_HEADER)).toBe('S00580242')
+    expect(headers.get(DEV_ROLE_HEADER)).toBeNull()
   })
 
   it('clears stored identity', () => {
