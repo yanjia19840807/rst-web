@@ -1,3 +1,5 @@
+import type { AuditActor } from '@/lib/auditActor'
+
 export type TmsSessionStatus = 'running' | 'paused' | 'completed' | 'discarded'
 
 export type ToolkitSharedKpi = {
@@ -17,8 +19,10 @@ export interface Toolkit {
   pl3Name: string
   combineSubtasksTime: boolean
   enabled?: boolean
-  subtasks: Array<{ id: string; name: string; deletedAt: string | null; enabled?: boolean }>
+  subtasks: Array<{ id: string; name: string; isDeleted?: boolean; enabled?: boolean }>
   sharedKpiSelections?: ToolkitSharedKpi[]
+  createdBy?: AuditActor | null
+  createdAt?: string | null
 }
 
 export interface Pl3Option {
@@ -34,6 +38,8 @@ export interface TmsSession {
   subtaskName: string
   agentName?: string | null
   agentCcgid?: string | null
+  createdBy?: AuditActor | null
+  updatedBy?: AuditActor | null
   processedVolume: number | null
   reference: string
   remarks: string

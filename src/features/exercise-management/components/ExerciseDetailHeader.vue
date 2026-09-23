@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatInstantForCenter } from '@/lib/datetime'
 
+import CreatedByText from '@/components/CreatedByText.vue'
+import { actorLabel, ownerLabel, sameAuditActor } from '@/lib/auditActor'
 import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
 import ToolkitInfoPanel from './ToolkitInfoPanel.vue'
@@ -28,14 +30,49 @@ const exerciseRows = computed(() => {
   const rows: Array<{ key?: string; label: string; value: string }> = [
     { label: 'Exercise No', value: props.exercise.exerciseCode },
     {
-      label: 'Created',
+      label: 'Created at',
       value: formatInstantForCenter(
         props.exercise.createdAt,
         props.exercise.snapshot.toolkit.center,
       ),
     },
-    { label: 'Sizing Month', value: props.exercise.sizingMonth },
   ]
+  if (ownerLabel(props.exercise.createdBy)) {
+    rows.push({
+      key: 'createdBy',
+      label: 'Created by',
+      value: '',
+    })
+  }
+  if (
+    actorLabel(props.exercise.updatedBy)
+    && !sameAuditActor(props.exercise.createdBy, props.exercise.updatedBy)
+  ) {
+    rows.push({
+      key: 'updatedBy',
+      label: 'Last updated by',
+      value: '',
+    })
+  }
+  if (props.exercise.submittedAt) {
+    rows.push({
+      label: 'Submitted at',
+      value: formatInstantForCenter(
+        props.exercise.submittedAt,
+        props.exercise.snapshot.toolkit.center,
+      ),
+    })
+  }
+  if (props.exercise.archivedAt) {
+    rows.push({
+      label: 'Validated at',
+      value: formatInstantForCenter(
+        props.exercise.archivedAt,
+        props.exercise.snapshot.toolkit.center,
+      ),
+    })
+  }
+  rows.push({ label: 'Sizing Month', value: props.exercise.sizingMonth })
   if (props.showCurrentStep) {
     rows.push({
       key: 'status',
@@ -57,6 +94,12 @@ const exerciseRows = computed(() => {
     </CardHeader>
     <CardContent class="grid gap-4">
       <DetailTable :rows="exerciseRows">
+        <template #createdBy>
+          <CreatedByText :actor="exercise.createdBy" />
+        </template>
+        <template #updatedBy>
+          <CreatedByText :actor="exercise.updatedBy" />
+        </template>
         <template #status="{ row }">
           <span class="inline-flex items-center gap-1.5">
             <span>{{ row.value || '—' }}</span>

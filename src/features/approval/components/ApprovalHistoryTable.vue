@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CreatedByText from '@/components/CreatedByText.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
@@ -49,7 +50,10 @@ defineProps<{
           >
             <TableCell class="font-medium">{{ row.step }}</TableCell>
             <TableCell>{{ row.role || '—' }}</TableCell>
-            <TableCell>{{ row.actor || '—' }}</TableCell>
+            <TableCell>
+              <CreatedByText v-if="row.actedBy" :actor="row.actedBy" />
+              <span v-else>{{ row.actor || '—' }}</span>
+            </TableCell>
             <TableCell>
               <StatusBadge :status="row.decision" />
             </TableCell>

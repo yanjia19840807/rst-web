@@ -15,7 +15,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'agent-session',
     component: () => import('@/pages/agent/TmsSessionPage.vue'),
     meta: {
-      title: 'TMS Session',
+      title: 'My TMS',
       subtitle: 'My Assigned Campaign',
       roles: ['agent'],
     },
@@ -25,7 +25,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'agent-sessions',
     component: () => import('@/pages/agent/TmsListPage.vue'),
     meta: {
-      title: 'My TMS',
+      title: 'Completed Sessions',
       subtitle: 'My recent timing sessions',
       roles: ['agent'],
     },
@@ -70,7 +70,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/supervisor/ToolkitManagementPage.vue'),
     meta: {
       title: 'Toolkits',
-      subtitle: 'Manage All Toolkits — PL3, subtasks, and Shared KPI.',
+      subtitle: 'Manage Toolkits — PL3, subtasks, and Shared KPI.',
       roles: ['supervisor'],
     },
   },
@@ -275,7 +275,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/settings/DelegationPage.vue'),
     meta: {
       title: 'Delegation',
-      subtitle: 'Let a colleague act as you, or act on someone else’s behalf.',
+      subtitle: 'Delegate a position to a colleague, or act as a delegate for one.',
     },
   },
   {

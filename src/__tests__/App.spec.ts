@@ -112,7 +112,7 @@ describe('App', () => {
 
     expect(wrapper.find('nav[aria-label="Application"]').exists()).toBe(false)
     expect(wrapper.get('a[aria-label="Right Sizing Tool"]').exists()).toBe(true)
-    expect(wrapper.get('h1').text()).toBe('TMS Session')
+    expect(wrapper.get('h1').text()).toBe('My TMS')
     expect(wrapper.text()).toContain('WU Rongchan')
 
     wrapper.unmount()

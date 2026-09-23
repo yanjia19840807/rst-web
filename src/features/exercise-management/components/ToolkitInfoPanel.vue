@@ -35,7 +35,7 @@ const countries = computed(() => {
 })
 
 const visibleSubtasks = computed(() =>
-  (props.snapshot?.subtasks ?? []).filter((item) => !item.deletedAt),
+  (props.snapshot?.subtasks ?? []).filter((item) => !item.isDeleted),
 )
 
 const kpiRows = computed(() => props.snapshot?.sharedKpis ?? [])

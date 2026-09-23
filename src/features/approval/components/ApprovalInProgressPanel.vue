@@ -4,9 +4,12 @@ import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import CreatedByText from '@/components/CreatedByText.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+
+import { ownerViaLabel } from '@/lib/auditActor'
 
 import { decisionCommentSchema, returnCommentSchema } from '../schemas/decisionComment'
 import type { ApprovalWorkspaceView } from '../types'
@@ -73,8 +76,11 @@ function confirmReturn() {
   emit('return')
 }
 
-function handlerLabel(name?: string | null, ccgid?: string | null) {
-  return [name, ccgid].filter((part) => Boolean(part && String(part).trim())).join(' · ')
+function handlerLabel(workspace: ApprovalWorkspaceView) {
+  return ownerViaLabel(workspace.nextReviewerBy)
+    || [workspace.nextReviewer, workspace.nextHandlerCcgid]
+      .filter((part) => Boolean(part && String(part).trim()))
+      .join(' · ')
 }
 
 const approveRows = computed(() => {
@@ -85,7 +91,7 @@ const approveRows = computed(() => {
     { label: 'Position', value: next.nextPositionId || '—' },
     {
       label: 'Handler',
-      value: handlerLabel(next.nextReviewer, next.nextHandlerCcgid) || '—',
+      value: handlerLabel(next) || '—',
     },
   ]
 })
@@ -111,7 +117,13 @@ const approveRows = computed(() => {
           <dt class="border-b py-2 text-muted-foreground">Step</dt>
           <dd class="border-b py-2 font-medium">{{ workspace.currentHop?.step || '—' }}</dd>
           <dt class="border-b py-2 text-muted-foreground">Reviewer</dt>
-          <dd class="border-b py-2">{{ workspace.currentHop?.reviewer || '—' }}</dd>
+          <dd class="border-b py-2">
+            <CreatedByText
+              v-if="workspace.currentHop?.reviewerBy"
+              :actor="workspace.currentHop.reviewerBy"
+            />
+            <span v-else>{{ workspace.currentHop?.reviewer || '—' }}</span>
+          </dd>
         </dl>
         <Textarea
           id="approver-comments"

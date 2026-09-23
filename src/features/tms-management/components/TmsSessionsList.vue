@@ -197,7 +197,6 @@ function openDetail(id: string) {
           :sessions="sessionsQuery.data.value?.items ?? []"
           :pending="sessionsQuery.isPending.value"
           :toggling-id="togglingId"
-          :show-agent="isSupervisor"
           :show-toolkit-info="true"
           :can-toggle-enabled="isSupervisor"
           @toggle-enabled="openToggle"

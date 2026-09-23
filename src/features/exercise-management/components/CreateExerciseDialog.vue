@@ -81,7 +81,7 @@ const createdLabel = computed(() => formatToday(contextTimeZone.value))
 const infoRows = computed(() => {
   const rows = [
     { label: 'Exercise No', value: 'Assigned on create' },
-    { label: 'Created', value: createdLabel.value },
+    { label: 'Created at', value: createdLabel.value },
   ]
   if (props.lockToolkit) {
     rows.push({ label: 'Toolkit', value: lockedToolkit.value?.name ?? '' })

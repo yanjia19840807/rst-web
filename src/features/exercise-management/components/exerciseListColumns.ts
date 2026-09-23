@@ -15,6 +15,7 @@ import {
 
 import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 
+import CreatedByText from '@/components/CreatedByText.vue'
 import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
 import ExerciseCurrentStepCell from './ExerciseCurrentStepCell.vue'
@@ -89,14 +90,6 @@ export function createExerciseListColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
-    columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.snapshot.toolkit.center), {
-      id: 'submittedAt',
-      header: 'Submitted Date',
-    }),
-    columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {
-      id: 'archivedAt',
-      header: 'Validated Date',
-    }),
     columnHelper.accessor((row) => displayOrDash(row.snapshot.toolkit.center), {
       id: 'center',
       header: 'GBS Center',
@@ -152,6 +145,23 @@ export function createExerciseListColumns(
         ),
     }),
     columnHelper.display({
+      id: 'createdBy',
+      header: 'Created by',
+      cell: ({ row }) => h(CreatedByText, { actor: row.original.createdBy }),
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.createdAt, row.snapshot.toolkit.center), {
+      id: 'createdAt',
+      header: 'Created at',
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.snapshot.toolkit.center), {
+      id: 'submittedAt',
+      header: 'Submitted at',
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.archivedAt, row.snapshot.toolkit.center), {
+      id: 'archivedAt',
+      header: 'Validated at',
+    }),
+    columnHelper.display({
       id: 'currentStep',
       header: 'Current Step',
       cell: ({ row }) =>
@@ -164,6 +174,10 @@ export function createExerciseListColumns(
     columnHelper.accessor((row) => currentReviewerName(row), {
       id: 'currentReviewer',
       header: 'Current Reviewer',
+      cell: ({ row }) =>
+        row.original.workflowStatus === 'UNDER_REVIEW' && row.original.currentReviewerBy
+          ? h(CreatedByText, { actor: row.original.currentReviewerBy })
+          : currentReviewerName(row.original),
     }),
     columnHelper.display({
       id: 'aging',

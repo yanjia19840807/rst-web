@@ -48,7 +48,7 @@ export function createValidationWorkflowColumns(
     }),
     columnHelper.accessor((row) => formatCivilDateTime(row.submittedDate), {
       id: 'submittedDate',
-      header: 'Submitted Date',
+      header: 'Submitted at',
     }),
     columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
     columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),

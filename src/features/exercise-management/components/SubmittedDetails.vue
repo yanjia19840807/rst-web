@@ -19,7 +19,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
+import { ownerViaLabel } from '@/lib/auditActor'
 import { formatInstantForCenter } from '@/lib/datetime'
+import { randomId } from '@/lib/randomId'
 import { capacityTone, measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
 import { useApprovalDetailQuery } from '@/features/approval/api/queries'
@@ -69,7 +71,7 @@ const isApprover = computed(() => props.mode === 'approver')
 
 const router = useRouter()
 const route = useRoute()
-const pageTab = ref<'exercise' | 'approval'>('exercise')
+const pageTab = ref<'exercise' | 'approval'>(isApprover.value ? 'approval' : 'exercise')
 const simulationTab = ref<'sizing' | 'slot'>('sizing')
 const comments = ref('')
 const redirected = ref(false)
@@ -347,7 +349,7 @@ async function onApprove() {
       submissionId: props.submissionId,
       body: {
         comments: comments.value.trim() || null,
-        requestId: crypto.randomUUID(),
+        requestId: randomId(),
       },
     })
     toast.success('Submission approved.')
@@ -364,7 +366,7 @@ async function onReturn(reason: string) {
       submissionId: props.submissionId,
       body: {
         comments: reason,
-        requestId: crypto.randomUUID(),
+        requestId: randomId(),
       },
     })
     comments.value = ''
@@ -393,6 +395,11 @@ function downloadSummary() {
     `Toolkit: ${ex.snapshot.toolkit.name}`,
     `Official Scenario: ${submitted.scenarioName ?? submitted.scenarioId}`,
     `Submitted at: ${formatInstantForCenter(submitted.submittedAt, ex.snapshot.toolkit.center)}`,
+    ...(ex.archivedAt
+      ? [
+          `Validated at: ${formatInstantForCenter(ex.archivedAt, ex.snapshot.toolkit.center)}`,
+        ]
+      : []),
     `Delivery HC: ${deliveryHc.value.toFixed(2)}`,
     `Right Sizing HC: ${formatHc(rightSizingHc.value)}`,
     `Production Support: ${supportFte.value != null ? supportFte.value.toFixed(2) : '—'}`,
@@ -404,7 +411,7 @@ function downloadSummary() {
     ...(workspace.value?.currentHop
       ? [
           `Current step: ${workspace.value.currentHop.step ?? '—'}`,
-          `Current reviewer: ${workspace.value.currentHop.reviewer ?? '—'}`,
+          `Current reviewer: ${ownerViaLabel(workspace.value.currentHop.reviewerBy) || workspace.value.currentHop.reviewer || '—'}`,
         ]
       : []),
     ...(workspace.value?.nextStep
@@ -412,7 +419,7 @@ function downloadSummary() {
       : []),
     ...(workspace.value?.history ?? []).map(
       (row) =>
-        `${row.step}: ${row.decision} by ${row.actor ?? '—'} (${formatInstantForCenter(row.completedAt, ex.snapshot.toolkit.center)}) ${row.comments?.trim() || ''}`,
+        `${row.step}: ${row.decision} by ${ownerViaLabel(row.actedBy) || row.actor || '—'} (${formatInstantForCenter(row.completedAt, ex.snapshot.toolkit.center)}) ${row.comments?.trim() || ''}`,
     ),
     `Submission status: ${submitted.submissionStatus}`,
   ]

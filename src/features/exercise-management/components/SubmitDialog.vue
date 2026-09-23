@@ -19,6 +19,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
+import { ownerViaLabel } from '@/lib/auditActor'
+import { randomId } from '@/lib/randomId'
 
 import { useExerciseMutations } from '../api/mutations'
 import { useSubmitPreviewQuery } from '../api/queries'
@@ -92,7 +94,7 @@ const submitNow = handleSubmit(async (values) => {
     }
   }
   try {
-    const key = crypto.randomUUID()
+    const key = randomId()
     const details = await submit.mutateAsync({
       id: props.exerciseId,
       body: {
@@ -117,9 +119,10 @@ function validationSummary(): string {
 
 const submissionPathRows = computed(() => {
   const path = preview.value
-  const handler = [path?.nextHandlerName, path?.nextHandlerCcgid]
-    .filter((part) => Boolean(part && String(part).trim()))
-    .join(' · ')
+  const handler = ownerViaLabel(path?.nextHandler)
+    || [path?.nextHandlerName, path?.nextHandlerCcgid]
+      .filter((part) => Boolean(part && String(part).trim()))
+      .join(' · ')
   return [
     { label: 'Next step', value: path?.nextStep || 'Manager Review' },
     { label: 'Position', value: path?.nextPositionId || '—' },

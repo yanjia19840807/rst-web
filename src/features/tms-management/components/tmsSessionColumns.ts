@@ -4,6 +4,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
+import { hasDistinctActor, viaLabel, type AuditActor } from '@/lib/auditActor'
 import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatInstantForCenter } from '@/lib/datetime'
 
@@ -14,6 +15,7 @@ export type TmsSessionTableRow = {
   id: string
   toolkitId?: string | null
   agentName?: string | null
+  createdBy?: AuditActor | null
   toolkitName?: string | null
   subtaskName?: string | null
   startedAt: string
@@ -85,9 +87,16 @@ export function createTmsSessionColumns(
       header: 'Session No',
       cell: ({ row }) => h('span', { class: 'font-mono' }, row.original.id),
     }),
-    columnHelper.accessor((row) => row.agentName || '—', {
+    columnHelper.display({
       id: 'agent',
-      header: 'Agent',
+      header: 'Created by',
+      cell: ({ row }) =>
+        h('div', { class: 'grid gap-0.5' }, [
+          h('span', row.original.agentName || '—'),
+          hasDistinctActor(row.original.createdBy)
+            ? h('span', { class: 'text-xs text-muted-foreground' }, viaLabel(row.original.createdBy))
+            : null,
+        ]),
     }),
     columnHelper.display({
       id: 'toolkitName',

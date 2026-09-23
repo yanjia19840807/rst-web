@@ -1,4 +1,5 @@
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
+import type { AuditActor } from '@/lib/auditActor'
 import type { SupervisorToolkit, ToolkitSubtask } from '@/features/toolkit-management/types'
 
 import type { SlotVolume } from './associatedData'
@@ -24,7 +25,7 @@ export interface ExerciseSubtask {
   name: string
   description: string | null
   displayOrder: number
-  deletedAt: string | null
+  isDeleted: boolean
   enabled?: boolean
 }
 
@@ -49,6 +50,7 @@ export interface Exercise {
   currentStep?: number | null
   requiredRole?: string | null
   currentReviewer?: string | null
+  currentReviewerBy?: AuditActor | null
   lastDecisionComment?: string | null
   deliveryHc?: number | string | null
   rightSizingHc?: number | string | null
@@ -56,6 +58,8 @@ export interface Exercise {
   capacityCreation?: number | string | null
   agingDays?: number | null
   archivedAt?: string | null
+  createdBy?: AuditActor | null
+  updatedBy?: AuditActor | null
   snapshot: {
     toolkit: Pick<
       SupervisorToolkit,

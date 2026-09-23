@@ -235,7 +235,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
             </NativeSelect>
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Date From
+            From
             <DatePicker
               v-model="dateFrom"
               aria-label="Sync date from"
@@ -244,7 +244,7 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
             />
           </label>
           <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Date To
+            To
             <DatePicker
               v-model="dateTo"
               aria-label="Sync date to"

@@ -4,6 +4,5 @@ import { expect, test } from '@playwright/test'
 test('loads the Agent workspace shell', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveURL(/\/agent\/session$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('TMS Session')
-  await expect(page.getByRole('navigation', { name: 'Agent navigation' })).toContainText('My TMS')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('My TMS')
 })

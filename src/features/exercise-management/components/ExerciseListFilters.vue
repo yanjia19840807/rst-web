@@ -86,7 +86,7 @@ function onClear() {
     </label>
     <template v-if="activeTab === IN_PROGRESS_TAB">
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Submitted Date From
+        Submitted From
         <DatePicker
           v-model="draft.submittedFrom"
           aria-label="Submitted date from"
@@ -95,7 +95,7 @@ function onClear() {
         />
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Submitted Date To
+        Submitted To
         <DatePicker
           v-model="draft.submittedTo"
           aria-label="Submitted date to"
@@ -106,7 +106,7 @@ function onClear() {
     </template>
     <template v-else>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Validated Date From
+        Validated From
         <DatePicker
           v-model="draft.archivedFrom"
           aria-label="Validated date from"
@@ -115,7 +115,7 @@ function onClear() {
         />
       </label>
       <label class="grid gap-1.5 text-xs text-muted-foreground">
-        Validated Date To
+        Validated To
         <DatePicker
           v-model="draft.archivedTo"
           aria-label="Validated date to"

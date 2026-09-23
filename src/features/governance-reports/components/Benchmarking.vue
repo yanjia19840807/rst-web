@@ -277,7 +277,7 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
-      <FilterField label="Validated Date From">
+      <FilterField label="Validated From">
         <DatePicker
           v-model="draft.validatedFrom"
           aria-label="Validated date from"
@@ -285,7 +285,7 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
-      <FilterField label="Validated Date To">
+      <FilterField label="Validated To">
         <DatePicker
           v-model="draft.validatedTo"
           aria-label="Validated date to"

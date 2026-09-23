@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
+import { ownerViaLabel } from '@/lib/auditActor'
+
 import type { ApprovalWorkspaceView } from '../types'
 import ApprovalHistoryTable from './ApprovalHistoryTable.vue'
 
@@ -14,7 +16,7 @@ defineProps<{
 function statusCaption(workspace: ApprovalWorkspaceView) {
   const bar = workspace.statusBar
   if (!bar) return ''
-  return [bar.label, bar.step, bar.reviewer].filter(Boolean).join(' · ')
+  return [bar.label, bar.step, ownerViaLabel(bar.reviewerBy) || bar.reviewer].filter(Boolean).join(' · ')
 }
 </script>
 

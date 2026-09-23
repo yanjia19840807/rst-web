@@ -11,13 +11,11 @@ const props = withDefaults(
     sessions: TmsSession[]
     pending?: boolean
     togglingId?: string
-    showAgent?: boolean
     showStatus?: boolean
     showToolkitInfo?: boolean
     canToggleEnabled?: boolean
   }>(),
   {
-    showAgent: false,
     showStatus: true,
     showToolkitInfo: false,
     canToggleEnabled: false,
@@ -48,7 +46,6 @@ const columns = computed(() =>
 )
 
 const columnVisibility = computed(() => ({
-  agent: props.showAgent,
   enabled: props.showStatus,
 }))
 </script>
@@ -59,7 +56,7 @@ const columnVisibility = computed(() => ({
     :data="sessions"
     :pending="pending"
     empty-text="No sessions found."
-    :table-class="showAgent ? 'min-w-[2280px]' : 'min-w-[2160px]'"
+    table-class="min-w-[2280px]"
     :get-row-id="(row) => row.id"
     :column-visibility="columnVisibility"
   />

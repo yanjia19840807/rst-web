@@ -1,11 +1,13 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
+import CreatedByText from '@/components/CreatedByText.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import '@/components/ui/data-table/types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 import { joinCommaTokens } from '@/lib/commaTokens'
+import { formatInstantForCenter } from '@/lib/datetime'
 
 import type { SupervisorToolkit } from '../types'
 import ToolkitRowActions from './ToolkitRowActions.vue'
@@ -23,7 +25,7 @@ const columnHelper = createColumnHelper<SupervisorToolkit>()
 export function activeSubtaskNames(toolkit: SupervisorToolkit) {
   return (
     toolkit.subtasks
-      .filter((item) => !item.deletedAt && item.enabled !== false)
+      .filter((item) => !item.isDeleted && item.enabled !== false)
       .map((item) => item.name)
       .join('; ') || '—'
   )
@@ -112,6 +114,15 @@ export function createToolkitColumns(
       id: 'subtasks',
       header: 'Subtasks',
       meta: { cellClass: 'max-w-64 truncate' },
+    }),
+    columnHelper.display({
+      id: 'createdBy',
+      header: 'Created by',
+      cell: ({ row }) => h(CreatedByText, { actor: row.original.createdBy }),
+    }),
+    columnHelper.accessor((row) => formatInstantForCenter(row.createdAt, row.center), {
+      id: 'createdAt',
+      header: 'Created at',
     }),
     columnHelper.accessor((row) => (row.enabled === false ? 'Disabled' : 'Enabled'), {
       id: 'enabled',

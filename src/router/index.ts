@@ -7,6 +7,7 @@ import { useSessionStore } from '@/auth/session'
 import { useCenterCatalogStore } from '@/catalog/centerCatalog'
 import { installRouteLoading } from '@/composables/useRouteLoading'
 
+import { allowsRoute } from './access'
 import { routes } from './routes'
 
 const APP_TITLE = 'Right Sizing Tool'
@@ -26,6 +27,7 @@ router.beforeEach(async (to) => {
     }
     await useCenterCatalogStore().load()
     if (to.name === 'home' || to.name === 'not-found') return session.homePath
+    if (!allowsRoute(to, session.roles) && to.path !== session.homePath) return session.homePath
     return
   }
   if (captureDevIdentityFromQuery(to.query)) {
@@ -36,14 +38,13 @@ router.beforeEach(async (to) => {
     return { path: to.path, query, hash: to.hash, replace: true }
   }
   await useCenterCatalogStore().load()
-  if (to.name !== 'home' && to.name !== 'not-found') return
   const session = useSessionStore()
-  if (resolveDevIdentity().role) {
+  if (resolveDevIdentity().role && !session.user) {
     session.applyLocalIdentity()
-  } else {
-    await session.load()
   }
-  return session.homePath
+  await session.load()
+  if (to.name === 'home' || to.name === 'not-found') return session.homePath
+  if (!allowsRoute(to, session.roles) && to.path !== session.homePath) return session.homePath
 })
 
 router.afterEach((to) => {

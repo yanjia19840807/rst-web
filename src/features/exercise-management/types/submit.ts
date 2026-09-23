@@ -52,6 +52,7 @@ export interface SubmitPreview {
   nextPositionId?: string | null
   nextHandlerName?: string | null
   nextHandlerCcgid?: string | null
+  nextHandler?: import('@/lib/auditActor').AuditActor | null
 }
 
 export interface SubmitRequest {

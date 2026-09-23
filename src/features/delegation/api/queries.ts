@@ -7,6 +7,8 @@ export const delegationQueryKeys = {
   all: ['delegations'] as const,
   granted: () => [...delegationQueryKeys.all, 'granted'] as const,
   received: () => [...delegationQueryKeys.all, 'received'] as const,
+  seats: () => [...delegationQueryKeys.all, 'seats'] as const,
+  assignments: () => [...delegationQueryKeys.all, 'assignments'] as const,
   candidates: (q: string, page: number, pageSize: number) =>
     [...delegationQueryKeys.all, 'candidates', q, page, pageSize] as const,
 }
@@ -23,6 +25,22 @@ export function useReceivedDelegationsQuery(enabled: MaybeRefOrGetter<boolean> =
   return useQuery({
     queryKey: delegationQueryKeys.received(),
     queryFn: () => delegationApi.received(),
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+export function useOwnSeatsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: delegationQueryKeys.seats(),
+    queryFn: () => delegationApi.seats(),
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+export function usePositionAssignmentsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: delegationQueryKeys.assignments(),
+    queryFn: () => delegationApi.assignments(),
     enabled: computed(() => toValue(enabled)),
   })
 }

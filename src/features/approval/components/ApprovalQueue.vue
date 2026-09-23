@@ -70,7 +70,6 @@ const tabs: ApprovalQueueTab[] = [AWAITING_REVIEW_TAB, COMPLETED_TASK_TAB]
 const columns = computed(() =>
   createApprovalQueueColumns({
     tab: activeTab.value,
-    onReview: openReview,
     onToolkitInfo: (item) => {
       void openToolkit(item)
     },
@@ -145,14 +144,6 @@ function persistTab(tab: ApprovalQueueTab) {
 }
 
 persistTab(activeTab.value)
-
-function openReview(item: ApprovalQueueItem) {
-  void router.push({
-    name: 'approver-review',
-    params: { submissionId: item.submissionId },
-    query: { tab: approvalQueueTabQuery(activeTab.value) },
-  })
-}
 
 async function openToolkit(item: ApprovalQueueItem) {
   if (!item.exerciseId) return
@@ -278,7 +269,7 @@ watch(
           </label>
           <template v-if="activeTab === 'Awaiting Review'">
             <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Submitted Date From
+              Submitted From
               <DatePicker
                 v-model="draft.submittedFrom"
                 aria-label="Submitted date from"
@@ -287,7 +278,7 @@ watch(
               />
             </label>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Submitted Date To
+              Submitted To
               <DatePicker
                 v-model="draft.submittedTo"
                 aria-label="Submitted date to"
@@ -298,7 +289,7 @@ watch(
           </template>
           <template v-else>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Completed Date From
+              Completed From
               <DatePicker
                 v-model="draft.completedFrom"
                 aria-label="Completed date from"
@@ -307,7 +298,7 @@ watch(
               />
             </label>
             <label class="grid gap-1.5 text-xs text-muted-foreground">
-              Completed Date To
+              Completed To
               <DatePicker
                 v-model="draft.completedTo"
                 aria-label="Completed date to"

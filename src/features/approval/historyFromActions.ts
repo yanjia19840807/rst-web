@@ -88,6 +88,7 @@ export function historyFromActions(actions: WorkflowActionView[]): ApprovalHisto
           lastDecision != null
           && action.stepNo === lastDecision.stepNo
           && isReviewerDecision(action),
+        actedBy: action.actedBy ?? null,
       },
     ]
   })

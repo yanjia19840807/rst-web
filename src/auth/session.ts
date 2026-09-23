@@ -36,12 +36,22 @@ export type CurrentUser = {
   jobRole?: string | null
   actor?: { ccgid: string; displayName: string } | null
   delegationId?: string | null
+  delegatedPositionId?: string | null
+  delegatedPositionRoles?: string[] | null
+  delegatedOccupantName?: string | null
   /** Present on {@code dev}/{@code test} when test-login override is on. */
   devOverrideEnabled?: boolean | null
 }
 
 const GRANTABLE_ROLES: readonly AppRole[] = [
   'AGENT',
+  'SUPERVISOR',
+  'SR_MANAGER',
+  'DOMAIN_HEAD',
+  'LOCAL_TRANSFORMATION_HEAD',
+]
+
+const TEAM_DELEGATION_ROLES: readonly AppRole[] = [
   'SUPERVISOR',
   'SR_MANAGER',
   'DOMAIN_HEAD',
@@ -94,7 +104,31 @@ export const useSessionStore = defineStore('session', () => {
   )
   const homePath = computed(() => homePathForRoles(roles.value))
 
-  const actingAs = computed(() => Boolean(user.value?.delegationId))
+  const actingAs = computed(
+    () => Boolean(user.value?.delegationId) && !user.value?.delegatedPositionId,
+  )
+  const coveringPosition = computed(() => Boolean(user.value?.delegatedPositionId))
+  const coveredPositionLabel = computed(() => {
+    const positionId = user.value?.delegatedPositionId
+    if (!positionId) return ''
+    const roles = (user.value?.delegatedPositionRoles ?? [])
+      .map((role) => ROLE_LABELS[role.toUpperCase() as AppRole] ?? role)
+      .filter(Boolean)
+    return roles.length ? `${positionId} · ${roles.join(', ')}` : positionId
+  })
+  const coveredOccupantName = computed(() => user.value?.delegatedOccupantName?.trim() || '')
+  const delegationBanner = computed(() => {
+    if (coveringPosition.value && coveredPositionLabel.value) {
+      return coveredOccupantName.value
+        ? `You are a delegate for position ${coveredPositionLabel.value}, currently held by ${coveredOccupantName.value}.`
+        : `You are a delegate for position ${coveredPositionLabel.value}.`
+    }
+    if (actingAs.value && displayName.value) {
+      const role = rolesLabel.value || 'RST'
+      return `You are a delegate for ${displayName.value} (${role}).`
+    }
+    return ''
+  })
   const actorCcgid = computed(() => user.value?.actor?.ccgid ?? ccgid.value)
   const actorDisplayName = computed(() => user.value?.actor?.displayName ?? displayName.value)
   const delegationId = computed(() => user.value?.delegationId ?? readDelegationId())
@@ -108,6 +142,11 @@ export const useSessionStore = defineStore('session', () => {
 
   const canManageDelegation = computed(
     () => !actingAs.value && roles.value.some((role) => GRANTABLE_ROLES.includes(role)),
+  )
+
+  const canManageTeamDelegation = computed(
+    () =>
+      !actingAs.value && roles.value.some((role) => TEAM_DELEGATION_ROLES.includes(role)),
   )
 
   const canManageMailPreferences = computed(
@@ -168,6 +207,9 @@ export const useSessionStore = defineStore('session', () => {
           scopes: me.scopes?.length ? me.scopes : local.scopes,
           actor: me.ccgid === local.ccgid && me.actor ? me.actor : local.actor,
           delegationId: me.delegationId ?? null,
+          delegatedPositionId: me.delegatedPositionId ?? null,
+          delegatedPositionRoles: me.delegatedPositionRoles ?? [],
+          delegatedOccupantName: me.delegatedOccupantName ?? null,
           devOverrideEnabled: true,
         }
         signedOut.value = false
@@ -247,10 +289,15 @@ export const useSessionStore = defineStore('session', () => {
     homePath,
     contextLabel,
     actingAs,
+    coveringPosition,
+    coveredPositionLabel,
+    coveredOccupantName,
+    delegationBanner,
     actorCcgid,
     actorDisplayName,
     delegationId,
     canManageDelegation,
+    canManageTeamDelegation,
     canManageMailPreferences,
     applyLocalIdentity,
     load,

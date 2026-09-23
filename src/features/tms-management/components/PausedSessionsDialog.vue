@@ -134,7 +134,7 @@ async function confirmDiscard() {
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent
-      class="flex max-h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
+      class="flex max-h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl"
     >
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
         <DialogTitle>Paused Sessions</DialogTitle>
@@ -142,7 +142,7 @@ async function confirmDiscard() {
           {{ total }} session{{ total === 1 ? '' : 's' }}
           currently paused
           <template v-if="hasRunningSession">
-            · Pause or end the running session to resume one of these.
+            · Resuming one of these will pause the running session.
           </template>
         </DialogDescription>
       </DialogHeader>
@@ -157,7 +157,7 @@ async function confirmDiscard() {
               :data="items"
               :pending="loading"
               empty-text="No paused sessions found."
-              table-class="min-w-[680px]"
+              table-class="min-w-[960px]"
               :get-row-id="(row) => row.id"
             />
 

@@ -62,7 +62,7 @@ export function createSupportRowColumns(
     }),
     rowHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
       id: 'validatedDate',
-      header: 'Validated Date',
+      header: 'Validated at',
     }),
     rowHelper.accessor('center', { header: 'GBS Center' }),
     rowHelper.accessor('domain', { header: 'Domain' }),

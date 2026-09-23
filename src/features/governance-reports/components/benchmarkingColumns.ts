@@ -21,7 +21,7 @@ export function createBenchmarkingColumns(): ColumnDef<BenchmarkRow>[] {
     }),
     columnHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
       id: 'validatedDate',
-      header: 'Validated Date',
+      header: 'Validated at',
     }),
     columnHelper.accessor('gbs', { header: 'GBS Center' }),
     columnHelper.accessor('domain', { header: 'Domain' }),

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Spinner } from '@/components/ui/spinner'
 import { useReceivedDelegationsQuery } from '@/features/delegation/api/queries'
+import { positionCoverageLabel } from '@/features/delegation/types'
 
 const session = useSessionStore()
 const router = useRouter()
@@ -28,7 +29,11 @@ const actAsOptions = computed(() =>
 )
 
 const showDelegationGroup = computed(
-  () => session.actingAs || session.canManageDelegation || actAsOptions.value.length > 0,
+  () =>
+    session.actingAs ||
+    session.coveringPosition ||
+    session.canManageDelegation ||
+    actAsOptions.value.length > 0,
 )
 
 const itemClass =
@@ -88,7 +93,7 @@ async function stopActing() {
             <span class="block truncate text-sm font-semibold text-foreground">
               {{ session.displayName || '—' }}
             </span>
-            <Badge v-if="session.actingAs" variant="secondary">Acting as</Badge>
+            <Badge v-if="session.coveringPosition || session.actingAs" variant="secondary">Delegate</Badge>
           </span>
           <span class="block truncate text-xs text-muted-foreground">
             {{ session.rolesLabel || session.ccgid || 'Account' }}
@@ -101,8 +106,11 @@ async function stopActing() {
       <section class="grid gap-3 px-3.5 py-3">
         <div class="grid gap-0.5">
           <p class="text-sm font-semibold">{{ session.displayName || '—' }}</p>
-          <p v-if="session.actingAs" class="text-xs text-muted-foreground">
-            Signed in as {{ session.actorDisplayName }}
+          <p v-if="session.coveringPosition" class="text-xs text-muted-foreground">
+            Delegate for position {{ session.coveredPositionLabel }}
+          </p>
+          <p v-else-if="session.actingAs" class="text-xs text-muted-foreground">
+            Delegate for {{ session.displayName }}
           </p>
         </div>
         <dl class="grid gap-2">
@@ -116,12 +124,12 @@ async function stopActing() {
       <section v-if="showDelegationGroup" class="grid gap-1 border-t px-2 py-2">
         <p class="px-2 py-1 text-xs font-medium text-muted-foreground">Delegation</p>
         <button
-          v-if="session.actingAs"
+          v-if="session.actingAs || session.coveringPosition"
           type="button"
           :class="itemClass"
           @click="stopActing"
         >
-          Stop acting
+          Stop this delegation
         </button>
         <template v-else>
           <button
@@ -131,7 +139,7 @@ async function stopActing() {
             :class="itemClass"
             @click="actAs(row.id)"
           >
-            Act as {{ row.delegatorName || row.delegatorCcgid }}
+            Delegate for {{ positionCoverageLabel(row) }}
           </button>
           <button
             v-if="session.canManageDelegation"

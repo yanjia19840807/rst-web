@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { approvalQueueVisibility } from '../components/approvalQueueColumns'
 import {
   AWAITING_REVIEW_TAB,
   COMPLETED_TASK_TAB,
@@ -40,5 +41,16 @@ describe('approvalQueueTabs', () => {
   it('falls back to the workspace when the review URL has no tab', () => {
     expect(approvalQueueTabQueryFromReview(undefined, 'COMPLETED')).toBe('COMPLETED')
     expect(approvalQueueTabQueryFromReview(undefined, 'IN_PROGRESS')).toBe('AWAITING')
+  })
+
+  it('shows Handler on Completed Task and Previous Actor on Awaiting Review', () => {
+    expect(approvalQueueVisibility(AWAITING_REVIEW_TAB)).toMatchObject({
+      previousActor: true,
+      actedBy: false,
+    })
+    expect(approvalQueueVisibility(COMPLETED_TASK_TAB)).toMatchObject({
+      previousActor: false,
+      actedBy: true,
+    })
   })
 })

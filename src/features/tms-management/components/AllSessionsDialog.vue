@@ -62,7 +62,7 @@ function backToList() {
               ? 'Toolkit Info'
               : selectedSessionId
                 ? 'TMS Session Detail'
-                : 'All Sessions'
+                : 'Completed Sessions'
           }}
         </DialogTitle>
         <DialogDescription>
@@ -91,7 +91,7 @@ function backToList() {
               class="h-auto w-fit px-0 font-semibold"
               @click="backToList"
             >
-              ← Back to All Sessions
+              ← Back to Completed Sessions
             </Button>
             <TmsSessionDetail embedded :session-id="selectedSessionId" />
           </div>
@@ -101,7 +101,7 @@ function backToList() {
               class="h-auto w-fit px-0 font-semibold"
               @click="backToList"
             >
-              ← Back to All Sessions
+              ← Back to Completed Sessions
             </Button>
             <ListLoading v-if="toolkitQuery.isPending.value" />
             <p

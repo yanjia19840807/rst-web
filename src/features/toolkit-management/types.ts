@@ -1,11 +1,12 @@
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
+import type { AuditActor } from '@/lib/auditActor'
 
 export interface ToolkitSubtask {
   id: string
   name: string
   description: string | null
   displayOrder: number
-  deletedAt: string | null
+  isDeleted: boolean
   enabled?: boolean
   referencedEnabledSessionCount?: number
   referencedDisabledSessionCount?: number
@@ -36,13 +37,16 @@ export interface SupervisorToolkit {
   subtasks: ToolkitSubtask[]
   sharedKpiSelections: SharedKpiKey[]
   version: number
-  deletedAt: string | null
+  isDeleted: boolean
   enabled?: boolean
   referencedEnabledSessionCount?: number
   referencedDisabledSessionCount?: number
   syncedSessionCount?: number
   outOfSync?: boolean
   alignment?: TimesheetAlignmentView | null
+  createdBy?: AuditActor | null
+  createdAt?: string | null
+  updatedBy?: AuditActor | null
 }
 
 export interface HierarchyOption {

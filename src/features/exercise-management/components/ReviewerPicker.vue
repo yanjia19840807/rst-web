@@ -27,7 +27,10 @@ const pickerQuery = ref<PersonPickerQuery>({
 
 const matched = computed(() =>
   props.reviewers.filter((reviewer) =>
-    personMatchesQuery({ name: reviewer.name, ccgid: reviewer.ccgid }, pickerQuery.value.q),
+    personMatchesQuery(
+      { name: reviewer.name, ccgid: reviewer.ccgid, email: reviewer.email },
+      pickerQuery.value.q,
+    ),
   ),
 )
 

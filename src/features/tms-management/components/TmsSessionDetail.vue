@@ -14,6 +14,7 @@ import { formatInstantForCenter } from '@/lib/datetime'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionDetailQuery } from '../api/queries'
+import { actorLabel, hasDistinctActor, sameAuditActor, viaLabel } from '@/lib/auditActor'
 import { formatDuration } from '../composables/useTmsTimer'
 import { cycleTime, formatSessionVolume } from './tmsSessionColumns'
 import type { TmsListMode } from '../types'
@@ -55,14 +56,18 @@ const rows = computed(() => {
     { label: 'Session No', value: item.id, strong: true },
     { label: 'Status', value: item.status },
   ]
-  if (isSupervisor.value) {
+  base.push({
+    key: 'agent',
+    label: 'Created by',
+    value: item.agentName || '—',
+  })
+  if (actorLabel(item.updatedBy) && !sameAuditActor(item.createdBy, item.updatedBy)) {
     base.push({
-      label: 'Agent',
-      value: item.agentName
-        ? item.agentCcgid
-          ? `${item.agentName} (${item.agentCcgid})`
-          : item.agentName
-        : '—',
+      key: 'updatedBy',
+      label: 'Last updated by',
+      value: hasDistinctActor(item.updatedBy)
+        ? viaLabel(item.updatedBy)
+        : actorLabel(item.updatedBy),
     })
   }
   base.push(
@@ -118,7 +123,7 @@ function goBack() {
           class="h-auto px-0 font-semibold"
           @click="goBack"
         >
-          {{ isSupervisor ? '← Back to Team TMS' : '← Back to TMS Session' }}
+          {{ isSupervisor ? '← Back to Team TMS' : '← Back to My TMS' }}
         </Button>
       </template>
       <template v-if="canToggleEnabled">
@@ -145,7 +150,19 @@ function goBack() {
               : 'Could not load the session.'
           }}
         </p>
-        <DetailTable v-else :rows="rows" />
+        <DetailTable v-else :rows="rows">
+          <template #agent="{ row }">
+            <span class="grid gap-0.5">
+              <span>{{ row.value || '—' }}</span>
+              <span
+                v-if="hasDistinctActor(session?.createdBy)"
+                class="text-xs text-muted-foreground"
+              >
+                {{ viaLabel(session?.createdBy) }}
+              </span>
+            </span>
+          </template>
+        </DetailTable>
       </CardContent>
     </Card>
 

@@ -1,3 +1,5 @@
+import type { AuditActor } from '@/lib/auditActor'
+
 export interface ApprovalQueueItem {
   submissionId: string
   completedTaskId?: string | null
@@ -20,7 +22,9 @@ export interface ApprovalQueueItem {
   capacityCreation?: number | string | null
   previousStep?: string | null
   previousActor?: string | null
+  previousActorBy?: AuditActor | null
   previousStepAt?: string | null
+  actedBy?: AuditActor | null
   agingDays?: number | null
   createdAt?: string | null
   submittedAt: string
@@ -106,6 +110,7 @@ export interface ActionView {
   comments: string | null
   actionAt: string
   requestId: string | null
+  actedBy?: AuditActor | null
 }
 
 export interface ApprovalStatusBar {
@@ -113,11 +118,13 @@ export interface ApprovalStatusBar {
   label: string
   step?: string | null
   reviewer?: string | null
+  reviewerBy?: AuditActor | null
 }
 
 export interface ApprovalCurrentHop {
   step?: string | null
   reviewer?: string | null
+  reviewerBy?: AuditActor | null
 }
 
 export interface ApprovalHistoryRow {
@@ -130,6 +137,7 @@ export interface ApprovalHistoryRow {
   comments?: string | null
   completedAt: string
   mine?: boolean
+  actedBy?: AuditActor | null
 }
 
 export interface ApprovalWorkspaceView {
@@ -140,6 +148,7 @@ export interface ApprovalWorkspaceView {
   nextPositionId?: string | null
   nextReviewer?: string | null
   nextHandlerCcgid?: string | null
+  nextReviewerBy?: AuditActor | null
   history: ApprovalHistoryRow[]
 }
 

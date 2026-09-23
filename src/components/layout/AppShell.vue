@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Menu, TriangleAlert, X } from '@lucide/vue'
+import { Info, Menu, TriangleAlert, X } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -223,19 +223,16 @@ const copyrightYear = new Date().getFullYear()
           <AlertDescription>{{ catalog.error }}</AlertDescription>
         </Alert>
         <Alert
-          v-if="session.actingAs"
-          variant="warning"
+          v-if="session.delegationBanner"
+          variant="info"
           role="status"
           class="rounded-none border-x-0 border-b-0 px-4 py-2.5 sm:px-6"
         >
-          <TriangleAlert />
-          <AlertTitle>
-            You are acting as {{ session.displayName }} ({{ session.rolesLabel || 'RST' }}).
-          </AlertTitle>
-          <AlertDescription>Signed in as {{ session.actorDisplayName }}.</AlertDescription>
+          <Info />
+          <AlertTitle>{{ session.delegationBanner }}</AlertTitle>
           <AlertAction>
             <Button type="button" size="sm" variant="outline" @click="stopActing">
-              Stop acting
+              Stop this delegation
             </Button>
           </AlertAction>
         </Alert>

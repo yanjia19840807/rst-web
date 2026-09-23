@@ -25,6 +25,7 @@ const props = defineProps<{
   toolkitLocked?: boolean
   pausedCount: number
   subtaskRequired?: boolean
+  lockedSubtask?: { id: string; name: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -48,6 +49,18 @@ const startableToolkits = computed(() =>
   ),
 )
 
+const subtaskOptions = computed(() => {
+  const items =
+    selectedToolkit.value?.subtasks.filter(
+      (subtask) => !subtask.isDeleted && subtask.enabled !== false,
+    ) ?? []
+  const locked = props.lockedSubtask
+  if (locked?.id && !items.some((item) => item.id === locked.id)) {
+    return [locked, ...items]
+  }
+  return items
+})
+
 function onToolkitChange(value: unknown) {
   if (props.toolkitLocked) return
   emit('update:toolkitId', String(value ?? ''))
@@ -64,14 +77,14 @@ function onToolkitChange(value: unknown) {
           class="px-0 text-sm leading-none font-semibold"
           @click="emit('open-toolkits')"
         >
-          All Toolkits
+          Team toolkits
         </Button>
         <Button
           variant="link"
           class="px-0 text-sm leading-none font-semibold"
           @click="emit('open-sessions')"
         >
-          All Sessions
+          Completed Sessions
         </Button>
         <Button
           variant="link"
@@ -121,7 +134,7 @@ function onToolkitChange(value: unknown) {
         >
           <NativeSelectOption value="">Select a subtask</NativeSelectOption>
           <NativeSelectOption
-            v-for="item in selectedToolkit?.subtasks.filter((subtask) => !subtask.deletedAt && subtask.enabled !== false) ?? []"
+            v-for="item in subtaskOptions"
             :key="item.id"
             :value="item.id"
           >

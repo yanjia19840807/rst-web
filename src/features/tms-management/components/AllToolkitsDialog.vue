@@ -157,7 +157,7 @@ function clearFilters() {
       class="flex max-h-[calc(100vh-2rem)] w-[min(1440px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-[calc(100vw-2rem)]"
     >
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
-        <DialogTitle>{{ selectedToolkitId ? 'Toolkit Info' : 'All Toolkits' }}</DialogTitle>
+        <DialogTitle>{{ selectedToolkitId ? 'Toolkit Info' : 'Team toolkits' }}</DialogTitle>
         <DialogDescription>
           {{
             selectedToolkitId
@@ -297,7 +297,7 @@ function clearFilters() {
               class="h-auto w-fit px-0 font-semibold"
               @click="selectedToolkitId = ''"
             >
-              ← Back to All Toolkits
+              ← Back to Team toolkits
             </Button>
             <ListLoading v-if="detailQuery.isPending.value" />
             <p

@@ -179,7 +179,7 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
             name: item.name,
             description: item.description ?? '',
             displayOrder: item.displayOrder,
-            deletedAt: item.deletedAt,
+            deletedAt: item.isDeleted ? 'deleted' : null,
             enabled: item.enabled !== false,
             referencedEnabledSessionCount: item.referencedEnabledSessionCount,
             referencedDisabledSessionCount: item.referencedDisabledSessionCount,

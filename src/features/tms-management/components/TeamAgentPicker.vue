@@ -27,7 +27,10 @@ const pickerQuery = ref<PersonPickerQuery>({
 
 const matched = computed(() =>
   props.agents.filter((agent) =>
-    personMatchesQuery({ name: agent.name, ccgid: agent.ccgid }, pickerQuery.value.q),
+    personMatchesQuery(
+      { name: agent.name, ccgid: agent.ccgid, email: agent.email },
+      pickerQuery.value.q,
+    ),
   ),
 )
 
@@ -37,6 +40,7 @@ const items = computed<PersonPickerRow[]>(() => {
     id: agent.ccgid,
     ccgid: agent.ccgid,
     name: agent.name,
+    email: agent.email,
   }))
 })
 

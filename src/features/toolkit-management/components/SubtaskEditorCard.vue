@@ -18,6 +18,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { randomId } from '@/lib/randomId'
+
 import { useToolkitMutations } from '../api/mutations'
 import type { SupervisorToolkit, ToolkitSubtask } from '../types'
 
@@ -72,7 +74,7 @@ function removeDraft(subtask: ToolkitSubtask) {
 }
 
 async function addDraft() {
-  const id = crypto.randomUUID()
+  const id = randomId()
   subtasks.value = [
     ...subtasks.value,
     {

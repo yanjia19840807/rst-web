@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { ownerViaLabel } from '@/lib/auditActor'
+
 import type { ApprovalStatusBar } from '../types'
 
 defineProps<{
   bar: ApprovalStatusBar
 }>()
+
+function reviewerText(bar: ApprovalStatusBar) {
+  return ownerViaLabel(bar.reviewerBy) || bar.reviewer || ''
+}
 </script>
 
 <template>
@@ -13,9 +19,9 @@ defineProps<{
       <span class="text-muted-foreground"> · </span>
       <span>{{ bar.step }}</span>
     </template>
-    <template v-if="bar.reviewer">
+    <template v-if="reviewerText(bar)">
       <span class="text-muted-foreground"> · </span>
-      <span>{{ bar.reviewer }}</span>
+      <span>{{ reviewerText(bar) }}</span>
     </template>
   </div>
 </template>

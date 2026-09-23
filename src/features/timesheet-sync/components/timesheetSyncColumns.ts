@@ -102,9 +102,9 @@ export function createTimesheetActiveColumns(
       cell: ({ row }) => dash(row.original.run?.rowCount),
     }),
     activeHelper.display({
-      id: 'triggeredByCcgid',
+      id: 'triggeredBy',
       header: 'Triggered by',
-      cell: ({ row }) => dash(row.original.run?.triggeredByCcgid),
+      cell: ({ row }) => dash(row.original.run?.triggeredBy),
     }),
     activeHelper.display({
       id: 'mappedTables',

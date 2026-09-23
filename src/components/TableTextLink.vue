@@ -1,19 +1,29 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
+
+const props = defineProps<{
   destructive?: boolean
   disabled?: boolean
   title?: string
+  to?: RouteLocationRaw
 }>()
+
+const isLink = computed(() => Boolean(props.to) && !props.disabled)
+
+const linkClass =
+  'cursor-pointer border-0 bg-transparent p-0 font-semibold hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline'
 </script>
 
 <template>
-  <button
-    type="button"
-    :disabled="disabled"
+  <component
+    :is="isLink ? RouterLink : 'button'"
+    :to="isLink ? to : undefined"
+    :type="isLink ? undefined : 'button'"
+    :disabled="isLink ? undefined : disabled"
     :title="title"
-    class="cursor-pointer border-0 bg-transparent p-0 font-semibold hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
-    :class="destructive ? 'text-destructive' : 'text-primary'"
+    :class="[linkClass, destructive ? 'text-destructive' : 'text-primary']"
   >
     <slot />
-  </button>
+  </component>
 </template>

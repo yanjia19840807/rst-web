@@ -232,7 +232,7 @@ function onClear() {
       v-if="showTeamFilters"
       class="grid gap-1.5 text-xs text-muted-foreground"
     >
-      Agent
+      Created by
       <TeamAgentPicker
         :model-value="draft.agentCcgid || null"
         :agents="agents ?? []"
@@ -259,7 +259,7 @@ function onClear() {
       </NativeSelect>
     </label>
     <label class="grid gap-1.5 text-xs text-muted-foreground">
-      Session Date From
+      Session From
       <DatePicker
         v-model="draft.dateFrom"
         aria-label="Choose session start date"
@@ -268,7 +268,7 @@ function onClear() {
       />
     </label>
     <label class="grid gap-1.5 text-xs text-muted-foreground">
-      Session Date To
+      Session To
       <DatePicker
         v-model="draft.dateTo"
         aria-label="Choose session end date"

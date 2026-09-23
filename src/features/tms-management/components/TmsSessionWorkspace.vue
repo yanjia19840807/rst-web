@@ -64,7 +64,7 @@ function resetSessionForm(keepToolkitId?: string, keepSubtaskId?: string) {
     keepSubtaskId &&
     toolkitsQuery.data.value
       ?.find((item) => item.id === toolkit)
-      ?.subtasks.some((item) => !item.deletedAt && item.enabled !== false && item.id === keepSubtaskId)
+      ?.subtasks.some((item) => !item.isDeleted && item.enabled !== false && item.id === keepSubtaskId)
       ? keepSubtaskId
       : ''
   resetForm({
@@ -142,7 +142,7 @@ watch(
   [toolkitId, () => toolkitsQuery.data.value],
   () => {
     const availableSubtasks =
-      selectedToolkit.value?.subtasks.filter((item) => !item.deletedAt && item.enabled !== false) ?? []
+      selectedToolkit.value?.subtasks.filter((item) => !item.isDeleted && item.enabled !== false) ?? []
     subtaskRequired.value = availableSubtasks.length > 0
     if (currentSession.value) return
     if (toolkitId.value && !selectedToolkit.value) {
@@ -277,6 +277,11 @@ const endSession = handleSubmit(async (values) => {
         :toolkit-locked="toolkitLocked"
         :subtask-required="subtaskRequired"
         :paused-count="summaryQuery.data.value?.pausedSessions ?? 0"
+        :locked-subtask="
+          currentSession?.subtaskId
+            ? { id: currentSession.subtaskId, name: currentSession.subtaskName || currentSession.subtaskId }
+            : null
+        "
         @open-paused="pausedDialogOpen = true"
         @open-sessions="sessionsDialogOpen = true"
         @open-toolkits="toolkitsDialogOpen = true"

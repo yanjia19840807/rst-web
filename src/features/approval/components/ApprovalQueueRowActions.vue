@@ -1,15 +1,14 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
 import TableTextLink from '@/components/TableTextLink.vue'
 
 defineProps<{
   label: string
-}>()
-
-const emit = defineEmits<{
-  review: []
+  to?: RouteLocationRaw
 }>()
 </script>
 
 <template>
-  <TableTextLink @click="emit('review')">{{ label }}</TableTextLink>
+  <TableTextLink :to="to">{{ label }}</TableTextLink>
 </template>

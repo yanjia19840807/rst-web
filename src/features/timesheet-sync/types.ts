@@ -9,7 +9,7 @@ export type TimesheetSyncRunHeader = {
   sourceType: string | null
   sourceFileName: string | null
   sourceEtag: string | null
-  triggeredByCcgid: string | null
+  triggeredBy: string | null
   errorCode: string | null
   errorMessage: string | null
   startedAt: string

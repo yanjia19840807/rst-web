@@ -6,10 +6,13 @@ import PersonPicker, { type PersonPickerQuery } from '@/components/PersonPicker.
 import { useDelegationCandidatesQuery } from '../api/queries'
 
 const props = defineProps<{
-  modelValue: string | null
+  modelValue?: string | null
+  multiple?: boolean
   disabled?: boolean
   invalid?: boolean
 }>()
+
+const many = defineModel<string[]>('many', { default: () => [] })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]
@@ -47,7 +50,9 @@ const emptyText = computed(() => {
 
 <template>
   <PersonPicker
-    :model-value="props.modelValue"
+    :model-value="props.multiple ? null : props.modelValue"
+    v-model:many="many"
+    :multiple="multiple"
     empty-label="Select a person"
     :items="items"
     :total="total"

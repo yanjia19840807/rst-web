@@ -11,12 +11,12 @@ export type MenuItem = {
 /** Flat, de-duplicated app menu. Visibility is permission-driven. */
 export const menuItems: readonly MenuItem[] = [
   {
-    label: 'TMS Session',
+    label: 'My TMS',
     to: '/agent/session',
     permission: PERMISSIONS.tmsSession,
   },
   {
-    label: 'My TMS',
+    label: 'Completed Sessions',
     to: '/agent/sessions',
     permission: PERMISSIONS.tmsList,
     match: ['/agent/sessions'],

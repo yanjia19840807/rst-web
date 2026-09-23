@@ -2,6 +2,7 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
+import CreatedByText from '@/components/CreatedByText.vue'
 import '@/components/ui/data-table/types'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 import { joinCommaTokens } from '@/lib/commaTokens'
@@ -17,6 +18,7 @@ import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeCh
 
 import {
   AWAITING_REVIEW_TAB,
+  approvalQueueTabQuery,
   type ApprovalQueueTab,
 } from '../approvalQueueTabs'
 import type { ApprovalQueueItem } from '../types'
@@ -29,7 +31,6 @@ export type { ApprovalQueueTab }
 
 export type ApprovalQueueColumnOptions = {
   tab: ApprovalQueueTab
-  onReview?: (item: ApprovalQueueItem) => void
   onToolkitInfo?: (item: ApprovalQueueItem) => void
 }
 
@@ -86,11 +87,11 @@ export function createApprovalQueueColumns(
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.submittedAt, row.center), {
       id: 'submittedAt',
-      header: 'Submitted Date',
+      header: 'Submitted at',
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.myCompletedAt, row.center), {
       id: 'myCompletedAt',
-      header: 'Completed On',
+      header: 'Completed at',
     }),
     columnHelper.accessor((row) => displayOrDash(row.center), {
       id: 'center',
@@ -159,6 +160,10 @@ export function createApprovalQueueColumns(
     columnHelper.accessor((row) => row.previousActor || '—', {
       id: 'previousActor',
       header: 'Previous Actor',
+      cell: ({ row }) =>
+        row.original.previousActorBy
+          ? h(CreatedByText, { actor: row.original.previousActorBy })
+          : (row.original.previousActor || '—'),
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.previousStepAt, row.center), {
       id: 'previousStepAt',
@@ -179,15 +184,27 @@ export function createApprovalQueueColumns(
       header: 'Completed Step',
     }),
     columnHelper.display({
+      id: 'actedBy',
+      header: 'Handler',
+      cell: ({ row }) =>
+        row.original.actedBy
+          ? h(CreatedByText, { actor: row.original.actedBy })
+          : '—',
+    }),
+    columnHelper.display({
       id: 'actions',
       enableHiding: false,
       header: () => h('div', { class: 'text-right' }, 'Action'),
       cell: ({ row }) =>
         h(ApprovalQueueRowActions, {
           label: options.tab === AWAITING_REVIEW_TAB ? 'Review' : 'View',
-          onReview: () => options.onReview?.(row.original),
+          to: {
+            name: 'approver-review',
+            params: { submissionId: row.original.submissionId },
+            query: { tab: approvalQueueTabQuery(options.tab) },
+          },
         }),
-      meta: { headerClass: 'text-right', cellClass: 'text-right' },
+      meta: { headerClass: 'relative z-10 text-right', cellClass: 'relative z-10 text-right' },
     }),
   ] as ColumnDef<ApprovalQueueItem>[]
 }
@@ -203,5 +220,6 @@ export function approvalQueueVisibility(tab: ApprovalQueueTab) {
     aging: awaiting,
     myDecision: !awaiting,
     completedStep: !awaiting,
+    actedBy: !awaiting,
   }
 }

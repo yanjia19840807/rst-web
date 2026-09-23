@@ -175,7 +175,7 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
-      <FilterField label="Submitted Date From">
+      <FilterField label="Submitted From">
         <DatePicker
           v-model="draft.submittedFrom"
           aria-label="Submitted date from"
@@ -183,7 +183,7 @@ watch(
           :class="fieldClass"
         />
       </FilterField>
-      <FilterField label="Submitted Date To">
+      <FilterField label="Submitted To">
         <DatePicker
           v-model="draft.submittedTo"
           aria-label="Submitted date to"
