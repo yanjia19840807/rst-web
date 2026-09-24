@@ -7,7 +7,6 @@ import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -47,7 +46,6 @@ import {
 } from '../api/queries'
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { slaMinutesToHours } from '../schemas/teamSetup'
-import { deriveSlotPeriodLabel, formatTmsPeriodLabel } from '../periodWindows'
 import { actualHeadcount } from '../sizingChartMath'
 import type { SubmittedDetails } from '../types'
 import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
@@ -71,8 +69,7 @@ const isApprover = computed(() => props.mode === 'approver')
 
 const router = useRouter()
 const route = useRoute()
-const pageTab = ref<'exercise' | 'approval'>(isApprover.value ? 'approval' : 'exercise')
-const simulationTab = ref<'sizing' | 'slot'>('sizing')
+const pageTab = ref<'exercise' | 'approval'>('exercise')
 const comments = ref('')
 const redirected = ref(false)
 
@@ -234,15 +231,12 @@ const shiftSetupLabel = computed(() => {
   return String(n)
 })
 
-const medianLabel = computed(() =>
-  cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',
-)
-
-const medianSourceLabel = computed(() => {
+const medianLabel = computed(() => {
   if (!cycleTime.value) return '—'
-  return cycleTime.value.baselineType?.toUpperCase() === 'MANUAL'
-    ? 'Manual'
-    : 'System-calculated'
+  const seconds = Number(cycleTime.value.medianSeconds).toFixed(2)
+  const source =
+    cycleTime.value.baselineType?.toUpperCase() === 'MANUAL' ? 'Manual' : 'System-calculated'
+  return `${seconds} ${source}`
 })
 
 const slaTargetLabel = computed(() => {
@@ -285,24 +279,25 @@ const packageRows = computed(() => {
   const submitted = details.value
   if (!ex || !submitted) return []
   return [
-    { label: 'Official Scenario', value: submitted.scenarioName ?? submitted.scenarioId, strong: true },
     {
-      label: 'Slot Period',
-      value: deriveSlotPeriodLabel(ex.slotStartDate, ex.slotWeeks),
+      label: 'Official Scenario',
+      value: submitted.scenarioName ?? submitted.scenarioId,
     },
-    { label: 'TMS period', value: formatTmsPeriodLabel(ex.tmsFrom, ex.tmsTo) },
+    {
+      key: 'capacityCreation',
+      label: withUnit('Capacity Creation', FieldUnit.hc),
+      value: formatSigned(capacityCreation.value),
+    },
     { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
-    { label: withUnit('SLA Turntime', FieldUnit.hours), value: slaTurntimeLabel.value },
-    { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
-    { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
-    { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
-    { key: 'medianSource', label: 'Median source', value: medianSourceLabel.value },
+    { label: withUnit('Right size', FieldUnit.hc), value: formatHc(rightSizingHc.value) },
     {
       label: withUnit('Production support', FieldUnit.fte),
       value: supportFte.value != null ? supportFte.value.toFixed(2) : '—',
     },
-    { label: withUnit('Right size', FieldUnit.hc), value: formatHc(rightSizingHc.value) },
-    { key: 'capacityCreation', label: withUnit('Capacity Creation', FieldUnit.hc), value: formatSigned(capacityCreation.value) },
+    { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
+    { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
+    { label: withUnit('SLA Turntime', FieldUnit.hours), value: slaTurntimeLabel.value },
+    { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
   ]
 })
 
@@ -326,21 +321,6 @@ const kpiAllocationRows = computed(() => {
     }
   })
 })
-
-const resultRows = computed(() => [
-  { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.value.toFixed(2) },
-  { label: withUnit('SLA Turntime', FieldUnit.hours), value: slaTurntimeLabel.value },
-  { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel.value },
-  { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel.value },
-  { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
-  { label: 'Median source', value: medianSourceLabel.value },
-  {
-    label: withUnit('Production support', FieldUnit.fte),
-    value: supportFte.value != null ? supportFte.value.toFixed(2) : '—',
-  },
-  { label: withUnit('Right size', FieldUnit.hc), value: formatHc(rightSizingHc.value) },
-  { key: 'capacityCreation', label: withUnit('Capacity Creation', FieldUnit.hc), value: formatSigned(capacityCreation.value) },
-])
 
 async function onApprove() {
   if (!props.submissionId || pending.value) return
@@ -492,64 +472,57 @@ function downloadSummary() {
     />
 
     <div v-if="pageTab === 'exercise'" class="grid gap-4">
-      <ExerciseDetailHeader :exercise="exercise" locked :show-current-step="false" />
+      <ExerciseDetailHeader :exercise="exercise" locked submitted />
 
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Official Scenario</CardTitle>
         </CardHeader>
-        <CardContent>
-          <DetailTable :rows="packageRows" :columns="2">
-            <template #medianSource="{ row }">
-              <Badge :variant="medianSourceLabel === 'Manual' ? 'secondary' : 'outline'">
-                {{ row.value || '—' }}
-              </Badge>
-            </template>
-            <template #capacityCreation="{ row }">
-              <span :class="capacityTone(capacityCreation) || 'font-semibold'">
-                {{ row.value || '—' }}
-              </span>
-            </template>
-          </DetailTable>
-        </CardContent>
-      </Card>
+        <CardContent class="grid gap-4">
+          <section class="grid gap-3">
+            <DetailTable :rows="packageRows" :columns="2">
+              <template #capacityCreation="{ row }">
+                <span :class="capacityTone(capacityCreation) || 'font-semibold'">
+                  {{ row.value || '—' }}
+                </span>
+              </template>
+            </DetailTable>
+          </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle class="text-base">Shared KPI Line Allocation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class="min-w-0 overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Carrier</TableHead>
-                  <TableHead>GBS Site</TableHead>
-                  <TableHead>Customer Country</TableHead>
-                  <TableHead>Delivery HC</TableHead>
-                  <TableHead>Right Sizing HC</TableHead>
-                  <TableHead>Capacity Creation (HC)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="(row, index) in kpiAllocationRows" :key="index">
-                  <TableCell>{{ row.carrier }}</TableCell>
-                  <TableCell>{{ row.site }}</TableCell>
-                  <TableCell>{{ row.customerCountry }}</TableCell>
-                  <TableCell>{{ row.deliveryHc }}</TableCell>
-                  <TableCell>{{ row.rightSizingHc }}</TableCell>
-                  <TableCell :class="capacityTone(row.capacityValue) || 'font-semibold'">
-                    {{ row.capacityCreation }}
-                  </TableCell>
-                </TableRow>
-                <TableRow v-if="!kpiAllocationRows.length">
-                  <TableCell colspan="6" class="h-16 text-center text-muted-foreground">
-                    No Shared KPI lines on this exercise.
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+          <section class="grid gap-3 border-t pt-4">
+            <h3 class="text-sm font-semibold">Shared KPI Line Allocation</h3>
+            <div class="min-w-0 overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Carrier</TableHead>
+                    <TableHead>GBS Site</TableHead>
+                    <TableHead>Customer Country</TableHead>
+                    <TableHead>Delivery HC</TableHead>
+                    <TableHead>Right Sizing HC</TableHead>
+                    <TableHead>Capacity Creation (HC)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="(row, index) in kpiAllocationRows" :key="index">
+                    <TableCell>{{ row.carrier }}</TableCell>
+                    <TableCell>{{ row.site }}</TableCell>
+                    <TableCell>{{ row.customerCountry }}</TableCell>
+                    <TableCell>{{ row.deliveryHc }}</TableCell>
+                    <TableCell>{{ row.rightSizingHc }}</TableCell>
+                    <TableCell :class="capacityTone(row.capacityValue) || 'font-semibold'">
+                      {{ row.capacityCreation }}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow v-if="!kpiAllocationRows.length">
+                    <TableCell colspan="6" class="h-16 text-center text-muted-foreground">
+                      No Shared KPI lines on this exercise.
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </section>
         </CardContent>
       </Card>
 
@@ -564,99 +537,83 @@ function downloadSummary() {
         read-only
       />
 
-      <div class="grid items-start gap-3.5 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
-        <Card class="min-w-0">
-          <CardHeader>
-            <CardTitle class="text-base">Forecast &amp; Simulation</CardTitle>
-          </CardHeader>
-          <CardContent class="grid gap-4">
-            <TabStrip
-              :tabs="[
-                { key: 'sizing', label: 'Sizing Simulation' },
-                { key: 'slot', label: 'Slot Simulation' },
-              ]"
-              :model-value="simulationTab"
-              @update:model-value="simulationTab = $event"
-            />
+      <Card class="min-w-0">
+        <CardHeader>
+          <CardTitle class="text-base">1. Sizing Simulation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SizingSimulationCharts
+            v-if="hasSizing"
+            :exercise-id="resolvedExerciseId"
+            :sizing-month="exercise.sizingMonth"
+            :monthly="latestMonthlySizing"
+            :daily="latestDailySizing"
+            :team-setup="teamSetup"
+          />
+          <div
+            v-else
+            class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
+          >
+            No saved sizing simulation for the official scenario.
+          </div>
+        </CardContent>
+      </Card>
 
-            <SizingSimulationCharts
-              v-if="simulationTab === 'sizing' && hasSizing"
-              :exercise-id="resolvedExerciseId"
-              :sizing-month="exercise.sizingMonth"
-              :monthly="latestMonthlySizing"
-              :daily="latestDailySizing"
-              :team-setup="teamSetup"
-            />
-            <div
-              v-else-if="simulationTab === 'sizing'"
-              class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
-            >
-              No saved sizing simulation for the official scenario.
-            </div>
-
-            <template v-else-if="simulationTab === 'slot' && hasSlot && latestSlotSimulation">
-              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div class="rounded-md border px-3 py-2.5">
-                  <div class="text-xs text-muted-foreground">TAT on period</div>
-                  <div
-                    class="mt-1 font-semibold"
-                    :class="
-                      latestSlotSimulation.slaTargetRatio != null &&
-                      Number(latestSlotSimulation.tatOnPeriod) <
-                        Number(latestSlotSimulation.slaTargetRatio)
-                        ? 'text-destructive'
-                        : undefined
-                    "
-                  >
-                    {{ (Number(latestSlotSimulation.tatOnPeriod) * 100).toFixed(2) }}%
-                  </div>
-                  <div class="mt-0.5 text-xs text-muted-foreground">
-                    Target
-                    {{
-                      latestSlotSimulation.slaTargetRatio == null
-                        ? '—'
-                        : `${Math.round(Number(latestSlotSimulation.slaTargetRatio) * 100)}%`
-                    }}
-                  </div>
+      <Card class="min-w-0">
+        <CardHeader>
+          <CardTitle class="text-base">2. Slot Simulation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <template v-if="hasSlot && latestSlotSimulation">
+            <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div class="rounded-md border px-3 py-2.5">
+                <div class="text-xs text-muted-foreground">TAT on period (%)</div>
+                <div
+                  class="mt-1 font-semibold"
+                  :class="
+                    latestSlotSimulation.slaTargetRatio != null &&
+                    Number(latestSlotSimulation.tatOnPeriod) <
+                      Number(latestSlotSimulation.slaTargetRatio)
+                      ? 'text-destructive'
+                      : undefined
+                  "
+                >
+                  {{ (Number(latestSlotSimulation.tatOnPeriod) * 100).toFixed(2) }}
                 </div>
-                <div class="rounded-md border px-3 py-2.5">
-                  <div class="text-xs text-muted-foreground">Actual vs theoretical</div>
-                  <div class="mt-1 font-semibold">
-                    {{ (Number(latestSlotSimulation.actualVsTheoretical) * 100).toFixed(0) }}%
-                  </div>
-                </div>
-                <div class="rounded-md border px-3 py-2.5">
-                  <div class="text-xs text-muted-foreground">Shift setup</div>
-                  <div class="mt-1 font-semibold">{{ latestSlotSimulation.shiftCount }}</div>
-                  <div class="mt-0.5 text-xs text-muted-foreground">{{ shiftSetupLabel }}</div>
+                <div class="mt-0.5 text-xs text-muted-foreground">
+                  Target
+                  {{
+                    latestSlotSimulation.slaTargetRatio == null
+                      ? '—'
+                      : Math.round(Number(latestSlotSimulation.slaTargetRatio) * 100)
+                  }}
                 </div>
               </div>
-              <SlotSimulationCharts :simulation="latestSlotSimulation" />
-            </template>
-            <div
-              v-else
-              class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
-            >
-              No saved slot simulation for the official scenario.
+              <div class="rounded-md border px-3 py-2.5">
+                <div class="text-xs text-muted-foreground">Actual vs theoretical (%)</div>
+                <div class="mt-1 font-semibold">
+                  {{ (Number(latestSlotSimulation.actualVsTheoretical) * 100).toFixed(0) }}
+                </div>
+                <div class="mt-0.5 text-xs text-muted-foreground">
+                  sum(capacity) / sum(manual)
+                </div>
+              </div>
+              <div class="rounded-md border px-3 py-2.5">
+                <div class="text-xs text-muted-foreground">Shift setup</div>
+                <div class="mt-1 font-semibold">{{ latestSlotSimulation.shiftCount }}</div>
+                <div class="mt-0.5 text-xs text-muted-foreground">{{ shiftSetupLabel }}</div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card class="lg:sticky lg:top-4">
-          <CardHeader>
-            <CardTitle class="text-base">Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DetailTable :rows="resultRows">
-              <template #capacityCreation="{ row }">
-                <span :class="capacityTone(capacityCreation) || 'font-semibold'">
-                  {{ row.value || '—' }}
-                </span>
-              </template>
-            </DetailTable>
-          </CardContent>
-        </Card>
-      </div>
+            <SlotSimulationCharts :simulation="latestSlotSimulation" />
+          </template>
+          <div
+            v-else
+            class="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
+          >
+            No saved slot simulation for the official scenario.
+          </div>
+        </CardContent>
+      </Card>
     </div>
 
     <div v-else-if="workspace" class="grid gap-4">

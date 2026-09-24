@@ -5,21 +5,15 @@ import ListLoading from '@/components/ListLoading.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { useAssociatedDataPanel } from '../composables/useAssociatedDataPanel'
+import { useExerciseWorkspace } from '../composables/useExerciseWorkspace'
 import { deriveSlotPeriodLabel } from '../periodWindows'
 import { countHolidayTypes } from '../weekendCodes'
 import { AD_TAB_LABELS, formatNumber } from './associated-data/adTypes'
 import { sumSupportFte } from './associated-data/supportOptions'
+import AdSummaryTable from './associated-data/AdSummaryTable.vue'
 import AdTmsSummary from './associated-data/AdTmsSummary.vue'
 import AssociatedDataEditorDialog from './associated-data/AssociatedDataEditorDialog.vue'
 
@@ -79,34 +73,75 @@ const volumeSummary = computed(() => {
         ? days[0].volumeDate
         : `${days[0].volumeDate} – ${days[days.length - 1].volumeDate}`
   return [
+    { label: 'Month period', value: monthPeriod },
     {
-      granularity: 'Month',
-      period: monthPeriod,
-      volume: months.length ? formatNumber(monthVolume, 2) : '—',
-      rows: `${months.length} months`,
+      label: withUnit('Month volume', FieldUnit.transactions),
+      value: months.length ? formatNumber(monthVolume, 2) : '—',
+    },
+    { label: 'Daily period', value: dayPeriod },
+    {
+      label: withUnit('Daily volume', FieldUnit.transactions),
+      value: days.length ? formatNumber(dayVolume, 2) : '—',
     },
     {
-      granularity: 'Daily',
-      period: dayPeriod,
-      volume: days.length ? formatNumber(dayVolume, 2) : '—',
-      rows: `${days.length} days`,
-    },
-    {
-      granularity: 'Slot',
-      period:
+      label: 'Slot period',
+      value:
         props.slotStartDate && props.slotWeeks
           ? deriveSlotPeriodLabel(props.slotStartDate, props.slotWeeks)
           : 'Not set',
-      volume: slot.value.length ? formatNumber(slotVolume, 2) : '—',
-      rows: `${slot.value.length} slots`,
+    },
+    {
+      label: withUnit('Slot volume', FieldUnit.transactions),
+      value: slot.value.length ? formatNumber(slotVolume, 2) : '—',
     },
   ]
+})
+
+const teamRows = computed(() => [
+  {
+    label: withUnit('Daily capacity / agent', FieldUnit.transactions),
+    value: formatNumber(teamSetup.value?.dailyCapacityPerAgent, 0),
+  },
+  {
+    label: withUnit('Working days', FieldUnit.days),
+    value: formatNumber(teamSetup.value?.workingDaysPerYear, 2),
+  },
+])
+
+const supportRows = computed(() => [
+  {
+    label: withUnit('Total support', FieldUnit.fte),
+    value: supportFte.value != null ? formatNumber(supportFte.value, 2) : '—',
+  },
+  {
+    label: withUnit('Annual support hours', FieldUnit.hours),
+    value: supportAnnualHours.value != null ? formatNumber(supportAnnualHours.value, 2) : '—',
+  },
+])
+
+const calendarRows = computed(() => [
+  { label: 'Holiday / Weekend days', value: holidayCounts.value.rest },
+  { label: 'Makeup (Normal) days', value: holidayCounts.value.makeup },
+  { label: 'Listed dates', value: holidayCounts.value.total },
+])
+
+const summaryRows = computed(() => {
+  if (activeTab.value === 'team') return teamRows.value
+  if (activeTab.value === 'support') return supportRows.value
+  if (activeTab.value === 'calendar') return calendarRows.value
+  return volumeSummary.value
 })
 
 const editorActionLabel = computed(() => {
   const name = AD_TAB_LABELS[activeTab.value]
   return props.readOnly ? `View ${name}` : `Edit ${name}`
 })
+
+const workspace = useExerciseWorkspace()
+
+function onAssociatedDataWritten() {
+  workspace?.notifyAssociatedDataChanged()
+}
 </script>
 
 <template>
@@ -136,118 +171,16 @@ const editorActionLabel = computed(() => {
     <CardContent>
       <ListLoading v-if="loading" />
 
-      <template v-else-if="activeTab === 'team'">
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Baseline Output</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Source</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell>{{ withUnit('Daily capacity / agent', FieldUnit.transactions) }}</TableCell>
-                <TableCell>{{ formatNumber(teamSetup?.dailyCapacityPerAgent, 0) }}</TableCell>
-                <TableCell class="text-muted-foreground">
-                  Calculated from baseline inputs
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>{{ withUnit('Working days', FieldUnit.days) }}</TableCell>
-                <TableCell>{{ formatNumber(teamSetup?.workingDaysPerYear, 2) }}</TableCell>
-                <TableCell class="text-muted-foreground">
-                  Calendar and holiday adjusted
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </template>
-
-      <template v-else-if="activeTab === 'tms'">
-        <AdTmsSummary
-          v-model:source="medianSource"
-          :cycle-time="cycleTime"
-          :tms-from="props.tmsFrom"
-          :tms-to="props.tmsTo"
-          :exercise-id="props.exerciseId"
-          :read-only="props.readOnly"
-        />
-      </template>
-
-      <template v-else-if="activeTab === 'support'">
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Summary</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Source</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell>{{ withUnit('Total support', FieldUnit.fte) }}</TableCell>
-                <TableCell>
-                  {{ supportFte != null ? formatNumber(supportFte, 2) : '—' }}
-                </TableCell>
-                <TableCell class="text-muted-foreground">Summed from registry</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>{{ withUnit('Annual support hours', FieldUnit.hours) }}</TableCell>
-                <TableCell>
-                  {{
-                    supportAnnualHours != null ? formatNumber(supportAnnualHours, 2) : '—'
-                  }}
-                </TableCell>
-                <TableCell class="text-muted-foreground">Sum of Hours / year</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </template>
-
-      <template v-else-if="activeTab === 'calendar'">
-        <table class="w-full border-collapse text-sm">
-          <tbody>
-            <tr class="border-b">
-              <td class="w-[32%] py-2 text-muted-foreground">Holiday / Weekend days</td>
-              <td class="py-2">{{ holidayCounts.rest }}</td>
-            </tr>
-            <tr class="border-b">
-              <td class="py-2 text-muted-foreground">Makeup (Normal) days</td>
-              <td class="py-2">{{ holidayCounts.makeup }}</td>
-            </tr>
-            <tr class="border-b">
-              <td class="py-2 text-muted-foreground">Listed dates</td>
-              <td class="py-2">{{ holidayCounts.total }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
-
-      <template v-else>
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time Granularity</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>{{ withUnit('Volume', FieldUnit.transactions) }}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="row in volumeSummary" :key="row.granularity">
-                <TableCell>{{ row.granularity }}</TableCell>
-                <TableCell>{{ row.period }}</TableCell>
-                <TableCell>{{ row.volume }}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </template>
+      <AdTmsSummary
+        v-else-if="activeTab === 'tms'"
+        :source="medianSource"
+        :cycle-time="cycleTime"
+        :tms-from="props.tmsFrom"
+        :tms-to="props.tmsTo"
+        :exercise-id="props.exerciseId"
+        :read-only="props.readOnly"
+      />
+      <AdSummaryTable v-else :rows="summaryRows" />
     </CardContent>
   </Card>
 
@@ -269,6 +202,7 @@ const editorActionLabel = computed(() => {
     :tms-to="props.tmsTo"
     :median-source="medianSource"
     :read-only="props.readOnly"
+    @update:median-source="medianSource = $event"
     @update:team-setup="teamSetup = $event"
     @update:support="support = $event"
     @update:calendar="calendar = $event"
@@ -276,6 +210,7 @@ const editorActionLabel = computed(() => {
     @update:daily="daily = $event"
     @update:slot="slot = $event"
     @update:cycle-time="onCycleTimeUpdated"
+    @written="onAssociatedDataWritten"
     @close="editor = null"
   />
 </template>

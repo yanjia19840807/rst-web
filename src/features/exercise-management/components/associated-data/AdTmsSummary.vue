@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
+import TableTextLink from '@/components/TableTextLink.vue'
+import { Button } from '@/components/ui/button'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 import { FieldUnit, withUnit } from '../../fieldUnits'
 import { formatTmsPeriodLabel } from '../../periodWindows'
-import { tmsRatioDescription, tmsRatioLabel } from '../../tmsRatio'
+import { tmsRatioLabel } from '../../tmsRatio'
 import type { CycleTimeBaseline, CycleTimeBaselineFile } from '../../types'
 import type { MedianSourceMode } from './adTypes'
 import { formatNumber } from './adTypes'
+import AdSummaryTable from './AdSummaryTable.vue'
 import CycleTimeControlChart from './CycleTimeControlChart.vue'
 
 const props = defineProps<{
@@ -27,26 +30,13 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-const emit = defineEmits<{
-  'update:source': [value: MedianSourceMode]
-}>()
+const chartOpen = ref(false)
 
-const SOURCE_OPTIONS = [
-  {
-    value: 'system' as const,
-    label: 'System-calculated median',
-    hint: 'Use TMS sessions median and review metrics / control chart below.',
-  },
-  {
-    value: 'manual' as const,
-    label: 'Manual median input',
-    hint: 'Enter a median override; optionally upload support files as approval evidence.',
-  },
-]
-
-const sourceLabel = computed(() =>
-  SOURCE_OPTIONS.find((option) => option.value === props.source)?.label ?? '—',
-)
+const chartRow = {
+  key: 'chart',
+  label: 'Control chart',
+  value: '',
+} as const
 
 const isManualBaseline = computed(
   () => props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL',
@@ -70,8 +60,36 @@ const sampleCountLabel = computed(() =>
 )
 
 const tmsRatio = computed(() => (isSystemBaseline.value ? props.cycleTime?.tmsRatio ?? null : null))
-const tmsRatioValue = computed(() => tmsRatioLabel(tmsRatio.value))
-const tmsRatioHint = computed(() => tmsRatioDescription(tmsRatio.value))
+
+const manualRows = computed(() => [
+  {
+    label: withUnit('Manual median cycle time', FieldUnit.seconds),
+    value: isManualBaseline.value ? medianSecondsLabel.value : '—',
+  },
+  {
+    key: 'reason',
+    label: 'Reason for override',
+    value: isManualBaseline.value ? props.cycleTime?.manualReason?.trim() || '—' : '—',
+  },
+  { key: 'files', label: 'Support files', value: '' },
+])
+
+const systemRows = computed(() => [
+  { label: 'TMS period', value: formatTmsPeriodLabel(props.tmsFrom, props.tmsTo) },
+  {
+    label: withUnit('Median cycle time', FieldUnit.seconds),
+    value: isSystemBaseline.value ? medianSecondsLabel.value : '—',
+  },
+  {
+    label: 'Accepted records',
+    value: isSystemBaseline.value ? sampleCountLabel.value : '—',
+  },
+  {
+    label: withUnit('TMS ratio', FieldUnit.percent),
+    value: isSystemBaseline.value ? tmsRatioLabel(tmsRatio.value) : '—',
+  },
+  chartRow,
+])
 
 function formatSize(bytes: number | null | undefined) {
   if (bytes == null || !Number.isFinite(bytes)) return '—'
@@ -83,129 +101,69 @@ function formatSize(bytes: number | null | undefined) {
 
 <template>
   <div class="space-y-4">
-    <div v-if="readOnly" class="text-sm">
-      <span class="text-muted-foreground">Median source</span>
-      <span class="ml-3 font-semibold">{{ sourceLabel }}</span>
-    </div>
-    <div v-else class="space-y-2.5">
-      <label
-        v-for="option in SOURCE_OPTIONS"
-        :key="option.value"
-        class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3.5 py-3"
-        :class="
-          source === option.value
-            ? 'border-primary bg-primary/5'
-            : 'border-border bg-card'
-        "
+    <template v-if="source === 'manual'">
+      <AdSummaryTable :rows="manualRows">
+        <template #reason>
+          <span class="whitespace-pre-wrap">
+            {{ isManualBaseline ? cycleTime?.manualReason?.trim() || '—' : '—' }}
+          </span>
+        </template>
+        <template #files>
+          <ul v-if="supportFiles.length" class="space-y-1">
+            <li
+              v-for="file in supportFiles"
+              :key="file.id"
+              class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
+            >
+              <a
+                class="font-medium text-primary underline-offset-2 hover:underline"
+                :href="file.webUrl || '#'"
+                target="_blank"
+                rel="noopener noreferrer"
+                :download="file.fileName"
+              >
+                {{ file.fileName }}
+              </a>
+              <span class="text-xs text-muted-foreground">{{ formatSize(file.sizeBytes) }}</span>
+            </li>
+          </ul>
+          <span v-else>
+            {{ isManualBaseline ? 'No files uploaded' : 'No manual baseline saved yet.' }}
+          </span>
+        </template>
+      </AdSummaryTable>
+    </template>
+
+    <template v-else>
+      <AdSummaryTable :rows="systemRows">
+        <template #chart>
+          <TableTextLink title="Cycle Time Control Chart" @click="chartOpen = true">
+            View
+          </TableTextLink>
+        </template>
+      </AdSummaryTable>
+      <p v-if="!isSystemBaseline" class="text-xs text-muted-foreground">
+        No SYSTEM baseline yet. Open Edit TMS and apply a TMS period.
+      </p>
+    </template>
+
+    <Dialog v-model:open="chartOpen">
+      <DialogContent
+        class="flex h-[92vh] w-[min(1080px,96vw)] max-w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[96vw]"
       >
-        <input
-          type="radio"
-          class="mt-1"
-          name="exercise-median-source"
-          :checked="source === option.value"
-          @change="emit('update:source', option.value)"
-        />
-        <span>
-          <span class="block text-sm font-semibold">{{ option.label }}</span>
-          <span class="mt-0.5 block text-xs text-muted-foreground">{{ option.hint }}</span>
-        </span>
-      </label>
-    </div>
-
-    <div class="space-y-4">
-      <h3 class="text-sm font-bold">TMS Metrics</h3>
-
-      <template v-if="source === 'manual'">
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell class="w-[36%] text-muted-foreground">
-                  {{ withUnit('Manual median cycle time', FieldUnit.seconds) }}
-                </TableCell>
-                <TableCell class="font-medium">
-                  {{ isManualBaseline ? medianSecondsLabel : '—' }}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell class="align-top text-muted-foreground">Reason for override</TableCell>
-                <TableCell class="whitespace-pre-wrap">
-                  {{ isManualBaseline ? (cycleTime?.manualReason?.trim() || '—') : '—' }}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell class="align-top text-muted-foreground">Support files</TableCell>
-                <TableCell>
-                  <ul v-if="supportFiles.length" class="space-y-1">
-                    <li
-                      v-for="file in supportFiles"
-                      :key="file.id"
-                      class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
-                    >
-                      <a
-                        class="font-medium text-primary underline-offset-2 hover:underline"
-                        :href="file.webUrl || '#'"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        :download="file.fileName"
-                      >
-                        {{ file.fileName }}
-                      </a>
-                      <span class="text-xs text-muted-foreground">{{ formatSize(file.sizeBytes) }}</span>
-                    </li>
-                  </ul>
-                  <span v-else class="text-muted-foreground">
-                    {{ isManualBaseline ? 'No files uploaded' : 'No manual baseline saved yet.' }}
-                  </span>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+        <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
+          <DialogTitle>Cycle Time Control Chart</DialogTitle>
+          <DialogDescription>
+            Daily and rolling median from included TMS sessions.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
+          <CycleTimeControlChart v-if="chartOpen" hide-title :exercise-id="exerciseId" />
         </div>
-      </template>
-
-      <template v-else>
-        <div class="min-w-0 overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Metric</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Description</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell>TMS period</TableCell>
-                <TableCell>{{ formatTmsPeriodLabel(tmsFrom, tmsTo) }}</TableCell>
-                <TableCell class="text-muted-foreground">
-                  Window used to link COMPLETED sessions
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>{{ withUnit('Median cycle time', FieldUnit.seconds) }}</TableCell>
-                <TableCell>{{ isSystemBaseline ? medianSecondsLabel : '—' }}</TableCell>
-                <TableCell class="text-muted-foreground">Used for simulation</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Accepted records</TableCell>
-                <TableCell>{{ isSystemBaseline ? sampleCountLabel : '—' }}</TableCell>
-                <TableCell class="text-muted-foreground">Median sample count</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>{{ withUnit('TMS ratio', FieldUnit.percent) }}</TableCell>
-                <TableCell>{{ isSystemBaseline ? tmsRatioValue : '—' }}</TableCell>
-                <TableCell class="text-muted-foreground">{{ tmsRatioHint }}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-        <p v-if="!isSystemBaseline" class="text-xs text-muted-foreground">
-          No SYSTEM baseline yet. Open Edit TMS and apply a TMS period.
-        </p>
-      </template>
-
-      <CycleTimeControlChart :exercise-id="exerciseId" />
-    </div>
+        <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
+          <Button type="button" variant="outline" @click="chartOpen = false">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

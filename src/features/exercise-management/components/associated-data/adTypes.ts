@@ -12,7 +12,7 @@ export const AD_TAB_LABELS: Record<AdTab, string> = {
 
 export const AD_EDITOR_TITLES: Record<AdTab, string> = {
   team: 'Team Setup',
-  tms: 'Embedded TMS',
+  tms: 'TMS',
   support: 'Production Support',
   calendar: 'Calendar',
   volume: 'Volume Input',

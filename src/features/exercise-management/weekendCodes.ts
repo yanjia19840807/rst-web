@@ -31,19 +31,13 @@ export type HolidayTypeValue = (typeof HOLIDAY_TYPE_OPTIONS)[number]['value']
 
 const JS_DAYS: Record<string, ReadonlySet<number>> = {
   '1': new Set([6, 0]),
-  SAT_SUN: new Set([6, 0]),
-  SATURDAY_SUNDAY: new Set([6, 0]),
   '2': new Set([0, 1]),
   '3': new Set([1, 2]),
   '4': new Set([2, 3]),
   '5': new Set([3, 4]),
   '6': new Set([4, 5]),
   '7': new Set([5, 6]),
-  FRI_SAT: new Set([5, 6]),
-  FRIDAY_SATURDAY: new Set([5, 6]),
   '11': new Set([0]),
-  SUN_ONLY: new Set([0]),
-  SUNDAY_ONLY: new Set([0]),
   '12': new Set([1]),
   '13': new Set([2]),
   '14': new Set([3]),
@@ -61,39 +55,17 @@ export function weekendDays(code: string | null | undefined): ReadonlySet<number
 export function weekendCodeLabel(code: string | null | undefined): string {
   if (!code) return '—'
   const match = WEEKEND_CODE_OPTIONS.find((option) => option.value === String(code).trim())
-  if (match) return match.label
-  const days = weekendDays(code)
-  if (!days) return String(code)
-  const known = WEEKEND_CODE_OPTIONS.find((option) => {
-    const optionDays = weekendDays(option.value)
-    return optionDays != null
-      && optionDays.size === days.size
-      && [...optionDays].every((day) => days.has(day))
-  })
-  return known?.label ?? String(code)
+  return match?.label ?? String(code)
 }
 
 export function normalizeWeekendCode(code: string | null | undefined): string {
   const match = WEEKEND_CODE_OPTIONS.find((option) => option.value === String(code ?? '').trim())
-  if (match) return match.value
-  const days = weekendDays(code)
-  if (!days) return ''
-  const known = WEEKEND_CODE_OPTIONS.find((option) => {
-    const optionDays = weekendDays(option.value)
-    return optionDays != null
-      && optionDays.size === days.size
-      && [...optionDays].every((day) => days.has(day))
-  })
-  return known?.value ?? ''
+  return match?.value ?? ''
 }
 
 export function holidayTypeLabel(type: string | null | undefined): string {
   const token = (type ?? '').trim().toUpperCase()
-  const match = HOLIDAY_TYPE_OPTIONS.find((option) => option.value === token)
-  if (match) return match.label
-  if (token === 'WEEKEND') return 'Weekend'
-  if (token === 'NORMAL') return 'Normal'
-  return 'Holiday'
+  return HOLIDAY_TYPE_OPTIONS.find((option) => option.value === token)?.label ?? '—'
 }
 
 export function normalizeHolidayType(type: string | null | undefined): HolidayTypeValue {

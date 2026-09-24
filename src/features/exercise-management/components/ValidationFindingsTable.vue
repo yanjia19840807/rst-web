@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StatusBadge from '@/components/StatusBadge.vue'
 import {
   Table,
   TableBody,
@@ -36,6 +37,24 @@ const reasonLabel: Record<string, string> = {
 
 function findingDetail(finding: ValidationFinding): string {
   const reason = finding.detail?.reason
+  const compared = finding.detail?.comparedMonths ?? 0
+  const mismatchCount = finding.detail?.mismatches?.length ?? 0
+
+  if (finding.ruleCode === 'DAILY_VS_MONTHLY') {
+    if (reason === 'mismatch') {
+      if (compared > 0 && mismatchCount > 0 && mismatchCount < compared) {
+        return `${mismatchCount} of ${compared} overlapping months do not match`
+      }
+      if (mismatchCount > 0) {
+        return `${mismatchCount} overlapping month${mismatchCount === 1 ? '' : 's'} do not match`
+      }
+      return reasonLabel.mismatch
+    }
+    if (reason === 'matched' && compared > 0) {
+      return `${compared} overlapping month${compared === 1 ? '' : 's'} match`
+    }
+  }
+
   const label = reason && reasonLabel[reason] ? reasonLabel[reason] : (reason ?? '—')
   if (finding.ruleCode !== 'TMS_RATIO' || !finding.detail) return label
   const extras: string[] = []
@@ -65,18 +84,38 @@ function mismatchesOf(finding: ValidationFinding) {
       <TableBody>
         <TableRow v-for="finding in findings" :key="finding.ruleCode">
           <TableCell>{{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}</TableCell>
-          <TableCell>{{ finding.severity }}</TableCell>
+          <TableCell>
+            <StatusBadge :status="finding.severity" />
+          </TableCell>
           <TableCell>
             <div>{{ findingDetail(finding) }}</div>
-            <ul
-              v-if="mismatchesOf(finding).length"
-              class="mt-1 space-y-0.5 text-xs text-muted-foreground"
-            >
-              <li v-for="mismatch in mismatchesOf(finding)" :key="mismatch.month">
-                {{ mismatch.month }}: daily {{ mismatch.daily }} ≠ monthly
-                {{ mismatch.monthly }}
-              </li>
-            </ul>
+            <details v-if="mismatchesOf(finding).length" class="mt-1">
+              <summary class="cursor-pointer text-xs text-muted-foreground">
+                View {{ mismatchesOf(finding).length }}
+                month{{ mismatchesOf(finding).length === 1 ? '' : 's' }}
+              </summary>
+              <div class="mt-2 max-h-64 min-w-0 overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead>Daily</TableHead>
+                      <TableHead>Monthly</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow
+                      v-for="mismatch in mismatchesOf(finding)"
+                      :key="mismatch.month"
+                    >
+                      <TableCell>{{ mismatch.month }}</TableCell>
+                      <TableCell>{{ mismatch.daily }}</TableCell>
+                      <TableCell>{{ mismatch.monthly }}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </details>
           </TableCell>
         </TableRow>
         <TableRow v-if="!findings.length">

@@ -11,6 +11,7 @@ import type {
   CommitScenarioResults,
   CreateExerciseInput,
   CreateScenarioRequest,
+  UpdateScenarioIdentityRequest,
   CycleTimeBaseline,
   DailyVolume,
   DailyVolumeRequest,
@@ -461,6 +462,22 @@ export function useScenarioMutations() {
     },
   })
 
+  const updateScenarioIdentity = useMutation({
+    mutationFn: ({
+      exerciseId,
+      scenarioId,
+      body,
+    }: {
+      exerciseId: string
+      scenarioId: string
+      body: UpdateScenarioIdentityRequest
+    }) => exerciseApi.updateScenarioIdentity(exerciseId, scenarioId, body),
+    onSuccess: (scenario, { exerciseId, scenarioId }) => {
+      queryClient.setQueryData(exerciseQueryKeys.scenario(exerciseId, scenarioId), scenario)
+      invalidateScenarioMeta(queryClient, exerciseId)
+    },
+  })
+
   const commitScenario = useMutation({
     mutationFn: ({
       exerciseId,
@@ -536,6 +553,7 @@ export function useScenarioMutations() {
 
   return {
     createScenario,
+    updateScenarioIdentity,
     commitScenario,
     deleteScenario,
     markOfficial,

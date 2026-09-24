@@ -37,9 +37,13 @@ type ChartOption = ComposeOption<
   LineSeriesOption | GridComponentOption | TooltipComponentOption | LegendComponentOption
 >
 
-const props = defineProps<{
-  exerciseId: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    exerciseId: string
+    hideTitle?: boolean
+  }>(),
+  { hideTitle: false },
+)
 
 const chartQuery = useCycleTimeChartQuery(() => props.exerciseId)
 const chart = computed(() => chartQuery.data.value ?? null)
@@ -52,6 +56,11 @@ const loadError = computed(() => {
 })
 
 const { colors: palette } = useChartTheme()
+const chartFrameClass = computed(() =>
+  props.hideTitle
+    ? 'h-[min(28rem,52vh)] rounded-lg border bg-card'
+    : 'h-56 rounded-lg border bg-card',
+)
 
 const hasPoints = computed(() => (chart.value?.points.length ?? 0) > 0)
 const hasLimits = computed(
@@ -198,26 +207,26 @@ const option = computed<ChartOption>(() => {
 
 <template>
   <div>
-    <h3 class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
+    <h3 v-if="!hideTitle" class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
     <ListLoading
       v-if="loading"
-      class="h-56 rounded-lg border bg-card"
+      :class="chartFrameClass"
     />
     <div
       v-else-if="loadError"
-      class="flex h-56 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-destructive"
+      :class="['flex items-center justify-center px-4 text-center text-sm text-destructive', chartFrameClass]"
     >
       {{ loadError }}
     </div>
     <div
       v-else-if="!hasPoints"
-      class="flex h-56 items-center justify-center rounded-lg border bg-card px-4 text-center text-sm text-muted-foreground"
+      :class="['flex items-center justify-center px-4 text-center text-sm text-muted-foreground', chartFrameClass]"
     >
       No included TMS sessions with a valid cycle time.
     </div>
     <div
       v-else
-      class="h-56 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+      :class="['overflow-hidden px-1 pt-2', chartFrameClass]"
     >
       <VChart
         class="h-full w-full"

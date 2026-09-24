@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'vue'
 import { cn } from '@/lib/utils'
 
 defineProps<{
-  tabs: readonly { key: T; label: string }[]
+  tabs: readonly { key: T; label: string; badge?: string }[]
   modelValue: T
   disabled?: boolean
   class?: HTMLAttributes['class']
@@ -30,7 +30,7 @@ const emit = defineEmits<{
       :key="tab.key"
       type="button"
       role="tab"
-      class="shrink-0 border-b-2 px-3.5 py-2 text-sm whitespace-nowrap transition-colors"
+      class="inline-flex shrink-0 items-center border-b-2 px-3.5 py-2 text-sm whitespace-nowrap transition-colors"
       :disabled="disabled"
       :aria-selected="modelValue === tab.key"
       :class="
@@ -40,7 +40,13 @@ const emit = defineEmits<{
       "
       @click="emit('update:modelValue', tab.key)"
     >
-      {{ tab.label }}
+      <span>{{ tab.label }}</span>
+      <span
+        v-if="tab.badge"
+        class="ml-1.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none text-primary"
+      >
+        {{ tab.badge }}
+      </span>
     </button>
   </div>
 </template>

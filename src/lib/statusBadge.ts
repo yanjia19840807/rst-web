@@ -9,6 +9,7 @@ const POSITIVE = new Set([
   'VALIDATED',
   'CONFIGURED',
   'SUBMITTED',
+  'OK',
 ])
 
 const NEGATIVE = new Set([
@@ -19,13 +20,15 @@ const NEGATIVE = new Set([
   'INACTIVE',
   'REVOKED',
   'DISCARDED',
+  'SEVERE',
 ])
 
-/** Timesheet Sync Status tones: positive → secondary, negative → destructive, else outline. */
+/** Status tones: positive → success, warning → warning, negative → destructive, else outline. */
 export function statusBadgeVariant(status?: string | null): StatusBadgeVariant {
   const key = status?.trim().toUpperCase()
   if (!key) return 'outline'
-  if (POSITIVE.has(key)) return 'secondary'
+  if (POSITIVE.has(key)) return 'success'
+  if (key === 'WARNING') return 'warning'
   if (NEGATIVE.has(key)) return 'destructive'
   return 'outline'
 }

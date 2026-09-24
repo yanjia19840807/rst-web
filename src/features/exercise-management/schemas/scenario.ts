@@ -97,7 +97,7 @@ const scenarioFieldsSchema = z.object({
     .string()
     .trim()
     .min(1, 'Enter a scenario name.')
-    .max(200, 'Name must be 200 characters or fewer.'),
+    .max(30, 'Name must be 30 characters or fewer.'),
   description: z
     .union([z.string(), z.null()])
     .transform((value) => value ?? ''),
@@ -132,14 +132,21 @@ export function emptyScenarioForm(): ScenarioFormValues {
   }
 }
 
-export const scenarioMetadataSchema = scenarioFieldsSchema.pick({
-  name: true,
-  description: true,
+export const scenarioIdentitySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Enter a scenario name.')
+    .max(30, 'Name must be 30 characters or fewer.'),
+  description: z
+    .union([z.string(), z.null()])
+    .optional()
+    .transform((value) => value ?? ''),
 })
 
-export type ScenarioMetadataValues = z.infer<typeof scenarioMetadataSchema>
+export type ScenarioIdentityValues = z.infer<typeof scenarioIdentitySchema>
 
-export function emptyScenarioMetadata(): ScenarioMetadataValues {
+export function emptyScenarioIdentity(): ScenarioIdentityValues {
   return {
     name: '',
     description: '',

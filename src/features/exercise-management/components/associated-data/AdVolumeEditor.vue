@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table'
 
 import { showOperationNotices } from '@/composables/useOperationNotices'
-import { formatDate } from '@/lib/datetime'
+import { formatCivilDate } from '@/lib/datetime'
 
 import { exerciseApi } from '../../api'
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
@@ -959,7 +959,7 @@ async function confirmSlotImport() {
     >
       <div>
         <span class="text-muted-foreground">Start date</span>
-        <span class="ml-3 font-semibold">{{ formatDate(slotStartDate) }}</span>
+        <span class="ml-3 font-semibold">{{ formatCivilDate(slotStartDate) }}</span>
       </div>
       <div>
         <span class="text-muted-foreground">Weeks</span>

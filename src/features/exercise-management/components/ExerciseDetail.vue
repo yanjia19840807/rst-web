@@ -37,11 +37,13 @@ import { FieldUnit, withUnit } from '../fieldUnits'
 import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
 import type { Scenario } from '../types'
 import { actualHeadcount } from '../sizingChartMath'
+import { provideExerciseWorkspace } from '../composables/useExerciseWorkspace'
 import { sumSupportFte } from './associated-data/supportOptions'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import EditExercisePeriodsDialog from './EditExercisePeriodsDialog.vue'
 import ExerciseDetailHeader from './ExerciseDetailHeader.vue'
-import ExerciseScenarioList from './ExerciseScenarioList.vue'
+import ScenarioForm from './ScenarioForm.vue'
+import ScenarioIdentityDialog from './ScenarioIdentityDialog.vue'
 import SubmitDialog from './SubmitDialog.vue'
 
 const props = defineProps<{
@@ -51,10 +53,16 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const queryClient = useQueryClient()
+const exerciseWorkspace = provideExerciseWorkspace()
 const { remove } = useExerciseMutations()
-const { createScenario: createScenarioMutation, markOfficial } = useScenarioMutations()
+const { createScenario: createScenarioMutation, markOfficial, deleteScenario } =
+  useScenarioMutations()
 
-const snapshotMode = computed(() => route.name === 'supervisor-exercise-snapshot')
+const snapshotMode = computed(
+  () =>
+    route.name === 'supervisor-exercise-snapshot' ||
+    route.name === 'supervisor-scenario-snapshot',
+)
 const exerciseIdRef = computed(() => props.exerciseId)
 
 const exerciseQuery = useExerciseQuery(exerciseIdRef)
@@ -76,7 +84,9 @@ const loading = computed(
 )
 
 const selectedId = ref<string | null>(null)
+const mountedScenarioIds = ref<string[]>([])
 const deleteOpen = ref(false)
+const removeScenarioOpen = ref(false)
 const newScenarioOpen = ref(false)
 const officialOpen = ref(false)
 const submitOpen = ref(false)
@@ -97,6 +107,7 @@ const historyLoading = computed(
 )
 
 const deletePending = computed(() => remove.isPending.value)
+const removeScenarioPending = computed(() => deleteScenario.isPending.value)
 const createPending = computed(() => createScenarioMutation.isPending.value)
 const officialPending = computed(() => markOfficial.isPending.value)
 
@@ -120,9 +131,70 @@ const nextScenarioCode = computed(() => {
   }
   return `S${max + 1}`
 })
+const routeScenarioId = computed(() => {
+  const id = route.params.scenarioId
+  return typeof id === 'string' && id ? id : null
+})
+const activeScenarioId = computed(() => routeScenarioId.value ?? selectedId.value)
 const selectedScenario = computed(
-  () => scenarios.value.find((item) => item.id === selectedId.value) ?? null,
+  () => scenarios.value.find((item) => item.id === activeScenarioId.value) ?? null,
 )
+const isActiveOfficial = computed(
+  () => Boolean(activeScenarioId.value) && exercise.value?.officialScenarioId === activeScenarioId.value,
+)
+function scenarioDisplayName(item: { name?: string | null; scenarioCode?: string | null }) {
+  return item.name?.trim() || item.scenarioCode || 'Scenario'
+}
+
+const scenarioTabs = computed(() =>
+  scenarios.value.map((item) => ({
+    key: item.id,
+    label: scenarioDisplayName(item),
+    badge: exercise.value?.officialScenarioId === item.id ? 'Official' : undefined,
+  })),
+)
+
+function rememberScenario(id: string | null) {
+  if (!id || mountedScenarioIds.value.includes(id)) return
+  mountedScenarioIds.value = [...mountedScenarioIds.value, id]
+}
+
+function selectScenario(id: string) {
+  selectedId.value = id
+  rememberScenario(id)
+  if (id === routeScenarioId.value) return
+  void router.push({
+    name: snapshotMode.value ? 'supervisor-scenario-snapshot' : 'supervisor-scenario-form',
+    params: { id: props.exerciseId, scenarioId: id },
+  })
+}
+
+async function confirmRemoveScenario() {
+  if (!activeScenarioId.value) return
+  const removedId = activeScenarioId.value
+  try {
+    await deleteScenario.mutateAsync({
+      exerciseId: props.exerciseId,
+      scenarioId: removedId,
+    })
+    exerciseWorkspace.dropDraft(removedId)
+    mountedScenarioIds.value = mountedScenarioIds.value.filter((id) => id !== removedId)
+    toast.success('Scenario removed.')
+    removeScenarioOpen.value = false
+    const rest = scenarios.value.filter((item) => item.id !== removedId)
+    const next =
+      rest.find((item) => item.id === exercise.value?.officialScenarioId) ?? rest[0]
+    if (next) selectScenario(next.id)
+    else {
+      selectedId.value = null
+      void router.push({ name: 'supervisor-exercise-detail', params: { id: props.exerciseId } })
+    }
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not remove scenario.')
+    removeScenarioOpen.value = false
+  }
+}
+
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce((sum, item) => sum + Number(item.deliveryHc), 0),
 )
@@ -160,7 +232,7 @@ function formatSigned(value: number | null) {
 }
 
 function onPeriodsSaved() {
-  // Cache updated via updatePeriods mutation; list/detail queries invalidate.
+  exerciseWorkspace.notifyAssociatedDataChanged()
 }
 
 async function confirmDelete() {
@@ -183,20 +255,20 @@ async function confirmDelete() {
   }
 }
 
-async function createScenario() {
+async function createScenario(identity: { name: string; description: string | null }) {
   if (!exercise.value) return
   try {
     const created = await createScenarioMutation.mutateAsync({
       exerciseId: props.exerciseId,
       body: {
         scenarioCode: nextScenarioCode.value,
-        name: `${exercise.value.snapshot.toolkit.name} ${nextScenarioCode.value}`,
-        description: null,
+        name: identity.name,
+        description: identity.description,
         rightSizingHc: null,
       },
     })
     newScenarioOpen.value = false
-    toast.success(`${created.scenarioCode} created.`)
+    toast.success(`${created.name} created.`)
     void router.push({
       name: 'supervisor-scenario-form',
       params: { id: props.exerciseId, scenarioId: created.id },
@@ -207,7 +279,7 @@ async function createScenario() {
 }
 
 function openOfficialDialog() {
-  if (!selectedId.value) {
+  if (!activeScenarioId.value) {
     toast.warning('Please select a scenario first.')
     return
   }
@@ -215,20 +287,20 @@ function openOfficialDialog() {
 }
 
 async function confirmOfficial() {
-  if (!selectedId.value) return
+  if (!activeScenarioId.value) return
   try {
     await markOfficial.mutateAsync({
       exerciseId: props.exerciseId,
-      scenarioId: selectedId.value,
+      scenarioId: activeScenarioId.value,
     })
-    toast.success('Saved as the official scenario.')
+    toast.success('Set as the official scenario.')
     officialOpen.value = false
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not mark official.')
   }
 }
 
-function requestSubmit() {
+async function requestSubmit() {
   if (!exercise.value?.officialScenarioId) {
     toast.warning('An Official Scenario is required before Submit.')
     return
@@ -243,7 +315,40 @@ function onSubmitted() {
 watch(
   () => exercise.value?.officialScenarioId,
   (id) => {
-    if (id) selectedId.value = id
+    if (id && !routeScenarioId.value) selectedId.value = id
+  },
+  { immediate: true },
+)
+
+watch(
+  [scenarios, routeScenarioId, () => route.name, pageTab],
+  () => {
+    const liveIds = new Set(scenarios.value.map((item) => item.id))
+    mountedScenarioIds.value = mountedScenarioIds.value.filter((id) => liveIds.has(id))
+    if (selectedId.value && !liveIds.has(selectedId.value)) selectedId.value = null
+
+    if (routeScenarioId.value) {
+      selectedId.value = routeScenarioId.value
+      rememberScenario(routeScenarioId.value)
+      return
+    }
+    if (pageTab.value === 'approval') return
+    if (
+      route.name !== 'supervisor-exercise-detail' &&
+      route.name !== 'supervisor-exercise-snapshot'
+    ) {
+      return
+    }
+    const pick =
+      scenarios.value.find((item) => item.id === exercise.value?.officialScenarioId) ??
+      scenarios.value[0]
+    if (!pick) return
+    selectedId.value = pick.id
+    rememberScenario(pick.id)
+    void router.replace({
+      name: snapshotMode.value ? 'supervisor-scenario-snapshot' : 'supervisor-scenario-form',
+      params: { id: props.exerciseId, scenarioId: pick.id },
+    })
   },
   { immediate: true },
 )
@@ -346,23 +451,53 @@ watch(
         :read-only="locked"
       />
 
-      <ExerciseScenarioList
-        :exercise-id="exerciseId"
-        :scenarios="scenarios"
-        :selected-id="selectedId"
-        :official-scenario-id="exercise.officialScenarioId"
-        :locked="locked"
-        :snapshot-mode="snapshotMode"
-        :actual-size="actualSize"
-        :sla-target-label="slaTargetLabel"
-        :median-label="medianLabel"
-        :assumption-hc="assumptionHc"
-        :capacity-creation="capacityCreation"
-        :format-signed="formatSigned"
-        @update:selected-id="selectedId = $event"
-        @open-official="openOfficialDialog"
-        @new-scenario="newScenarioOpen = true"
-      />
+      <div class="grid gap-3">
+        <div class="flex items-end gap-2 border-b">
+          <TabStrip
+            v-if="scenarioTabs.length"
+            class="min-w-0 flex-1 border-b-0"
+            :tabs="scenarioTabs"
+            :model-value="activeScenarioId ?? scenarioTabs[0]?.key"
+            @update:model-value="selectScenario"
+          />
+          <div v-else class="min-h-9 min-w-0 flex-1" />
+          <div v-if="!locked" class="mb-1.5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <Button variant="outline" @click="newScenarioOpen = true">
+              New Scenario
+            </Button>
+            <Button
+              v-if="activeScenarioId && !isActiveOfficial"
+              variant="outline"
+              @click="openOfficialDialog"
+            >
+              Set as Official
+            </Button>
+            <Button
+              v-if="activeScenarioId"
+              variant="destructive"
+              @click="removeScenarioOpen = true"
+            >
+              Remove
+            </Button>
+          </div>
+        </div>
+
+        <p
+          v-if="!scenarios.length"
+          class="rounded-lg border border-dashed px-3 py-10 text-center text-sm text-muted-foreground"
+        >
+          No scenarios yet. Create one to start simulation.
+        </p>
+
+        <ScenarioForm
+          v-for="id in mountedScenarioIds"
+          v-show="id === activeScenarioId"
+          :key="id"
+          embedded
+          :exercise-id="exerciseId"
+          :scenario-id="id"
+        />
+      </div>
     </div>
 
     <div v-if="showApprovalTab && pageTab === 'approval'">
@@ -374,48 +509,25 @@ watch(
       />
     </div>
 
-    <Dialog v-model:open="newScenarioOpen">
-      <DialogContent
-        class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
-      >
-        <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
-          <DialogTitle>Create New Scenario</DialogTitle>
-          <DialogDescription>
-            A new scenario will be created with the following identity. You can set Right Sizing HC
-            and run simulation on the next page.
-          </DialogDescription>
-        </DialogHeader>
-        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <div class="rounded-lg border bg-card p-4">
-            <DetailTable
-              :rows="[
-                { label: 'Toolkit', value: exercise.snapshot.toolkit.name },
-                { label: 'Exercise NO', value: exercise.exerciseCode },
-                { label: 'Scenario NO', value: nextScenarioCode },
-              ]"
-            />
-          </div>
-        </div>
-        <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-          <Button variant="outline" :disabled="createPending" @click="newScenarioOpen = false">
-            Cancel
-          </Button>
-          <Button :loading="createPending" @click="createScenario">
-            {{ createPending ? 'Creating…' : 'Confirm' }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ScenarioIdentityDialog
+      v-model:open="newScenarioOpen"
+      title="Create New Scenario"
+      subtitle="Name the scenario. Description is optional."
+      :pending="createPending"
+      confirm-label="Confirm"
+      pending-label="Creating…"
+      @submit="createScenario"
+    />
 
     <Dialog v-model:open="officialOpen">
       <DialogContent
         class="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       >
         <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
-          <DialogTitle>Save Official Scenario</DialogTitle>
+          <DialogTitle>Set Official Scenario</DialogTitle>
           <DialogDescription>
             This only sets the Official flag on the selected scenario. It does not create a
-            new scenario. Save Forecast and Sizing first. Slot Simulation is optional. You
+            new scenario. Run Sizing Simulation first. Slot Simulation is optional. You
             can switch Official any time before Submit.
           </DialogDescription>
         </DialogHeader>
@@ -423,7 +535,7 @@ watch(
           <div v-if="selectedScenario" class="rounded-lg border bg-card p-4">
             <DetailTable
               :rows="[
-                { label: 'Scenario', value: selectedScenario.scenarioCode },
+                { label: 'Scenario', value: selectedScenario.name },
                 { label: withUnit('Actual size', FieldUnit.hc), value: actualSize.toFixed(2) },
                 { label: withUnit('SLA Target', FieldUnit.percent), value: slaTargetLabel },
                 { label: withUnit('Shift Setup', FieldUnit.shifts), value: shiftSetupLabel },
@@ -459,11 +571,20 @@ watch(
             Cancel
           </Button>
           <Button :loading="officialPending" @click="confirmOfficial">
-            {{ officialPending ? 'Saving…' : 'Confirm as Official' }}
+            {{ officialPending ? 'Setting…' : 'Set as Official' }}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      v-model:open="removeScenarioOpen"
+      title="Remove Scenario"
+      description="This scenario will be removed from the exercise. This cannot be undone."
+      confirm-label="Remove"
+      :pending="removeScenarioPending"
+      @confirm="confirmRemoveScenario"
+    />
 
     <ConfirmDialog
       v-model:open="deleteOpen"

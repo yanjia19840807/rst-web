@@ -109,8 +109,8 @@ export const routes: RouteRecordRaw[] = [
     name: 'supervisor-exercise-detail',
     component: () => import('@/pages/supervisor/ExerciseDetailPage.vue'),
     meta: {
-      title: 'Exercise Detail',
-      subtitle: 'Associated Data, Scenario Matrix, and Submit',
+      title: 'Exercise',
+      subtitle: 'Shared Associated Data and scenarios',
       roles: ['supervisor'],
     },
   },
@@ -127,19 +127,19 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/supervisor/exercises/:id/scenarios/:scenarioId',
     name: 'supervisor-scenario-form',
-    component: () => import('@/pages/supervisor/ScenarioFormPage.vue'),
+    component: () => import('@/pages/supervisor/ExerciseDetailPage.vue'),
     meta: {
-      title: 'Scenario Form',
-      subtitle: 'Assumptions, forecast and simulation stubs',
+      title: 'Exercise',
+      subtitle: 'Shared Associated Data and scenarios',
       roles: ['supervisor'],
     },
   },
   {
     path: '/supervisor/exercises/:id/snapshot/scenarios/:scenarioId',
     name: 'supervisor-scenario-snapshot',
-    component: () => import('@/pages/supervisor/ScenarioFormPage.vue'),
+    component: () => import('@/pages/supervisor/ExerciseDetailPage.vue'),
     meta: {
-      title: 'Scenario Snapshot',
+      title: 'Exercise Snapshot',
       subtitle: 'Read-only scenario and simulation',
       roles: ['supervisor'],
     },

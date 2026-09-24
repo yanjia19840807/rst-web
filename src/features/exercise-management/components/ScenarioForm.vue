@@ -11,12 +11,11 @@ import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { capacityEmphasize, measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { useScenarioMutations } from '../api/mutations'
+import { scenarioFormKey, useExerciseWorkspace } from '../composables/useExerciseWorkspace'
 import {
   useCalendarQuery,
   useCycleTimeActiveQuery,
@@ -59,22 +58,37 @@ import { formatNumber } from './associated-data/adTypes'
 import ScenarioAssumptionsSection from './ScenarioAssumptionsSection.vue'
 import ScenarioResultsPanel from './ScenarioResultsPanel.vue'
 import type { ScenarioResultRow } from './ScenarioResultsPanel.vue'
+import ScenarioIdentityDialog from './ScenarioIdentityDialog.vue'
 import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
-const props = defineProps<{
-  exerciseId: string
-  scenarioId: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    exerciseId: string
+    scenarioId: string
+    embedded?: boolean
+  }>(),
+  { embedded: false },
+)
+
 
 const route = useRoute()
 const router = useRouter()
-const { commitScenario, deleteScenario, previewSizing, runSlotSimulation } = useScenarioMutations()
+const workspace = useExerciseWorkspace()
+const {
+  commitScenario,
+  updateScenarioIdentity,
+  deleteScenario,
+  previewSizing,
+  runSlotSimulation,
+} = useScenarioMutations()
 const snapshotMode = computed(() => route.name === 'supervisor-scenario-snapshot')
 const saving = computed(() => commitScenario.isPending.value)
 const runningSizing = computed(() => previewSizing.isPending.value)
 const runningSlot = computed(() => runSlotSimulation.isPending.value)
 const busy = computed(() => saving.value || runningSizing.value || runningSlot.value)
 const deleteOpen = ref(false)
+const identityOpen = ref(false)
+const identityPending = computed(() => updateScenarioIdentity.isPending.value)
 const deletePending = computed(() => deleteScenario.isPending.value)
 const toolkitInfoOpen = ref(false)
 const hydratedKey = ref('')
@@ -104,6 +118,7 @@ const slotQuery = useLatestSlotSimulationQuery(() => props.exerciseId, () => pro
 
 const exercise = computed(() => exerciseQuery.data.value ?? null)
 const scenario = computed(() => scenarioQuery.data.value ?? null)
+const isOfficial = computed(() => exercise.value?.officialScenarioId === scenario.value?.id)
 const teamSetup = computed(() => teamSetupQuery.data.value ?? null)
 const support = computed(() => supportQuery.data.value ?? [])
 const calendar = computed(() => calendarQuery.data.value ?? null)
@@ -122,7 +137,6 @@ const latestSlotSimulation = ref<SlotSimulationView | null>(null)
 const {
   defineField,
   errors,
-  handleSubmit,
   resetForm,
   setFieldError,
   validate,
@@ -519,10 +533,35 @@ watch(
   ([ready, key]) => {
     if (!ready || !scenario.value || hydratedKey.value === key) return
     applyScenarioToForm(scenario.value)
+    workspace?.ensureSaved(props.scenarioId, values)
+    const draft = workspace?.getDraft(props.scenarioId)
+    if (draft) resetForm({ values: draft })
     loadSimulationResultsFromQueries()
     hydratedKey.value = key
   },
   { immediate: true },
+)
+
+watch(
+  () => scenarioFormKey(values),
+  () => {
+    if (hydratedKey.value !== currentKey.value || !workspace) return
+    workspace.setDraft(props.scenarioId, values)
+  },
+)
+
+watch(
+  () => workspace?.associatedDataRevision.value ?? 0,
+  (revision, previous) => {
+    if (!previous || revision === previous) return
+    if (hydratedKey.value !== currentKey.value) return
+    sizingCompleted.value = false
+    slotCompleted.value = false
+    latestForecastBundle.value = null
+    latestMonthlySizing.value = null
+    latestDailySizing.value = null
+    latestSlotSimulation.value = null
+  },
 )
 
 watch(
@@ -587,21 +626,22 @@ async function persistScenario(
     daily: DailySizingView
     slot: SlotSimulationView | null
   } | null,
-  successMessage: string,
+  successMessage?: string,
 ) {
   if (!scenario.value || readOnly.value) return
   await commitScenario.mutateAsync({
     exerciseId: props.exerciseId,
     scenarioId: props.scenarioId,
     body: {
-      name: formValues.name || scenario.value.scenarioCode,
+      name: formValues.name.trim() || scenario.value.name,
       description: formValues.description.trim() || null,
       rightSizingHc: Number(formValues.rightSizingHc),
       shifts: toShiftRequests(formValues.shifts),
       results,
     },
   })
-  toast.success(successMessage)
+  if (successMessage) toast.success(successMessage)
+  workspace?.markSaved(props.scenarioId, formValues)
 }
 
 function currentSizingResults(slot: SlotSimulationView | null) {
@@ -619,31 +659,6 @@ function currentSizingResults(slot: SlotSimulationView | null) {
     slot,
   }
 }
-
-const save = handleSubmit(
-  async (formValues) => {
-    if (!scenario.value || readOnly.value || busy.value) return
-    try {
-      const hasSizingResults =
-        sizingCompleted.value &&
-        latestForecastBundle.value != null &&
-        latestMonthlySizing.value != null &&
-        latestDailySizing.value != null
-      await persistScenario(
-        formValues,
-        hasSizingResults
-          ? currentSizingResults(slotCompleted.value ? latestSlotSimulation.value : null)
-          : null,
-        'Scenario saved.',
-      )
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Save failed.')
-    }
-  },
-  ({ errors: submitErrors }) => {
-    toast.warning(firstFormError(submitErrors) ?? 'Check the highlighted fields.')
-  },
-)
 
 async function runSizing() {
   if (readOnly.value || busy.value) return
@@ -741,6 +756,7 @@ async function confirmDelete() {
       exerciseId: props.exerciseId,
       scenarioId: props.scenarioId,
     })
+    workspace?.dropDraft(props.scenarioId)
     toast.success('Scenario deleted.')
     void router.push({ name: 'supervisor-exercise-detail', params: { id: props.exerciseId } })
   } catch (error) {
@@ -760,29 +776,46 @@ function goBack() {
 }
 
 const scenarioInfoRows = computed(() => {
-  const rows = [
-    { key: 'toolkit', label: 'Toolkit', value: exercise.value?.snapshot.toolkit.name },
-    { label: 'Exercise No', value: exercise.value?.exerciseCode },
-    { label: 'Scenario No.', value: scenario.value?.scenarioCode },
-    {
-      label: 'Official',
-      value: exercise.value?.officialScenarioId === scenario.value?.id ? 'Yes' : 'No',
-    },
-  ]
-  if (readOnly.value) {
+  const rows = []
+  if (!props.embedded) {
     rows.push(
-      { label: 'Name', value: name.value },
-      { label: 'Description', value: description.value },
+      { key: 'toolkit', label: 'Toolkit', value: exercise.value?.snapshot.toolkit.name },
+      { label: 'Exercise No', value: exercise.value?.exerciseCode },
     )
   }
+  rows.push(
+    {
+      label: 'Official',
+      value: isOfficial.value ? 'Yes' : 'No',
+    },
+    { label: 'Name', value: name.value },
+    { label: 'Description', value: description.value },
+  )
   return rows
 })
+
+async function saveIdentity(payload: { name: string; description: string | null }) {
+  try {
+    const saved = await updateScenarioIdentity.mutateAsync({
+      exerciseId: props.exerciseId,
+      scenarioId: props.scenarioId,
+      body: payload,
+    })
+    name.value = saved.name
+    description.value = saved.description ?? ''
+    workspace?.markIdentitySaved(props.scenarioId, saved.name, saved.description ?? '')
+    identityOpen.value = false
+    toast.success('Scenario updated.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not update scenario.')
+  }
+}
 </script>
 
 <template>
   <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="exercise && scenario" class="grid min-w-0 gap-4">
-    <PageActions>
+    <PageActions v-if="!embedded">
       <template #left>
         <Button
           variant="link"
@@ -795,18 +828,18 @@ const scenarioInfoRows = computed(() => {
       <Button v-if="!readOnly" variant="destructive" :disabled="busy" @click="deleteOpen = true">
         Delete Scenario
       </Button>
-      <Button v-if="!readOnly" :disabled="busy" :loading="saving" @click="save">
-        {{ saving ? 'Saving…' : 'Save Scenario' }}
-      </Button>
     </PageActions>
 
     <Card>
-      <CardHeader>
+      <CardHeader class="items-center">
         <CardTitle class="text-base">Scenario Info</CardTitle>
+        <CardAction v-if="!readOnly">
+          <Button variant="outline" @click="identityOpen = true">Edit</Button>
+        </CardAction>
       </CardHeader>
       <CardContent class="grid gap-3">
         <DetailTable :rows="scenarioInfoRows">
-          <template #toolkit="{ row }">
+          <template v-if="!embedded" #toolkit="{ row }">
             <TableTextLink
               v-if="row.value"
               title="Toolkit info"
@@ -818,19 +851,7 @@ const scenarioInfoRows = computed(() => {
           </template>
         </DetailTable>
 
-        <div v-if="!readOnly" class="grid gap-3 sm:grid-cols-2">
-          <label class="grid gap-1 text-sm sm:col-span-2">
-            Name
-            <Input v-model="name" :aria-invalid="Boolean(errors.name)" />
-            <p v-if="errors.name" class="text-xs text-destructive">{{ errors.name }}</p>
-          </label>
-          <label class="grid gap-1 text-sm sm:col-span-2">
-            Description
-            <Textarea v-model="description" rows="2" />
-          </label>
-        </div>
-
-        <div class="rounded-lg border bg-card p-3.5">
+        <div v-if="!embedded" class="rounded-lg border bg-card p-3.5">
           <div class="mb-3 flex items-center justify-between gap-2">
             <h3 class="text-sm font-bold">Baseline inputs (from Exercise)</h3>
             <Button
@@ -852,7 +873,18 @@ const scenarioInfoRows = computed(() => {
       </CardContent>
     </Card>
 
+    <ScenarioIdentityDialog
+      v-model:open="identityOpen"
+      title="Edit Scenario"
+      subtitle="Update the name. Description is optional."
+      :initial-name="name"
+      :initial-description="description"
+      :pending="identityPending"
+      @submit="saveIdentity"
+    />
+
     <ToolkitInfoDialog
+      v-if="!embedded"
       v-model:open="toolkitInfoOpen"
       show-delivery-hc
       :snapshot="exercise.snapshot"

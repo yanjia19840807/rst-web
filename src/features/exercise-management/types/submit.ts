@@ -1,10 +1,7 @@
 import type { ApprovalWorkspaceView } from '@/features/approval/types'
 
-/** Approval/types is the source of truth for workflow step/action shapes. */
-export type {
-  ActionView as WorkflowActionView,
-  StepView as WorkflowStepView,
-} from '@/features/approval/types'
+/** Approval/types is the source of truth for workflow action shapes. */
+export type { ActionView as WorkflowActionView } from '@/features/approval/types'
 
 import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 import type { ActionView, ScopeView, StepView } from '@/features/approval/types'
@@ -47,7 +44,6 @@ export interface SubmitPreview {
   remarksRequired: boolean
   submitBlocked: boolean
   timesheetAlignment?: TimesheetAlignmentView | null
-  scopeAcknowledgementRequired?: boolean
   nextStep?: string | null
   nextPositionId?: string | null
   nextHandlerName?: string | null
@@ -58,11 +54,7 @@ export interface SubmitPreview {
 export interface SubmitRequest {
   remarks?: string | null
   requestId?: string | null
-  scopeAcknowledged?: boolean | null
 }
-
-/** @deprecated Prefer ScopeView from approval/types; kept for existing exercise callers. */
-export type SubmissionScope = ScopeView
 
 export interface SubmittedDetails {
   exerciseId: string
@@ -76,7 +68,7 @@ export interface SubmittedDetails {
   currentStep: number | null
   requiredRole?: string | null
   remarks: string | null
-  scopes: SubmissionScope[]
+  scopes: ScopeView[]
   steps: StepView[]
   actions: ActionView[]
   canDecide?: boolean

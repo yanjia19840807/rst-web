@@ -1,87 +1,84 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
-import DetailTable from '@/components/DetailTable.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatInstantForCenter } from '@/lib/datetime'
+import { computed, ref } from 'vue'
 
 import CreatedByText from '@/components/CreatedByText.vue'
+import DetailTable, { type DetailRow } from '@/components/DetailTable.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { actorLabel, ownerLabel, sameAuditActor } from '@/lib/auditActor'
+import { distinctCommaTokens } from '@/lib/commaTokens'
+import { formatInstantForCenter } from '@/lib/datetime'
+
 import type { Exercise } from '../types'
-import { currentStepLabel, isReturned } from '../workflowLabels'
+import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 import ToolkitInfoPanel from './ToolkitInfoPanel.vue'
+
+const toolkitInfoOpen = ref(false)
 
 const props = withDefaults(
   defineProps<{
     exercise: Exercise
     locked: boolean
-    showCurrentStep?: boolean
+    submitted?: boolean
   }>(),
-  { showCurrentStep: true },
+  { submitted: false },
 )
 
 const emit = defineEmits<{
   editPeriods: []
 }>()
 
+const toolkit = computed(() => props.exercise.snapshot.toolkit)
+const countries = computed(() =>
+  distinctCommaTokens((props.exercise.snapshot.sharedKpis ?? []).map((item) => item.customerCountry)),
+)
+
 const exerciseRows = computed(() => {
-  const rows: Array<{ key?: string; label: string; value: string }> = [
+  const rows: DetailRow[] = [
     { label: 'Exercise No', value: props.exercise.exerciseCode },
-    {
-      label: 'Created at',
-      value: formatInstantForCenter(
-        props.exercise.createdAt,
-        props.exercise.snapshot.toolkit.center,
-      ),
-    },
+    { label: 'Sizing Month', value: props.exercise.sizingMonth },
   ]
-  if (ownerLabel(props.exercise.createdBy)) {
+  if (!props.submitted) {
     rows.push({
-      key: 'createdBy',
-      label: 'Created by',
-      value: '',
+      label: 'Created at',
+      value: formatInstantForCenter(props.exercise.createdAt, toolkit.value.center),
     })
+  }
+  if (ownerLabel(props.exercise.createdBy)) {
+    rows.push({ key: 'createdBy', label: 'Created by', value: '' })
   }
   if (
-    actorLabel(props.exercise.updatedBy)
-    && !sameAuditActor(props.exercise.createdBy, props.exercise.updatedBy)
+    !props.submitted &&
+    actorLabel(props.exercise.updatedBy) &&
+    !sameAuditActor(props.exercise.createdBy, props.exercise.updatedBy)
   ) {
-    rows.push({
-      key: 'updatedBy',
-      label: 'Last updated by',
-      value: '',
-    })
+    rows.push({ key: 'updatedBy', label: 'Last updated by', value: '' })
   }
-  if (props.exercise.submittedAt) {
+  if (props.submitted || props.exercise.submittedAt) {
     rows.push({
       label: 'Submitted at',
-      value: formatInstantForCenter(
-        props.exercise.submittedAt,
-        props.exercise.snapshot.toolkit.center,
-      ),
+      value: formatInstantForCenter(props.exercise.submittedAt, toolkit.value.center),
     })
   }
   if (props.exercise.archivedAt) {
     rows.push({
       label: 'Validated at',
-      value: formatInstantForCenter(
-        props.exercise.archivedAt,
-        props.exercise.snapshot.toolkit.center,
-      ),
-    })
-  }
-  rows.push({ label: 'Sizing Month', value: props.exercise.sizingMonth })
-  if (props.showCurrentStep) {
-    rows.push({
-      key: 'status',
-      label: 'Current Step',
-      value: currentStepLabel(props.exercise),
+      value: formatInstantForCenter(props.exercise.archivedAt, toolkit.value.center),
     })
   }
   return rows
 })
+
+const toolkitRows = computed(() => [
+  { key: 'toolkit', label: 'Toolkit', value: toolkit.value.name, strong: true },
+  { label: 'GBS Center', value: toolkit.value.center },
+  { label: 'Domain', value: toolkit.value.domain },
+  { label: 'PL1', value: toolkit.value.pl1 },
+  { label: 'PL2', value: toolkit.value.pl2 },
+  { label: 'PL3', value: toolkit.value.pl3Name },
+  { label: 'Customer Country', value: countries.value.join(', ') || '—' },
+])
 </script>
 
 <template>
@@ -93,27 +90,48 @@ const exerciseRows = computed(() => {
       </CardAction>
     </CardHeader>
     <CardContent class="grid gap-4">
-      <DetailTable :rows="exerciseRows">
-        <template #createdBy>
-          <CreatedByText :actor="exercise.createdBy" />
-        </template>
-        <template #updatedBy>
-          <CreatedByText :actor="exercise.updatedBy" />
-        </template>
-        <template #status="{ row }">
-          <span class="inline-flex items-center gap-1.5">
-            <span>{{ row.value || '—' }}</span>
-            <StatusBadge v-if="isReturned(exercise)" status="Returned" />
-          </span>
-        </template>
-      </DetailTable>
+      <section class="grid gap-3">
+        <h3 class="text-sm font-semibold">Basic Information</h3>
+        <div class="grid gap-4">
+          <DetailTable :rows="exerciseRows" :columns="2">
+            <template #createdBy>
+              <CreatedByText :actor="exercise.createdBy" />
+            </template>
+            <template #updatedBy>
+              <CreatedByText :actor="exercise.updatedBy" />
+            </template>
+          </DetailTable>
+          <DetailTable :rows="toolkitRows" :columns="2">
+            <template v-if="submitted" #toolkit="{ row }">
+              <TableTextLink
+                v-if="row.value"
+                title="Toolkit info"
+                @click="toolkitInfoOpen = true"
+              >
+                {{ row.value }}
+              </TableTextLink>
+              <span v-else>—</span>
+            </template>
+          </DetailTable>
+        </div>
+      </section>
 
       <ToolkitInfoPanel
-        embedded
+        v-if="!submitted"
+        flat
+        :show-mapping="false"
         show-delivery-hc
         :snapshot="exercise.snapshot"
         :alignment="exercise.timesheetAlignment"
       />
     </CardContent>
   </Card>
+
+  <ToolkitInfoDialog
+    v-if="submitted"
+    v-model:open="toolkitInfoOpen"
+    show-delivery-hc
+    :snapshot="exercise.snapshot"
+    :alignment="exercise.timesheetAlignment"
+  />
 </template>

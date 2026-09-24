@@ -108,44 +108,6 @@ export function formatInstantForCenter(
 }
 
 /**
- * @deprecated Prefer {@link formatCivilDate} or {@link formatInstantForCenter}.
- * Pure `yyyy-MM-dd` and civil datetimes stay literal; offset timestamps are not converted here.
- */
-export function formatDate(value?: string | Date | null): string {
-  if (value == null || value === '') return '—'
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (isCivilDate(trimmed) || isCivilDateTime(trimmed)) return formatCivilDate(trimmed)
-    return '—'
-  }
-  if (Number.isNaN(value.getTime())) return '—'
-  return fromParts(value.getFullYear(), value.getMonth() + 1, value.getDate())
-}
-
-/**
- * @deprecated Prefer {@link formatCivilDateTime} or {@link formatInstantForCenter}.
- */
-export function formatDateTime(value?: string | Date | null): string {
-  if (value == null || value === '') return '—'
-  if (typeof value === 'string' && isCivilDateTime(value.trim())) {
-    return formatCivilDateTime(value)
-  }
-  return '—'
-}
-
-/**
- * @deprecated Prefer {@link formatInstant} with `seconds: true`.
- */
-export function formatDateTimeSeconds(value?: string | Date | null): string {
-  if (value == null || value === '') return '—'
-  if (typeof value === 'string' && isCivilDateTime(value.trim())) {
-    const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/.exec(value.trim())
-    return match ? `${match[1]} ${match[2]}` : formatCivilDateTime(value)
-  }
-  return '—'
-}
-
-/**
  * Formats a month for display as `yyyy-MM`.
  */
 export function formatMonth(value?: string | Date | null): string {

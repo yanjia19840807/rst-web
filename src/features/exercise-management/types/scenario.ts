@@ -20,6 +20,11 @@ export interface CreateScenarioRequest {
   rightSizingHc?: number | null
 }
 
+export interface UpdateScenarioIdentityRequest {
+  name: string
+  description?: string | null
+}
+
 export interface StubRun {
   id: string
   runType: string

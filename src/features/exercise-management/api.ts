@@ -7,6 +7,7 @@ import type {
   CreateExerciseInput,
   CreateExerciseResult,
   CreateScenarioRequest,
+  UpdateScenarioIdentityRequest,
   UpdateExercisePeriodsInput,
   UpdateExercisePeriodsResult,
   UpdateTmsPeriodInput,
@@ -327,6 +328,15 @@ export const exerciseApi = {
     }),
   getScenario: (exerciseId: string, scenarioId: string) =>
     apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}`)),
+  updateScenarioIdentity: (
+    exerciseId: string,
+    scenarioId: string,
+    body: UpdateScenarioIdentityRequest,
+  ) =>
+    apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}`), {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   commitScenario: (exerciseId: string, scenarioId: string, body: CommitScenarioRequest) =>
     apiRequest<Scenario>(exercisePath(exerciseId, `/scenarios/${scenarioId}/commit`), {
       method: 'PUT',

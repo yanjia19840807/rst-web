@@ -11,6 +11,7 @@ import { createYear, createYearRange, toDate } from 'reka-ui/date'
 import { computed, toRaw } from 'vue'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { pickerSelectClass, pickerSelectIconWrapClass } from '@/components/ui/picker'
+import { formatMonthNumber } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 import {
   CalendarCell,
@@ -79,7 +80,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         <div
           class="pointer-events-none absolute inset-0 flex h-full items-center pl-2 text-sm"
         >
-          {{ formatter.custom(toDate(date), { month: 'short' }) }}
+          {{ formatMonthNumber(date.month) }}
         </div>
         <NativeSelect
           :class="pickerSelectClass"
@@ -99,7 +100,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
             :value="String(month.month)"
             :selected="date.month === month.month"
           >
-            {{ formatter.custom(toDate(month), { month: 'short' }) }}
+            {{ formatMonthNumber(month.month) }}
           </NativeSelectOption>
         </NativeSelect>
       </div>
@@ -184,7 +185,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         </template>
         <template v-else-if="layout === 'year-only'">
           <div class="relative z-10 flex items-center justify-center gap-1">
-            {{ formatter.custom(toDate(date), { month: 'short' }) }}
+            {{ formatMonthNumber(date.month) }}
             <ReuseYearTemplate :date="date" />
           </div>
         </template>

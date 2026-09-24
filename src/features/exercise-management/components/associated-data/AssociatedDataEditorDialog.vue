@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { Info } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+import { TMS_PERIOD_HINT_DESCRIPTION } from '../../periodWindows'
 import { useExerciseAssociatedDataMutations } from '../../api/mutations'
 import { provideAssociatedDataSaveGuard } from '../../composables/useAssociatedDataSaveGuard'
 import type {
@@ -56,6 +60,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  'update:medianSource': [value: MedianSourceMode]
   'update:teamSetup': [value: TeamSetup]
   'update:support': [value: SupportItem[]]
   'update:calendar': [value: CalendarView]
@@ -63,8 +68,22 @@ const emit = defineEmits<{
   'update:daily': [value: DailyVolume[]]
   'update:slot': [value: SlotVolume[]]
   'update:cycleTime': [value: CycleTimeBaseline]
+  written: []
   close: []
 }>()
+
+const TMS_SOURCE_OPTIONS = [
+  {
+    value: 'system' as const,
+    label: 'System-calculated median',
+    hint: 'Apply a TMS period to link COMPLETED sessions and refresh the SYSTEM median.',
+  },
+  {
+    value: 'manual' as const,
+    label: 'Manual median input',
+    hint: 'Enter a median override; optionally upload support files as approval evidence.',
+  },
+]
 
 const { putTeamSetup, createManualCycleTime } = useExerciseAssociatedDataMutations()
 const {
@@ -87,9 +106,32 @@ const isManualTms = computed(
   () => props.editor === 'tms' && props.medianSource === 'manual',
 )
 
-const title = computed(() => {
-  if (isManualTms.value) return 'Manual median input'
-  return props.editor ? AD_EDITOR_TITLES[props.editor] : ''
+const title = computed(() => (props.editor ? AD_EDITOR_TITLES[props.editor] : ''))
+
+const medianSourceLabel = computed(() =>
+  TMS_SOURCE_OPTIONS.find((option) => option.value === props.medianSource)?.label ?? '—',
+)
+
+const tmsAlert = computed(() =>
+  props.medianSource === 'manual'
+    ? 'Enter a median override. Optionally upload support files as approval evidence.'
+    : TMS_PERIOD_HINT_DESCRIPTION,
+)
+
+const description = computed(() => {
+  if (props.readOnly) return 'Read-only data snapshot for this exercise.'
+  switch (props.editor) {
+    case 'volume':
+      return 'View and maintain the associated volume input data.'
+    case 'calendar':
+      return 'Add, edit, or delete holiday dates — changes are saved immediately. Import Excel updates or adds dates; other dates are kept.'
+    case 'support':
+      return 'Add, edit, or delete workload rows — changes are saved immediately.'
+    case 'tms':
+      return 'Set the median cycle time from a TMS period, or enter a manual override.'
+    default:
+      return 'Edit the exercise Associated Data, then save your changes.'
+  }
 })
 
 const supportFte = computed(() => sumSupportFte(props.support))
@@ -128,6 +170,22 @@ const closeOnly = computed(
     props.editor === 'calendar' ||
     isSystemTms.value,
 )
+
+function onImmediateWrite<K extends 'support' | 'calendar' | 'monthly' | 'daily' | 'slot'>(
+  key: K,
+  value: K extends 'support'
+    ? SupportItem[]
+    : K extends 'calendar'
+      ? CalendarView
+      : K extends 'monthly'
+        ? MonthlyVolume[]
+        : K extends 'daily'
+          ? DailyVolume[]
+          : SlotVolume[],
+) {
+  emit(`update:${key}`, value)
+  emit('written')
+}
 
 async function save() {
   if (!props.editor || props.readOnly || busy.value || closeOnly.value || clearingResults.value) {
@@ -182,6 +240,7 @@ async function save() {
       )
     }
     toast.success(`${title.value} saved.`)
+    emit('written')
     onOpenChange(false)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Save failed.')
@@ -201,26 +260,46 @@ async function save() {
         class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4"
       >
         <DialogTitle>{{ title }}</DialogTitle>
-        <DialogDescription>
-          {{
-            readOnly
-              ? 'Read-only data snapshot for this exercise.'
-              : editor === 'volume'
-                ? 'View and maintain the associated volume input data.'
-                : editor === 'calendar'
-                  ? 'Add, edit, or delete holiday dates — changes are saved immediately. Import Excel updates or adds dates; other dates are kept.'
-                  : editor === 'support'
-                    ? 'Add, edit, or delete workload rows — changes are saved immediately.'
-                    : isManualTms
-                      ? 'Enter the manual median override and reason, then save. Support files are optional.'
-                      : editor === 'tms'
-                        ? 'Apply a TMS period to link COMPLETED sessions for the SYSTEM median. Changes are saved immediately.'
-                        : 'Edit the exercise Associated Data, then save your changes.'
-          }}
-        </DialogDescription>
+        <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
 
       <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
+        <Alert v-if="editor === 'tms'" variant="info" class="mb-4">
+          <Info />
+          <AlertDescription>{{ tmsAlert }}</AlertDescription>
+        </Alert>
+        <div v-if="editor === 'tms' && !readOnly" class="mb-4 grid grid-cols-2 gap-3">
+          <label
+            v-for="option in TMS_SOURCE_OPTIONS"
+            :key="option.value"
+            class="cursor-pointer"
+          >
+            <Card
+              class="h-full"
+              :class="
+                medianSource === option.value
+                  ? 'bg-primary/5 ring-primary'
+                  : undefined
+              "
+            >
+              <CardHeader class="px-4 pb-0">
+                <CardTitle class="flex items-start gap-2.5 text-sm">
+                  <input
+                    type="radio"
+                    class="mt-0.5"
+                    name="exercise-median-source"
+                    :checked="medianSource === option.value"
+                    @change="emit('update:medianSource', option.value)"
+                  />
+                  {{ option.label }}
+                </CardTitle>
+              </CardHeader>
+              <CardContent class="px-4 pt-2">
+                <p class="text-xs leading-relaxed text-muted-foreground">{{ option.hint }}</p>
+              </CardContent>
+            </Card>
+          </label>
+        </div>
         <AdTeamSetupEditor
           v-if="editor === 'team'"
           ref="teamEditor"
@@ -234,6 +313,7 @@ async function save() {
           v-else-if="isManualTms"
           ref="manualEditor"
           :exercise-id="props.exerciseId"
+          :median-source-label="medianSourceLabel"
           :median-seconds="manualSeedMedian"
           :reason="manualSeedReason"
           :files="manualSeedFiles"
@@ -242,10 +322,12 @@ async function save() {
         <AdTmsEditor
           v-else-if="editor === 'tms'"
           :exercise-id="props.exerciseId"
+          :median-source-label="medianSourceLabel"
           :tms-from="tmsFrom"
           :tms-to="tmsTo"
           :cycle-time="cycleTime"
           :read-only="readOnly"
+          @written="emit('written')"
         />
         <AdSupportEditor
           v-else-if="editor === 'support'"
@@ -253,14 +335,14 @@ async function save() {
           :items="support"
           :team-setup="teamSetup"
           :read-only="readOnly"
-          @update:items="emit('update:support', $event)"
+          @update:items="onImmediateWrite('support', $event)"
         />
         <AdCalendarEditor
           v-else-if="editor === 'calendar'"
           :model-value="calendar"
           :exercise-id="props.exerciseId"
           :read-only="readOnly"
-          @update:calendar="emit('update:calendar', $event)"
+          @update:calendar="onImmediateWrite('calendar', $event)"
         />
         <AdVolumeEditor
           v-else-if="editor === 'volume'"
@@ -272,9 +354,9 @@ async function save() {
           :daily="daily"
           :slot="slot"
           :read-only="readOnly"
-          @update:monthly="emit('update:monthly', $event)"
-          @update:daily="emit('update:daily', $event)"
-          @update:slot="emit('update:slot', $event)"
+          @update:monthly="onImmediateWrite('monthly', $event)"
+          @update:daily="onImmediateWrite('daily', $event)"
+          @update:slot="onImmediateWrite('slot', $event)"
         />
       </div>
 
@@ -301,7 +383,7 @@ async function save() {
     elevated
     title="Clear saved simulation results?"
     @update:open="onImpactOpenChange"
-    description="Saving Associated Data will clear saved Forecast and Simulation results on all scenarios, including the Official Scenario. Scenario inputs (name, Right Sizing HC, shifts) stay. Re-run Preview / Save sizing afterwards."
+    description="Saving Associated Data will clear saved Forecast and Simulation results on all scenarios, including the Official Scenario. Scenario inputs (name, Right Sizing HC, shifts) stay. Run simulation again afterwards."
     :rows="
       scenarioCount > 0
         ? [{ label: 'Scenarios with results', value: String(scenarioCount), strong: true }]

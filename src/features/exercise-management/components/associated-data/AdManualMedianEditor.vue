@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import DetailTable from '@/components/DetailTable.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { NumberFieldControl } from '@/components/ui/number-field'
 import { Label } from '@/components/ui/label'
+import { FieldUnit, withUnit } from '../../fieldUnits'
 import {
   Table,
   TableBody,
@@ -28,6 +30,7 @@ import type { CycleTimeBaselineFile, ManualBaselineRequest } from '../../types'
 
 const props = defineProps<{
   exerciseId: string
+  medianSourceLabel?: string
   medianSeconds?: string
   reason?: string
   files?: CycleTimeBaselineFile[]
@@ -106,37 +109,78 @@ async function toRequest(): Promise<ManualBaselineRequest | null> {
 }
 
 defineExpose({ toRequest })
+
+const medianLabel = computed(() =>
+  values.medianSeconds != null && Number.isFinite(Number(values.medianSeconds))
+    ? Number(values.medianSeconds).toFixed(2)
+    : '—',
+)
+
+const reasonLabel = computed(() => String(values.reason ?? '').trim() || '—')
+
+const readOnlyRows = computed(() => [
+  { label: 'Median source', value: props.medianSourceLabel || 'Manual median input' },
+  {
+    label: withUnit('Manual median cycle time', FieldUnit.seconds),
+    value: medianLabel.value,
+  },
+  { key: 'reason', label: 'Reason for override', value: reasonLabel.value },
+  { key: 'files', label: 'Support files', value: '' },
+])
 </script>
 
 <template>
   <section class="rounded-lg border bg-card p-4">
     <div class="grid gap-4">
-      <div class="grid gap-1.5">
-        <Label for="manual-median-seconds">Manual median cycle time (s)</Label>
-        <NumberFieldControl
-          id="manual-median-seconds"
-          v-model="medianSeconds"
-          :min="0"
-          :disabled="readOnly"
-          :invalid="Boolean(errors.medianSeconds)"
-        />
-        <p v-if="errors.medianSeconds" class="text-xs text-destructive">{{ errors.medianSeconds }}</p>
-      </div>
+      <template v-if="readOnly">
+        <DetailTable :rows="readOnlyRows">
+          <template #reason>
+            <span class="whitespace-pre-wrap">{{ reasonLabel }}</span>
+          </template>
+          <template #files>
+            <span v-if="!draftFiles.length">—</span>
+            <span v-else class="inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <a
+                v-for="file in draftFiles"
+                :key="file.id"
+                class="font-medium text-primary underline-offset-2 hover:underline"
+                :href="file.webUrl || '#'"
+                target="_blank"
+                rel="noopener noreferrer"
+                :download="file.fileName"
+              >
+                {{ file.fileName }}
+              </a>
+            </span>
+          </template>
+        </DetailTable>
+      </template>
+      <template v-else>
+        <div class="grid gap-1.5">
+          <Label for="manual-median-seconds">Manual median cycle time (s)</Label>
+          <NumberFieldControl
+            id="manual-median-seconds"
+            v-model="medianSeconds"
+            :min="0"
+            :invalid="Boolean(errors.medianSeconds)"
+          />
+          <p v-if="errors.medianSeconds" class="text-xs text-destructive">{{ errors.medianSeconds }}</p>
+        </div>
 
-      <div class="grid gap-1.5">
-        <Label for="manual-median-reason">Reason for override</Label>
-        <Textarea
-          id="manual-median-reason"
-          v-model="reason"
-          rows="4"
-          placeholder="Explain why the system median is not used for this exercise."
-          :disabled="readOnly"
-          :aria-invalid="Boolean(errors.reason)"
-        />
-        <p v-if="errors.reason" class="text-xs text-destructive">{{ errors.reason }}</p>
-      </div>
+        <div class="grid gap-1.5">
+          <Label for="manual-median-reason">Reason for override</Label>
+          <Textarea
+            id="manual-median-reason"
+            v-model="reason"
+            rows="4"
+            placeholder="Explain why the system median is not used for this exercise."
+            :aria-invalid="Boolean(errors.reason)"
+          />
+          <p v-if="errors.reason" class="text-xs text-destructive">{{ errors.reason }}</p>
+        </div>
+      </template>
 
-      <div class="space-y-2.5">
+      <div v-if="!readOnly" class="space-y-2.5">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm font-semibold">Support files</div>

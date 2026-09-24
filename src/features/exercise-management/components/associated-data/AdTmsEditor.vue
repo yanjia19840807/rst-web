@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import DetailTable from '@/components/DetailTable.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
@@ -15,12 +14,11 @@ import {
   type TmsSessionTableRow,
 } from '@/features/tms-management/components/tmsSessionColumns'
 import { showOperationNotices } from '@/composables/useOperationNotices'
-import { formatDate } from '@/lib/datetime'
+import { formatCivilDate } from '@/lib/datetime'
 
 import { useExerciseMutations } from '../../api/mutations'
 import { useExerciseTmsSessionsQuery } from '../../api/queries'
 import { FieldUnit, withUnit } from '../../fieldUnits'
-import { TMS_PERIOD_HINT_DESCRIPTION } from '../../periodWindows'
 import { tmsPeriodSchema } from '../../schemas/exercisePeriods'
 import { tmsRatioDescription, tmsRatioLabel } from '../../tmsRatio'
 import type { CycleTimeBaseline, ExerciseTmsSession } from '../../types'
@@ -32,7 +30,12 @@ const props = defineProps<{
   tmsFrom: string | null
   tmsTo: string | null
   cycleTime: CycleTimeBaseline | null
+  medianSourceLabel?: string
   readOnly?: boolean
+}>()
+
+const emit = defineEmits<{
+  written: []
 }>()
 
 const { updateTmsPeriod, clearTmsPeriod } = useExerciseMutations()
@@ -185,6 +188,7 @@ async function applyPeriod() {
         notices: result.notices ?? [],
       })
       if (!shown) toast.success(summary)
+      emit('written')
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not apply TMS period.')
@@ -210,6 +214,7 @@ async function clearPeriod() {
         notices: result.notices ?? [],
       })
       if (!shown) toast.success(summary)
+      emit('written')
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Could not clear TMS period.')
@@ -219,66 +224,55 @@ async function clearPeriod() {
 
 <template>
   <div class="space-y-4 rounded-lg border bg-card p-4">
-    <Alert variant="info">
-      <Info />
-      <AlertDescription>{{ TMS_PERIOD_HINT_DESCRIPTION }}</AlertDescription>
-    </Alert>
-
-    <Label>TMS period</Label>
-
-    <div
+    <DetailTable
       v-if="readOnly"
-      class="flex flex-wrap items-baseline gap-x-8 gap-y-1 text-sm"
-    >
-      <div>
-        <span class="text-muted-foreground">From</span>
-        <span class="ml-3 font-semibold">{{ formatDate(tmsFrom) }}</span>
+      :columns="2"
+      :rows="[
+        { label: 'Median source', value: medianSourceLabel || 'System-calculated median' },
+        { label: 'From', value: formatCivilDate(tmsFrom) },
+        { label: 'To', value: formatCivilDate(tmsTo) },
+      ]"
+    />
+    <template v-else>
+      <Label>TMS period</Label>
+      <div class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3">
+        <div class="grid gap-1.5">
+          <span class="text-xs text-muted-foreground">From</span>
+          <DatePicker
+            v-model="draftTmsFrom"
+            aria-label="Choose TMS period start"
+            placeholder="From"
+            class="w-[180px]"
+            :disabled="busy"
+          />
+        </div>
+        <div class="grid gap-1.5">
+          <span class="text-xs text-muted-foreground">To</span>
+          <DatePicker
+            v-model="draftTmsTo"
+            aria-label="Choose TMS period end"
+            placeholder="To"
+            class="w-[180px]"
+            :disabled="busy"
+          />
+        </div>
+        <Button
+          :disabled="busy || !periodReady"
+          :loading="busyAction === 'period'"
+          @click="requestApplyPeriod"
+        >
+          {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
+        </Button>
+        <Button
+          variant="destructive"
+          :disabled="busy || !periodSet"
+          :loading="busyAction === 'clear-period'"
+          @click="requestClearPeriod"
+        >
+          {{ busyAction === 'clear-period' ? 'Clearing…' : 'Clear' }}
+        </Button>
       </div>
-      <div>
-        <span class="text-muted-foreground">To</span>
-        <span class="ml-3 font-semibold">{{ formatDate(tmsTo) }}</span>
-      </div>
-    </div>
-    <div
-      v-else
-      class="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 px-3 py-3"
-    >
-      <div class="grid gap-1.5">
-        <span class="text-xs text-muted-foreground">From</span>
-        <DatePicker
-          v-model="draftTmsFrom"
-          aria-label="Choose TMS period start"
-          placeholder="From"
-          class="w-[180px]"
-          :disabled="busy"
-        />
-      </div>
-      <div class="grid gap-1.5">
-        <span class="text-xs text-muted-foreground">To</span>
-        <DatePicker
-          v-model="draftTmsTo"
-          aria-label="Choose TMS period end"
-          placeholder="To"
-          class="w-[180px]"
-          :disabled="busy"
-        />
-      </div>
-      <Button
-        :disabled="busy || !periodReady"
-        :loading="busyAction === 'period'"
-        @click="requestApplyPeriod"
-      >
-        {{ busyAction === 'period' ? 'Applying…' : 'Apply Period' }}
-      </Button>
-      <Button
-        variant="destructive"
-        :disabled="busy || !periodSet"
-        :loading="busyAction === 'clear-period'"
-        @click="requestClearPeriod"
-      >
-        {{ busyAction === 'clear-period' ? 'Clearing…' : 'Clear' }}
-      </Button>
-    </div>
+    </template>
 
     <div class="grid max-w-3xl gap-3 sm:grid-cols-3">
       <AdMetric

@@ -5,7 +5,6 @@ import { computeNetworkDays } from '../workingDays'
 describe('computeNetworkDays', () => {
   it('matches NETWORKDAYS for 2025 with weekend code 1 and no holidays', () => {
     expect(computeNetworkDays(2025, '1', [])).toBe(261)
-    expect(computeNetworkDays(2025, 'SAT_SUN', [])).toBe(261)
   })
 
   it('excludes holidays that fall on weekdays', () => {

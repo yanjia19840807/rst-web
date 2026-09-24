@@ -1,4 +1,4 @@
-import { formatDate, formatMonth } from '@/lib/datetime'
+import { formatCivilDate, formatMonth } from '@/lib/datetime'
 
 export interface SizingWindows {
   monthTrain: string
@@ -49,7 +49,7 @@ function monthDayRange(ym: string): string {
   const last = new Date(parsed.year, parsed.month, 0).getDate()
   const start = `${ym}-01`
   const end = `${ym}-${String(last).padStart(2, '0')}`
-  return `${formatDate(start)} – ${formatDate(end)}`
+  return `${formatCivilDate(start)} – ${formatCivilDate(end)}`
 }
 
 function monthSpanRange(fromYm: string, toYm: string): string {
@@ -57,7 +57,7 @@ function monthSpanRange(fromYm: string, toYm: string): string {
   const to = parseYearMonth(toYm)
   if (!from || !to) return '—'
   const last = new Date(to.year, to.month, 0).getDate()
-  return `${formatDate(`${fromYm}-01`)} – ${formatDate(`${toYm}-${String(last).padStart(2, '0')}`)}`
+  return `${formatCivilDate(`${fromYm}-01`)} – ${formatCivilDate(`${toYm}-${String(last).padStart(2, '0')}`)}`
 }
 
 /** Max months sent to FastAPI forecast (and Toolkit seed), ending at Sizing Month. */
@@ -75,7 +75,10 @@ export function addDaysIso(iso: string, days: number): string {
   const dt = new Date(`${iso}T00:00:00`)
   if (Number.isNaN(dt.getTime())) return iso
   dt.setDate(dt.getDate() + days)
-  return formatDate(dt)
+  const year = dt.getFullYear()
+  const month = String(dt.getMonth() + 1).padStart(2, '0')
+  const day = String(dt.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 /** Chart history + forecast windows derived from Sizing Month. */
@@ -105,7 +108,7 @@ export function deriveSlotPeriodLabel(
   if (!startDate || !Number.isFinite(n) || n < 1) return '—'
   const end = addDaysIso(startDate, n * 7 - 1)
   const weekLabel = n === 1 ? '1 week' : `${n} weeks`
-  return `${formatDate(startDate)} – ${formatDate(end)} (${weekLabel})`
+  return `${formatCivilDate(startDate)} – ${formatCivilDate(end)} (${weekLabel})`
 }
 
 export const VOLUME_MONTHLY_HINT_DESCRIPTION =
@@ -150,7 +153,7 @@ export function formatTmsPeriodLabel(
   const from = tmsFrom?.trim() ?? ''
   const to = tmsTo?.trim() ?? ''
   if (!from || !to) return '—'
-  return `${formatDate(from)} – ${formatDate(to)}`
+  return `${formatCivilDate(from)} – ${formatCivilDate(to)}`
 }
 
 export function tmsHintLines(tmsFrom?: string | null, tmsTo?: string | null): DerivedHintLine[] {
@@ -161,7 +164,7 @@ export function tmsHintLines(tmsFrom?: string | null, tmsTo?: string | null): De
     {
       label: 'Resolved window',
       note: 'inclusive from / to',
-      value: valid ? `${formatDate(from)} – ${formatDate(to)}` : '—',
+      value: valid ? `${formatCivilDate(from)} – ${formatCivilDate(to)}` : '—',
     },
     {
       label: 'Linked sessions',

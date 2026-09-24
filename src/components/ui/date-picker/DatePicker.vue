@@ -16,7 +16,7 @@ import {
   pickerTriggerWrapClass,
 } from '@/components/ui/picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { formatDate } from '@/lib/datetime'
+import { formatCivilDate } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 
 const props = withDefaults(
@@ -107,7 +107,7 @@ function onClearKey() {
           @keydown.backspace.prevent="onClearKey"
         >
           <CalendarIcon />
-          {{ date ? formatDate(date.toString()) : placeholder }}
+          {{ date ? formatCivilDate(date.toString()) : placeholder }}
         </Button>
       </PopoverTrigger>
       <PickerClearButton v-if="canClear" label="Clear date" @click="clear" />

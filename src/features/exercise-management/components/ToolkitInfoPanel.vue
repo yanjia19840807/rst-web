@@ -23,8 +23,11 @@ const props = withDefaults(
     alignment?: TimesheetAlignmentView | null
     embedded?: boolean
     showDeliveryHc?: boolean
+    /** One surface: headings + tables, no inner cards. */
+    flat?: boolean
+    showMapping?: boolean
   }>(),
-  { embedded: false, showDeliveryHc: false },
+  { embedded: false, showDeliveryHc: false, flat: false, showMapping: true },
 )
 
 const toolkit = computed(() => props.snapshot?.toolkit ?? null)
@@ -51,7 +54,7 @@ function statusLabel(enabled: boolean | undefined) {
 const mappingRows = computed(() => {
   if (!toolkit.value) return []
   const rows: Array<{ label: string; value: string; strong?: boolean }> = [
-    { label: 'Toolkit', value: toolkit.value.name, strong: true },
+    { label: 'Toolkit', value: toolkit.value.name },
   ]
   if (!props.showDeliveryHc) {
     rows.push({ label: 'Status', value: statusLabel(toolkit.value.enabled) })
@@ -66,13 +69,25 @@ const mappingRows = computed(() => {
   )
   return rows
 })
+
+const frameClass = computed(() =>
+  props.flat ? 'grid gap-3' : 'grid gap-4 rounded-lg border bg-card p-4',
+)
+
+const kpiMeta = computed(() => {
+  if (!kpiRows.value.length) return 'Not configured'
+  if (props.showDeliveryHc) {
+    return `${kpiRows.value.length} lines · Delivery HC ${formatHc(totalDeliveryHc.value, 2)}`
+  }
+  return `${kpiRows.value.length} lines`
+})
 </script>
 
 <template>
   <p v-if="!toolkit" class="text-sm text-muted-foreground italic">No toolkit selected.</p>
   <div v-else class="grid gap-4">
-    <section class="grid gap-4 rounded-lg border bg-card p-4">
-      <div>
+    <section v-if="showMapping" :class="frameClass">
+      <div v-if="!flat">
         <h3 class="text-sm font-semibold">Process Mapping</h3>
         <p class="mt-1 text-xs text-muted-foreground">
           Timesheet hierarchy, customer countries, and Shared KPI split.
@@ -81,16 +96,10 @@ const mappingRows = computed(() => {
 
       <DetailTable :rows="mappingRows" :columns="2" />
 
-      <section class="grid gap-3 border-t pt-4">
+      <section v-if="!flat" class="grid gap-3 border-t pt-4">
         <div class="flex items-baseline justify-between gap-2">
           <h4 class="text-sm font-semibold">Shared KPI Scope Split</h4>
-          <span class="text-xs text-muted-foreground">
-            <template v-if="!kpiRows.length">Not configured</template>
-            <template v-else-if="showDeliveryHc">
-              {{ kpiRows.length }} lines · Delivery HC {{ formatHc(totalDeliveryHc, 2) }}
-            </template>
-            <template v-else>{{ kpiRows.length }} lines</template>
-          </span>
+          <span class="text-xs text-muted-foreground">{{ kpiMeta }}</span>
         </div>
 
         <div
@@ -134,22 +143,68 @@ const mappingRows = computed(() => {
       </section>
     </section>
 
-    <section class="grid gap-4 rounded-lg border bg-card p-4">
-      <div>
-        <h3 class="text-sm font-semibold">Subtasks</h3>
-        <p class="mt-1 text-xs text-muted-foreground">
-          Work steps timed in TMS, including Enable / Disable status.
-        </p>
+    <section v-if="flat" class="grid gap-3 border-t pt-4">
+      <div class="flex items-baseline justify-between gap-2">
+        <h3 class="text-sm font-semibold">Shared KPI Scope Split</h3>
+        <span class="text-xs text-muted-foreground">{{ kpiMeta }}</span>
+      </div>
+      <div
+        v-if="!countries.length"
+        class="rounded-lg border border-dashed px-3.5 py-3.5 text-sm text-muted-foreground"
+      >
+        Customer Country is not configured for this toolkit.
+      </div>
+      <div
+        v-else-if="!kpiRows.length"
+        class="rounded-lg border border-dashed px-3.5 py-3.5 text-sm text-muted-foreground"
+      >
+        No KPI lines selected for this toolkit.
+      </div>
+      <div v-else class="min-w-0 overflow-x-auto rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Carrier</TableHead>
+              <TableHead>GBS Site</TableHead>
+              <TableHead>Customer Country</TableHead>
+              <TableHead v-if="showDeliveryHc">Delivery HC</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="item in kpiRows" :key="item.id">
+              <TableCell>{{ item.carrier }}</TableCell>
+              <TableCell>{{ item.site }}</TableCell>
+              <TableCell>{{ item.customerCountry }}</TableCell>
+              <TableCell v-if="showDeliveryHc">{{ formatHc(item.deliveryHc, 2) }}</TableCell>
+            </TableRow>
+            <TableRow v-if="showDeliveryHc" class="bg-muted/40">
+              <TableCell>Total</TableCell>
+              <TableCell />
+              <TableCell />
+              <TableCell>{{ formatHc(totalDeliveryHc, 2) }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+
+    <section :class="flat ? 'grid gap-3 border-t pt-4' : frameClass">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h3 class="text-sm font-semibold">Subtasks</h3>
+          <p v-if="!flat" class="mt-1 text-xs text-muted-foreground">
+            Work steps timed in TMS, including Enable / Disable status.
+          </p>
+        </div>
+        <span class="text-xs text-muted-foreground">
+          Combine subtask time: {{ toolkit.combineSubtasksTime ? 'Yes' : 'No' }}
+        </span>
       </div>
 
-      <div class="grid gap-1.5 text-sm">
-        <div class="text-xs text-muted-foreground">Combine Subtask Time</div>
-        <div>{{ toolkit.combineSubtasksTime ? 'Yes' : 'No' }}</div>
-        <p class="text-xs text-muted-foreground">
-          Yes: SYSTEM baseline is the sum of each subtask's median.
-          No: SYSTEM baseline is the median of all included sessions.
-        </p>
-      </div>
+      <p v-if="!flat" class="text-xs text-muted-foreground">
+        Yes: SYSTEM baseline is the sum of each subtask's median.
+        No: SYSTEM baseline is the median of all included sessions.
+      </p>
 
       <div
         v-if="!visibleSubtasks.length"

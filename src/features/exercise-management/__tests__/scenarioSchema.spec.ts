@@ -4,6 +4,7 @@ import {
   emptyScenarioForm,
   emptyShiftDraft,
   scenarioFormSchema,
+  scenarioIdentitySchema,
   scenarioSlotSchema,
   toShiftRequests,
 } from '../schemas/scenario'
@@ -16,6 +17,25 @@ function validForm() {
     shifts: [emptyShiftDraft()],
   }
 }
+
+describe('scenarioIdentitySchema', () => {
+  it('requires a name of at most 30 characters', () => {
+    expect(scenarioIdentitySchema.safeParse({ name: '  ', description: '' }).success).toBe(false)
+    expect(scenarioIdentitySchema.safeParse({ name: 'Peak season', description: '' }).success).toBe(
+      true,
+    )
+    expect(
+      scenarioIdentitySchema.safeParse({ name: 'n'.repeat(31), description: 'note' }).success,
+    ).toBe(false)
+  })
+
+  it('allows a blank description', () => {
+    const result = scenarioIdentitySchema.safeParse({ name: 'S1', description: '' })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.description).toBe('')
+  })
+})
 
 describe('scenarioFormSchema', () => {
   it('accepts a named scenario with blank shifts', () => {

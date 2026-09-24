@@ -191,7 +191,7 @@ function onClearKey() {
             "
             @click="selectMonth(monthDate.month)"
           >
-            {{ formatter.custom(toDate(monthDate), { month: 'short' }) }}
+            {{ formatMonthNumber(monthDate.month) }}
           </Button>
         </div>
       </div>
