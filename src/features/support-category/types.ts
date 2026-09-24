@@ -1,3 +1,5 @@
+import type { AuditActor } from '@/lib/auditActor'
+
 export interface SupportCategoryOption {
   id: string
   name: string
@@ -14,6 +16,8 @@ export interface SupportCategoryAdminRow {
   name: string
   status: SupportCategoryStatus
   displayOrder: number
+  createdBy?: AuditActor | null
+  createdAt?: string | null
   updatedAt: string
 }
 

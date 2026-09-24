@@ -1,26 +1,33 @@
 <script setup lang="ts">
 import { TriangleAlert } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import PageActions from '@/components/PageActions.vue'
+import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
-import { DatePicker } from '@/components/ui/date-picker'
-import { NativeSelect } from '@/components/ui/native-select'
-
+import { useCenterCatalogStore } from '@/catalog/centerCatalog'
 import { PERMISSIONS } from '@/auth/permissions'
 import { useSessionStore } from '@/auth/session'
 import DomainHeadsDialog from '@/features/domain-heads/components/DomainHeadsDialog.vue'
+import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 
+import { timesheetSyncApi } from '../api'
 import { useUploadTimesheetSync } from '../api/mutations'
 import { useTimesheetSyncOverviewQuery } from '../api/queries'
 import type { TimesheetSnapshotTab, TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
+import {
+  emptyTimesheetSyncFilters,
+  matchesSyncDate,
+  toSyncDateRange,
+} from '../timesheetSyncFilters'
 import TimesheetSnapshotTables from './TimesheetSnapshotTables.vue'
 import TimesheetSyncAlertDialog from './TimesheetSyncAlertDialog.vue'
+import TimesheetSyncFilterFields from './TimesheetSyncFilterFields.vue'
 import TimesheetSyncIssuesDialog from './TimesheetSyncIssuesDialog.vue'
 import {
   createTimesheetActiveColumns,
@@ -28,21 +35,30 @@ import {
   type TimesheetActiveRow,
 } from './timesheetSyncColumns'
 
-const kindFilter = ref('')
-const statusFilter = ref('')
-const dateFrom = ref('')
-const dateTo = ref('')
+const catalog = useCenterCatalogStore()
+const centerOptions = computed(() => catalog.items.map((item) => item.center))
+
+const draftActive = reactive(emptyTimesheetSyncFilters())
+const appliedActive = reactive(emptyTimesheetSyncFilters())
+const draftRuns = reactive(emptyTimesheetSyncFilters())
+const appliedRuns = reactive(emptyTimesheetSyncFilters())
+
 const page = ref(1)
 const pageSize = ref(10)
 
-const listQuery = computed<TimesheetSyncOverviewQuery>(() => ({
-  kind: kindFilter.value || undefined,
-  status: statusFilter.value || undefined,
-  dateFrom: dateFrom.value || undefined,
-  dateTo: dateTo.value || undefined,
-  page: page.value,
-  pageSize: pageSize.value,
-}))
+const listQuery = computed<TimesheetSyncOverviewQuery>(() => {
+  const dates = toSyncDateRange(appliedRuns)
+  return {
+    kind: appliedRuns.kind || undefined,
+    status: appliedRuns.status || undefined,
+    center: appliedRuns.center || undefined,
+    sourceType: appliedRuns.sourceType || undefined,
+    dateFrom: dates.dateFrom,
+    dateTo: dates.dateTo,
+    page: page.value,
+    pageSize: pageSize.value,
+  }
+})
 
 const session = useSessionStore()
 const overviewQuery = useTimesheetSyncOverviewQuery(listQuery)
@@ -63,17 +79,37 @@ const overview = computed(() => overviewQuery.data.value)
 const runs = computed(() => overview.value?.runs.items ?? [])
 const total = computed(() => overview.value?.runs.total ?? 0)
 const loading = computed(() => overviewQuery.isPending.value && !overviewQuery.data.value)
-const hasFilters = computed(
-  () => Boolean(kindFilter.value || statusFilter.value || dateFrom.value || dateTo.value),
+const hasRunFilters = computed(() =>
+  Boolean(
+    appliedRuns.kind ||
+      appliedRuns.status ||
+      appliedRuns.center ||
+      appliedRuns.sourceType ||
+      appliedRuns.syncDateFrom ||
+      appliedRuns.syncDateTo,
+  ),
 )
 
-const snapshots = computed<TimesheetActiveRow[]>(() =>
+const allSnapshots = computed<TimesheetActiveRow[]>(() =>
   overview.value
     ? [
         ...(overview.value.daily ?? []).map((run) => ({ kind: 'DAILY' as const, run })),
         ...(overview.value.monthly ?? []).map((run) => ({ kind: 'MONTHLY' as const, run })),
       ]
     : [],
+)
+
+const snapshots = computed(() =>
+  allSnapshots.value.filter((row) => {
+    const run = row.run
+    if (!run) return false
+    if (appliedActive.center && run.center !== appliedActive.center) return false
+    if (appliedActive.kind && row.kind !== appliedActive.kind) return false
+    if (appliedActive.sourceType && (run.sourceType ?? '').toUpperCase() !== appliedActive.sourceType) {
+      return false
+    }
+    return matchesSyncDate(run.syncDate, appliedActive)
+  }),
 )
 
 const missingActiveKinds = computed(() => {
@@ -90,12 +126,12 @@ const missingActiveLabel = computed(() => {
   return kinds[0] ?? ''
 })
 
-const activeColumns = computed(() => createTimesheetActiveColumns({ onViewTables: openMapped }))
-const runColumns = computed(() => createTimesheetRunColumns({ onViewIssues: openIssues }))
-
-watch([kindFilter, statusFilter, dateFrom, dateTo], () => {
-  page.value = 1
-})
+const activeColumns = computed(() =>
+  createTimesheetActiveColumns({ onViewTables: openMapped, onDownload: downloadFile }),
+)
+const runColumns = computed(() =>
+  createTimesheetRunColumns({ onViewIssues: openIssues, onDownload: downloadFile }),
+)
 
 watch(
   () => ({
@@ -140,6 +176,26 @@ async function onFile(event: Event) {
   }
 }
 
+function applyActive() {
+  Object.assign(appliedActive, { ...draftActive })
+}
+
+function clearActive() {
+  Object.assign(draftActive, emptyTimesheetSyncFilters())
+  Object.assign(appliedActive, emptyTimesheetSyncFilters())
+}
+
+function applyRuns() {
+  Object.assign(appliedRuns, { ...draftRuns })
+  page.value = 1
+}
+
+function clearRuns() {
+  Object.assign(draftRuns, emptyTimesheetSyncFilters())
+  Object.assign(appliedRuns, emptyTimesheetSyncFilters())
+  page.value = 1
+}
+
 function openIssues(row: TimesheetSyncRunHeader) {
   selectedRun.value = row
   issuesOpen.value = true
@@ -152,6 +208,15 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
   mappedFileDate.value = row.run.syncDate ?? ''
   mappedTab.value = tab
   mappedOpen.value = true
+}
+
+async function downloadFile(row: TimesheetSyncRunHeader) {
+  try {
+    const result = await timesheetSyncApi.download(row.id, row.sourceFileName || 'timesheet.xlsx')
+    triggerDownload(result.blob, result.filename)
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'File is no longer available.')
+  }
 }
 </script>
 
@@ -197,7 +262,10 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent class="space-y-3">
+        <QueryPanel title="Filters" @search="applyActive" @clear="clearActive">
+          <TimesheetSyncFilterFields :draft="draftActive" :center-options="centerOptions" />
+        </QueryPanel>
         <DataTable
           :columns="activeColumns"
           :data="snapshots"
@@ -217,49 +285,20 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
         </CardDescription>
       </CardHeader>
       <CardContent class="space-y-3">
-        <div class="flex flex-wrap items-end gap-2.5">
-          <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Kind
-            <NativeSelect v-model="kindFilter" class="w-[160px]" placeholder="All">
-              <option value="DAILY">DAILY</option>
-              <option value="MONTHLY">MONTHLY</option>
-            </NativeSelect>
-          </label>
-          <label class="grid gap-1.5 text-xs text-muted-foreground">
-            Status
-            <NativeSelect v-model="statusFilter" class="w-[180px]" placeholder="All">
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="FAILED">FAILED</option>
-              <option value="LOADING">LOADING</option>
-              <option value="ARCHIVED">ARCHIVED</option>
-            </NativeSelect>
-          </label>
-          <label class="grid gap-1.5 text-xs text-muted-foreground">
-            From
-            <DatePicker
-              v-model="dateFrom"
-              aria-label="Sync date from"
-              placeholder="From"
-              class="w-[180px]"
-            />
-          </label>
-          <label class="grid gap-1.5 text-xs text-muted-foreground">
-            To
-            <DatePicker
-              v-model="dateTo"
-              aria-label="Sync date to"
-              placeholder="To"
-              class="w-[180px]"
-            />
-          </label>
-        </div>
+        <QueryPanel title="Filters" @search="applyRuns" @clear="clearRuns">
+          <TimesheetSyncFilterFields
+            :draft="draftRuns"
+            show-status
+            :center-options="centerOptions"
+          />
+        </QueryPanel>
 
         <DataTable
           :columns="runColumns"
           :data="runs"
           :pending="loading"
           :empty-text="
-            hasFilters ? 'No matching Timesheet sync runs.' : 'No Timesheet sync runs yet.'
+            hasRunFilters ? 'No matching Timesheet sync runs.' : 'No Timesheet sync runs yet.'
           "
           table-class="min-w-[1180px]"
           :get-row-id="(row) => row.id"

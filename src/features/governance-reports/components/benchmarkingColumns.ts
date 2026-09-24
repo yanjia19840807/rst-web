@@ -19,10 +19,6 @@ export function createBenchmarkingColumns(): ColumnDef<BenchmarkRow>[] {
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
-    columnHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
-      id: 'validatedDate',
-      header: 'Validated at',
-    }),
     columnHelper.accessor('gbs', { header: 'GBS Center' }),
     columnHelper.accessor('domain', { header: 'Domain' }),
     columnHelper.accessor('pl1', { header: 'PL1' }),
@@ -47,6 +43,10 @@ export function createBenchmarkingColumns(): ColumnDef<BenchmarkRow>[] {
       id: 'capacityCreation',
       header: withUnit('Capacity Creation', FieldUnit.hc),
       cell: ({ row }) => h(CapacityCell, { value: row.original.capacityCreation }),
+    }),
+    columnHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
+      id: 'validatedDate',
+      header: 'Validated at',
     }),
   ] as ColumnDef<BenchmarkRow>[]
 }

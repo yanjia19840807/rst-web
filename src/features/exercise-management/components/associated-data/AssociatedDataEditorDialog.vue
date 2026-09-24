@@ -208,7 +208,7 @@ async function save() {
               : editor === 'volume'
                 ? 'View and maintain the associated volume input data.'
                 : editor === 'calendar'
-                  ? 'Add, edit, or delete holiday dates — changes are saved immediately. Import Excel replaces the current list.'
+                  ? 'Add, edit, or delete holiday dates — changes are saved immediately. Import Excel updates or adds dates; other dates are kept.'
                   : editor === 'support'
                     ? 'Add, edit, or delete workload rows — changes are saved immediately.'
                     : isManualTms

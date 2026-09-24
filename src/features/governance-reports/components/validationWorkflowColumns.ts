@@ -46,10 +46,6 @@ export function createValidationWorkflowColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
-    columnHelper.accessor((row) => formatCivilDateTime(row.submittedDate), {
-      id: 'submittedDate',
-      header: 'Submitted at',
-    }),
     columnHelper.accessor((row) => displayOrDash(row.gbs), { id: 'gbs', header: 'GBS Center' }),
     columnHelper.accessor((row) => displayOrDash(row.domain), { id: 'domain', header: 'Domain' }),
     columnHelper.accessor((row) => displayOrDash(row.pl1), { id: 'pl1', header: 'PL1' }),
@@ -87,6 +83,10 @@ export function createValidationWorkflowColumns(
     columnHelper.accessor((row) => row.volumeYoY || '—', {
       id: 'volumeYoY',
       header: withUnit('Volume Increase YoY', FieldUnit.percent),
+    }),
+    columnHelper.accessor((row) => formatCivilDateTime(row.submittedDate), {
+      id: 'submittedDate',
+      header: 'Submitted at',
     }),
   ] as ColumnDef<ValidationWorkflowRow>[]
 }

@@ -1,4 +1,5 @@
 import { ApiError, apiHeaders, apiRequest } from '@/api/client'
+import { downloadExcel } from '@/api/download'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -32,12 +33,16 @@ export const timesheetSyncApi = {
     const params = new URLSearchParams()
     if (query.kind) params.set('kind', query.kind)
     if (query.status) params.set('status', query.status)
+    if (query.center) params.set('center', query.center)
+    if (query.sourceType) params.set('sourceType', query.sourceType)
     if (query.dateFrom) params.set('dateFrom', query.dateFrom)
     if (query.dateTo) params.set('dateTo', query.dateTo)
     params.set('page', String(query.page))
     params.set('pageSize', String(query.pageSize))
     return apiRequest<TimesheetSyncOverview>(`${base}?${params.toString()}`)
   },
+  download: (id: string, fallbackName: string) =>
+    downloadExcel(`${base}/${id}/file`, fallbackName),
   run: (query: TimesheetSyncRunIssuesQuery) =>
     apiRequest<TimesheetSyncRunDetail>(
       `${base}/${query.id}?page=${query.page}&pageSize=${query.pageSize}`,

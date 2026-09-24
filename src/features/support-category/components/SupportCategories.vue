@@ -5,9 +5,11 @@ import { VueDraggable } from 'vue-draggable-plus'
 import { toast } from 'vue-sonner'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import CreatedByText from '@/components/CreatedByText.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import { formatInstantForCenter } from '@/lib/datetime'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -208,6 +210,8 @@ async function saveUpdate(
               <TableHead class="w-10" />
               <TableHead>Name</TableHead>
               <TableHead class="w-24">Order</TableHead>
+              <TableHead>Created by</TableHead>
+              <TableHead>Created at</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -224,6 +228,8 @@ async function saveUpdate(
                   @keydown.enter.prevent="confirmAdd"
                 />
               </TableCell>
+              <TableCell>—</TableCell>
+              <TableCell>—</TableCell>
               <TableCell>—</TableCell>
               <TableCell>
                 <span class="inline-flex gap-3">
@@ -279,6 +285,10 @@ async function saveUpdate(
                 </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
                 <TableCell>
+                  <CreatedByText :actor="row.createdBy" />
+                </TableCell>
+                <TableCell>{{ formatInstantForCenter(row.createdAt) }}</TableCell>
+                <TableCell>
                   <span class="inline-flex gap-3">
                     <TableTextLink :disabled="saving" @click="confirmEdit">
                       {{ saving ? 'Saving…' : 'Confirm' }}
@@ -290,6 +300,10 @@ async function saveUpdate(
               <template v-else>
                 <TableCell class="font-medium">{{ row.name }}</TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
+                <TableCell>
+                  <CreatedByText :actor="row.createdBy" />
+                </TableCell>
+                <TableCell>{{ formatInstantForCenter(row.createdAt) }}</TableCell>
                 <TableCell>
                   <span class="inline-flex flex-wrap gap-3">
                     <TableTextLink :disabled="saving || formLocked" @click="startEdit(row)">
@@ -310,7 +324,7 @@ async function saveUpdate(
           <TableBody v-if="!localRows.length && !adding">
             <TableRow>
               <TableCell
-                colspan="4"
+                colspan="6"
                 class="h-20 text-center text-sm text-muted-foreground italic"
               >
                 No Support Categories yet — click "Add category" to begin.

@@ -153,7 +153,7 @@ const tabs = computed(() => {
     items.push({ key: 'granted', label: 'My delegates' })
   }
   if (session.canManageTeamDelegation) {
-    items.push({ key: 'assignments', label: 'Team delegation' })
+    items.push({ key: 'assignments', label: 'Assign delegates' })
   }
   items.push({ key: 'received', label: 'Delegate for' }, { key: 'history', label: 'History' })
   return items

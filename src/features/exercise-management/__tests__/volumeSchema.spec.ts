@@ -99,13 +99,13 @@ describe('monthlyVolumeContextIssue', () => {
     ).toBeNull()
   })
 
-  it('rejects a month more than 36 months before sizing', () => {
+  it('allows a month more than 36 months before sizing', () => {
     expect(
       monthlyVolumeContextIssue('2023-09', {
         sizingMonth: '2026-09',
-        otherMonths: ['2026-08', '2026-09'],
-      })?.message,
-    ).toContain('36 months')
+        otherMonths: [],
+      }),
+    ).toBeNull()
   })
 })
 
@@ -128,5 +128,15 @@ describe('dailyVolumeContextIssue', () => {
         otherDates: ['2026-01-01', '2026-01-02'],
       })?.message,
     ).toContain('consecutive')
+  })
+
+  it('allows a date more than 36 months before sizing', () => {
+    expect(
+      dailyVolumeContextIssue('2023-09-30', {
+        sizingMonth: '2026-09',
+        sizingMonthEnd: '2026-09-30',
+        otherDates: [],
+      }),
+    ).toBeNull()
   })
 })

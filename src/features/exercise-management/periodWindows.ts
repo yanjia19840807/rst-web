@@ -60,7 +60,7 @@ function monthSpanRange(fromYm: string, toYm: string): string {
   return `${formatDate(`${fromYm}-01`)} – ${formatDate(`${toYm}-${String(last).padStart(2, '0')}`)}`
 }
 
-/** Inclusive months pulled from Toolkit into an Exercise, ending at Sizing Month. */
+/** Max months sent to FastAPI forecast (and Toolkit seed), ending at Sizing Month. */
 export const MAX_VOLUME_HISTORY_MONTHS = 36
 
 export function volumeHistoryFloorMonth(sizingMonth: string): string {
@@ -109,10 +109,10 @@ export function deriveSlotPeriodLabel(
 }
 
 export const VOLUME_MONTHLY_HINT_DESCRIPTION =
-  'Months must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Commercial Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window. The forecast ranges below are for charts only — they are not created as Volume rows.'
+  'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
 
 export const VOLUME_DAILY_HINT_DESCRIPTION =
-  'Dates must be consecutive, unique, on or before Sizing Month, and within the last 36 months. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window. The forecast ranges below are for charts only — they are not created as Volume rows.'
+  'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
 
 export const SLOT_PERIOD_HINT_DESCRIPTION =
   'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Applying a period rebuilds an empty grid.'

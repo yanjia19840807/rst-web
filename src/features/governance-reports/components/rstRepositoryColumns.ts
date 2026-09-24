@@ -36,10 +36,6 @@ export function createRstRepositoryColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
-    columnHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
-      id: 'validatedDate',
-      header: 'Validated at',
-    }),
     columnHelper.accessor('country', { header: 'GBS Center' }),
     columnHelper.accessor('domain', { header: 'Domain' }),
     columnHelper.accessor('pl1', { header: 'PL1' }),
@@ -73,6 +69,10 @@ export function createRstRepositoryColumns(
     columnHelper.accessor((row) => row.volumeYoY || '—', {
       id: 'volumeYoY',
       header: withUnit('Volume Increase YoY', FieldUnit.percent),
+    }),
+    columnHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
+      id: 'validatedDate',
+      header: 'Validated at',
     }),
   ] as ColumnDef<RepositoryRow>[]
 }

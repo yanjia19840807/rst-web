@@ -1,3 +1,5 @@
+import type { AuditActor } from '@/lib/auditActor'
+
 export type TimesheetSyncRunHeader = {
   id: string
   kind: 'DAILY' | 'MONTHLY' | string
@@ -9,7 +11,8 @@ export type TimesheetSyncRunHeader = {
   sourceType: string | null
   sourceFileName: string | null
   sourceEtag: string | null
-  triggeredBy: string | null
+  hasSourceFile: boolean
+  createdBy?: AuditActor | null
   errorCode: string | null
   errorMessage: string | null
   startedAt: string
@@ -37,6 +40,8 @@ export type TimesheetSyncRunsPage = {
 export type TimesheetSyncOverviewQuery = {
   kind?: string
   status?: string
+  center?: string
+  sourceType?: string
   dateFrom?: string
   dateTo?: string
   page: number

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
@@ -10,7 +9,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
-import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -808,18 +807,14 @@ const scenarioInfoRows = computed(() => {
       <CardContent class="grid gap-3">
         <DetailTable :rows="scenarioInfoRows">
           <template #toolkit="{ row }">
-            <span class="inline-flex items-center gap-1.5">
-              <span>{{ row.value || '—' }}</span>
-              <button
-                type="button"
-                :class="infoHintButtonClass"
-                title="Toolkit info"
-                @click="toolkitInfoOpen = true"
-              >
-                <Info :class="infoHintIconClass" />
-                <span class="sr-only">Toolkit info</span>
-              </button>
-            </span>
+            <TableTextLink
+              v-if="row.value"
+              title="Toolkit info"
+              @click="toolkitInfoOpen = true"
+            >
+              {{ row.value }}
+            </TableTextLink>
+            <span v-else>—</span>
           </template>
         </DetailTable>
 

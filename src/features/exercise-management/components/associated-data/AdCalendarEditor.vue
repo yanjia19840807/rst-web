@@ -308,7 +308,7 @@ async function onImportFile(event: Event) {
       page.value = 1
       adding.value = false
       editingId.value = null
-      toast.success('Excel imported.')
+      toast.success('Excel imported. Existing rows were updated or added; other rows were kept.')
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Import failed.')

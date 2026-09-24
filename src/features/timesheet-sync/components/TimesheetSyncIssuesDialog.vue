@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
 import ListLoading from '@/components/ListLoading.vue'
 import TablePager from '@/components/TablePager.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
+import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 import {
   Dialog,
   DialogContent,
@@ -21,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { timesheetSyncApi } from '../api'
 import { useTimesheetSyncRunQuery } from '../api/queries'
 import type { TimesheetSyncIssue, TimesheetSyncRunHeader } from '../types'
 
@@ -68,9 +72,20 @@ const total = computed(() => {
   return issues.value.length
 })
 
-const fileName = computed(
-  () => detailQuery.data.value?.run.sourceFileName || props.run?.sourceFileName || '',
-)
+const header = computed(() => detailQuery.data.value?.run ?? props.run ?? null)
+const fileName = computed(() => header.value?.sourceFileName || '')
+const canDownload = computed(() => Boolean(header.value?.hasSourceFile && header.value?.id))
+
+async function downloadFile() {
+  const run = header.value
+  if (!run?.id) return
+  try {
+    const result = await timesheetSyncApi.download(run.id, run.sourceFileName || 'timesheet.xlsx')
+    triggerDownload(result.blob, result.filename)
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'File is no longer available.')
+  }
+}
 
 function displayIssueMessage(issue: TimesheetSyncIssue) {
   let text = issue.message.trim()
@@ -109,7 +124,10 @@ watch(
         <DialogTitle>Run issues</DialogTitle>
         <DialogDescription>
           Errors that blocked this run from becoming ACTIVE.
-          <template v-if="fileName"> {{ fileName }}</template>
+          <template v-if="fileName">
+            <TableTextLink v-if="canDownload" @click="downloadFile">{{ fileName }}</TableTextLink>
+            <template v-else> {{ fileName }}</template>
+          </template>
         </DialogDescription>
       </DialogHeader>
 

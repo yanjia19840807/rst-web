@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { addDaysIso, shiftYearMonth, volumeHistoryFloorDate, volumeHistoryFloorMonth } from '../periodWindows'
+import { addDaysIso, shiftYearMonth } from '../periodWindows'
 
 const MONTH_RE = /^\d{4}-\d{2}$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -86,13 +86,6 @@ export function monthlyVolumeContextIssue(
   if (month > ctx.sizingMonth) {
     return { path: 'month', message: 'Cannot add a month after Sizing Month.' }
   }
-  const floor = volumeHistoryFloorMonth(ctx.sizingMonth)
-  if (month < floor) {
-    return {
-      path: 'month',
-      message: `Cannot add a month more than 36 months before Sizing Month. Earliest allowed is ${floor}.`,
-    }
-  }
   if (ctx.otherMonths.includes(month)) {
     return { path: 'month', message: `${month} is already on this exercise.` }
   }
@@ -111,13 +104,6 @@ export function dailyVolumeContextIssue(
 ): { path: 'volumeDate'; message: string } | null {
   if (volumeDate > ctx.sizingMonthEnd) {
     return { path: 'volumeDate', message: 'Cannot add a date after Sizing Month.' }
-  }
-  const floor = volumeHistoryFloorDate(ctx.sizingMonth)
-  if (volumeDate < floor) {
-    return {
-      path: 'volumeDate',
-      message: `Cannot add a date more than 36 months before Sizing Month. Earliest allowed is ${floor}.`,
-    }
   }
   if (ctx.otherDates.includes(volumeDate)) {
     return { path: 'volumeDate', message: `${volumeDate} is already on this exercise.` }

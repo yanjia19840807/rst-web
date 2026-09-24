@@ -60,10 +60,6 @@ export function createSupportRowColumns(
       id: 'sizingMonth',
       header: 'Sizing Month',
     }),
-    rowHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
-      id: 'validatedDate',
-      header: 'Validated at',
-    }),
     rowHelper.accessor('center', { header: 'GBS Center' }),
     rowHelper.accessor('domain', { header: 'Domain' }),
     rowHelper.accessor('pl1', { header: 'PL1' }),
@@ -88,5 +84,9 @@ export function createSupportRowColumns(
       header: withUnit('Support', FieldUnit.fte),
     }),
     rowHelper.accessor((row) => row.comments || '—', { id: 'comments', header: 'Comments' }),
+    rowHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
+      id: 'validatedDate',
+      header: 'Validated at',
+    }),
   ] as ColumnDef<SupportRow>[]
 }

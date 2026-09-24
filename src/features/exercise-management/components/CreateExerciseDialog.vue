@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
 import DetailTable from '@/components/DetailTable.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,7 +32,9 @@ import {
   createExercisePeriodsSchema,
   emptyCreateExercisePeriodsForm,
 } from '../schemas/exercisePeriods'
+import { snapshotFromToolkit } from '../snapshotFromToolkit'
 import type { Exercise } from '../types'
+import ToolkitInfoDialog from './ToolkitInfoDialog.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -77,14 +80,18 @@ const freezeSyncDate = computed(
   () => selectedToolkit.value?.alignment?.currentMonthlySyncDate || '',
 )
 const contextTimeZone = useContextTimeZone()
+const toolkitInfoOpen = ref(false)
 const createdLabel = computed(() => formatToday(contextTimeZone.value))
+const toolkitSnapshot = computed(() =>
+  selectedToolkit.value ? snapshotFromToolkit(selectedToolkit.value) : null,
+)
 const infoRows = computed(() => {
-  const rows = [
+  const rows: Array<{ key?: string; label: string; value: string }> = [
     { label: 'Exercise No', value: 'Assigned on create' },
     { label: 'Created at', value: createdLabel.value },
   ]
   if (props.lockToolkit) {
-    rows.push({ label: 'Toolkit', value: lockedToolkit.value?.name ?? '' })
+    rows.push({ key: 'toolkit', label: 'Toolkit', value: lockedToolkit.value?.name ?? '' })
   }
   if (selectedToolkit.value && !toolkitBlocked.value) {
     const sync = freezeSyncDate.value
@@ -165,7 +172,18 @@ const create = handleSubmit(
 
           <TimesheetAlignmentAlert audience="create" :alignment="selectedToolkit?.alignment" />
 
-          <DetailTable :rows="infoRows" />
+          <DetailTable :rows="infoRows">
+            <template #toolkit="{ row }">
+              <TableTextLink
+                v-if="row.value"
+                title="Toolkit info"
+                @click="toolkitInfoOpen = true"
+              >
+                {{ row.value }}
+              </TableTextLink>
+              <span v-else>—</span>
+            </template>
+          </DetailTable>
 
           <div v-if="!lockToolkit" class="grid gap-1.5">
             <Label for="create-exercise-toolkit">Toolkit</Label>
@@ -213,4 +231,11 @@ const create = handleSubmit(
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ToolkitInfoDialog
+    v-model:open="toolkitInfoOpen"
+    show-delivery-hc
+    :snapshot="toolkitSnapshot"
+    :alignment="selectedToolkit?.alignment"
+  />
 </template>

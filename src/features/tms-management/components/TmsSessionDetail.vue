@@ -3,14 +3,23 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import { queryClient } from '@/api/query-client'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatInstantForCenter } from '@/lib/datetime'
+
+import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
+import { snapshotFromToolkit } from '@/features/exercise-management/snapshotFromToolkit'
+import type { Exercise } from '@/features/exercise-management/types'
+import { toolkitApi } from '@/features/toolkit-management/api'
+import { toolkitQueryKeys } from '@/features/toolkit-management/api/queries'
+import type { TimesheetAlignmentView } from '@/features/timesheet-alignment/types'
 
 import { useTmsSessionMutations } from '../api/mutations'
 import { useTmsSessionDetailQuery } from '../api/queries'
@@ -42,6 +51,9 @@ const canToggleEnabled = computed(
 )
 const isEnabled = computed(() => session.value?.enabled !== false)
 const toggleOpen = ref(false)
+const toolkitInfoOpen = ref(false)
+const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)
+const toolkitAlignment = ref<TimesheetAlignmentView | null>(null)
 
 function cycleTimeLabel() {
   const item = session.value
@@ -52,7 +64,7 @@ function cycleTimeLabel() {
 const rows = computed(() => {
   const item = session.value
   if (!item) return []
-  const base = [
+  const base: Array<{ key?: string; label: string; value: string; strong?: boolean }> = [
     { label: 'Session No', value: item.id, strong: true },
     { label: 'Status', value: item.status },
   ]
@@ -71,7 +83,7 @@ const rows = computed(() => {
     })
   }
   base.push(
-    { label: 'Toolkit', value: item.toolkitName },
+    { key: 'toolkit', label: 'Toolkit', value: item.toolkitName },
     { label: 'GBS Center', value: item.center || '—' },
     { label: 'Domain', value: item.domain || '—' },
     { label: 'PL1', value: item.pl1 || '—' },
@@ -104,6 +116,25 @@ async function confirmToggle() {
     toast.error(
       error instanceof Error ? error.message : 'Could not update the session status.',
     )
+  }
+}
+
+async function openToolkitInfo() {
+  const toolkitId = session.value?.toolkitId
+  if (!toolkitId) {
+    toast.error('Could not load toolkit info.')
+    return
+  }
+  try {
+    const toolkit = await queryClient.fetchQuery({
+      queryKey: toolkitQueryKeys.detail(toolkitId),
+      queryFn: () => toolkitApi.get(toolkitId),
+    })
+    toolkitSnapshot.value = snapshotFromToolkit(toolkit)
+    toolkitAlignment.value = toolkit.alignment ?? null
+    toolkitInfoOpen.value = true
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not load toolkit info.')
   }
 }
 
@@ -151,6 +182,16 @@ function goBack() {
           }}
         </p>
         <DetailTable v-else :rows="rows">
+          <template #toolkit="{ row }">
+            <TableTextLink
+              v-if="row.value"
+              title="Toolkit info"
+              @click="openToolkitInfo"
+            >
+              {{ row.value }}
+            </TableTextLink>
+            <span v-else>—</span>
+          </template>
           <template #agent="{ row }">
             <span class="grid gap-0.5">
               <span>{{ row.value || '—' }}</span>
@@ -185,6 +226,11 @@ function goBack() {
       :confirm-variant="isEnabled ? 'destructive' : 'default'"
       :pending="setEnabled.isPending.value"
       @confirm="confirmToggle"
+    />
+    <ToolkitInfoDialog
+      v-model:open="toolkitInfoOpen"
+      :snapshot="toolkitSnapshot"
+      :alignment="toolkitAlignment"
     />
   </div>
 </template>

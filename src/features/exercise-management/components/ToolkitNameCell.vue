@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { Info } from '@lucide/vue'
-
-import { infoHintButtonClass, infoHintIconClass } from '@/components/ui/alert'
+import TableTextLink from '@/components/TableTextLink.vue'
 
 defineProps<{
   name: string
@@ -14,17 +12,6 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1.5">
-    <span>{{ name }}</span>
-    <button
-      v-if="canInfo"
-      type="button"
-      :class="infoHintButtonClass"
-      title="Toolkit info"
-      @click="emit('info')"
-    >
-      <Info :class="infoHintIconClass" />
-      <span class="sr-only">Toolkit info</span>
-    </button>
-  </span>
+  <span v-if="!canInfo">{{ name }}</span>
+  <TableTextLink v-else title="Toolkit info" @click="emit('info')">{{ name }}</TableTextLink>
 </template>

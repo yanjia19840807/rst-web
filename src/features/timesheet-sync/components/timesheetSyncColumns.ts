@@ -1,10 +1,11 @@
 import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
+import CreatedByText from '@/components/CreatedByText.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import '@/components/ui/data-table/types'
-import { formatInstantForCenter } from '@/lib/datetime'
+import { formatCivilDate, formatInstantForCenter, formatMonth } from '@/lib/datetime'
 
 import type { TimesheetSnapshotTab, TimesheetSyncRunHeader } from '../types'
 
@@ -15,10 +16,12 @@ export type TimesheetActiveRow = {
 
 export type TimesheetActiveColumnOptions = {
   onViewTables?: (row: TimesheetActiveRow, tab: TimesheetSnapshotTab) => void
+  onDownload?: (row: TimesheetSyncRunHeader) => void
 }
 
 export type TimesheetSyncColumnOptions = {
   onViewIssues?: (row: TimesheetSyncRunHeader) => void
+  onDownload?: (row: TimesheetSyncRunHeader) => void
 }
 
 const activeHelper = createColumnHelper<TimesheetActiveRow>()
@@ -29,8 +32,25 @@ function dash(value: string | number | null | undefined) {
   return String(value)
 }
 
-function statusBadge(status: string | null | undefined) {
-  return h(StatusBadge, { status })
+function sourceLabel(value: string | null | undefined) {
+  if (!value) return '—'
+  if (value.toUpperCase() === 'SHAREPOINT') return 'SharePoint'
+  if (value.toUpperCase() === 'MANUAL') return 'Upload'
+  return value
+}
+
+function syncDateLabel(kind: string | null | undefined, syncDate: string | null | undefined) {
+  if (!syncDate) return '—'
+  return kind === 'MONTHLY' ? formatMonth(syncDate) : formatCivilDate(syncDate)
+}
+
+function fileCell(
+  row: TimesheetSyncRunHeader | null,
+  onDownload?: (row: TimesheetSyncRunHeader) => void,
+) {
+  if (!row?.sourceFileName) return '—'
+  if (!row.hasSourceFile) return row.sourceFileName
+  return h(TableTextLink, { onClick: () => onDownload?.(row) }, () => row.sourceFileName)
 }
 
 function viewIssuesButton(row: TimesheetSyncRunHeader | null, onViewIssues?: (row: TimesheetSyncRunHeader) => void) {
@@ -77,24 +97,19 @@ export function createTimesheetActiveColumns(
       cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.kind),
     }),
     activeHelper.display({
-      id: 'status',
-      header: 'Status',
-      cell: ({ row }) => statusBadge(row.original.run?.status),
-    }),
-    activeHelper.display({
       id: 'syncDate',
-      header: 'Date',
-      cell: ({ row }) => dash(row.original.run?.syncDate),
+      header: 'Sync date',
+      cell: ({ row }) => syncDateLabel(row.original.kind, row.original.run?.syncDate),
     }),
     activeHelper.display({
       id: 'sourceType',
       header: 'Source',
-      cell: ({ row }) => dash(row.original.run?.sourceType),
+      cell: ({ row }) => sourceLabel(row.original.run?.sourceType),
     }),
     activeHelper.display({
       id: 'sourceFileName',
       header: 'File',
-      cell: ({ row }) => dash(row.original.run?.sourceFileName),
+      cell: ({ row }) => fileCell(row.original.run, options.onDownload),
     }),
     activeHelper.display({
       id: 'rowCount',
@@ -102,9 +117,21 @@ export function createTimesheetActiveColumns(
       cell: ({ row }) => dash(row.original.run?.rowCount),
     }),
     activeHelper.display({
-      id: 'triggeredBy',
-      header: 'Triggered by',
-      cell: ({ row }) => dash(row.original.run?.triggeredBy),
+      id: 'createdBy',
+      header: 'Created by',
+      cell: ({ row }) => h(CreatedByText, { actor: row.original.run?.createdBy }),
+    }),
+    activeHelper.display({
+      id: 'startedAt',
+      header: 'Started at',
+      cell: ({ row }) =>
+        formatInstantForCenter(row.original.run?.startedAt, row.original.run?.center, { seconds: true }),
+    }),
+    activeHelper.display({
+      id: 'completedAt',
+      header: 'Completed at',
+      cell: ({ row }) =>
+        formatInstantForCenter(row.original.run?.completedAt, row.original.run?.center, { seconds: true }),
     }),
     activeHelper.display({
       id: 'mappedTables',
@@ -129,22 +156,33 @@ export function createTimesheetRunColumns(
     }),
     runHelper.accessor('status', {
       header: 'Status',
-      cell: ({ row }) => statusBadge(row.original.status),
+      cell: ({ row }) => h(StatusBadge, { status: row.original.status }),
     }),
-    runHelper.accessor('syncDate', {
-      header: 'Date',
+    runHelper.accessor((row) => syncDateLabel(row.kind, row.syncDate), {
+      id: 'syncDate',
+      header: 'Sync date',
     }),
-    runHelper.accessor((row) => row.sourceFileName || '—', {
+    runHelper.accessor((row) => sourceLabel(row.sourceType), {
+      id: 'sourceType',
+      header: 'Source',
+    }),
+    runHelper.display({
       id: 'sourceFileName',
       header: 'File',
+      cell: ({ row }) => fileCell(row.original, options.onDownload),
     }),
-    runHelper.accessor((row) => row.errorCode || '—', {
-      id: 'errorCode',
-      header: 'Error Code',
+    runHelper.display({
+      id: 'createdBy',
+      header: 'Created by',
+      cell: ({ row }) => h(CreatedByText, { actor: row.original.createdBy }),
     }),
     runHelper.accessor((row) => formatInstantForCenter(row.startedAt, row.center, { seconds: true }), {
       id: 'startedAt',
-      header: 'Started',
+      header: 'Started at',
+    }),
+    runHelper.accessor((row) => formatInstantForCenter(row.completedAt, row.center, { seconds: true }), {
+      id: 'completedAt',
+      header: 'Completed at',
     }),
     runHelper.display({
       id: 'actions',
