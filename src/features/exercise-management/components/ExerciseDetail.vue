@@ -35,6 +35,7 @@ import { capacityTone, measuredRightSizingHc } from '@/lib/hcFormat'
 
 import { FieldUnit, withUnit } from '../fieldUnits'
 import { exerciseListBackLabel, exerciseListLocation } from '../workflowLabels'
+import { pickScenario, remainingScenarios } from '../scenarioSelection'
 import type { Scenario } from '../types'
 import { actualHeadcount } from '../sizingChartMath'
 import { provideExerciseWorkspace } from '../composables/useExerciseWorkspace'
@@ -72,7 +73,9 @@ const supportQuery = useSupportQuery(exerciseIdRef)
 const cycleTimeQuery = useCycleTimeActiveQuery(exerciseIdRef)
 
 const exercise = computed(() => exerciseQuery.data.value ?? null)
-const scenarios = computed(() => scenariosQuery.data.value ?? [])
+const scenarios = computed(() =>
+  remainingScenarios(scenariosQuery.data.value ?? [], removingScenarioId.value),
+)
 const teamSetup = computed(() => teamSetupQuery.data.value ?? null)
 const support = computed(() => supportQuery.data.value ?? [])
 const cycleTime = computed(() => cycleTimeQuery.data.value ?? null)
@@ -85,6 +88,7 @@ const loading = computed(
 
 const selectedId = ref<string | null>(null)
 const mountedScenarioIds = ref<string[]>([])
+const removingScenarioId = ref<string | null>(null)
 const deleteOpen = ref(false)
 const removeScenarioOpen = ref(false)
 const newScenarioOpen = ref(false)
@@ -159,39 +163,66 @@ function rememberScenario(id: string | null) {
   mountedScenarioIds.value = [...mountedScenarioIds.value, id]
 }
 
+function scenarioRoute(scenarioId: string) {
+  return {
+    name: snapshotMode.value ? 'supervisor-scenario-snapshot' : 'supervisor-scenario-form',
+    params: { id: props.exerciseId, scenarioId },
+  }
+}
+
+function exerciseRoute() {
+  return {
+    name: snapshotMode.value ? 'supervisor-exercise-snapshot' : 'supervisor-exercise-detail',
+    params: { id: props.exerciseId },
+  }
+}
+
 function selectScenario(id: string) {
   selectedId.value = id
   rememberScenario(id)
   if (id === routeScenarioId.value) return
-  void router.push({
-    name: snapshotMode.value ? 'supervisor-scenario-snapshot' : 'supervisor-scenario-form',
-    params: { id: props.exerciseId, scenarioId: id },
-  })
+  void router.push(scenarioRoute(id))
+}
+
+function showRemainingScenario(next: Scenario | undefined) {
+  if (next) {
+    selectedId.value = next.id
+    rememberScenario(next.id)
+    if (next.id !== routeScenarioId.value) void router.replace(scenarioRoute(next.id))
+    return
+  }
+  selectedId.value = null
+  if (routeScenarioId.value) void router.replace(exerciseRoute())
 }
 
 async function confirmRemoveScenario() {
   if (!activeScenarioId.value) return
   const removedId = activeScenarioId.value
+  const next = pickScenario(
+    remainingScenarios(scenarios.value, removedId),
+    exercise.value?.officialScenarioId === removedId
+      ? null
+      : exercise.value?.officialScenarioId,
+  )
+  removingScenarioId.value = removedId
+  mountedScenarioIds.value = mountedScenarioIds.value.filter((id) => id !== removedId)
+  showRemainingScenario(next)
   try {
     await deleteScenario.mutateAsync({
       exerciseId: props.exerciseId,
       scenarioId: removedId,
     })
     exerciseWorkspace.dropDraft(removedId)
-    mountedScenarioIds.value = mountedScenarioIds.value.filter((id) => id !== removedId)
     toast.success('Scenario removed.')
     removeScenarioOpen.value = false
-    const rest = scenarios.value.filter((item) => item.id !== removedId)
-    const next =
-      rest.find((item) => item.id === exercise.value?.officialScenarioId) ?? rest[0]
-    if (next) selectScenario(next.id)
-    else {
-      selectedId.value = null
-      void router.push({ name: 'supervisor-exercise-detail', params: { id: props.exerciseId } })
-    }
   } catch (error) {
+    rememberScenario(removedId)
+    selectedId.value = removedId
+    void router.replace(scenarioRoute(removedId))
     toast.error(error instanceof Error ? error.message : 'Could not remove scenario.')
     removeScenarioOpen.value = false
+  } finally {
+    removingScenarioId.value = null
   }
 }
 
@@ -315,18 +346,27 @@ function onSubmitted() {
 watch(
   () => exercise.value?.officialScenarioId,
   (id) => {
-    if (id && !routeScenarioId.value) selectedId.value = id
+    if (id && !routeScenarioId.value && scenarios.value.some((item) => item.id === id)) {
+      selectedId.value = id
+    }
   },
   { immediate: true },
 )
 
+const scenariosLoaded = computed(() => scenariosQuery.data.value !== undefined)
+
 watch(
-  [scenarios, routeScenarioId, () => route.name, pageTab],
+  [scenarios, routeScenarioId, () => route.name, pageTab, scenariosLoaded],
   () => {
+    if (!scenariosLoaded.value) return
     const liveIds = new Set(scenarios.value.map((item) => item.id))
     mountedScenarioIds.value = mountedScenarioIds.value.filter((id) => liveIds.has(id))
     if (selectedId.value && !liveIds.has(selectedId.value)) selectedId.value = null
 
+    if (routeScenarioId.value && !liveIds.has(routeScenarioId.value)) {
+      showRemainingScenario(pickScenario(scenarios.value, exercise.value?.officialScenarioId))
+      return
+    }
     if (routeScenarioId.value) {
       selectedId.value = routeScenarioId.value
       rememberScenario(routeScenarioId.value)
@@ -339,16 +379,11 @@ watch(
     ) {
       return
     }
-    const pick =
-      scenarios.value.find((item) => item.id === exercise.value?.officialScenarioId) ??
-      scenarios.value[0]
+    const pick = pickScenario(scenarios.value, exercise.value?.officialScenarioId)
     if (!pick) return
     selectedId.value = pick.id
     rememberScenario(pick.id)
-    void router.replace({
-      name: snapshotMode.value ? 'supervisor-scenario-snapshot' : 'supervisor-scenario-form',
-      params: { id: props.exerciseId, scenarioId: pick.id },
-    })
+    void router.replace(scenarioRoute(pick.id))
   },
   { immediate: true },
 )

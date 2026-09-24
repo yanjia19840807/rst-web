@@ -175,6 +175,8 @@ export const exerciseApi = {
     }),
   submittedDetails: (id: string) =>
     apiRequest<SubmittedDetails>(exercisePath(id, '/submitted-details')),
+  downloadSummary: (id: string) =>
+    downloadVolumeBlob(id, '/summary.xlsx', 'summary.xlsx'),
 
   getTeamSetup: (exerciseId: string) =>
     apiRequest<TeamSetup>(exercisePath(exerciseId, '/team-setup')),

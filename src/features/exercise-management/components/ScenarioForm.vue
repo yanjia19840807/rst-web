@@ -5,6 +5,7 @@ import { useForm } from 'vee-validate'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import { ApiError } from '@/api/client'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
@@ -569,6 +570,14 @@ watch(
   (isError) => {
     if (!isError) return
     const error = exerciseQuery.error.value || scenarioQuery.error.value
+    const missingScenario =
+      !exerciseQuery.isError.value &&
+      error instanceof ApiError &&
+      (error.code === 'scenario-not-found' || error.status === 404)
+    if (missingScenario) {
+      if (!props.embedded) goBack()
+      return
+    }
     toast.error(error instanceof Error ? error.message : 'Could not load scenario.')
     goBack()
   },

@@ -18,8 +18,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
-import { ownerViaLabel } from '@/lib/auditActor'
-import { formatInstantForCenter } from '@/lib/datetime'
+import { exerciseApi } from '../api'
+import { triggerDownload } from '../downloadBlob'
 import { randomId } from '@/lib/randomId'
 import { capacityTone, measuredRightSizingHc } from '@/lib/hcFormat'
 import { useApprovalMutations } from '@/features/approval/api/mutations'
@@ -72,6 +72,7 @@ const route = useRoute()
 const pageTab = ref<'exercise' | 'approval'>('exercise')
 const comments = ref('')
 const redirected = ref(false)
+const downloadPending = ref(false)
 
 const { approve, returnToSupervisor } = useApprovalMutations()
 const approvalQuery = useApprovalDetailQuery(
@@ -365,51 +366,17 @@ function requestReturn() {
   void onReturn(reason)
 }
 
-function downloadSummary() {
-  const ex = exercise.value
-  const submitted = details.value
-  if (!ex || !submitted) return
-  const lines = [
-    `RST Submission Summary`,
-    `Exercise: ${submitted.exerciseCode}`,
-    `Toolkit: ${ex.snapshot.toolkit.name}`,
-    `Official Scenario: ${submitted.scenarioName ?? submitted.scenarioId}`,
-    `Submitted at: ${formatInstantForCenter(submitted.submittedAt, ex.snapshot.toolkit.center)}`,
-    ...(ex.archivedAt
-      ? [
-          `Validated at: ${formatInstantForCenter(ex.archivedAt, ex.snapshot.toolkit.center)}`,
-        ]
-      : []),
-    `Delivery HC: ${deliveryHc.value.toFixed(2)}`,
-    `Right Sizing HC: ${formatHc(rightSizingHc.value)}`,
-    `Production Support: ${supportFte.value != null ? supportFte.value.toFixed(2) : '—'}`,
-    `Capacity Creation: ${formatSigned(capacityCreation.value)}`,
-    `Approval: ${workspace.value?.statusBar.label ?? submitted.submissionStatus}`,
-    ...(workspace.value?.statusBar.step
-      ? [`Status step: ${workspace.value.statusBar.step}`]
-      : []),
-    ...(workspace.value?.currentHop
-      ? [
-          `Current step: ${workspace.value.currentHop.step ?? '—'}`,
-          `Current reviewer: ${ownerViaLabel(workspace.value.currentHop.reviewerBy) || workspace.value.currentHop.reviewer || '—'}`,
-        ]
-      : []),
-    ...(workspace.value?.nextStep
-      ? [`After approve: ${workspace.value.nextStep}`]
-      : []),
-    ...(workspace.value?.history ?? []).map(
-      (row) =>
-        `${row.step}: ${row.decision} by ${ownerViaLabel(row.actedBy) || row.actor || '—'} (${formatInstantForCenter(row.completedAt, ex.snapshot.toolkit.center)}) ${row.comments?.trim() || ''}`,
-    ),
-    `Submission status: ${submitted.submissionStatus}`,
-  ]
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${submitted.exerciseCode}-summary.txt`
-  link.click()
-  URL.revokeObjectURL(url)
+async function downloadSummary() {
+  if (!resolvedExerciseId.value || downloadPending.value) return
+  downloadPending.value = true
+  try {
+    const result = await exerciseApi.downloadSummary(resolvedExerciseId.value)
+    triggerDownload(result.blob, result.filename)
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Download failed.')
+  } finally {
+    downloadPending.value = false
+  }
 }
 </script>
 
@@ -436,8 +403,13 @@ function downloadSummary() {
           }}
         </Button>
       </template>
-      <Button v-if="isApprover" variant="outline" @click="downloadSummary">
-        Download Summary
+      <Button
+        v-if="isApprover"
+        variant="outline"
+        :loading="downloadPending"
+        @click="downloadSummary"
+      >
+        {{ downloadPending ? 'Downloading…' : 'Download Summary' }}
       </Button>
       <Button
         v-else

@@ -251,6 +251,9 @@ export function useScenarioQuery(
       }
     },
     enabled: computed(() => Boolean(exId.value && scId.value)),
+    retry: (failureCount, error) =>
+      !(error instanceof ApiError && (error.code === 'scenario-not-found' || error.status === 404)) &&
+      failureCount < 2,
   })
 }
 

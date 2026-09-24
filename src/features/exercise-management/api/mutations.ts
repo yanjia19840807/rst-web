@@ -22,6 +22,8 @@ import type {
   SlotImportResult,
   SlotVolume,
   SlotVolumeRequest,
+  Exercise,
+  Scenario,
   SubmitRequest,
   SupportItemRequest,
   TeamSetup,
@@ -502,11 +504,21 @@ export function useScenarioMutations() {
     mutationFn: ({ exerciseId, scenarioId }: { exerciseId: string; scenarioId: string }) =>
       exerciseApi.deleteScenario(exerciseId, scenarioId),
     onSuccess: (_data, { exerciseId, scenarioId }) => {
+      void queryClient.cancelQueries({
+        queryKey: exerciseQueryKeys.scenario(exerciseId, scenarioId),
+      })
       queryClient.removeQueries({
         queryKey: exerciseQueryKeys.scenario(exerciseId, scenarioId),
       })
       queryClient.removeQueries({
         queryKey: exerciseQueryKeys.simPrefix(exerciseId, scenarioId),
+      })
+      queryClient.setQueryData<Scenario[]>(exerciseQueryKeys.scenarios(exerciseId), (current) =>
+        current?.filter((item) => item.id !== scenarioId),
+      )
+      queryClient.setQueryData<Exercise>(exerciseQueryKeys.detail(exerciseId), (current) => {
+        if (!current || current.officialScenarioId !== scenarioId) return current
+        return { ...current, officialScenarioId: null }
       })
       void queryClient.invalidateQueries({
         queryKey: exerciseQueryKeys.committedResults(exerciseId),
