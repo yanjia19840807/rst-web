@@ -3,7 +3,6 @@ import { computed, ref, useSlots, watch } from 'vue'
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -11,9 +10,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-
 import { Spinner } from '@/components/ui/spinner'
 
 import DetailTable, { type DetailRow } from './DetailTable.vue'
@@ -67,8 +66,13 @@ const hasExtra = computed(
 )
 
 watch(open, (value, previous) => {
+  // Keep the dialog visible while an async confirm is in flight.
+  if (!value && props.pending) {
+    open.value = true
+    return
+  }
   if (value) {
-    submitted.value = false
+    if (!previous) submitted.value = false
     return
   }
   reason.value = ''
@@ -76,15 +80,11 @@ watch(open, (value, previous) => {
 })
 
 function onConfirm() {
+  if (props.pending) return
   const trimmed = reason.value.trim()
   if (props.requireReason && !trimmed) return
   submitted.value = true
   emit('confirm', trimmed)
-}
-
-function onConfirmAction(event: Event) {
-  event.preventDefault()
-  onConfirm()
 }
 </script>
 
@@ -93,6 +93,12 @@ function onConfirmAction(event: Event) {
     <AlertDialogContent
       :class="elevated ? 'z-[80]' : undefined"
       :overlay-class="elevated ? 'z-[80]' : undefined"
+      :aria-busy="pending || undefined"
+      @escape-key-down="
+        (event: Event) => {
+          if (pending) event.preventDefault()
+        }
+      "
     >
       <AlertDialogHeader>
         <AlertDialogTitle>{{ title }}</AlertDialogTitle>
@@ -109,6 +115,7 @@ function onConfirmAction(event: Event) {
             v-model="reason"
             :placeholder="reasonPlaceholder"
             rows="3"
+            :disabled="pending"
           />
         </div>
         <slot />
@@ -116,15 +123,17 @@ function onConfirmAction(event: Event) {
 
       <AlertDialogFooter>
         <AlertDialogCancel :disabled="pending">{{ cancelLabel }}</AlertDialogCancel>
-        <AlertDialogAction
+        <!-- Button (not AlertDialogAction): Action is DialogClose and dismisses immediately. -->
+        <Button
+          type="button"
           :variant="confirmVariant"
           :disabled="pending || (requireReason && !reason.trim())"
           :aria-busy="pending || undefined"
-          @click.capture="onConfirmAction"
+          @click="onConfirm"
         >
           <Spinner v-if="pending" />
           {{ confirmLabel }}
-        </AlertDialogAction>
+        </Button>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
