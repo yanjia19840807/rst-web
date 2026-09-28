@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
@@ -73,6 +74,7 @@ const pageTab = ref<'exercise' | 'approval'>('exercise')
 const comments = ref('')
 const redirected = ref(false)
 const downloadPending = ref(false)
+const downloadOpen = ref(false)
 
 const { approve, returnToSupervisor } = useApprovalMutations()
 const approvalQuery = useApprovalDetailQuery(
@@ -372,6 +374,7 @@ async function downloadSummary() {
   try {
     const result = await exerciseApi.downloadSummary(resolvedExerciseId.value)
     triggerDownload(result.blob, result.filename)
+    downloadOpen.value = false
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Download failed.')
   } finally {
@@ -407,7 +410,7 @@ async function downloadSummary() {
         v-if="isApprover"
         variant="outline"
         :loading="downloadPending"
-        @click="downloadSummary"
+        @click="downloadOpen = true"
       >
         {{ downloadPending ? 'Downloading…' : 'Download Summary' }}
       </Button>
@@ -621,4 +624,14 @@ async function downloadSummary() {
   <div v-else class="py-16 text-center text-sm text-muted-foreground">
     Submitted details are unavailable for this exercise.
   </div>
+
+  <ConfirmDialog
+    v-model:open="downloadOpen"
+    title="Download Summary"
+    description="Download the submission summary as an Excel file?"
+    confirm-label="Download"
+    confirm-variant="default"
+    :pending="downloadPending"
+    @confirm="downloadSummary"
+  />
 </template>

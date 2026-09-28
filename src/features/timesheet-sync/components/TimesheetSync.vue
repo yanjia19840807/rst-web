@@ -4,6 +4,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import PageActions from '@/components/PageActions.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -72,6 +73,9 @@ const mappedFileDate = ref('')
 const mappedTab = ref<TimesheetSnapshotTab>('people')
 const alertOpen = ref(false)
 const domainHeadOpen = ref(false)
+const downloadOpen = ref(false)
+const downloadPending = ref(false)
+const downloadTarget = ref<TimesheetSyncRunHeader | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const canConfigureDomainHeads = computed(() => session.hasPermission(PERMISSIONS.domainHeadConfig))
 
@@ -127,10 +131,10 @@ const missingActiveLabel = computed(() => {
 })
 
 const activeColumns = computed(() =>
-  createTimesheetActiveColumns({ onViewTables: openMapped, onDownload: downloadFile }),
+  createTimesheetActiveColumns({ onViewTables: openMapped, onDownload: requestDownload }),
 )
 const runColumns = computed(() =>
-  createTimesheetRunColumns({ onViewIssues: openIssues, onDownload: downloadFile }),
+  createTimesheetRunColumns({ onViewIssues: openIssues, onDownload: requestDownload }),
 )
 
 watch(
@@ -210,12 +214,23 @@ function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
   mappedOpen.value = true
 }
 
-async function downloadFile(row: TimesheetSyncRunHeader) {
+function requestDownload(row: TimesheetSyncRunHeader) {
+  downloadTarget.value = row
+  downloadOpen.value = true
+}
+
+async function confirmDownload() {
+  const row = downloadTarget.value
+  if (!row || downloadPending.value) return
+  downloadPending.value = true
   try {
     const result = await timesheetSyncApi.download(row.id, row.sourceFileName || 'timesheet.xlsx')
     triggerDownload(result.blob, result.filename)
+    downloadOpen.value = false
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'File is no longer available.')
+  } finally {
+    downloadPending.value = false
   }
 }
 </script>
@@ -334,5 +349,19 @@ async function downloadFile(row: TimesheetSyncRunHeader) {
     />
     <TimesheetSyncAlertDialog v-model:open="alertOpen" />
     <DomainHeadsDialog v-model:open="domainHeadOpen" />
+
+    <ConfirmDialog
+      v-model:open="downloadOpen"
+      title="Download Source File"
+      :description="
+        downloadTarget?.sourceFileName
+          ? `Download ${downloadTarget.sourceFileName}?`
+          : 'Download the Timesheet source Excel file?'
+      "
+      confirm-label="Download"
+      confirm-variant="default"
+      :pending="downloadPending"
+      @confirm="confirmDownload"
+    />
   </div>
 </template>

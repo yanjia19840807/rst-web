@@ -142,6 +142,7 @@ const pendingSeriesFile = ref<File | null>(null)
 const pendingSeriesGrain = ref<'monthly' | 'daily' | null>(null)
 const seriesImportPreview = ref<VolumeSeriesImportPreview | null>(null)
 const exportOpen = ref(false)
+const templateOpen = ref(false)
 
 const periodSet = computed(() => Boolean(props.slotStartDate && props.slotWeeks))
 const periodReady = computed(() => Boolean(draftSlotStartDate.value && draftSlotWeeks.value))
@@ -753,6 +754,14 @@ async function removeDay(row: DraftDaily) {
   }
 }
 
+function openTemplateConfirm() {
+  if (tab.value === 'slot' && !periodSet.value) {
+    toast.warning('Set a Slot Period to generate the per-slot grid.')
+    return
+  }
+  templateOpen.value = true
+}
+
 async function downloadTemplate() {
   if (tab.value === 'slot' && !periodSet.value) {
     toast.warning('Set a Slot Period to generate the per-slot grid.')
@@ -767,6 +776,7 @@ async function downloadTemplate() {
             ? await exerciseApi.exportDailyVolumeTemplate(props.exerciseId)
             : await exerciseApi.exportSlotVolumeTemplate(props.exerciseId)
       triggerDownload(result.blob, result.filename)
+      templateOpen.value = false
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Download failed.')
@@ -1031,7 +1041,7 @@ async function confirmSlotImport() {
           variant="outline"
           :disabled="busy || (tab === 'slot' && !periodSet)"
           :loading="busyAction === 'template'"
-          @click="downloadTemplate"
+          @click="openTemplateConfirm"
         >
           {{ busyAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
         </Button>
@@ -1285,6 +1295,16 @@ async function confirmSlotImport() {
           page = 1
         }
       "
+    />
+
+    <ConfirmDialog
+      v-model:open="templateOpen"
+      title="Download Excel Template"
+      description="Download a blank volume Excel template for this grain?"
+      confirm-label="Download"
+      confirm-variant="default"
+      :pending="busyAction === 'template'"
+      @confirm="downloadTemplate"
     />
 
     <ConfirmDialog

@@ -66,6 +66,7 @@ const editingId = ref<string | null>(null)
 const deleteTarget = ref<Holiday | null>(null)
 const deleteOpen = ref(false)
 const exportOpen = ref(false)
+const templateOpen = ref(false)
 const page = ref(1)
 const pageSize = ref(10)
 const busyAction = ref<BusyAction | null>(null)
@@ -265,6 +266,7 @@ async function downloadTemplate() {
     await withBusy('template', async () => {
       const result = await exerciseApi.exportCalendarTemplate(exerciseId)
       triggerDownload(result.blob, result.filename)
+      templateOpen.value = false
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Download failed.')
@@ -354,7 +356,7 @@ async function onImportFile(event: Event) {
           variant="outline"
           :disabled="busy"
           :loading="busyAction === 'template'"
-          @click="downloadTemplate"
+          @click="templateOpen = true"
         >
           {{ busyAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
         </Button>
@@ -533,6 +535,16 @@ async function onImportFile(event: Event) {
       "
     />
     </section>
+
+    <ConfirmDialog
+      v-model:open="templateOpen"
+      title="Download Excel Template"
+      description="Download a blank calendar Excel template?"
+      confirm-label="Download"
+      confirm-variant="default"
+      :pending="busyAction === 'template'"
+      @confirm="downloadTemplate"
+    />
 
     <ConfirmDialog
       v-model:open="exportOpen"

@@ -71,6 +71,7 @@ const busy = ref(false)
 const deleteTarget = ref<SupportItem | null>(null)
 const deleteOpen = ref(false)
 const exportOpen = ref(false)
+const templateOpen = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 type ExcelAction = 'template' | 'export' | 'import'
 const excelAction = ref<ExcelAction | null>(null)
@@ -271,6 +272,7 @@ async function downloadTemplate() {
     await withExcel('template', async () => {
       const result = await exerciseApi.exportSupportTemplate(props.exerciseId)
       triggerDownload(result.blob, result.filename)
+      templateOpen.value = false
     })
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Download failed.')
@@ -351,7 +353,7 @@ async function onImportFile(event: Event) {
             variant="outline"
             :disabled="busy || excelBusy"
             :loading="excelAction === 'template'"
-            @click="downloadTemplate"
+            @click="templateOpen = true"
           >
             {{ excelAction === 'template' ? 'Downloading…' : 'Download Excel Template' }}
           </Button>
@@ -638,6 +640,16 @@ async function onImportFile(event: Event) {
         </Table>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="templateOpen"
+      title="Download Excel Template"
+      description="Download a blank production support Excel template?"
+      confirm-label="Download"
+      confirm-variant="default"
+      :pending="excelAction === 'template'"
+      @confirm="downloadTemplate"
+    />
 
     <ConfirmDialog
       v-model:open="exportOpen"
