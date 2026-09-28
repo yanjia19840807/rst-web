@@ -9,6 +9,7 @@ import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import PageBackButton from '@/components/PageBackButton.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,6 +22,8 @@ import {
 import TimesheetAlignmentAlert from '@/features/timesheet-alignment/components/TimesheetAlignmentAlert.vue'
 import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompletedPanel.vue'
 import { historyFromActions } from '@/features/approval/historyFromActions'
+import { exerciseDetailBreadcrumbs } from '@/navigation/breadcrumbs'
+import { usePageBreadcrumb } from '@/navigation/pageBreadcrumb'
 
 import { useExerciseMutations, useScenarioMutations } from '../api/mutations'
 import {
@@ -149,6 +152,20 @@ const isActiveOfficial = computed(
 function scenarioDisplayName(item: { name?: string | null; scenarioCode?: string | null }) {
   return item.name?.trim() || item.scenarioCode || 'Scenario'
 }
+
+usePageBreadcrumb(
+  computed(() =>
+    exerciseDetailBreadcrumbs({
+      exerciseId: props.exerciseId,
+      snapshot: snapshotMode.value,
+      workflowStatus: exercise.value?.workflowStatus,
+      scenarioId: routeScenarioId.value,
+      scenarioLabel: selectedScenario.value
+        ? scenarioDisplayName(selectedScenario.value)
+        : null,
+    }),
+  ),
+)
 
 const scenarioTabs = computed(() =>
   scenarios.value.map((item) => ({
@@ -406,23 +423,19 @@ watch(
   <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="exercise" class="grid gap-4">
     <PageActions>
-      <template #left>
-        <Button
-          variant="link"
-          class="h-auto px-0 font-semibold"
-          @click="
-            snapshotMode
-              ? router.push({ name: 'supervisor-submission', params: { id: exerciseId } })
-              : router.push(exerciseListLocation(exercise.workflowStatus))
-          "
-        >
-          {{
-            snapshotMode
-              ? '← Back to Submitted Exercise Details'
-              : exerciseListBackLabel(exercise.workflowStatus)
-          }}
-        </Button>
-      </template>
+      <PageBackButton
+        @click="
+          snapshotMode
+            ? router.push({ name: 'supervisor-submission', params: { id: exerciseId } })
+            : router.push(exerciseListLocation(exercise.workflowStatus))
+        "
+      >
+        {{
+          snapshotMode
+            ? 'Back to Submitted Exercise Details'
+            : exerciseListBackLabel(exercise.workflowStatus)
+        }}
+      </PageBackButton>
       <Button
         v-if="exercise.canDelete"
         variant="destructive"

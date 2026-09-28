@@ -37,6 +37,6 @@ export function approvalQueueBackLabel(
 ) {
   return approvalQueueTabFromQuery(approvalQueueTabQueryFromReview(routeTab, workspaceMode))
     === COMPLETED_TASK_TAB
-    ? '← Back to Completed Task'
-    : '← Back to Awaiting Review'
+    ? 'Back to Completed Task'
+    : 'Back to Awaiting Review'
 }

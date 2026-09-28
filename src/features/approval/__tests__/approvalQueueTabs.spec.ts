@@ -26,7 +26,7 @@ describe('approvalQueueTabs', () => {
       query: { tab: 'AWAITING' },
     })
     expect(approvalQueueBackLabel('AWAITING', 'COMPLETED')).toBe(
-      '← Back to Awaiting Review',
+      'Back to Awaiting Review',
     )
   })
 
@@ -35,7 +35,7 @@ describe('approvalQueueTabs', () => {
       name: 'approver-queue',
       query: { tab: 'COMPLETED' },
     })
-    expect(approvalQueueBackLabel('COMPLETED')).toBe('← Back to Completed Task')
+    expect(approvalQueueBackLabel('COMPLETED')).toBe('Back to Completed Task')
   })
 
   it('falls back to the workspace when the review URL has no tab', () => {

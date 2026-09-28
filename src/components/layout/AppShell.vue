@@ -9,10 +9,13 @@ import { DELEGATION_ENDED_EVENT } from '@/auth/delegation'
 import { useSessionStore } from '@/auth/session'
 import { useCenterCatalogStore } from '@/catalog/centerCatalog'
 import { isSsoEnabled } from '@/auth/sso'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import { PAGE_ACTIONS_TARGET_ID } from '@/components/page-actions'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { breadcrumbsForRoute, withHomeCrumb } from '@/navigation/breadcrumbs'
 import { isAgentWorkspace, isMenuItemActive, menuItems } from '@/navigation/menu'
-import { PAGE_ACTIONS_TARGET_ID } from '@/components/page-actions'
+import { useBreadcrumbOverride } from '@/navigation/pageBreadcrumb'
 import ThemeToggle from './ThemeToggle.vue'
 import UserMenu from './UserMenu.vue'
 
@@ -65,6 +68,10 @@ const subtitle = computed(() => {
   const value = route.meta.subtitle
   return typeof value === 'string' ? value.trim() : ''
 })
+const breadcrumbOverride = useBreadcrumbOverride()
+const breadcrumbs = computed(() =>
+  withHomeCrumb(breadcrumbOverride.value ?? breadcrumbsForRoute(route), session.homePath),
+)
 
 watch(
   () => route.fullPath,
@@ -236,7 +243,16 @@ const copyrightYear = new Date().getFullYear()
             </Button>
           </AlertAction>
         </Alert>
-        <div :id="PAGE_ACTIONS_TARGET_ID" class="empty:hidden" />
+        <div
+          v-show="breadcrumbs.length"
+          class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5 sm:px-6"
+        >
+          <AppBreadcrumb :items="breadcrumbs" />
+          <div
+            :id="PAGE_ACTIONS_TARGET_ID"
+            class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 empty:hidden"
+          />
+        </div>
       </header>
 
       <main

@@ -8,6 +8,7 @@ import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import PageBackButton from '@/components/PageBackButton.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -33,6 +34,8 @@ import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompl
 import ApprovalInProgressPanel from '@/features/approval/components/ApprovalInProgressPanel.vue'
 import { historyFromActions } from '@/features/approval/historyFromActions'
 import type { ApprovalDetailView } from '@/features/approval/types'
+import { submittedDetailsBreadcrumbs } from '@/navigation/breadcrumbs'
+import { usePageBreadcrumb } from '@/navigation/pageBreadcrumb'
 
 import {
   useCycleTimeActiveQuery,
@@ -198,6 +201,17 @@ const queueLocation = computed(() =>
 )
 const queueBackLabel = computed(() =>
   approvalQueueBackLabel(route.query.tab, workspace.value?.mode),
+)
+
+usePageBreadcrumb(
+  computed(() =>
+    submittedDetailsBreadcrumbs({
+      approver: isApprover.value,
+      workflowStatus: exercise.value?.workflowStatus ?? details.value?.workflowStatus,
+      queueTab: route.query.tab,
+      workspaceMode: workspace.value?.mode,
+    }),
+  ),
 )
 
 const deliveryHc = computed(() =>
@@ -387,25 +401,21 @@ async function downloadSummary() {
   <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="details && exercise" class="grid gap-4">
     <PageActions>
-      <template #left>
-        <Button
-          variant="link"
-          class="h-auto px-0 font-semibold"
-          @click="
-            router.push(
-              isApprover
-                ? queueLocation
-                : exerciseListLocation(exercise?.workflowStatus ?? details?.workflowStatus),
-            )
-          "
-        >
-          {{
+      <PageBackButton
+        @click="
+          router.push(
             isApprover
-              ? queueBackLabel
-              : exerciseListBackLabel(exercise?.workflowStatus ?? details?.workflowStatus)
-          }}
-        </Button>
-      </template>
+              ? queueLocation
+              : exerciseListLocation(exercise?.workflowStatus ?? details?.workflowStatus),
+          )
+        "
+      >
+        {{
+          isApprover
+            ? queueBackLabel
+            : exerciseListBackLabel(exercise?.workflowStatus ?? details?.workflowStatus)
+        }}
+      </PageBackButton>
       <Button
         v-if="isApprover"
         variant="outline"

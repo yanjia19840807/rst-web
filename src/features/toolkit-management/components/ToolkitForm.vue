@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import PageBackButton from '@/components/PageBackButton.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
@@ -76,15 +77,9 @@ const {
     </Alert>
 
     <PageActions>
-      <template #left>
-        <Button
-          variant="link"
-          class="h-auto px-0 font-semibold"
-          @click="router.push({ name: 'supervisor-toolkits' })"
-        >
-          ← Back to Toolkit List
-        </Button>
-      </template>
+      <PageBackButton @click="router.push({ name: 'supervisor-toolkits' })">
+        Back to Toolkit List
+      </PageBackButton>
       <Button
         v-if="toolkitId"
         :variant="toolkitEnabled ? 'destructive' : 'default'"

@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 
 import { useSessionStore } from '@/auth/session'
 import PageActions from '@/components/PageActions.vue'
-import { Button } from '@/components/ui/button'
+import PageBackButton from '@/components/PageBackButton.vue'
 
 const session = useSessionStore()
 const router = useRouter()
@@ -19,10 +19,6 @@ function goBack() {
 
 <template>
   <PageActions>
-    <template #left>
-      <Button variant="link" class="h-auto px-0 font-semibold" @click="goBack">
-        ← Back
-      </Button>
-    </template>
+    <PageBackButton @click="goBack">Back</PageBackButton>
   </PageActions>
 </template>

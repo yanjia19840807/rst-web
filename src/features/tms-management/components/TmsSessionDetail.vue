@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import PageBackButton from '@/components/PageBackButton.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -148,15 +149,9 @@ function goBack() {
 <template>
   <div class="grid gap-4">
     <PageActions v-if="!embedded">
-      <template #left>
-        <Button
-          variant="link"
-          class="h-auto px-0 font-semibold"
-          @click="goBack"
-        >
-          {{ isSupervisor ? '← Back to Team TMS' : '← Back to My TMS' }}
-        </Button>
-      </template>
+      <PageBackButton @click="goBack">
+        {{ isSupervisor ? 'Back to Team TMS' : 'Back to My TMS' }}
+      </PageBackButton>
       <template v-if="canToggleEnabled">
         <Button
           :variant="isEnabled ? 'destructive' : 'default'"

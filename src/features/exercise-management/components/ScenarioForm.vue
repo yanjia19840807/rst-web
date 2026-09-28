@@ -10,6 +10,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
+import PageBackButton from '@/components/PageBackButton.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -825,15 +826,9 @@ async function saveIdentity(payload: { name: string; description: string | null 
   <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="exercise && scenario" class="grid min-w-0 gap-4">
     <PageActions v-if="!embedded">
-      <template #left>
-        <Button
-          variant="link"
-          class="h-auto px-0 font-semibold"
-          @click="goBack"
-        >
-          {{ snapshotMode ? '← Back to Exercise Snapshot' : '← Back to Exercise' }}
-        </Button>
-      </template>
+      <PageBackButton @click="goBack">
+        {{ snapshotMode ? 'Back to Exercise Snapshot' : 'Back to Exercise' }}
+      </PageBackButton>
       <Button v-if="!readOnly" variant="destructive" :disabled="busy" @click="deleteOpen = true">
         Delete Scenario
       </Button>

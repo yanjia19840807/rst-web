@@ -76,8 +76,8 @@ export function exerciseListLocation(status?: string | null) {
 
 export function exerciseListBackLabel(status?: string | null) {
   return exerciseListTabQuery(status) === 'VALIDATED'
-    ? '← Back to Validated'
-    : '← Back to In Progress'
+    ? 'Back to Validated'
+    : 'Back to In Progress'
 }
 
 export function reviewStageQueryValue(label: string): string | undefined {

@@ -47,7 +47,7 @@ describe('exerciseListTabQuery', () => {
   it('keeps In Progress work and Under Review on the In Progress list', () => {
     expect(exerciseListTabQuery('IN_PROGRESS')).toBe('IN_PROGRESS')
     expect(exerciseListTabQuery('UNDER_REVIEW')).toBe('IN_PROGRESS')
-    expect(exerciseListBackLabel('UNDER_REVIEW')).toBe('← Back to In Progress')
+    expect(exerciseListBackLabel('UNDER_REVIEW')).toBe('Back to In Progress')
   })
 
   it('sends approved exercises back to Validated', () => {
@@ -56,7 +56,7 @@ describe('exerciseListTabQuery', () => {
       name: 'supervisor-exercises',
       query: { tab: 'VALIDATED' },
     })
-    expect(exerciseListBackLabel('APPROVED')).toBe('← Back to Validated')
+    expect(exerciseListBackLabel('APPROVED')).toBe('Back to Validated')
   })
 })
 
