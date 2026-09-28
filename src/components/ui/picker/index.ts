@@ -8,5 +8,7 @@ export {
   pickerSelectClass,
   pickerSelectIconWrapClass,
   pickerTriggerClass,
+  pickerTriggerIconClass,
+  pickerTriggerLabelClass,
   pickerTriggerWrapClass,
 } from './styles'

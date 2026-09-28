@@ -13,6 +13,8 @@ import {
   pickerClearFooterClass,
   pickerPopoverClass,
   pickerTriggerClass,
+  pickerTriggerIconClass,
+  pickerTriggerLabelClass,
   pickerTriggerWrapClass,
 } from '@/components/ui/picker'
 import {
@@ -213,8 +215,8 @@ watch(
           @keydown.delete.prevent="onClearKey"
           @keydown.backspace.prevent="onClearKey"
         >
-          <UserIcon />
-          <span class="min-w-0 truncate">{{ labelOf(selected) }}</span>
+          <UserIcon :class="pickerTriggerIconClass" />
+          <span :class="cn('min-w-0 truncate', pickerTriggerLabelClass)">{{ labelOf(selected) }}</span>
         </Button>
         <div
           v-else
@@ -232,8 +234,8 @@ watch(
             )
           "
         >
-          <UserIcon class="size-4 shrink-0" />
-          <span v-if="!selectedMany.length" class="truncate text-muted-foreground">
+          <UserIcon :class="cn(pickerTriggerIconClass, 'size-4')" />
+          <span v-if="!selectedMany.length" :class="cn('truncate text-muted-foreground', pickerTriggerLabelClass)">
             {{ emptyLabel }}
           </span>
           <Badge

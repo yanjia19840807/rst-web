@@ -11,6 +11,8 @@ import {
   pickerClearFooterClass,
   pickerPopoverClass,
   pickerTriggerClass,
+  pickerTriggerIconClass,
+  pickerTriggerLabelClass,
   pickerTriggerWrapClass,
 } from '@/components/ui/picker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -129,8 +131,8 @@ watch(
           @keydown.delete.prevent="clear"
           @keydown.backspace.prevent="clear"
         >
-          <BriefcaseIcon class="shrink-0" />
-          <span class="min-w-0 flex-1 truncate text-left">
+          <BriefcaseIcon :class="pickerTriggerIconClass" />
+          <span :class="cn('min-w-0 flex-1 truncate text-left', pickerTriggerLabelClass)">
             {{ selected ? `${selected.id} · ${roleLabel(selected.roles)}` : emptyLabel }}
           </span>
         </Button>

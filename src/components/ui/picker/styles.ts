@@ -3,6 +3,12 @@
 export const pickerTriggerClass =
   'w-[240px] justify-start text-left font-normal text-foreground data-placeholder:text-muted-foreground'
 
+/** Trim the line box to the visible glyphs so the icon centers on the text, not the em box. */
+export const pickerTriggerLabelClass =
+  'leading-none [text-box-trim:trim-both] [text-box-edge:cap_alphabetic]'
+
+export const pickerTriggerIconClass = 'block shrink-0'
+
 export const pickerTriggerWrapClass = 'relative isolate inline-flex'
 
 export const pickerClearFooterClass = 'border-t p-1.5'
