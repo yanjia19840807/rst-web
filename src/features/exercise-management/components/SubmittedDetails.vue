@@ -426,8 +426,7 @@ async function downloadSummary() {
       </Button>
       <Button
         v-else
-        variant="link"
-        class="h-auto px-0 font-semibold"
+        variant="outline"
         @click="
           router.push({
             name: exercise?.canEdit ? 'supervisor-exercise-detail' : 'supervisor-exercise-snapshot',
