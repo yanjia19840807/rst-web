@@ -1,5 +1,3 @@
-export type GovernanceScope = 'lth' | 'ho'
-
 export type DashboardMetric = {
   label: string
   value: string

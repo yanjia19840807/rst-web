@@ -3,7 +3,6 @@ import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 
 import { timesheetSyncApi } from '../api'
 import type {
-  TimesheetSnapshotAssignmentsQuery,
   TimesheetSnapshotKpisQuery,
   TimesheetSnapshotOccupanciesQuery,
   TimesheetSnapshotPeopleQuery,
@@ -20,7 +19,6 @@ export const timesheetSyncQueryKeys = {
   run: (query: TimesheetSyncRunIssuesQuery) =>
     [...timesheetSyncQueryKeys.all, 'run', query] as const,
   alert: ['timesheet-sync', 'alert'] as const,
-  tableFilters: ['timesheet-sync', 'tables', 'filters'] as const,
   people: (query: TimesheetSnapshotPeopleQuery) =>
     ['timesheet-sync', 'tables', 'people', query] as const,
   positions: (query: TimesheetSnapshotPositionsQuery) =>
@@ -29,8 +27,6 @@ export const timesheetSyncQueryKeys = {
     ['timesheet-sync', 'tables', 'occupancies', query] as const,
   scopes: (query: TimesheetSnapshotScopesQuery) =>
     ['timesheet-sync', 'tables', 'scopes', query] as const,
-  assignments: (query: TimesheetSnapshotAssignmentsQuery) =>
-    ['timesheet-sync', 'tables', 'assignments', query] as const,
   kpis: (query: TimesheetSnapshotKpisQuery) =>
     ['timesheet-sync', 'tables', 'kpis', query] as const,
 }
@@ -63,14 +59,6 @@ export function useTimesheetSyncAlertQuery(enabled: () => boolean) {
     queryKey: timesheetSyncQueryKeys.alert,
     queryFn: () => timesheetSyncApi.alert(),
     enabled: computed(() => enabled()),
-  })
-}
-
-export function useTimesheetSnapshotFiltersQuery(enabled: MaybeRefOrGetter<boolean> = true) {
-  return useQuery({
-    queryKey: timesheetSyncQueryKeys.tableFilters,
-    queryFn: () => timesheetSyncApi.tableFilters(),
-    enabled: computed(() => toValue(enabled)),
   })
 }
 
@@ -121,19 +109,6 @@ export function useTimesheetSnapshotScopesQuery(
   return useQuery({
     queryKey: computed(() => timesheetSyncQueryKeys.scopes(resolved.value)),
     queryFn: () => timesheetSyncApi.scopes(resolved.value),
-    enabled: computed(() => toValue(enabled)),
-    placeholderData: keepPreviousData,
-  })
-}
-
-export function useTimesheetSnapshotAssignmentsQuery(
-  query: MaybeRefOrGetter<TimesheetSnapshotAssignmentsQuery>,
-  enabled: MaybeRefOrGetter<boolean>,
-) {
-  const resolved = computed(() => toValue(query))
-  return useQuery({
-    queryKey: computed(() => timesheetSyncQueryKeys.assignments(resolved.value)),
-    queryFn: () => timesheetSyncApi.assignments(resolved.value),
     enabled: computed(() => toValue(enabled)),
     placeholderData: keepPreviousData,
   })

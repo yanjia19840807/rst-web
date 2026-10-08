@@ -88,12 +88,6 @@ export type TimesheetSnapshotPage<T> = {
   totalPages: number
 }
 
-export type TimesheetSnapshotFilters = {
-  peopleCenters: string[]
-  scopeCenters: string[]
-  scopeDomains: string[]
-}
-
 export type TimesheetSnapshotPerson = {
   ccgid: string
   empId: string | null
@@ -131,16 +125,6 @@ export type TimesheetSnapshotScope = {
   pl3Name: string | null
 }
 
-export type TimesheetSnapshotAssignment = {
-  agentPositionId: string
-  agentName: string | null
-  supervisorPositionId: string
-  supervisorName: string | null
-  pl3Code: string
-  pl3Name: string | null
-  center: string
-}
-
 export type TimesheetSnapshotKpi = {
   supervisorPositionId: string
   supervisorName: string | null
@@ -171,15 +155,6 @@ export type TimesheetSnapshotOccupanciesQuery = TimesheetSnapshotPositionsQuery
 
 export type TimesheetSnapshotScopesQuery = {
   center?: string
-  supervisor?: string
-  pl3Code?: string
-  page: number
-  pageSize: number
-}
-
-export type TimesheetSnapshotAssignmentsQuery = {
-  center?: string
-  agent?: string
   supervisor?: string
   pl3Code?: string
   page: number

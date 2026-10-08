@@ -3,7 +3,6 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 import '@/components/ui/data-table/types'
 
 import type {
-  TimesheetSnapshotAssignment,
   TimesheetSnapshotKpi,
   TimesheetSnapshotOccupancy,
   TimesheetSnapshotPerson,
@@ -15,7 +14,6 @@ const personHelper = createColumnHelper<TimesheetSnapshotPerson>()
 const positionHelper = createColumnHelper<TimesheetSnapshotPosition>()
 const occupancyHelper = createColumnHelper<TimesheetSnapshotOccupancy>()
 const scopeHelper = createColumnHelper<TimesheetSnapshotScope>()
-const assignmentHelper = createColumnHelper<TimesheetSnapshotAssignment>()
 const kpiHelper = createColumnHelper<TimesheetSnapshotKpi>()
 
 function dash(value: string | number | null | undefined) {
@@ -75,22 +73,6 @@ export function createSnapshotScopeColumns(): ColumnDef<TimesheetSnapshotScope>[
     scopeHelper.accessor((row) => dash(row.pl2), { id: 'pl2', header: 'PL2' }),
     scopeHelper.accessor('pl3Code', { header: 'PL3 code' }),
     scopeHelper.accessor((row) => dash(row.pl3Name), { id: 'pl3Name', header: 'PL3' }),
-  ]
-}
-
-export function createSnapshotAssignmentColumns(): ColumnDef<TimesheetSnapshotAssignment>[] {
-  return [
-    assignmentHelper.accessor((row) => dash(row.center), { id: 'center', header: 'Center' }),
-    assignmentHelper.accessor((row) => positionWithName(row.agentPositionId, row.agentName), {
-      id: 'agentPositionId',
-      header: 'Agent position',
-    }),
-    assignmentHelper.accessor((row) => positionWithName(row.supervisorPositionId, row.supervisorName), {
-      id: 'supervisorPositionId',
-      header: 'Supervisor position',
-    }),
-    assignmentHelper.accessor('pl3Code', { header: 'PL3 code' }),
-    assignmentHelper.accessor((row) => dash(row.pl3Name), { id: 'pl3Name', header: 'PL3' }),
   ]
 }
 

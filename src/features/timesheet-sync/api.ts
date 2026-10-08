@@ -4,9 +4,6 @@ import { downloadExcel } from '@/api/download'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 import type {
-  TimesheetSnapshotAssignment,
-  TimesheetSnapshotAssignmentsQuery,
-  TimesheetSnapshotFilters,
   TimesheetSnapshotKpi,
   TimesheetSnapshotKpisQuery,
   TimesheetSnapshotOccupanciesQuery,
@@ -68,7 +65,6 @@ export const timesheetSyncApi = {
     }
     return response.json() as Promise<TimesheetSyncRunHeader>
   },
-  tableFilters: () => apiRequest<TimesheetSnapshotFilters>(`${base}/tables/filters`),
   people: (query: TimesheetSnapshotPeopleQuery) =>
     apiRequest<TimesheetSnapshotPage<TimesheetSnapshotPerson>>(
       `${base}/tables/people?${snapshotParams(query)}`,
@@ -84,10 +80,6 @@ export const timesheetSyncApi = {
   scopes: (query: TimesheetSnapshotScopesQuery) =>
     apiRequest<TimesheetSnapshotPage<TimesheetSnapshotScope>>(
       `${base}/tables/scopes?${snapshotParams(query)}`,
-    ),
-  assignments: (query: TimesheetSnapshotAssignmentsQuery) =>
-    apiRequest<TimesheetSnapshotPage<TimesheetSnapshotAssignment>>(
-      `${base}/tables/assignments?${snapshotParams(query)}`,
     ),
   kpis: (query: TimesheetSnapshotKpisQuery) =>
     apiRequest<TimesheetSnapshotPage<TimesheetSnapshotKpi>>(
