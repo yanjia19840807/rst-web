@@ -1,6 +1,6 @@
-/** Deployed builds set this so the SPA uses Azure login instead of Dev Identity. */
+/** Off only when VITE_SSO_ENABLED=false (local dev and unit tests). Deployed builds leave it unset. */
 export function isSsoEnabled() {
-  return import.meta.env.VITE_SSO_ENABLED === 'true'
+  return import.meta.env.VITE_SSO_ENABLED !== 'false'
 }
 
 export const SSO_AUTH_PATH = '/api/sso/auth'
