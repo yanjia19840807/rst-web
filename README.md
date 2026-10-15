@@ -19,7 +19,8 @@ Default person is Admin.
 ## Commands
 
 ```sh
-npm run dev             # local development (Dev Identity; .env.development sets VITE_SSO_ENABLED=false)
+npm run dev             # local real SSO; pair with rst-api/scripts/run-local-sso.sh
+npm run dev:local       # Dev Identity; pair with rst-api/scripts/run-local.sh
 npm run build           # type-check and production build (SSO on)
 npm run build:uat       # Vite mode uat
 npm run build:pre       # Vite mode pre
@@ -90,10 +91,10 @@ The first implemented vertical slice follows the Agent workflow from `rst-protot
 - Until login integration is available, route metadata drives the role badge while both Agent and
   Supervisor navigation remain visible for development.
 
-Local `dev` uses Dev Identity: `?ccgid=&role=` (optional `&center=GBS%20CHINA%20INDIA`)
-and `X-Dev-*` headers. Default person is `ADMIN001` / `ADMIN`. SSO is on unless
-`VITE_SSO_ENABLED=false` (`.env.development` and unit tests). Deployed uat / pre / prod
-leave it unset and send the browser to `/api/sso/auth`.
+`npm run dev` sends the browser to `/api/sso/auth`, paired with `rst-api/scripts/run-local-sso.sh`.
+`npm run dev:local` uses Dev Identity: `?ccgid=&role=` (optional `&center=GBS%20CHINA%20INDIA`)
+and `X-Dev-*` headers, paired with `rst-api/scripts/run-local.sh`. Default person is `ADMIN001` / `ADMIN`.
+Deployed uat / pre / prod leave `VITE_SSO_ENABLED` unset and also send the browser to `/api/sso/auth`.
 
 ### Temporary REST contract
 
