@@ -112,10 +112,10 @@ export function deriveSlotPeriodLabel(
 }
 
 export const VOLUME_MONTHLY_HINT_DESCRIPTION =
-  'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
+  'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional and blank means 0%. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
 
 export const VOLUME_DAILY_HINT_DESCRIPTION =
-  'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
+  'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional and blank means 0%. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
 
 export const SLOT_PERIOD_HINT_DESCRIPTION =
   'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Applying a period rebuilds an empty grid.'

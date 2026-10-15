@@ -170,9 +170,9 @@ const [monthlyActualVolume] = monthlyForm.defineField('actualVolume')
 const [commercialRatio] = monthlyForm.defineField('commercialRatio')
 const monthlyErrors = monthlyForm.errors
 const commercialPercent = computed({
-  get: () => ratioToPercent(monthlyForm.values.commercialRatio),
+  get: () => ratioToPercent(monthlyForm.values.commercialRatio ?? 0),
   set: (value: number | null) => {
-    commercialRatio.value = percentToRatio(value)
+    commercialRatio.value = percentToRatio(value) ?? 0
   },
 })
 
@@ -186,9 +186,9 @@ const [dailyActualVolume] = dailyForm.defineField('actualVolume')
 const [dailyAdjustmentRatio] = dailyForm.defineField('dailyAdjustmentRatio')
 const dailyErrors = dailyForm.errors
 const dailyAdjPercent = computed({
-  get: () => ratioToPercent(dailyForm.values.dailyAdjustmentRatio),
+  get: () => ratioToPercent(dailyForm.values.dailyAdjustmentRatio ?? 0),
   set: (value: number | null) => {
-    dailyAdjustmentRatio.value = percentToRatio(value)
+    dailyAdjustmentRatio.value = percentToRatio(value) ?? 0
   },
 })
 
@@ -236,13 +236,13 @@ watch(
       key: row.month,
       month: row.month,
       actualVolume: row.actualVolume,
-      commercialRatio: row.commercialRatio ?? null,
+      commercialRatio: row.commercialRatio ?? 0,
     }))
     dayDrafts.value = d.map((row) => ({
       key: row.volumeDate,
       volumeDate: row.volumeDate,
       actualVolume: row.actualVolume,
-      dailyAdjustmentRatio: row.dailyAdjustmentRatio ?? null,
+      dailyAdjustmentRatio: row.dailyAdjustmentRatio ?? 0,
     }))
     slotDrafts.value = s.map((row) => ({
       slotStartAt: row.slotStartAt,
@@ -399,7 +399,7 @@ function monthlyRequests(): MonthlyVolumeRequest[] {
     .map((row) => ({
       month: row.month,
       actualVolume: row.actualVolume,
-      commercialRatio: row.commercialRatio,
+      commercialRatio: row.commercialRatio ?? 0,
     }))
 }
 
@@ -410,7 +410,7 @@ function dailyRequests(): DailyVolumeRequest[] {
     .map((row) => ({
       volumeDate: row.volumeDate,
       actualVolume: row.actualVolume,
-      dailyAdjustmentRatio: row.dailyAdjustmentRatio,
+      dailyAdjustmentRatio: row.dailyAdjustmentRatio ?? 0,
     }))
 }
 
@@ -518,7 +518,7 @@ function startEditMonth(row: DraftMonthly) {
     values: {
       month: row.month,
       actualVolume: row.actualVolume,
-      commercialRatio: row.commercialRatio,
+      commercialRatio: row.commercialRatio ?? 0,
     },
   })
   editKey.value = row.key
@@ -530,7 +530,7 @@ function startEditDay(row: DraftDaily) {
     values: {
       volumeDate: row.volumeDate,
       actualVolume: row.actualVolume,
-      dailyAdjustmentRatio: row.dailyAdjustmentRatio,
+      dailyAdjustmentRatio: row.dailyAdjustmentRatio ?? 0,
     },
   })
   editKey.value = row.key
@@ -592,7 +592,7 @@ async function confirmEdit() {
                 key: nextMonth,
                 month: nextMonth,
                 actualVolume: Number(monthlyForm.values.actualVolume),
-                commercialRatio: monthlyForm.values.commercialRatio,
+                commercialRatio: monthlyForm.values.commercialRatio ?? 0,
               }
             : row,
         )
@@ -631,7 +631,7 @@ async function confirmEdit() {
               key: nextDate,
               volumeDate: nextDate,
               actualVolume: Number(dailyForm.values.actualVolume),
-              dailyAdjustmentRatio: dailyForm.values.dailyAdjustmentRatio,
+              dailyAdjustmentRatio: dailyForm.values.dailyAdjustmentRatio ?? 0,
             }
           : row,
       )
@@ -672,27 +672,27 @@ function addRow() {
   if (tab.value === 'monthly') {
     const nextMonth = suggestedAddMonth()
     monthDrafts.value = [
-      { key, month: nextMonth, actualVolume: null, commercialRatio: null },
+      { key, month: nextMonth, actualVolume: null, commercialRatio: 0 },
       ...monthDrafts.value,
     ]
     monthlyForm.resetForm({
       values: {
         month: nextMonth,
         actualVolume: toolkitMonthMap.value.get(nextMonth) ?? null,
-        commercialRatio: null,
+        commercialRatio: 0,
       },
     })
   } else if (tab.value === 'daily') {
     const nextDate = suggestedAddDate()
     dayDrafts.value = [
-      { key, volumeDate: nextDate, actualVolume: null, dailyAdjustmentRatio: null },
+      { key, volumeDate: nextDate, actualVolume: null, dailyAdjustmentRatio: 0 },
       ...dayDrafts.value,
     ]
     dailyForm.resetForm({
       values: {
         volumeDate: nextDate,
         actualVolume: toolkitDayMap.value.get(nextDate) ?? null,
-        dailyAdjustmentRatio: null,
+        dailyAdjustmentRatio: 0,
       },
     })
   } else {
@@ -1112,9 +1112,10 @@ async function confirmSlotImport() {
                 v-if="editKey === row.key"
                 v-model="commercialPercent"
                 class="max-w-36"
+                placeholder="0"
                 :invalid="Boolean(monthlyErrors.commercialRatio)"
               />
-              <span v-else>{{ formatPercent(row.commercialRatio) }}</span>
+              <span v-else>{{ formatPercent(row.commercialRatio ?? 0) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <span class="inline-flex gap-3">
@@ -1192,9 +1193,10 @@ async function confirmSlotImport() {
                 v-if="editKey === row.key"
                 v-model="dailyAdjPercent"
                 class="max-w-36"
+                placeholder="0"
                 :invalid="Boolean(dailyErrors.dailyAdjustmentRatio)"
               />
-              <span v-else>{{ formatPercent(row.dailyAdjustmentRatio) }}</span>
+              <span v-else>{{ formatPercent(row.dailyAdjustmentRatio ?? 0) }}</span>
             </TableCell>
             <TableCell v-if="!readOnly">
               <span class="inline-flex gap-3">

@@ -48,11 +48,11 @@ export type DailyVolumeRowValues = z.input<typeof dailyVolumeRowSchema>
 export type SlotVolumeRowValues = z.input<typeof slotVolumeRowSchema>
 
 export function emptyMonthlyVolumeRow(month = ''): MonthlyVolumeRowValues {
-  return { month, actualVolume: null, commercialRatio: null }
+  return { month, actualVolume: null, commercialRatio: 0 }
 }
 
 export function emptyDailyVolumeRow(volumeDate = ''): DailyVolumeRowValues {
-  return { volumeDate, actualVolume: null, dailyAdjustmentRatio: null }
+  return { volumeDate, actualVolume: null, dailyAdjustmentRatio: 0 }
 }
 
 export function emptySlotVolumeRow(): SlotVolumeRowValues {
