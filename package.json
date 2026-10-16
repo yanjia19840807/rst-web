@@ -25,7 +25,9 @@
     "format": "prettier --write --experimental-cli .",
     "format:check": "prettier --check --experimental-cli .",
     "test:unit:run": "vitest run",
-    "check": "run-s type-check lint test:unit:run build-only"
+    "check": "run-s type-check lint test:unit:run build-only",
+    "test": "echo \"Tests are skipped\"",
+    "package": "cd dist && zip -r dist.zip . "
   },
   "dependencies": {
     "@azure/msal-browser": "^5.17.3",
