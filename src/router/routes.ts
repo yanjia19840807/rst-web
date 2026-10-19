@@ -7,6 +7,15 @@ export const routes: RouteRecordRaw[] = [
     component: { render: () => null },
   },
   {
+    path: '/sign-in',
+    name: 'sign-in',
+    component: () => import('@/pages/SignInPage.vue'),
+    meta: {
+      title: 'Sign in',
+      layout: 'bare',
+    },
+  },
+  {
     path: '/agent',
     redirect: { name: 'agent-session' },
   },

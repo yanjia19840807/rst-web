@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, apiRequest } from '@/api/client'
 
 import {
+  consumeSignedOutLanding,
   consumeSsoCallbackError,
   isSsoEnabled,
+  markSignedOutLanding,
   redirectToSso,
   resetSsoCallbackFailure,
   SSO_AUTH_PATH,
@@ -55,6 +57,18 @@ describe('SSO helpers', () => {
       'CCGID is not in the ACTIVE Daily Timesheet.',
     )
     expect(ssoErrorMessage('sso-env-mismatch')).toBe('SSO role does not match this environment.')
+  })
+
+  it('remembers a voluntary sign-out for one landing', () => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('sessionStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    })
+    markSignedOutLanding()
+    expect(consumeSignedOutLanding()).toBe(true)
+    expect(consumeSignedOutLanding()).toBe(false)
   })
 
   it('consumes ssoError from the URL', () => {

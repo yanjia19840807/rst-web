@@ -14,6 +14,7 @@ import { readDelegationId, writeDelegationId } from './delegation'
 import {
   consumeSsoCallbackError,
   isSsoEnabled,
+  markSignedOutLanding,
   redirectToSso,
   resetSsoCallbackFailure,
   SSO_LOGOUT_PATH,
@@ -159,19 +160,31 @@ export const useSessionStore = defineStore('session', () => {
     error.value = null
   }
 
-  async function load() {
-    if (signedOut.value) return
-    if (loadPromise) return loadPromise
+  function acknowledgeSignedOut() {
+    user.value = null
+    error.value = null
+    loading.value = false
+    loadPromise = null
+    signedOut.value = true
+  }
+
+  async function load(options?: { redirectOnUnauthorized?: boolean }) {
     if (isSsoEnabled()) {
       const callbackError = consumeSsoCallbackError()
       if (callbackError) {
         user.value = null
         signedOut.value = true
         error.value = callbackError
+        loadPromise = null
         return
       }
+    }
+    if (signedOut.value) return
+    if (loadPromise) return loadPromise
+    const redirectOnUnauthorized = options?.redirectOnUnauthorized !== false
+    if (isSsoEnabled()) {
       loading.value = true
-      loadPromise = apiRequest<CurrentUser>('/api/v1/me')
+      loadPromise = apiRequest<CurrentUser>('/api/v1/me', undefined, { redirectOnUnauthorized })
         .then((me) => {
           user.value = me
           signedOut.value = false
@@ -182,7 +195,9 @@ export const useSessionStore = defineStore('session', () => {
         })
         .catch((err: unknown) => {
           if (err instanceof ApiError && err.status === 401) {
-            redirectToSso(typeof window === 'undefined' ? '/' : window.location.pathname)
+            if (redirectOnUnauthorized) {
+              redirectToSso(typeof window === 'undefined' ? '/' : window.location.pathname)
+            }
             return
           }
           error.value = err instanceof Error ? err.message : 'Could not load current user.'
@@ -250,6 +265,7 @@ export const useSessionStore = defineStore('session', () => {
     loadPromise = null
     signedOut.value = true
     if (isSsoEnabled() && typeof window !== 'undefined') {
+      markSignedOutLanding()
       window.location.assign(SSO_LOGOUT_PATH)
     }
   }
@@ -300,6 +316,7 @@ export const useSessionStore = defineStore('session', () => {
     canManageTeamDelegation,
     canManageMailPreferences,
     applyLocalIdentity,
+    acknowledgeSignedOut,
     load,
     reload,
     actAs,

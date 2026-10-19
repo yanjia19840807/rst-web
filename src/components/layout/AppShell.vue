@@ -44,8 +44,9 @@ async function onDelegationEnded() {
 }
 
 onMounted(() => {
-  void session.load()
-  void catalog.load()
+  void session.load({ redirectOnUnauthorized: false }).then(() => {
+    if (!isSsoEnabled() || session.user) void catalog.load()
+  })
   window.addEventListener(DELEGATION_ENDED_EVENT, onDelegationEnded)
 })
 
@@ -209,16 +210,6 @@ const copyrightYear = new Date().getFullYear()
             <UserMenu />
           </div>
         </div>
-        <Alert
-          v-if="session.error && !session.user"
-          variant="warning"
-          role="alert"
-          class="rounded-none border-x-0 border-b-0 px-4 py-2.5 sm:px-6"
-        >
-          <TriangleAlert />
-          <AlertTitle>Sign-in failed</AlertTitle>
-          <AlertDescription>{{ session.error }}</AlertDescription>
-        </Alert>
         <Alert
           v-if="catalog.error && !catalog.ready"
           variant="warning"

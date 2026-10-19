@@ -5,6 +5,21 @@ export function isSsoEnabled() {
 
 export const SSO_AUTH_PATH = '/api/sso/auth'
 export const SSO_LOGOUT_PATH = '/api/sso/logout'
+const SIGNED_OUT_LANDING = 'rst.signed-out'
+
+/** Remember a voluntary sign-out across the Azure logout round-trip. */
+export function markSignedOutLanding() {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.setItem(SIGNED_OUT_LANDING, '1')
+}
+
+/** @returns true once, then clears the flag */
+export function consumeSignedOutLanding() {
+  if (typeof sessionStorage === 'undefined') return false
+  if (sessionStorage.getItem(SIGNED_OUT_LANDING) !== '1') return false
+  sessionStorage.removeItem(SIGNED_OUT_LANDING)
+  return true
+}
 
 const SSO_ERROR_MESSAGES: Record<string, string> = {
   'sso-azure-denied': 'Azure AD denied the sign-in request.',
