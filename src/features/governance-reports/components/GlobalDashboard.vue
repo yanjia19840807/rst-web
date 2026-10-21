@@ -14,6 +14,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import ChartPanel from '@/components/ChartPanel.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -182,38 +183,46 @@ watch(
 
       <div class="grid gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle class="text-base">RST Completion And Aging By GBS Center</CardTitle>
-          </CardHeader>
           <CardContent class="space-y-3">
-            <div v-if="data.centers.length" class="h-[240px] min-w-0">
-              <VChart
-                class="h-full w-full"
-                :option="chartOption"
-                :update-options="CHART_UPDATE_OPTIONS"
-                autoresize
-              />
-            </div>
-            <p class="text-xs text-muted-foreground">
-              Y axis is {{ COMPLETION_AXIS }} this quarter (applicable Delivery HC). X axis is
-              {{ CENTER_AXIS }}. Dashed line is the 50% on-track threshold.
-            </p>
-            <div class="flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <span class="inline-flex items-center gap-1.5">
-                <span
-                  class="inline-block h-2 w-4 rounded-sm"
-                  :style="{ background: palette.cumulative }"
+            <ChartPanel
+              heading="card"
+              title="RST Completion And Aging By GBS Center"
+              :expandable="data.centers.length > 0"
+              frame-class="h-[240px] min-w-0"
+            >
+              <template #chart>
+                <VChart
+                  class="h-full w-full"
+                  :option="chartOption"
+                  :update-options="CHART_UPDATE_OPTIONS"
+                  autoresize
                 />
-                Completion on track
-              </span>
-              <span class="inline-flex items-center gap-1.5">
-                <span
-                  class="inline-block h-2 w-4 rounded-sm"
-                  :style="{ background: palette.overcapacity }"
-                />
-                Completion behind
-              </span>
-            </div>
+              </template>
+              <template #extra>
+                <div class="mt-3 space-y-3">
+                  <p class="text-xs text-muted-foreground">
+                    Y axis is {{ COMPLETION_AXIS }} this quarter (applicable Delivery HC). X axis is
+                    {{ CENTER_AXIS }}. Dashed line is the 50% on-track threshold.
+                  </p>
+                  <div class="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <span class="inline-flex items-center gap-1.5">
+                      <span
+                        class="inline-block h-2 w-4 rounded-sm"
+                        :style="{ background: palette.cumulative }"
+                      />
+                      Completion on track
+                    </span>
+                    <span class="inline-flex items-center gap-1.5">
+                      <span
+                        class="inline-block h-2 w-4 rounded-sm"
+                        :style="{ background: palette.overcapacity }"
+                      />
+                      Completion behind
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </ChartPanel>
 
             <div class="min-w-0 overflow-x-auto rounded-lg border">
               <Table class="min-w-[700px]">

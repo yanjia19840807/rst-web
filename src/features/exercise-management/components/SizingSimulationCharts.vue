@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { BarChart, LineChart } from 'echarts/charts'
-import {
-  GridComponent,
-  LegendComponent,
-  TooltipComponent,
-} from 'echarts/components'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed } from 'vue'
@@ -17,6 +13,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import ChartPanel from '@/components/ChartPanel.vue'
 import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
@@ -40,14 +37,7 @@ import {
 import type { DailySizingView, MonthlySizingView, TeamSetup } from '../types'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
 
-use([
-  CanvasRenderer,
-  BarChart,
-  LineChart,
-  GridComponent,
-  TooltipComponent,
-  LegendComponent,
-])
+use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 type ChartOption = ComposeOption<
   | BarSeriesOption
@@ -71,8 +61,7 @@ const dailyVolumesQuery = useDailyVolumesQuery(() => props.exerciseId)
 const { colors: palette } = useChartTheme()
 
 const hasMonthly = computed(
-  () =>
-    (props.monthly?.rows?.length ?? 0) > 0 || (monthlyVolumesQuery.data.value?.length ?? 0) > 0,
+  () => (props.monthly?.rows?.length ?? 0) > 0 || (monthlyVolumesQuery.data.value?.length ?? 0) > 0,
 )
 const hasDailySimulation = computed(() => (props.daily?.rows?.length ?? 0) > 0)
 const hasDaily = computed(
@@ -92,14 +81,9 @@ const monthlyOption = computed<ChartOption>(() => {
     (monthlyVolumesQuery.data.value ?? [])
       .filter((row) => {
         const key = monthKey(row.month)
-        return (
-          historyMonths.size === 0 || historyMonths.has(key) || sizingByMonth.has(key)
-        )
+        return historyMonths.size === 0 || historyMonths.has(key) || sizingByMonth.has(key)
       })
-      .map((row) => [
-        monthKey(row.month),
-        row.actualVolume == null ? null : n(row.actualVolume),
-      ]),
+      .map((row) => [monthKey(row.month), row.actualVolume == null ? null : n(row.actualVolume)]),
   )
   const months = [...new Set([...actualByMonth.keys(), ...sizingByMonth.keys()])].sort()
 
@@ -146,11 +130,7 @@ const monthlyOption = computed<ChartOption>(() => {
     minHc.push(n(row.nominalHcWithOt))
   }
 
-  const fteBar = (
-    name: string,
-    data: (number | null)[],
-    color: string,
-  ): BarSeriesOption => ({
+  const fteBar = (name: string, data: (number | null)[], color: string): BarSeriesOption => ({
     name,
     type: 'bar',
     yAxisIndex: 0,
@@ -453,152 +433,160 @@ const slaOption = computed<ChartOption>(() => {
     <h3 class="mb-4 text-base font-bold">Sizing Simulation Result</h3>
 
     <div class="space-y-5">
-      <div>
-        <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
-          Monthly Volume vs Overtime
+      <ChartPanel
+        title="Monthly Volume vs Overtime"
+        :expandable="hasMonthly"
+        frame-class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+      >
+        <template #hint>
           <PeriodDerivedHints
             title="Monthly Volume vs Overtime"
             :description="MONTHLY_VOLUME_OT_HINT"
           />
-        </h4>
-        <div
-          v-if="hasMonthly"
-          class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
-        >
+        </template>
+        <template #chart>
           <VChart
             class="h-full w-full"
             :option="monthlyOption"
             :update-options="CHART_UPDATE_OPTIONS"
             autoresize
           />
-        </div>
-        <div
-          v-else
-          class="flex h-52 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
-        >
-          No monthly sizing data.
-        </div>
-        <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-destructive" />
-            Overcapacity
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-chart-2" />
-            Max Overtime
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-chart-5" />
-            Weekdays Overtime
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-foreground" />
-            Max HC (No OT)
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-chart-5" />
-            Right Size HC
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 border-t border-dashed border-chart-2" />
-            Min HC (Full OT)
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-chart-1" />
-            Volume
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-chart-3" />
-            Volume Forecasted
-          </span>
-        </div>
-      </div>
+        </template>
+        <template #empty>
+          <div
+            class="flex h-52 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
+          >
+            No monthly sizing data.
+          </div>
+        </template>
+        <template #extra>
+          <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-2 w-4 rounded-sm bg-destructive" />
+              Overcapacity
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-2 w-4 rounded-sm bg-chart-2" />
+              Max Overtime
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-2 w-4 rounded-sm bg-chart-5" />
+              Weekdays Overtime
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 bg-foreground" />
+              Max HC (No OT)
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 bg-chart-5" />
+              Right Size HC
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 border-t border-dashed border-chart-2" />
+              Min HC (Full OT)
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 bg-chart-1" />
+              Volume
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 bg-chart-3" />
+              Volume Forecasted
+            </span>
+          </div>
+        </template>
+      </ChartPanel>
 
-      <div class="border-t pt-5">
-        <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
-          Daily Volume vs Backlog Aging - Full Period
+      <ChartPanel
+        class="border-t pt-5"
+        title="Daily Volume vs Backlog Aging - Full Period"
+        :expandable="hasDaily"
+        frame-class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+      >
+        <template #hint>
           <PeriodDerivedHints
             title="Daily Volume vs Backlog Aging - Full Period"
             :description="DAILY_BACKLOG_AGING_HINT"
           />
-        </h4>
-        <div
-          v-if="hasDaily"
-          class="h-52 overflow-hidden rounded-lg border bg-card px-1 pt-2"
-        >
+        </template>
+        <template #chart>
           <VChart
             class="h-full w-full"
             :option="dailyOption"
             :update-options="CHART_UPDATE_OPTIONS"
             autoresize
           />
-        </div>
-        <div
-          v-else
-          class="flex h-52 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
-        >
-          No daily simulation data.
-        </div>
-        <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-chart-1" />
-            Volume
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-2 w-4 rounded-sm bg-chart-3" />
-            Volume Forecasted
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 border-t border-dashed border-foreground" />
-            SLA Turntime
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-chart-5" />
-            Backlog OK
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block size-2 rounded-full bg-destructive" />
-            Backlog KO
-          </span>
-        </div>
-      </div>
+        </template>
+        <template #empty>
+          <div
+            class="flex h-52 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
+          >
+            No daily simulation data.
+          </div>
+        </template>
+        <template #extra>
+          <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-2 w-4 rounded-sm bg-chart-1" />
+              Volume
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-2 w-4 rounded-sm bg-chart-3" />
+              Volume Forecasted
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 border-t border-dashed border-foreground" />
+              SLA Turntime
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 bg-chart-5" />
+              Backlog OK
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block size-2 rounded-full bg-destructive" />
+              Backlog KO
+            </span>
+          </div>
+        </template>
+      </ChartPanel>
 
-      <div class="border-t pt-5">
-        <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
-          Monthly SLA% vs Goal
-          <PeriodDerivedHints
-            title="Monthly SLA% vs Goal"
-            :description="MONTHLY_SLA_GOAL_HINT"
-          />
-        </h4>
-        <div
-          v-if="hasDailySimulation"
-          class="h-44 overflow-hidden rounded-lg border bg-card px-1 pt-2"
-        >
+      <ChartPanel
+        class="border-t pt-5"
+        title="Monthly SLA% vs Goal"
+        :expandable="hasDailySimulation"
+        frame-class="h-44 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+      >
+        <template #hint>
+          <PeriodDerivedHints title="Monthly SLA% vs Goal" :description="MONTHLY_SLA_GOAL_HINT" />
+        </template>
+        <template #chart>
           <VChart
             class="h-full w-full"
             :option="slaOption"
             :update-options="CHART_UPDATE_OPTIONS"
             autoresize
           />
-        </div>
-        <div
-          v-else
-          class="flex h-44 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
-        >
-          No daily simulation data for SLA%.
-        </div>
-        <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 border-t border-dashed border-foreground" />
-            SLAGoal
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block h-0.5 w-4 bg-chart-1" />
-            SLA%
-          </span>
-        </div>
-      </div>
+        </template>
+        <template #empty>
+          <div
+            class="flex h-44 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
+          >
+            No daily simulation data for SLA%.
+          </div>
+        </template>
+        <template #extra>
+          <div class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 border-t border-dashed border-foreground" />
+              SLAGoal
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="inline-block h-0.5 w-4 bg-chart-1" />
+              SLA%
+            </span>
+          </div>
+        </template>
+      </ChartPanel>
     </div>
   </section>
 </template>

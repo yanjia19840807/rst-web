@@ -58,15 +58,14 @@ const loadError = computed(() => {
 const { colors: palette } = useChartTheme()
 const chartFrameClass = computed(() =>
   props.hideTitle
-    ? 'h-[min(28rem,52vh)] rounded-lg border bg-card'
+    ? 'h-auto min-h-0 w-full flex-1 rounded-lg border bg-card'
     : 'h-56 rounded-lg border bg-card',
 )
 
 const hasPoints = computed(() => (chart.value?.points.length ?? 0) > 0)
 const hasLimits = computed(
   () =>
-    chart.value?.upperControlLimitSeconds != null &&
-    chart.value?.lowerControlLimitSeconds != null,
+    chart.value?.upperControlLimitSeconds != null && chart.value?.lowerControlLimitSeconds != null,
 )
 
 function num(value: number | string | null | undefined): number {
@@ -206,72 +205,60 @@ const option = computed<ChartOption>(() => {
 </script>
 
 <template>
-  <div>
+  <div :class="hideTitle ? 'flex h-full min-h-0 w-full flex-col' : undefined">
     <h3 v-if="!hideTitle" class="mb-2 text-sm font-bold">Cycle Time Control Chart</h3>
-    <ListLoading
-      v-if="loading"
-      :class="chartFrameClass"
-    />
+    <ListLoading v-if="loading" :class="chartFrameClass" />
     <div
       v-else-if="loadError"
-      :class="['flex items-center justify-center px-4 text-center text-sm text-destructive', chartFrameClass]"
+      :class="[
+        'flex items-center justify-center px-4 text-center text-sm text-destructive',
+        chartFrameClass,
+      ]"
     >
       {{ loadError }}
     </div>
     <div
       v-else-if="!hasPoints"
-      :class="['flex items-center justify-center px-4 text-center text-sm text-muted-foreground', chartFrameClass]"
+      :class="[
+        'flex items-center justify-center px-4 text-center text-sm text-muted-foreground',
+        chartFrameClass,
+      ]"
     >
       No included TMS sessions with a valid cycle time.
     </div>
-    <div
-      v-else
-      :class="['overflow-hidden px-1 pt-2', chartFrameClass]"
-    >
+    <div v-else :class="['overflow-hidden', hideTitle ? 'relative' : 'px-1 pt-2', chartFrameClass]">
       <VChart
-        class="h-full w-full"
+        :class="hideTitle ? 'absolute inset-x-1 top-2 bottom-1' : 'h-full w-full'"
         :option="option"
         :update-options="CHART_UPDATE_OPTIONS"
         autoresize
       />
     </div>
-    <p v-if="hasPoints && !hasLimits" class="mt-2 text-xs text-muted-foreground">
+    <p v-if="hasPoints && !hasLimits" class="mt-2 shrink-0 text-xs text-muted-foreground">
       Control limits need at least two days of included samples.
     </p>
-    <div v-else-if="hasPoints" class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
+    <div
+      v-else-if="hasPoints"
+      class="mt-2.5 flex shrink-0 flex-wrap gap-3.5 text-xs text-muted-foreground"
+    >
       <span class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-block h-2 w-4 rounded-sm"
-          :style="{ background: palette.daily }"
-        />
+        <span class="inline-block h-2 w-4 rounded-sm" :style="{ background: palette.daily }" />
         Daily median
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-block h-2 w-4 rounded-sm"
-          :style="{ background: palette.rolling }"
-        />
+        <span class="inline-block h-2 w-4 rounded-sm" :style="{ background: palette.rolling }" />
         Rolling median (7 days)
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-block h-2 w-4 rounded-sm"
-          :style="{ background: palette.center }"
-        />
+        <span class="inline-block h-2 w-4 rounded-sm" :style="{ background: palette.center }" />
         CL (daily-median)
       </span>
       <span v-if="hasLimits" class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-block h-2 w-4 rounded-sm"
-          :style="{ background: palette.limit }"
-        />
+        <span class="inline-block h-2 w-4 rounded-sm" :style="{ background: palette.limit }" />
         UCL / LCL (±2σ)
       </span>
       <span class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-block size-2 rounded-full"
-          :style="{ background: palette.outlier }"
-        />
+        <span class="inline-block size-2 rounded-full" :style="{ background: palette.outlier }" />
         Outside control limit
       </span>
     </div>

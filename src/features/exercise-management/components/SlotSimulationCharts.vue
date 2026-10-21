@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { BarChart, LineChart } from 'echarts/charts'
-import {
-  GridComponent,
-  LegendComponent,
-  TooltipComponent,
-} from 'echarts/components'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed } from 'vue'
@@ -17,6 +13,7 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
+import ChartPanel from '@/components/ChartPanel.vue'
 import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
 
@@ -193,7 +190,14 @@ const option = computed<ChartOption>(() => {
         itemStyle: { color: colors.theoretical },
       },
       ...(hasTarget
-        ? [tatLine('Target TAT', labels.map(() => target), colors.target, true)]
+        ? [
+            tatLine(
+              'Target TAT',
+              labels.map(() => target),
+              colors.target,
+              true,
+            ),
+          ]
         : []),
       tatLine('Cumulative Daily TAT', cumulative, colors.cumulative, false, 3),
     ],
@@ -224,57 +228,49 @@ const legendItems = computed<LegendItem[]>(() => {
 </script>
 
 <template>
-  <div>
-    <h4 class="mb-2.5 inline-flex items-center gap-1.5 text-sm font-bold">
-      Per-Shift FTE Available vs Theoretical FTE Needed
+  <ChartPanel
+    title="Per-Shift FTE Available vs Theoretical FTE Needed"
+    :expandable="hasData"
+    frame-class="h-80 overflow-hidden rounded-lg border bg-card px-1 pt-2"
+  >
+    <template #hint>
       <PeriodDerivedHints
         title="Per-Shift FTE Available vs Theoretical FTE Needed"
         :description="SLOT_FTE_CHART_HINT"
       />
-    </h4>
-    <div
-      v-if="hasData"
-      class="h-80 overflow-hidden rounded-lg border bg-card px-1 pt-2"
-    >
+    </template>
+    <template #chart>
       <VChart
         class="h-full w-full"
         :option="option"
         :update-options="CHART_UPDATE_OPTIONS"
         autoresize
       />
-    </div>
-    <div
-      v-else
-      class="flex h-80 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
-    >
-      No slot chart data.
-    </div>
-    <div
-      v-if="hasData"
-      class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground"
-    >
-      <span
-        v-for="item in legendItems"
-        :key="item.name"
-        class="inline-flex items-center gap-1.5"
+    </template>
+    <template #empty>
+      <div
+        class="flex h-80 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
       >
-        <span
-          v-if="item.kind === 'bar'"
-          class="inline-block h-2.5 w-4 rounded-sm"
-          :style="{ backgroundColor: item.color }"
-        />
-        <span
-          v-else-if="item.kind === 'dashed'"
-          class="inline-block h-0.5 w-4 border-t border-dashed"
-          :style="{ borderColor: item.color }"
-        />
-        <span
-          v-else
-          class="inline-block h-0.5 w-4"
-          :style="{ backgroundColor: item.color }"
-        />
-        {{ item.name }}
-      </span>
-    </div>
-  </div>
+        No slot chart data.
+      </div>
+    </template>
+    <template #extra>
+      <div v-if="hasData" class="mt-2.5 flex flex-wrap gap-3.5 text-xs text-muted-foreground">
+        <span v-for="item in legendItems" :key="item.name" class="inline-flex items-center gap-1.5">
+          <span
+            v-if="item.kind === 'bar'"
+            class="inline-block h-2.5 w-4 rounded-sm"
+            :style="{ backgroundColor: item.color }"
+          />
+          <span
+            v-else-if="item.kind === 'dashed'"
+            class="inline-block h-0.5 w-4 border-t border-dashed"
+            :style="{ borderColor: item.color }"
+          />
+          <span v-else class="inline-block h-0.5 w-4" :style="{ backgroundColor: item.color }" />
+          {{ item.name }}
+        </span>
+      </div>
+    </template>
+  </ChartPanel>
 </template>

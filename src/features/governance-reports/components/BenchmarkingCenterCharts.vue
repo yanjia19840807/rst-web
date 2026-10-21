@@ -13,7 +13,8 @@ import type {
   TooltipComponentOption,
 } from 'echarts/components'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import ChartPanel from '@/components/ChartPanel.vue'
+import { Card, CardContent } from '@/components/ui/card'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip, formatChartNumber } from '@/lib/chartTooltip'
@@ -138,19 +139,26 @@ const option = computed<ChartOption>(() => {
 
 <template>
   <Card>
-    <CardHeader class="pb-3">
-      <CardTitle class="text-base">Center comparison</CardTitle>
-      <p class="text-xs text-muted-foreground">
-        Grouped bars by Center. Left axis is daily capacity (transactions), right axis is
-        production support ratio (%). Both are Delivery HC weighted per Center, same as the table.
-        Same filtered set, not the current page.
-      </p>
-    </CardHeader>
     <CardContent>
-      <div v-if="centers.length" class="h-80 min-w-0">
-        <VChart class="h-full w-full" :option="option" :update-options="CHART_UPDATE_OPTIONS" autoresize />
-      </div>
-      <p v-else class="text-sm text-muted-foreground">No center metrics to compare.</p>
+      <ChartPanel
+        heading="card"
+        title="Center comparison"
+        description="Grouped bars by Center. Left axis is daily capacity (transactions), right axis is production support ratio (%). Both are Delivery HC weighted per Center, same as the table. Same filtered set, not the current page."
+        :expandable="centers.length > 0"
+        frame-class="h-80 min-w-0"
+      >
+        <template #chart>
+          <VChart
+            class="h-full w-full"
+            :option="option"
+            :update-options="CHART_UPDATE_OPTIONS"
+            autoresize
+          />
+        </template>
+        <template #empty>
+          <p class="text-sm text-muted-foreground">No center metrics to compare.</p>
+        </template>
+      </ChartPanel>
     </CardContent>
   </Card>
 </template>

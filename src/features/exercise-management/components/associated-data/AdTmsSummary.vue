@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import { chartExpandDialogClass } from '@/components/chartExpand'
 import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,13 +39,9 @@ const chartRow = {
   value: '',
 } as const
 
-const isManualBaseline = computed(
-  () => props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL',
-)
+const isManualBaseline = computed(() => props.cycleTime?.baselineType?.toUpperCase() === 'MANUAL')
 
-const isSystemBaseline = computed(
-  () => props.cycleTime?.baselineType?.toUpperCase() === 'SYSTEM',
-)
+const isSystemBaseline = computed(() => props.cycleTime?.baselineType?.toUpperCase() === 'SYSTEM')
 
 const supportFiles = computed<CycleTimeBaselineFile[]>(() =>
   isManualBaseline.value ? (props.cycleTime?.files ?? []) : [],
@@ -59,7 +56,9 @@ const sampleCountLabel = computed(() =>
   props.cycleTime?.sampleCount != null ? formatNumber(props.cycleTime.sampleCount) : '—',
 )
 
-const tmsRatio = computed(() => (isSystemBaseline.value ? props.cycleTime?.tmsRatio ?? null : null))
+const tmsRatio = computed(() =>
+  isSystemBaseline.value ? (props.cycleTime?.tmsRatio ?? null) : null,
+)
 
 const manualRows = computed(() => [
   {
@@ -148,17 +147,20 @@ function formatSize(bytes: number | null | undefined) {
     </template>
 
     <Dialog v-model:open="chartOpen">
-      <DialogContent
-        class="flex h-[92vh] w-[min(1080px,96vw)] max-w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[96vw]"
-      >
-        <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4">
+      <DialogContent :class="chartExpandDialogClass">
+        <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-6 py-4 pr-12">
           <DialogTitle>Cycle Time Control Chart</DialogTitle>
           <DialogDescription>
             Daily and rolling median from included TMS sessions.
           </DialogDescription>
         </DialogHeader>
-        <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
-          <CycleTimeControlChart v-if="chartOpen" hide-title :exercise-id="exerciseId" />
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-4">
+          <CycleTimeControlChart
+            v-if="chartOpen"
+            class="min-h-0 flex-1"
+            hide-title
+            :exercise-id="exerciseId"
+          />
         </div>
         <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
           <Button type="button" variant="outline" @click="chartOpen = false">Close</Button>
