@@ -561,6 +561,7 @@ watch(
       v-model:open="newScenarioOpen"
       title="Create New Scenario"
       subtitle="Name the scenario. Description is optional."
+      :initial-name="nextScenarioCode"
       :pending="createPending"
       confirm-label="Confirm"
       pending-label="Creating…"
