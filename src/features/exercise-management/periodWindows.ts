@@ -19,10 +19,10 @@ export interface SlotKey {
 }
 
 const SLOT_MINUTES = 30
-/** Inclusive start of first slot each day (prototype: 09:00). */
-const SLOT_DAY_START_MINUTES = 9 * 60
-/** Exclusive end of last slot each day (prototype: 22:00 → last slot 21:30–22:00). */
-const SLOT_DAY_END_MINUTES = 22 * 60
+/** Inclusive start of the first slot each civil day (00:00). */
+const SLOT_DAY_START_MINUTES = 0
+/** Exclusive end of the last slot each civil day (24:00 → last slot 23:30–00:00). */
+const SLOT_DAY_END_MINUTES = 24 * 60
 
 function parseYearMonth(ym: string): { year: number; month: number } | null {
   const match = /^(\d{4})-(\d{2})$/.exec(ym.trim())
@@ -118,7 +118,7 @@ export const VOLUME_DAILY_HINT_DESCRIPTION =
   'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional and blank means 0%. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
 
 export const SLOT_PERIOD_HINT_DESCRIPTION =
-  'Per-slot Volume uses this window. Each day is 09:00–22:00 in 30-minute slots. Applying a period rebuilds an empty grid.'
+  'Per-slot Volume uses this window. Each day is 00:00–24:00 in 30-minute slots. Applying a period rebuilds an empty grid.'
 
 export const TMS_PERIOD_HINT_DESCRIPTION =
   'Links COMPLETED TMS sessions in this inclusive date range and refreshes the SYSTEM median. Changing the range adds or drops sessions.'
@@ -141,7 +141,7 @@ export function slotHintLines(startDate: string, weeks: number): DerivedHintLine
     {
       label: 'Slot grid',
       note: 'each day in the window',
-      value: '09:00–22:00 / 30 min',
+      value: '00:00–24:00 / 30 min',
     },
   ]
 }
@@ -218,7 +218,7 @@ export function slotTrainEndDate(
   return addDaysIso(startDate, n * 7 - 1)
 }
 
-/** Volume Input per-slot train keys: 09:00–22:00 in 30-minute steps (prototype). */
+/** Volume Input per-slot train keys: 00:00–24:00 in 30-minute steps. */
 export function slotTrainKeys(
   startDate: string | null | undefined,
   weeks: number | null | undefined,
