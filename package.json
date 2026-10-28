@@ -8,6 +8,7 @@
     "dev:sso": "vite",
     "dev:local": "VITE_SSO_ENABLED=false vite",
     "build": "run-p type-check \"build-only {@}\" --",
+    "build:dev": "vite build --mode dev",
     "build:uat": "vite build --mode uat",
     "build:pre": "vite build --mode pre",
     "build:prod": "vite build --mode production",

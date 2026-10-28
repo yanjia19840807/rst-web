@@ -22,6 +22,7 @@ Default person is Admin.
 npm run dev             # local real SSO; pair with rst-api/scripts/run-local-sso.sh
 npm run dev:local       # Dev Identity; pair with rst-api/scripts/run-local.sh
 npm run build           # type-check and production build (SSO on)
+npm run build:dev       # Vite mode dev
 npm run build:uat       # Vite mode uat
 npm run build:pre       # Vite mode pre
 npm run build:prod      # Vite mode production
