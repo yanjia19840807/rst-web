@@ -20,26 +20,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import {
-  RESULTS_LOGIC,
-  SIZING_LOGIC,
-  SLOT_LOGIC,
-  type LogicSection,
-  type SimulationLogic,
-} from '../simulationLogic'
+import { SIZING_LOGIC, SLOT_LOGIC, type LogicSection, type SimulationLogic } from '../simulationLogic'
 
 const props = defineProps<{
-  kind: 'sizing' | 'slot' | 'results'
+  kind: 'sizing' | 'slot'
 }>()
 
 const open = ref(false)
 const scroller = ref<HTMLElement | null>(null)
 
-const doc = computed<SimulationLogic>(() => {
-  if (props.kind === 'slot') return SLOT_LOGIC
-  if (props.kind === 'results') return RESULTS_LOGIC
-  return SIZING_LOGIC
-})
+const doc = computed<SimulationLogic>(() => (props.kind === 'slot' ? SLOT_LOGIC : SIZING_LOGIC))
 
 function jump(id: string) {
   const root = scroller.value

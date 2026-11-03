@@ -8,8 +8,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import SimulationLogicDialog from './SimulationLogicDialog.vue'
-
 export type ScenarioResultRow = {
   label: string
   value: string
@@ -24,10 +22,7 @@ defineProps<{
 
 <template>
   <section class="min-w-0 rounded-lg border bg-card p-4">
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <h3 class="text-base font-bold">Results</h3>
-      <SimulationLogicDialog kind="results" />
-    </div>
+    <h3 class="mb-3 text-base font-bold">Results</h3>
     <div
       v-if="!sizingCompleted"
       class="px-3 py-10 text-center text-sm text-muted-foreground"

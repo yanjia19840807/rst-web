@@ -342,10 +342,3 @@ export const SLOT_LOGIC: SimulationLogic = {
     'Results first: TAT on period and Actual vs theoretical. Charts only add formulas that Results does not already show.',
   sections: [SLOT_RESULTS, SLOT_COVERAGE_CHART, SLOT_DAILY_TAT_CHART],
 }
-
-export const RESULTS_LOGIC: SimulationLogic = {
-  title: 'Results',
-  summary:
-    'Formulas for the figures in Results. Chart-only series are under Sizing Simulation and Slot Simulation.',
-  sections: [SIZING_CAPACITY, SIZING_NOMINAL, SIZING_DAILY_RESULTS, SLOT_RESULTS],
-}

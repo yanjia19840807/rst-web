@@ -459,11 +459,8 @@ async function downloadSummary() {
       <ExerciseDetailHeader :exercise="exercise" locked submitted />
 
       <Card>
-        <CardHeader class="items-center">
+        <CardHeader>
           <CardTitle class="text-base">Official Scenario</CardTitle>
-          <CardAction>
-            <SimulationLogicDialog kind="results" />
-          </CardAction>
         </CardHeader>
         <CardContent class="grid gap-4">
           <section class="grid gap-3">
