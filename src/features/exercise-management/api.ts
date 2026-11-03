@@ -66,8 +66,12 @@ async function downloadVolumeBlob(
     headers: apiHeaders(undefined, { json: false }),
   })
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { detail?: string } | null
-    throw new ApiError(body?.detail || 'Download failed.', response.status)
+    const body = (await response.json().catch(() => null)) as { detail?: string; type?: string } | null
+    const marker = '/problems/'
+    const type = body?.type
+    const index = type?.lastIndexOf(marker) ?? -1
+    const code = type && index >= 0 ? type.slice(index + marker.length) : undefined
+    throw new ApiError(body?.detail || 'Download failed.', response.status, code)
   }
   const blob = await response.blob()
   const disposition = response.headers.get('Content-Disposition') || ''

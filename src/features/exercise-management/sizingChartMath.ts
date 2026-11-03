@@ -13,13 +13,9 @@ export function n(value: number | string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-/** Excel Input TotalAgent; falls back to Shared KPI Delivery HC. */
-export function actualHeadcount(
-  totalAgents: number | string | null | undefined,
-  deliveryHc: number | string | null | undefined,
-): number {
-  const total = n(totalAgents)
-  return total > 0 ? total : n(deliveryHc)
+/** Actual HC is Shared KPI Delivery HC. Tenure totals are not used. */
+export function actualHeadcount(deliveryHc: number | string | null | undefined): number {
+  return n(deliveryHc)
 }
 
 export function monthKey(value: string): string {

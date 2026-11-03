@@ -61,7 +61,9 @@ export type RepositoryListQuery = {
   toolkitName?: string
   carrier?: string
   site?: string
-  customerCountry?: string
+  customerCountries?: string[]
+  regions?: string[]
+  clusters?: string[]
   sizingMonth?: string
   validatedFrom?: string
   validatedTo?: string

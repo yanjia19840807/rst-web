@@ -62,14 +62,14 @@ export const teamSetupFormSchema = z
   .superRefine((value, ctx) => {
     const start = value.slaStartTime.trim()
     const end = value.slaEndTime.trim()
-    if (start && !end) {
+    if (start !== '' && end === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['slaEndTime'],
         message: 'Set both SLA clock start and end.',
       })
     }
-    if (end && !start) {
+    if (end !== '' && start === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['slaStartTime'],
@@ -77,6 +77,11 @@ export const teamSetupFormSchema = z
       })
     }
   })
+
+function blankToNull(value: string) {
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
+}
 
 /** Request payload after empty strings are normalized to null. */
 export const teamSetupRequestSchema = teamSetupFormSchema.transform((value) =>
@@ -93,6 +98,45 @@ export function slaMinutesToHours(minutes: number | null | undefined): number | 
 export function slaHoursToMinutes(hours: number | null | undefined): number | null {
   if (hours == null || !Number.isFinite(Number(hours))) return null
   return Number(hours) * 60
+}
+
+/** Half-up to 1 decimal. Used only to compare tenure total with Delivery HC. */
+export function roundHc1(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  const negative = value < 0
+  const [whole, frac = ''] = Math.abs(value).toFixed(8).split('.')
+  const digits = (frac + '00000000').slice(0, 8)
+  let tenths = Number(whole) * 10 + Number(digits[0] ?? '0')
+  if (Number(digits[1] ?? '0') >= 5) tenths += 1
+  const rounded = tenths / 10
+  return negative ? -rounded : rounded
+}
+
+export type HeadcountAlignment = {
+  matches: boolean
+  tenureTotal: number
+  tenureRounded: number
+  deliveryHc: number
+  deliveryRounded: number
+}
+
+/** Tenure buckets sum to 0 when empty. Delivery HC null counts as 0. */
+export function headcountAlignment(
+  agents: Array<number | null | undefined>,
+  deliveryHc: number | null | undefined,
+): HeadcountAlignment {
+  const tenureTotal = agents.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+  const delivery =
+    deliveryHc == null || !Number.isFinite(Number(deliveryHc)) ? 0 : Number(deliveryHc)
+  const tenureRounded = roundHc1(tenureTotal)
+  const deliveryRounded = roundHc1(delivery)
+  return {
+    matches: tenureRounded === deliveryRounded,
+    tenureTotal,
+    tenureRounded,
+    deliveryHc: delivery,
+    deliveryRounded,
+  }
 }
 
 export function emptyTeamSetupForm(): TeamSetupFormValues {
@@ -152,11 +196,11 @@ export function toTeamSetupRequest(values: TeamSetupFormValues): TeamSetupReques
     availabilityRatio: values.availabilityRatio,
     automationRatio: values.automationRatio,
     maxOvertimeMinutes: values.maxOvertimeMinutes,
-    slaType: values.slaType || null,
+    slaType: blankToNull(values.slaType),
     slaTargetRatio: values.slaTargetRatio,
     slaTurnaroundMinutes: slaHoursToMinutes(values.slaTurnaroundHours),
-    slaStartTime: values.slaStartTime || null,
-    slaEndTime: values.slaEndTime || null,
+    slaStartTime: blankToNull(values.slaStartTime),
+    slaEndTime: blankToNull(values.slaEndTime),
     slaWeekendEnabled: values.slaWeekendEnabled,
     weekendShiftHc: values.weekendShiftHc,
     skeletonRatio: values.skeletonRatio,

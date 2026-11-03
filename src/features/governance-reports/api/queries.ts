@@ -26,10 +26,13 @@ export const governanceQueryKeys = {
     [...governanceQueryKeys.all, 'benchmarking', query] as const,
 }
 
-export function useDashboardQuery() {
+export function useDashboardQuery(
+  filters: MaybeRefOrGetter<{ regions?: string[]; clusters?: string[] }> = {},
+) {
+  const resolved = computed(() => toValue(filters))
   return useQuery({
-    queryKey: governanceQueryKeys.dashboard(),
-    queryFn: () => governanceApi.dashboard(),
+    queryKey: computed(() => [...governanceQueryKeys.dashboard(), resolved.value]),
+    queryFn: () => governanceApi.dashboard(resolved.value),
   })
 }
 

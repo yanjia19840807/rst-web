@@ -32,7 +32,15 @@ function repositoryFilters(params?: RepositoryListQuery) {
     if (params.toolkitName) search.set('toolkitName', params.toolkitName)
     if (params.carrier) search.set('carrier', params.carrier)
     if (params.site) search.set('site', params.site)
-    if (params.customerCountry) search.set('customerCountry', params.customerCountry)
+    for (const country of params.customerCountries ?? []) {
+      if (country) search.append('customerCountry', country)
+    }
+    for (const region of params.regions ?? []) {
+      if (region) search.append('region', region)
+    }
+    for (const cluster of params.clusters ?? []) {
+      if (cluster) search.append('cluster', cluster)
+    }
     if (params.sizingMonth) search.set('sizingMonth', params.sizingMonth)
     if (params.validatedFrom) search.set('validatedFrom', params.validatedFrom)
     if (params.validatedTo) search.set('validatedTo', params.validatedTo)
@@ -121,7 +129,17 @@ function benchmarkingQuery(params?: BenchmarkingQuery) {
 }
 
 export const governanceApi = {
-  dashboard: () => apiRequest<DashboardResponse>(`${base}/dashboard`),
+  dashboard: (params?: { regions?: string[]; clusters?: string[] }) => {
+    const search = new URLSearchParams()
+    for (const region of params?.regions ?? []) {
+      if (region) search.append('region', region)
+    }
+    for (const cluster of params?.clusters ?? []) {
+      if (cluster) search.append('cluster', cluster)
+    }
+    const query = search.toString()
+    return apiRequest<DashboardResponse>(query ? `${base}/dashboard?${query}` : `${base}/dashboard`)
+  },
   repository: (params?: RepositoryListQuery) =>
     apiRequest<RepositoryListView>(`${base}/repository${repositoryListQuery(params)}`),
   supportRepository: (params?: SupportRepositoryQuery) =>

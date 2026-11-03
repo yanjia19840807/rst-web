@@ -12,7 +12,9 @@ export const PERMISSIONS = {
   governanceValidationWorkflow: 'governance:validation-workflow',
   governanceDashboard: 'governance:dashboard',
   governanceBenchmarking: 'governance:benchmarking',
+  geoClusterManage: 'geo:cluster',
   supportCategoryManage: 'support-category:manage',
+  geoRegionManage: 'geo:region',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
@@ -25,6 +27,7 @@ const SHARED_REPORTS: readonly Permission[] = [
   PERMISSIONS.governanceSupport,
   PERMISSIONS.governanceDashboard,
   PERMISSIONS.governanceBenchmarking,
+  PERMISSIONS.geoClusterManage,
 ]
 
 const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
@@ -49,6 +52,7 @@ const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     PERMISSIONS.domainHeadConfig,
     PERMISSIONS.governanceValidationWorkflow,
     PERMISSIONS.supportCategoryManage,
+    PERMISSIONS.geoRegionManage,
     ...SHARED_REPORTS,
   ],
 }

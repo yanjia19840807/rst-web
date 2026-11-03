@@ -16,6 +16,9 @@ describe('allowsRoute', () => {
     expect(allowsRoute(route('/approver/timesheet-sync', ['approver']), ['ADMIN'])).toBe(true)
     expect(allowsRoute(route('/approver/validation-workflow', ['approver']), ['ADMIN'])).toBe(true)
     expect(allowsRoute(route('/admin/support-categories', ['admin']), ['ADMIN'])).toBe(true)
+    expect(allowsRoute(route('/admin/regions', ['admin']), ['ADMIN'])).toBe(true)
+    expect(allowsRoute(route('/approver/clusters', ['ho']), ['ADMIN'])).toBe(true)
+    expect(allowsRoute(route('/approver/clusters', ['ho']), ['GOVERNANCE'])).toBe(true)
   })
 
   it('does not let Admin open Approval Queue', () => {
@@ -27,6 +30,8 @@ describe('allowsRoute', () => {
     expect(allowsRoute(route('/approver/queue', ['approver']), ['SR_MANAGER'])).toBe(true)
     expect(allowsRoute(route('/approver/submissions/abc', ['approver']), ['SR_MANAGER'])).toBe(true)
     expect(allowsRoute(route('/admin/support-categories', ['admin']), ['SR_MANAGER'])).toBe(false)
+    expect(allowsRoute(route('/admin/regions', ['admin']), ['SR_MANAGER'])).toBe(false)
+    expect(allowsRoute(route('/approver/clusters', ['ho']), ['SR_MANAGER'])).toBe(false)
   })
 
   it('lets Supervisor open toolkit child routes', () => {

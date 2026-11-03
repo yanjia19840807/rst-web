@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import { toastProblem } from '@/api/problemSeverity'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
@@ -10,7 +11,7 @@ import ListLoading from '@/components/ListLoading.vue'
 import PageActions from '@/components/PageActions.vue'
 import PageBackButton from '@/components/PageBackButton.vue'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -57,6 +58,7 @@ import { sumSupportFte } from './associated-data/supportOptions'
 import AssociatedDataPanel from './AssociatedDataPanel.vue'
 import ExerciseDetailHeader from './ExerciseDetailHeader.vue'
 import ValidationFindingsTable from './ValidationFindingsTable.vue'
+import SimulationLogicDialog from './SimulationLogicDialog.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
 
@@ -221,9 +223,7 @@ const deliveryHc = computed(() =>
   ),
 )
 
-const actualSize = computed(() =>
-  actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
-)
+const actualSize = computed(() => actualHeadcount(deliveryHc.value))
 
 const supportFte = computed(() => sumSupportFte(support.value))
 
@@ -390,7 +390,7 @@ async function downloadSummary() {
     triggerDownload(result.blob, result.filename)
     downloadOpen.value = false
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Download failed.')
+    toastProblem(error, 'Download failed.')
   } finally {
     downloadPending.value = false
   }
@@ -459,8 +459,11 @@ async function downloadSummary() {
       <ExerciseDetailHeader :exercise="exercise" locked submitted />
 
       <Card>
-        <CardHeader>
+        <CardHeader class="items-center">
           <CardTitle class="text-base">Official Scenario</CardTitle>
+          <CardAction>
+            <SimulationLogicDialog kind="results" />
+          </CardAction>
         </CardHeader>
         <CardContent class="grid gap-4">
           <section class="grid gap-3">
@@ -522,8 +525,11 @@ async function downloadSummary() {
       />
 
       <Card class="min-w-0">
-        <CardHeader>
+        <CardHeader class="items-center">
           <CardTitle class="text-base">1. Sizing Simulation</CardTitle>
+          <CardAction>
+            <SimulationLogicDialog kind="sizing" />
+          </CardAction>
         </CardHeader>
         <CardContent>
           <SizingSimulationCharts
@@ -544,8 +550,11 @@ async function downloadSummary() {
       </Card>
 
       <Card class="min-w-0">
-        <CardHeader>
+        <CardHeader class="items-center">
           <CardTitle class="text-base">2. Slot Simulation</CardTitle>
+          <CardAction>
+            <SimulationLogicDialog kind="slot" />
+          </CardAction>
         </CardHeader>
         <CardContent>
           <template v-if="hasSlot && latestSlotSimulation">

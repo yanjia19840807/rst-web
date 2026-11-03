@@ -13,8 +13,9 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
+import { MultiSelect } from '@/components/ui/multi-select'
 
-import { distinctCommaTokens } from '@/lib/commaTokens'
+import { useClusterQuery, useCountriesQuery, useRegionsQuery } from '@/features/geography/api/queries'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 import type { Exercise } from '@/features/exercise-management/types'
@@ -38,7 +39,9 @@ const emptyFilters = () => ({
   pl3: '',
   carrier: '',
   site: '',
-  customerCountry: '',
+  customerCountry: [] as string[],
+  regions: [] as string[],
+  clusters: [] as string[],
 })
 
 const draft = reactive(emptyFilters())
@@ -60,7 +63,9 @@ const listQuery = computed<RepositoryListQuery>(() => ({
   pl3Name: applied.pl3 || undefined,
   carrier: applied.carrier || undefined,
   site: applied.site || undefined,
-  customerCountry: applied.customerCountry || undefined,
+  customerCountries: applied.customerCountry.length ? [...applied.customerCountry] : undefined,
+  regions: applied.regions.length ? [...applied.regions] : undefined,
+  clusters: applied.clusters.length ? [...applied.clusters] : undefined,
   sizingMonth: applied.sizingMonth || undefined,
   validatedFrom: applied.validatedFrom || undefined,
   validatedTo: applied.validatedTo || undefined,
@@ -77,11 +82,12 @@ const pl3Options = computed(() => repositoryQuery.data.value?.pl3Names ?? [])
 const toolkitOptions = computed(() => repositoryQuery.data.value?.toolkitNames ?? [])
 const carrierOptions = computed(() => repositoryQuery.data.value?.carriers ?? [])
 const siteOptions = computed(() => repositoryQuery.data.value?.sites ?? [])
-const customerCountryOptions = computed(() =>
-  [...distinctCommaTokens(repositoryQuery.data.value?.customerCountries)].sort((left, right) =>
-    left.localeCompare(right),
-  ),
-)
+const countryQuery = useCountriesQuery()
+const regionQuery = useRegionsQuery()
+const clusterQuery = useClusterQuery()
+const customerCountryOptions = computed(() => countryQuery.data.value?.countries ?? [])
+const regionOptions = computed(() => regionQuery.data.value?.groups.map((group) => group.name) ?? [])
+const clusterOptions = computed(() => clusterQuery.data.value?.groups.map((group) => group.name) ?? [])
 const loading = computed(() => repositoryQuery.isPending.value && !repositoryQuery.data.value)
 
 const columns = computed(() =>
@@ -91,7 +97,12 @@ const columns = computed(() =>
 )
 
 function applySearch() {
-  Object.assign(applied, { ...draft })
+  Object.assign(applied, {
+    ...draft,
+    customerCountry: [...draft.customerCountry],
+    regions: [...draft.regions],
+    clusters: [...draft.clusters],
+  })
   page.value = 1
 }
 
@@ -266,15 +277,31 @@ watch(
         </NativeSelect>
       </FilterField>
       <FilterField label="Customer Country">
-        <NativeSelect
+        <MultiSelect
+          v-model="draft.customerCountry"
           :class="fieldClass"
-          :model-value="draft.customerCountry"
-          @update:model-value="draft.customerCountry = String($event ?? '')"
-         placeholder="All">
-          <option v-for="option in customerCountryOptions" :key="option" :value="option">
-            {{ option }}
-          </option>
-        </NativeSelect>
+          :options="customerCountryOptions"
+          placeholder="All"
+          empty-text="No customer countries yet."
+        />
+      </FilterField>
+      <FilterField label="Region">
+        <MultiSelect
+          v-model="draft.regions"
+          :class="fieldClass"
+          :options="regionOptions"
+          placeholder="All"
+          empty-text="No regions yet."
+        />
+      </FilterField>
+      <FilterField label="Cluster">
+        <MultiSelect
+          v-model="draft.clusters"
+          :class="fieldClass"
+          :options="clusterOptions"
+          placeholder="All"
+          empty-text="No clusters yet."
+        />
       </FilterField>
     </QueryPanel>
 

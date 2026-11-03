@@ -27,7 +27,9 @@ import {
 } from '@/components/ui/table'
 
 import { NativeSelect } from '@/components/ui/native-select'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
+import { useClusterQuery, useRegionsQuery } from '@/features/geography/api/queries'
 import { CHART_UPDATE_OPTIONS, useChartTheme } from '@/lib/chartTheme'
 import { floatingTooltip } from '@/lib/chartTooltip'
 
@@ -48,8 +50,20 @@ const CENTER_AXIS = 'GBS Center'
 
 const selectedGbs = ref('')
 const comparisonView = ref('Completion by domain')
+const selectedRegions = ref<string[]>([])
+const selectedClusters = ref<string[]>([])
 
-const dashboardQuery = useDashboardQuery()
+const regionQuery = useRegionsQuery()
+const clusterQuery = useClusterQuery()
+const regionOptions = computed(() => regionQuery.data.value?.groups.map((group) => group.name) ?? [])
+const clusterOptions = computed(() => clusterQuery.data.value?.groups.map((group) => group.name) ?? [])
+
+const dashboardQuery = useDashboardQuery(
+  computed(() => ({
+    regions: selectedRegions.value,
+    clusters: selectedClusters.value,
+  })),
+)
 const data = computed(() => dashboardQuery.data.value)
 const loading = computed(() => dashboardQuery.isPending.value && !dashboardQuery.data.value)
 const centerOptions = computed(() => data.value?.centers.map((row) => row.center) ?? [])
@@ -277,6 +291,22 @@ watch(
                 <NativeSelect v-model="comparisonView" class="w-full">
                   <option value="Completion by domain">Completion by domain</option>
                 </NativeSelect>
+              </FilterField>
+              <FilterField label="Region">
+                <MultiSelect
+                  v-model="selectedRegions"
+                  :options="regionOptions"
+                  placeholder="All"
+                  empty-text="No regions yet."
+                />
+              </FilterField>
+              <FilterField label="Cluster">
+                <MultiSelect
+                  v-model="selectedClusters"
+                  :options="clusterOptions"
+                  placeholder="All"
+                  empty-text="No clusters yet."
+                />
               </FilterField>
             </div>
             <div class="min-w-0 overflow-x-auto rounded-lg border">

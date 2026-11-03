@@ -4,6 +4,7 @@ import { computed, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import { toastProblem } from '@/api/problemSeverity'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
 import { Button } from '@/components/ui/button'
@@ -71,11 +72,7 @@ watch(
   [open, () => previewQuery.isError.value, () => previewQuery.isFetching.value],
   ([isOpen, isError, isFetching]) => {
     if (!isOpen || !isError || isFetching) return
-    toast.error(
-      previewQuery.error.value instanceof Error
-        ? previewQuery.error.value.message
-        : 'Submit preview failed.',
-    )
+    toastProblem(previewQuery.error.value, 'Submit preview failed.')
     open.value = false
   },
 )
@@ -107,7 +104,7 @@ const submitNow = handleSubmit(async (values) => {
     open.value = false
     toast.success('Submitted for validation. Awaiting Manager approval.')
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Submit failed.')
+    toastProblem(error, 'Submit failed.')
   }
 })
 

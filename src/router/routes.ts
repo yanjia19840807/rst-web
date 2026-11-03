@@ -238,6 +238,16 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/approver/clusters',
+    name: 'approver-clusters',
+    component: () => import('@/pages/approver/ClustersPage.vue'),
+    meta: {
+      title: 'Clusters',
+      subtitle: 'Group customer countries for your own report filters.',
+      roles: ['ho'],
+    },
+  },
+  {
     path: '/approver/benchmarking',
     name: 'approver-benchmarking',
     component: () => import('@/pages/approver/BenchmarkingPage.vue'),
@@ -267,6 +277,16 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/ho/benchmarking',
     redirect: { name: 'approver-benchmarking' },
+  },
+  {
+    path: '/admin/regions',
+    name: 'admin-regions',
+    component: () => import('@/pages/admin/RegionsPage.vue'),
+    meta: {
+      title: 'Regions',
+      subtitle: 'Group customer countries into regions.',
+      roles: ['admin'],
+    },
   },
   {
     path: '/admin/support-categories',

@@ -16,6 +16,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
+import { clockParts, composeClock, formatClock, hasClockValue } from './clock'
+
 const props = withDefaults(
   defineProps<{
     modelValue?: string
@@ -46,25 +48,20 @@ const emit = defineEmits<{
 
 const minutePrecision = computed(() => Number(props.step) >= 60)
 
-function pad(value: number | string) {
+function pad(value: number) {
   return String(value).padStart(2, '0')
 }
 
-function parts(value: string) {
-  const [hours = '', minutes = '', seconds = ''] = (value || '').split(':')
-  return { hours, minutes, seconds }
-}
-
-const hours = computed(() => parts(props.modelValue ?? '').hours)
-const minutes = computed(() => parts(props.modelValue ?? '').minutes)
-const seconds = computed(() => parts(props.modelValue ?? '').seconds)
-
-const hasValue = computed(() => Boolean(hours.value && minutes.value))
+const parsed = computed(() => clockParts(props.modelValue))
+const hours = computed(() => parsed.value?.hours ?? '')
+const minutes = computed(() => parsed.value?.minutes ?? '')
+const seconds = computed(() => parsed.value?.seconds ?? '')
+const hasValue = computed(() => hasClockValue(props.modelValue))
 
 const display = computed(() => {
   if (!hasValue.value) return props.placeholder
-  if (minutePrecision.value) return `${pad(hours.value)}:${pad(minutes.value)}`
-  return `${pad(hours.value)}:${pad(minutes.value)}:${pad(seconds.value || '00')}`
+  if (minutePrecision.value) return formatClock(props.modelValue, props.placeholder)
+  return `${hours.value}:${minutes.value}:${seconds.value}`
 })
 
 const hourOptions = Array.from({ length: 24 }, (_, index) => pad(index))
@@ -85,10 +82,21 @@ function onClearKey() {
 }
 
 function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) {
-  const nextHours = (next.hours ?? hours.value) || '00'
-  const nextMinutes = (next.minutes ?? minutes.value) || '00'
-  const nextSeconds = minutePrecision.value ? '00' : ((next.seconds ?? seconds.value) || '00')
-  emit('update:modelValue', `${pad(nextHours)}:${pad(nextMinutes)}:${pad(nextSeconds)}`)
+  const picked = next.hours ?? next.minutes ?? next.seconds
+  if (picked === '') {
+    emit('update:modelValue', '')
+    return
+  }
+  const nextHours = next.hours !== undefined ? next.hours : hours.value === '' ? '00' : hours.value
+  const nextMinutes = next.minutes !== undefined ? next.minutes : minutes.value === '' ? '00' : minutes.value
+  const nextSeconds = minutePrecision.value
+    ? '00'
+    : next.seconds !== undefined
+      ? next.seconds
+      : seconds.value === ''
+        ? '00'
+        : seconds.value
+  emit('update:modelValue', composeClock(nextHours, nextMinutes, nextSeconds))
 }
 </script>
 
@@ -117,22 +125,24 @@ function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) 
     <PopoverContent :class="pickerPopoverClass" align="start">
       <div :class="cn(pickerPanelClass, 'flex items-center justify-center gap-1')">
         <PickerOverlaySelect
-          :model-value="hours || '00'"
-          :display="hours ? pad(hours) : '00'"
+          :model-value="hours"
+          :display="hours === '' ? '—' : hours"
           aria-label="Hours"
           @update:model-value="emitTime({ hours: $event })"
         >
+          <NativeSelectOption value="">—</NativeSelectOption>
           <NativeSelectOption v-for="option in hourOptions" :key="option" :value="option">
             {{ option }}
           </NativeSelectOption>
         </PickerOverlaySelect>
         <span class="text-muted-foreground px-0.5 text-sm">:</span>
         <PickerOverlaySelect
-          :model-value="minutes || '00'"
-          :display="minutes ? pad(minutes) : '00'"
+          :model-value="minutes"
+          :display="minutes === '' ? '—' : minutes"
           aria-label="Minutes"
           @update:model-value="emitTime({ minutes: $event })"
         >
+          <NativeSelectOption value="">—</NativeSelectOption>
           <NativeSelectOption v-for="option in minuteOptions" :key="option" :value="option">
             {{ option }}
           </NativeSelectOption>
@@ -140,11 +150,12 @@ function emitTime(next: { hours?: string; minutes?: string; seconds?: string }) 
         <template v-if="!minutePrecision">
           <span class="text-muted-foreground px-0.5 text-sm">:</span>
           <PickerOverlaySelect
-            :model-value="seconds || '00'"
-            :display="seconds ? pad(seconds) : '00'"
+            :model-value="seconds"
+            :display="seconds === '' ? '—' : seconds"
             aria-label="Seconds"
             @update:model-value="emitTime({ seconds: $event })"
           >
+            <NativeSelectOption value="">—</NativeSelectOption>
             <NativeSelectOption v-for="option in secondOptions" :key="option" :value="option">
               {{ option }}
             </NativeSelectOption>

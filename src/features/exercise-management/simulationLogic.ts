@@ -1,0 +1,351 @@
+export type LogicSource = {
+  symbol: string
+  source: string
+  rule: string
+}
+
+export type LogicFormula = {
+  title?: string
+  text: string
+}
+
+export type LogicSection = {
+  id: string
+  nav: string
+  title: string
+  group: 'results' | 'charts'
+  note?: string
+  sources: LogicSource[]
+  formulas: LogicFormula[]
+  remarks: string[]
+}
+
+export type SimulationLogic = {
+  title: string
+  summary: string
+  sections: LogicSection[]
+}
+
+function block(title: string | undefined, ...lines: string[]): LogicFormula {
+  return title ? { title, text: lines.join('\n') } : { text: lines.join('\n') }
+}
+
+const SIZING_CAPACITY: LogicSection = {
+  id: 'sizing-capacity',
+  nav: 'Capacity Creation',
+  title: 'Capacity Creation',
+  group: 'results',
+  note: 'Headline figure in Results. Positive means headcount released versus today.',
+  sources: [
+    {
+      symbol: 'Actual size',
+      source: 'Shared KPI',
+      rule: 'Sum of Delivery HC. Tenure buckets are not used.',
+    },
+    {
+      symbol: 'Right size',
+      source: 'Sizing Inputs',
+      rule: 'Right Sizing HC for this scenario. The same value every month.',
+    },
+    {
+      symbol: 'Production support',
+      source: 'Production Support',
+      rule: 'Sum of support FTE. If this cannot be computed, Capacity Creation is blank, not 0.',
+    },
+  ],
+  formulas: [
+    block(
+      'Results',
+      'Actual size = sum of Shared KPI Delivery HC',
+      'Right size = Right Sizing HC',
+      'Capacity Creation = Actual size − Right size − Production support',
+    ),
+    block(
+      'Shared KPI lines (submitted view)',
+      'Weight = line Delivery HC / Actual size',
+      'Line Right size = Right size × Weight',
+      'Line Capacity Creation = Capacity Creation × Weight',
+    ),
+  ],
+  remarks: [],
+}
+
+const SIZING_NOMINAL: LogicSection = {
+  id: 'sizing-nominal',
+  nav: 'Nominal HC',
+  title: 'Nominal HC (w/o OT)',
+  group: 'results',
+  note: 'Results shows the first monthly sizing row. On the monthly chart this is Max HC (No OT).',
+  sources: [
+    {
+      symbol: 'Volume',
+      source: 'Monthly Volume',
+      rule: 'History: Actual. Forecast: Accepted, otherwise the forecast mean.',
+    },
+    { symbol: 'Commercial', source: 'Monthly Volume', rule: 'Commercial ratio for that month.' },
+    { symbol: 'Automation', source: 'Team Setup', rule: 'Automation ratio.' },
+    { symbol: 'Working Hours', source: 'Team Setup', rule: 'Working hours per day.' },
+    { symbol: 'Availability', source: 'Team Setup', rule: 'Availability ratio.' },
+    { symbol: 'Capacity', source: 'Team Setup', rule: 'Capacity ratio.' },
+    { symbol: 'Cycle Time', source: 'Cycle Time', rule: 'Active baseline median, in seconds.' },
+    { symbol: 'Work Days', source: 'Calendar and Holiday', rule: 'Working days in the month.' },
+  ],
+  formulas: [
+    block(
+      undefined,
+      'Manual = Volume × (1 − Automation) × (1 + Commercial)',
+      'Nominal HC (w/o OT) = Manual × Cycle Time / 3600 / (Work Days × Working Hours × Availability × Capacity)',
+    ),
+  ],
+  remarks: [],
+}
+
+const SIZING_DAILY_RESULTS: LogicSection = {
+  id: 'sizing-end-backlog',
+  nav: 'End backlog',
+  title: 'Daily sim days and End backlog',
+  group: 'results',
+  note: 'Window: first daily Actual, or 1 January of the sizing year, through the last day of the month after the sizing month. The first backlog starts at 0. A day with no volume stays in the sequence as 0.',
+  sources: [
+    {
+      symbol: 'Volume',
+      source: 'Daily Volume',
+      rule: 'Actual; otherwise Accepted or the forecast mean; otherwise 0.',
+    },
+    { symbol: 'Daily Adj', source: 'Daily Volume', rule: 'Daily adjustment ratio.' },
+    {
+      symbol: 'Commercial',
+      source: 'Monthly Volume',
+      rule: "Commercial ratio of that day's month.",
+    },
+    { symbol: 'Automation', source: 'Team Setup', rule: 'Automation ratio.' },
+    { symbol: 'Working Hours', source: 'Team Setup', rule: 'Working hours per day.' },
+    { symbol: 'Availability', source: 'Team Setup', rule: 'Availability ratio.' },
+    { symbol: 'Capacity', source: 'Team Setup', rule: 'Capacity ratio.' },
+    { symbol: 'Max OT', source: 'Team Setup', rule: 'Max overtime, in minutes.' },
+    { symbol: 'Weekend Shift HC', source: 'Team Setup', rule: 'Weekend shift headcount.' },
+    { symbol: 'Skeleton', source: 'Team Setup', rule: 'Skeleton ratio.' },
+    { symbol: 'Cycle Time', source: 'Cycle Time', rule: 'Active baseline median, in seconds.' },
+    {
+      symbol: 'Right size',
+      source: 'Sizing Inputs',
+      rule: 'Right Sizing HC. Used as on-duty headcount on working days.',
+    },
+  ],
+  formulas: [
+    block('Daily sim days', 'Daily sim days = number of days in the window'),
+    block(
+      'Manual and on-duty HC',
+      'Manual = Volume × (1 − Automation) × (1 + Commercial) × (1 + Daily Adj)',
+      'On duty = floor(Right size × Skeleton) on a holiday or a marked weekend',
+      '        = Right size on a working day, including a Normal makeup day',
+      '        = Weekend Shift HC on any other weekend',
+    ),
+    block(
+      'End backlog',
+      'Standard = floor(On duty × Working Hours × 3600 × Availability × Capacity / Cycle Time)',
+      'OT = floor(On duty × Max OT × 60 × Availability × Capacity / Cycle Time) on a working day with Max OT > 0; otherwise 0',
+      'Backlog End = max(0, Backlog Start + Manual − Standard − OT)',
+      'Next start = this Backlog End',
+      'End backlog = Backlog End of the last day',
+    ),
+  ],
+  remarks: ['A holiday takes priority over a weekend. Weekend and holiday OT is 0.'],
+}
+
+const SIZING_MONTHLY_CHART: LogicSection = {
+  id: 'sizing-monthly',
+  nav: 'Monthly chart',
+  title: 'Monthly Volume vs Overtime',
+  group: 'charts',
+  note: 'Not in Results: Min HC and the three overtime bars. Max HC is Nominal HC (w/o OT). Right Size HC is Right size.',
+  sources: [
+    { symbol: 'Weekend Days', source: 'Calendar and Holiday', rule: 'Days in the month minus Work Days.' },
+    { symbol: 'Max OT', source: 'Team Setup', rule: 'Max overtime, in minutes.' },
+    { symbol: 'Weekend Shift HC', source: 'Team Setup', rule: 'Weekend shift headcount.' },
+  ],
+  formulas: [
+    block(
+      'Min HC (Full OT)',
+      'Min HC = Manual × Cycle Time / 3600 / (Work Days × (Working Hours + Max OT / 60) × Availability × Capacity) − (Weekend Days / Work Days) × Weekend Shift HC',
+    ),
+    block(
+      'Overtime bars',
+      'Produced = Right size × Work Days × Working Hours × Availability × Capacity × 3600 / Cycle Time',
+      '         + Weekend Shift HC × Weekend Days × Working Hours × Availability × Capacity × 3600 / Cycle Time',
+      'Gap FTE = (Manual − Produced) × Cycle Time / 3600 / (Work Days × Working Hours × Availability × Capacity)',
+      'Weekdays Overtime = Gap FTE when Produced ≤ Manual, otherwise 0',
+      'Overcapacity = Gap FTE when Produced ≥ Manual, otherwise 0',
+      'Max Overtime = Right size × Max OT × Capacity / 60 / (Working Hours × Availability)',
+    ),
+  ],
+  remarks: [
+    'Min HC below 0 becomes 0.',
+    'Right size, Cycle Time, or a zero hours denominator makes the three FTE bars 0.',
+    "Max Overtime uses headcount and the overtime rule. It does not use that month's volume.",
+  ],
+}
+
+const SIZING_DAILY_CHART: LogicSection = {
+  id: 'sizing-daily-chart',
+  nav: 'Daily chart',
+  title: 'Daily Volume vs Backlog Aging',
+  group: 'charts',
+  note: 'Not in Results: backlog age and SLA Turntime. End backlog and the daily roll are in Results.',
+  sources: [{ symbol: 'SLA Turntime', source: 'Team Setup', rule: 'Turnaround, in minutes.' }],
+  formulas: [
+    block('Turntime Days', 'Turntime Days = SLA Turntime / 60 / Working Hours'),
+    block(
+      'Age',
+      'Age = 0 when Backlog End is 0',
+      "    = yesterday's age on a weekend or holiday",
+      '    = 1 when Backlog Start < Standard + OT',
+      '    = min(yesterday + 1, ceil(Backlog Start / (Standard + OT))) otherwise',
+    ),
+  ],
+  remarks: ['Age above Turntime Days is out of SLA. Turntime does not change capacity.'],
+}
+
+const SIZING_SLA_CHART: LogicSection = {
+  id: 'sizing-sla',
+  nav: 'Monthly SLA%',
+  title: 'Monthly SLA% vs Goal',
+  group: 'charts',
+  note: 'Not in Results. Uses the same daily backlog and age. Months are those that appear in the daily window.',
+  sources: [
+    {
+      symbol: 'SLA Goal',
+      source: 'Team Setup',
+      rule: 'SLA target ratio. Compared with SLA%. Not used inside the SLA% formula.',
+    },
+  ],
+  formulas: [
+    block(
+      undefined,
+      'Out of SLA = 0 when Age ≤ Turntime Days',
+      '           = Backlog End when Age > Turntime Days and Backlog Start < Standard + OT',
+      "           = that day's Manual when Age > Turntime Days and Backlog Start ≥ Standard + OT",
+      "SLA% = 0 when the month's Manual sums to 0 or less",
+      '     = max(0, 1 − sum(Out of SLA) / sum(Manual)) × 100',
+      'Goal% = round(SLA Goal × 1000) / 10',
+    ),
+  ],
+  remarks: [],
+}
+
+const SLOT_RESULTS: LogicSection = {
+  id: 'slot-results',
+  nav: 'TAT',
+  title: 'TAT on period and Actual vs theoretical',
+  group: 'results',
+  note: 'Figures in Results after Slot runs. Shift Setup is the number of shifts. Sizing rows, Right size, commercial ratio, daily adjustment, capacity ratio, and the holiday calendar are not used.',
+  sources: [
+    { symbol: 'Raw', source: 'Per-slot Volume', rule: 'Actual volume of the slot.' },
+    { symbol: 'Slot Minutes', source: 'Per-slot Volume', rule: 'Length of the slot. Usually 30.' },
+    { symbol: 'Automation', source: 'Team Setup', rule: 'Automation ratio.' },
+    { symbol: 'Availability', source: 'Team Setup', rule: 'Availability ratio.' },
+    { symbol: 'Cycle Time', source: 'Cycle Time', rule: 'Active baseline median, in seconds.' },
+    {
+      symbol: 'Start, Duration',
+      source: 'Shift Inputs',
+      rule: 'When the shift starts and how long it lasts. The window may cross midnight and does not include the end instant.',
+    },
+    { symbol: 'Capacity FTE', source: 'Shift Inputs', rule: 'Headcount of that shift.' },
+    { symbol: 'Team Weekend', source: 'Shift Inputs', rule: 'Weekend days for that shift only.' },
+    { symbol: 'SLA Turntime', source: 'Team Setup', rule: 'Turnaround, in minutes.' },
+    {
+      symbol: 'SLA Goal',
+      source: 'Team Setup',
+      rule: 'SLA target ratio. TAT on period is compared with this value.',
+    },
+  ],
+  formulas: [
+    block('Shift Setup', 'Shift Setup = number of shifts'),
+    block(
+      'Per slot',
+      'Manual = Raw × (1 − Automation)',
+      'Cases per FTE = Slot Minutes × 60 / Cycle Time × Availability',
+      "Shift day = the slot start, shifted back by that shift's Start. An overnight slot uses the shift's start day.",
+      "Contribution = Capacity FTE when the shift covers the slot and the shift day is not that shift's Team Weekend; otherwise 0",
+      "Shift FTE = sum of each shift's contribution",
+      'Capacity = Shift FTE × Cases per FTE',
+      'SLA Slots = max(1, ceil(SLA Turntime / Slot Minutes))',
+    ),
+    block(
+      'Results',
+      'TAT on period = 1 when period Manual sums to 0 or less',
+      '              = max(0, 1 − sum(out of SLA) / sum(Manual))',
+      'Actual vs theoretical = 1 when period Manual sums to 0 or less',
+      '                      = sum(Capacity) / sum(Manual)',
+    ),
+  ],
+  remarks: [
+    'Both totals run from the first slot of the Slot Period to the last. They are not reset each day. TAT on period uses Manual. It is marked bad when it is below SLA Goal.',
+    "Manual enters a queue in slot order. Capacity clears the oldest batch first. A batch still unfinished after SLA Slots is counted, in full, as that slot's out-of-SLA volume.",
+  ],
+}
+
+const SLOT_COVERAGE_CHART: LogicSection = {
+  id: 'slot-coverage',
+  nav: 'Coverage chart',
+  title: 'Per-Shift FTE vs Theoretical FTE',
+  group: 'charts',
+  note: 'Not in Results: Theoretical FTE on the chart. Shift FTE and Capacity are in Results.',
+  sources: [],
+  formulas: [
+    block(
+      undefined,
+      'Theoretical FTE = 0 when Cases per FTE is 0, otherwise Manual / Cases per FTE',
+    ),
+  ],
+  remarks: [
+    'The chart rounds Theoretical FTE to the nearest integer. The stored row keeps 6 decimal places.',
+  ],
+}
+
+const SLOT_DAILY_TAT_CHART: LogicSection = {
+  id: 'slot-daily-tat',
+  nav: 'Daily TAT',
+  title: 'Cumulative Daily TAT',
+  group: 'charts',
+  note: 'Not in Results. Different total from TAT on period.',
+  sources: [],
+  formulas: [
+    block(
+      undefined,
+      "Cumulative Daily TAT = 1 when that day's Raw sums to 0 or less",
+      "                     = max(0, 1 − that day's out of SLA / that day's Raw)",
+    ),
+  ],
+  remarks: [
+    'Resets when the date changes. The denominator is Raw, not Manual.',
+  ],
+}
+
+export const SIZING_LOGIC: SimulationLogic = {
+  title: 'Sizing Simulation',
+  summary:
+    'Results first: Capacity Creation, Nominal HC, and End backlog. Charts only add formulas that Results does not already show.',
+  sections: [
+    SIZING_CAPACITY,
+    SIZING_NOMINAL,
+    SIZING_DAILY_RESULTS,
+    SIZING_MONTHLY_CHART,
+    SIZING_DAILY_CHART,
+    SIZING_SLA_CHART,
+  ],
+}
+
+export const SLOT_LOGIC: SimulationLogic = {
+  title: 'Slot Simulation',
+  summary:
+    'Results first: TAT on period and Actual vs theoretical. Charts only add formulas that Results does not already show.',
+  sections: [SLOT_RESULTS, SLOT_COVERAGE_CHART, SLOT_DAILY_TAT_CHART],
+}
+
+export const RESULTS_LOGIC: SimulationLogic = {
+  title: 'Results',
+  summary:
+    'Formulas for the figures in Results. Chart-only series are under Sizing Simulation and Slot Simulation.',
+  sections: [SIZING_CAPACITY, SIZING_NOMINAL, SIZING_DAILY_RESULTS, SLOT_RESULTS],
+}

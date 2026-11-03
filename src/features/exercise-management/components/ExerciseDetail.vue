@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQueryClient } from '@tanstack/vue-query'
 import { toast } from 'vue-sonner'
 
+import { toastProblem } from '@/api/problemSeverity'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import TabStrip from '@/components/TabStrip.vue'
@@ -246,9 +247,7 @@ async function confirmRemoveScenario() {
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce((sum, item) => sum + Number(item.deliveryHc), 0),
 )
-const actualSize = computed(() =>
-  actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
-)
+const actualSize = computed(() => actualHeadcount(deliveryHc.value))
 const supportFte = computed(() => sumSupportFte(support.value))
 const medianLabel = computed(() =>
   cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',
@@ -344,7 +343,7 @@ async function confirmOfficial() {
     toast.success('Set as the official scenario.')
     officialOpen.value = false
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Could not mark official.')
+    toastProblem(error, 'Could not mark official.')
   }
 }
 

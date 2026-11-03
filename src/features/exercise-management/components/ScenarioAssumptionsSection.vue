@@ -15,12 +15,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TimePicker } from '@/components/ui/time-picker'
+import { formatClock } from '@/components/ui/time-picker/clock'
 
 import { RIGHT_SIZING_HC_HINT, SHIFT_INPUT_HINT_LINES, SHIFT_INPUTS_HINT } from '../scenarioHints'
 import { MAX_SCENARIO_SHIFTS, type ShiftDraft } from '../schemas/scenario'
 import type { DailySizingView, MonthlySizingView, SlotSimulationView, TeamSetup } from '../types'
 import { WEEKEND_CODE_OPTIONS, weekendCodeLabel } from '../weekendCodes'
 import PeriodDerivedHints from './PeriodDerivedHints.vue'
+import SimulationLogicDialog from './SimulationLogicDialog.vue'
 import SizingSimulationCharts from './SizingSimulationCharts.vue'
 import SlotSimulationCharts from './SlotSimulationCharts.vue'
 
@@ -71,8 +73,7 @@ const showShiftInputs = computed(() => props.readOnly || !props.slotLocked)
 const atShiftLimit = computed(() => props.shiftRows.length >= MAX_SCENARIO_SHIFTS)
 
 function formatShiftTime(value?: string | null) {
-  if (!value) return '—'
-  return value.length >= 5 ? value.slice(0, 5) : value
+  return formatClock(value)
 }
 </script>
 
@@ -80,7 +81,10 @@ function formatShiftTime(value?: string | null) {
   <div class="grid min-w-0 gap-3.5">
     <!-- Sizing Simulation Panel -->
     <section class="rounded-lg border bg-card p-4">
-      <h3 class="mb-3 text-base font-bold">1. Sizing Simulation</h3>
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <h3 class="text-base font-bold">1. Sizing Simulation</h3>
+        <SimulationLogicDialog kind="sizing" />
+      </div>
       <div class="mb-3.5 rounded-lg border bg-card p-4">
         <div class="mb-3 flex items-center justify-between gap-2">
           <h4 class="text-sm font-bold">Sizing Inputs</h4>
@@ -148,7 +152,10 @@ function formatShiftTime(value?: string | null) {
 
     <!-- Slot Simulation Panel -->
     <section class="min-w-0 overflow-hidden rounded-lg border bg-card p-4">
-      <h3 class="mb-3 text-base font-bold">2. Slot Simulation</h3>
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <h3 class="text-base font-bold">2. Slot Simulation</h3>
+        <SimulationLogicDialog kind="slot" />
+      </div>
 
       <div v-if="showShiftInputs" class="mb-3.5 min-w-0 overflow-hidden rounded-lg border bg-card p-4">
         <div class="mb-3 flex items-center justify-between gap-2">

@@ -6,6 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import { ApiError } from '@/api/client'
+import { toastProblem } from '@/api/problemSeverity'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
@@ -165,9 +166,7 @@ const deliveryHc = computed(() =>
   ),
 )
 
-const actualSize = computed(() =>
-  actualHeadcount(teamSetup.value?.totalAgents, deliveryHc.value),
-)
+const actualSize = computed(() => actualHeadcount(deliveryHc.value))
 
 const shiftSetupLabel = computed(() => {
   const n = shiftRows.value?.length ?? 0
@@ -256,10 +255,7 @@ const baselineInputGroups = computed(() => {
       title: 'Capacity',
       rows: [
         {
-          label:
-            Number(setup?.totalAgents) > 0
-              ? withUnit('Team Setup Total Agents', FieldUnit.hc)
-              : 'Delivery HC',
+          label: withUnit('Delivery HC', FieldUnit.hc),
           value: formatNumber(actualSize.value, 2),
         },
         { label: withUnit('Median Cycle Time', FieldUnit.seconds), value: medianLabel.value },
@@ -706,10 +702,10 @@ async function runSizing() {
         `Sizing simulation saved (${method}, ${preview.monthly.rows.length} months, ${preview.daily.rows.length} days).`,
       )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Save failed.')
+      toastProblem(error, 'Save failed.')
     }
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Sizing simulation failed.')
+    toastProblem(error, 'Sizing simulation failed.')
   }
 }
 
@@ -753,10 +749,10 @@ async function runSlot() {
         `Slot simulation saved (${slotView.rows.length} slots, TAT ${tatPct}%).`,
       )
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Save failed.')
+      toastProblem(error, 'Save failed.')
     }
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Slot simulation failed.')
+    toastProblem(error, 'Slot simulation failed.')
   }
 }
 

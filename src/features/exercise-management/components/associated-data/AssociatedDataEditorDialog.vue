@@ -27,10 +27,11 @@ import type {
   SlotVolume,
   SupportItem,
   TeamSetup,
+  TeamSetupRequest,
 } from '../../types'
 import type { AdTab, MedianSourceMode } from './adTypes'
 import { sumSupportFte } from './supportOptions'
-import { AD_EDITOR_TITLES } from './adTypes'
+import { AD_EDITOR_TITLES, formatNumber } from './adTypes'
 import AdCalendarEditor from './AdCalendarEditor.vue'
 import AdManualMedianEditor from './AdManualMedianEditor.vue'
 import AdSupportEditor from './AdSupportEditor.vue'
@@ -95,6 +96,14 @@ const {
   beforeAssociatedDataWrite,
 } = provideAssociatedDataSaveGuard(() => props.exerciseId)
 const busy = ref(false)
+const headcountConfirmOpen = ref(false)
+const pendingTeamSave = ref<{
+  body: TeamSetupRequest
+  tenureTotal: number
+  tenureRounded: number
+  deliveryHc: number
+  deliveryRounded: number
+} | null>(null)
 
 function onImpactOpenChange(open: boolean) {
   if (!open && !clearingResults.value) cancelClearResults()
@@ -156,7 +165,11 @@ const manualSeedFiles = computed(() =>
 
 function onOpenChange(next: boolean) {
   emit('update:open', next)
-  if (!next) emit('close')
+  if (!next) {
+    headcountConfirmOpen.value = false
+    pendingTeamSave.value = null
+    emit('close')
+  }
 }
 
 const isSystemTms = computed(
@@ -188,7 +201,14 @@ function onImmediateWrite<K extends 'support' | 'calendar' | 'monthly' | 'daily'
 }
 
 async function save() {
-  if (!props.editor || props.readOnly || busy.value || closeOnly.value || clearingResults.value) {
+  if (
+    !props.editor ||
+    props.readOnly ||
+    busy.value ||
+    closeOnly.value ||
+    clearingResults.value ||
+    headcountConfirmOpen.value
+  ) {
     return
   }
 
@@ -221,6 +241,34 @@ async function save() {
     return
   }
 
+  if (props.editor === 'team' && teamBody) {
+    const check = teamEditor.value?.currentAlignment()
+    if (check && !check.matches) {
+      pendingTeamSave.value = { body: teamBody, ...check }
+      headcountConfirmOpen.value = true
+      return
+    }
+  }
+
+  await persist(teamBody, manualBody)
+}
+
+function cancelHeadcountMismatch() {
+  pendingTeamSave.value = null
+}
+
+async function confirmHeadcountMismatch() {
+  const pending = pendingTeamSave.value
+  pendingTeamSave.value = null
+  headcountConfirmOpen.value = false
+  if (!pending) return
+  await persist(pending.body, null)
+}
+
+async function persist(
+  teamBody: TeamSetupRequest | null,
+  manualBody: Awaited<ReturnType<NonNullable<typeof manualEditor.value>['toRequest']>> | null,
+) {
   if (!(await beforeAssociatedDataWrite())) return
 
   busy.value = true
@@ -377,6 +425,31 @@ async function save() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ConfirmDialog
+    v-model:open="headcountConfirmOpen"
+    elevated
+    title="Headcount does not match Delivery HC"
+    description="Sizing uses Delivery HC. Save this Team Setup anyway?"
+    :rows="
+      pendingTeamSave
+        ? [
+            {
+              label: 'Tenure total (HC)',
+              value: `${formatNumber(pendingTeamSave.tenureTotal, 2)} (compared as ${formatNumber(pendingTeamSave.tenureRounded, 1)})`,
+            },
+            {
+              label: 'Delivery HC',
+              value: `${formatNumber(pendingTeamSave.deliveryHc, 2)} (compared as ${formatNumber(pendingTeamSave.deliveryRounded, 1)})`,
+            },
+          ]
+        : []
+    "
+    confirm-label="Save anyway"
+    confirm-variant="default"
+    @cancel="cancelHeadcountMismatch"
+    @confirm="confirmHeadcountMismatch"
+  />
 
   <ConfirmDialog
     :open="confirmOpen"

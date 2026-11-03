@@ -28,7 +28,7 @@ export function emptyShiftDraft(shiftNo = 1): ShiftDraft {
 }
 
 export function isBlankShift(row: ShiftDraft) {
-  return !row.startTime?.trim() && row.durationHours == null && row.headcount == null
+  return (row.startTime ?? '').trim() === '' && row.durationHours == null && row.headcount == null
 }
 
 export function toShiftRequests(rows: ShiftDraft[]) {
@@ -67,7 +67,7 @@ function refineShifts(requireCompleteRows: boolean) {
   return (data: { shifts: ShiftDraft[] }, ctx: z.RefinementCtx) => {
     for (const [index, row] of data.shifts.entries()) {
       if (!requireCompleteRows && isBlankShift(row)) continue
-      if (!row.startTime?.trim()) {
+      if ((row.startTime ?? '').trim() === '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['shifts', index, 'startTime'],

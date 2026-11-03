@@ -71,6 +71,11 @@ export const menuItems: readonly MenuItem[] = [
     permission: PERMISSIONS.governanceBenchmarking,
   },
   {
+    label: 'Clusters',
+    to: '/approver/clusters',
+    permission: PERMISSIONS.geoClusterManage,
+  },
+  {
     label: 'Timesheet Sync',
     to: '/approver/timesheet-sync',
     permission: PERMISSIONS.timesheetSync,
@@ -79,6 +84,11 @@ export const menuItems: readonly MenuItem[] = [
     label: 'Support Categories',
     to: '/admin/support-categories',
     permission: PERMISSIONS.supportCategoryManage,
+  },
+  {
+    label: 'Regions',
+    to: '/admin/regions',
+    permission: PERMISSIONS.geoRegionManage,
   },
 ]
 

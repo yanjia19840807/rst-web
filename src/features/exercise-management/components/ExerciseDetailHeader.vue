@@ -71,7 +71,7 @@ const exerciseRows = computed(() => {
 })
 
 const toolkitRows = computed(() => [
-  { key: 'toolkit', label: 'Toolkit', value: toolkit.value.name, strong: true },
+  { key: 'toolkit', label: 'Toolkit', value: toolkit.value.name },
   { label: 'GBS Center', value: toolkit.value.center },
   { label: 'Domain', value: toolkit.value.domain },
   { label: 'PL1', value: toolkit.value.pl1 },

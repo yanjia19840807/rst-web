@@ -17,13 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { formatClock } from '@/components/ui/time-picker/clock'
 import { TimePicker } from '@/components/ui/time-picker'
 
 import {
   emptyTeamSetupForm,
+  headcountAlignment,
   teamSetupFormSchema,
   teamSetupToForm,
   toTeamSetupRequest,
+  type HeadcountAlignment,
   type TeamSetupFormValues,
 } from '../../schemas/teamSetup'
 import type { TeamSetup, TeamSetupRequest } from '../../types'
@@ -86,6 +89,24 @@ const draftTotalAgents = computed(() =>
     0,
   ),
 )
+
+const deliveryHc = computed(() => {
+  const raw = props.modelValue?.deliveryHc
+  return raw == null || !Number.isFinite(Number(raw)) ? 0 : Number(raw)
+})
+
+const alignment = computed(() =>
+  headcountAlignment(
+    [values.agentsLt6m, values.agents6To24m, values.agents24To48m, values.agentsGt48m],
+    deliveryHc.value,
+  ),
+)
+
+const alignmentHint = computed(() => {
+  const check = alignment.value
+  if (check.matches) return ''
+  return `${formatNumber(check.tenureRounded, 1)} vs Delivery HC ${formatNumber(check.deliveryRounded, 1)}`
+})
 
 /** Live preview; Excel Input C10: (3·&lt;6m + 15·6–24m + 36·24–48m + 48·&gt;48m) / 12 / total. */
 const draftAverageTenureYears = computed(() => {
@@ -205,7 +226,12 @@ const headcountRows = computed(() => [
   { label: withUnit('Agents 6–24 months', FieldUnit.hc), value: values.agents6To24m },
   { label: withUnit('Agents 24–48 months', FieldUnit.hc), value: values.agents24To48m },
   { label: withUnit('Agents >48 months', FieldUnit.hc), value: values.agentsGt48m },
-  { label: withUnit('Total agents', FieldUnit.hc), value: draftTotalAgents.value || '—' },
+  {
+    label: withUnit('Total agents', FieldUnit.hc),
+    value: alignmentHint.value
+      ? `${formatNumber(draftTotalAgents.value, 2)} (${alignmentHint.value})`
+      : formatNumber(draftTotalAgents.value, 2),
+  },
   {
     label: withUnit('Average tenure', FieldUnit.years),
     value:
@@ -220,8 +246,8 @@ const slaRows = computed(() => [
   { label: withUnit('SLA target', FieldUnit.percent), value: formatPercent(values.slaTargetRatio) },
   { label: 'SLA type', value: slaTypeLabel(values.slaType) },
   { label: 'Weekend code', value: weekendCodeLabel(values.weekendCode) },
-  { label: 'SLA clock start', value: values.slaStartTime || '—' },
-  { label: 'SLA clock end', value: values.slaEndTime || '—' },
+  { label: 'SLA clock start', value: formatClock(values.slaStartTime) },
+  { label: 'SLA clock end', value: formatClock(values.slaEndTime) },
   { label: withUnit('Availability ratio', FieldUnit.percent), value: formatPercent(values.availabilityRatio) },
   { label: withUnit('Skeleton coverage', FieldUnit.percent), value: formatPercent(values.skeletonRatio) },
   {
@@ -257,7 +283,11 @@ async function toRequest(): Promise<TeamSetupRequest | null> {
   return toTeamSetupRequest(values)
 }
 
-defineExpose({ toRequest })
+function currentAlignment(): HeadcountAlignment {
+  return alignment.value
+}
+
+defineExpose({ toRequest, currentAlignment })
 </script>
 
 <template>
@@ -295,6 +325,13 @@ defineExpose({ toRequest })
     <div v-if="readOnly" class="grid gap-4 lg:grid-cols-2">
       <section class="rounded-lg border bg-card p-4">
         <h3 class="mb-3 text-sm font-bold">Basic Info And Headcount</h3>
+        <Alert variant="info" class="mb-3">
+          <Info />
+          <AlertDescription>
+            Shared KPI Delivery HC: {{ formatNumber(deliveryHc, 2) }} HC. Sizing uses this value as
+            Actual HC.
+          </AlertDescription>
+        </Alert>
         <DetailTable :rows="headcountRows" />
       </section>
       <section class="rounded-lg border bg-card p-4">
@@ -310,6 +347,13 @@ defineExpose({ toRequest })
     <div v-else class="grid gap-4 lg:grid-cols-2">
       <section class="rounded-lg border bg-card p-4">
         <h3 class="mb-3 text-sm font-bold">Basic Info And Headcount</h3>
+        <Alert variant="info" class="mb-3">
+          <Info />
+          <AlertDescription>
+            Shared KPI Delivery HC: {{ formatNumber(deliveryHc, 2) }} HC. Sizing uses this value as
+            Actual HC.
+          </AlertDescription>
+        </Alert>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1 text-sm"
             >{{ withUnit('Agents <6 months', FieldUnit.hc) }}
@@ -371,7 +415,12 @@ defineExpose({ toRequest })
             <TableBody>
               <TableRow>
                 <TableCell>{{ withUnit('Total agents', FieldUnit.hc) }}</TableCell>
-                <TableCell>{{ draftTotalAgents || '—' }}</TableCell>
+                <TableCell>
+                  {{ formatNumber(draftTotalAgents, 2) }}
+                  <p v-if="alignmentHint" class="text-xs text-muted-foreground">
+                    {{ alignmentHint }}
+                  </p>
+                </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>{{ withUnit('Average tenure', FieldUnit.years) }}</TableCell>
@@ -462,7 +511,7 @@ defineExpose({ toRequest })
               class="w-full"
               :invalid="Boolean(errors.slaStartTime)"
             />
-            <ReadOnlyField v-else :value="slaStartTime" />
+            <ReadOnlyField v-else :value="formatClock(slaStartTime)" />
             <p v-if="errors.slaStartTime" class="text-xs text-destructive">{{ errors.slaStartTime }}</p>
           </label>
           <label class="grid gap-1 text-sm"
@@ -474,7 +523,7 @@ defineExpose({ toRequest })
               class="w-full"
               :invalid="Boolean(errors.slaEndTime)"
             />
-            <ReadOnlyField v-else :value="slaEndTime" />
+            <ReadOnlyField v-else :value="formatClock(slaEndTime)" />
             <p v-if="errors.slaEndTime" class="text-xs text-destructive">{{ errors.slaEndTime }}</p>
           </label>
           <label class="grid gap-1 text-sm"
