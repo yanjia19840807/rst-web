@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { breadcrumbsForRoute, withHomeCrumb } from '@/navigation/breadcrumbs'
 import { isAgentWorkspace, isMenuItemActive, menuItems } from '@/navigation/menu'
 import { useBreadcrumbOverride } from '@/navigation/pageBreadcrumb'
+import { appVersion } from '@/version'
 import ThemeToggle from './ThemeToggle.vue'
 import UserMenu from './UserMenu.vue'
 
@@ -172,7 +173,7 @@ const copyrightYear = new Date().getFullYear()
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header class="shrink-0 border-b bg-card">
         <div class="flex min-h-16 items-center justify-between gap-3 px-4 py-3 sm:gap-6 sm:px-6">
-          <div class="flex min-w-0 items-center gap-2 sm:gap-3 lg:gap-6">
+          <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 lg:gap-6">
             <Button
               v-if="!compactWorkspace"
               type="button"
@@ -202,12 +203,21 @@ const copyrightYear = new Date().getFullYear()
             </RouterLink>
             <div class="min-w-0">
               <h1 v-if="title" class="truncate text-lg font-semibold">{{ title }}</h1>
-              <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">{{ subtitle }}</p>
+              <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">
+                {{ subtitle }}
+              </p>
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
-            <UserMenu />
+          <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+            <span
+              class="hidden text-xs leading-none whitespace-nowrap text-muted-foreground tabular-nums sm:inline"
+            >
+              v{{ appVersion }}
+            </span>
+            <div class="flex items-center gap-2">
+              <ThemeToggle />
+              <UserMenu />
+            </div>
           </div>
         </div>
         <Alert
