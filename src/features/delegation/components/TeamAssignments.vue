@@ -136,8 +136,8 @@ async function onRevoke() {
       <CardHeader>
         <CardTitle>Delegate a position</CardTitle>
         <CardDescription>
-          Pick any of a person's positions. Every position they hold under you is covered together,
-          and every role on each position is included.
+          Select a person and the relevant position to delegate. The delegation includes all roles
+          associated with the selected position.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -149,7 +149,7 @@ async function onRevoke() {
               :items="positionOptions"
               :disabled="!positionOptions.length"
               :invalid="Boolean(errors.positionId)"
-              empty-text="No direct child positions"
+              empty-text="No positions you can delegate"
             />
             <p v-if="errors.positionId" class="text-xs text-destructive">{{ errors.positionId }}</p>
             <p
@@ -164,6 +164,7 @@ async function onRevoke() {
             <DelegateSelect
               v-model:many="delegateCcgids"
               multiple
+              scope="assignment"
               :invalid="Boolean(errors.delegateCcgids)"
             />
             <p v-if="errors.delegateCcgids" class="text-xs text-destructive">
@@ -204,8 +205,10 @@ async function onRevoke() {
 
     <Card>
       <CardHeader>
-        <CardTitle>Position delegation</CardTitle>
-        <CardDescription>Open delegations. Revoke to end one person immediately.</CardDescription>
+        <CardTitle>Active Delegations</CardTitle>
+        <CardDescription>
+          View active delegations. Select "Revoke" to end a delegation immediately.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div class="min-w-0 overflow-x-auto rounded-lg border">

@@ -45,7 +45,6 @@ export type CurrentUser = {
 }
 
 const GRANTABLE_ROLES: readonly AppRole[] = [
-  'AGENT',
   'SUPERVISOR',
   'SR_MANAGER',
   'DOMAIN_HEAD',
@@ -143,6 +142,14 @@ export const useSessionStore = defineStore('session', () => {
 
   const canManageDelegation = computed(
     () => !actingAs.value && roles.value.some((role) => GRANTABLE_ROLES.includes(role)),
+  )
+
+  const canViewDelegation = computed(
+    () =>
+      actingAs.value ||
+      coveringPosition.value ||
+      canManageDelegation.value ||
+      roles.value.includes('AGENT'),
   )
 
   const canManageTeamDelegation = computed(
@@ -313,6 +320,7 @@ export const useSessionStore = defineStore('session', () => {
     actorDisplayName,
     delegationId,
     canManageDelegation,
+    canViewDelegation,
     canManageTeamDelegation,
     canManageMailPreferences,
     applyLocalIdentity,

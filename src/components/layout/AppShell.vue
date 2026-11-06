@@ -36,7 +36,7 @@ async function onDelegationEnded() {
   await session.stopActing()
   queryClient.clear()
   toast.message('Delegation ended. You are back to your own account.')
-  if (route.name === 'settings-delegation' && !session.canManageDelegation) {
+  if (route.name === 'settings-delegation' && !session.canViewDelegation) {
     await router.push(session.homePath)
   }
   if (route.name === 'settings-mail' && !session.canManageMailPreferences) {

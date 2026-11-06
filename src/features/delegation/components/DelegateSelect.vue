@@ -10,6 +10,7 @@ const props = defineProps<{
   multiple?: boolean
   disabled?: boolean
   invalid?: boolean
+  scope?: 'own' | 'assignment'
 }>()
 
 const many = defineModel<string[]>('many', { default: () => [] })
@@ -29,6 +30,7 @@ const listQuery = computed(() => ({
   q: pickerQuery.value.q || undefined,
   page: pickerQuery.value.page,
   pageSize: pickerQuery.value.pageSize,
+  scope: props.scope ?? 'own',
 }))
 
 const peopleQuery = useDelegationCandidatesQuery(listQuery, () => pickerQuery.value.open)

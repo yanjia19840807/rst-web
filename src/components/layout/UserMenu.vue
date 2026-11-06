@@ -29,11 +29,7 @@ const actAsOptions = computed(() =>
 )
 
 const showDelegationGroup = computed(
-  () =>
-    session.actingAs ||
-    session.coveringPosition ||
-    session.canManageDelegation ||
-    actAsOptions.value.length > 0,
+  () => session.canViewDelegation || actAsOptions.value.length > 0,
 )
 
 const itemClass =
@@ -141,15 +137,15 @@ async function stopActing() {
           >
             Delegate for {{ positionCoverageLabel(row) }}
           </button>
-          <button
-            v-if="session.canManageDelegation"
-            type="button"
-            :class="itemClass"
-            @click="goDelegation"
-          >
-            Manage delegation
-          </button>
         </template>
+        <button
+          v-if="session.canViewDelegation"
+          type="button"
+          :class="itemClass"
+          @click="goDelegation"
+        >
+          {{ session.canManageDelegation ? 'Manage delegation' : 'Delegation' }}
+        </button>
       </section>
 
       <section v-if="session.canManageMailPreferences" class="grid gap-1 border-t px-2 py-2">

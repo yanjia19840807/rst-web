@@ -42,7 +42,7 @@ import TeamAssignments from './TeamAssignments.vue'
 const session = useSessionStore()
 const contextTimeZone = useContextTimeZone()
 const router = useRouter()
-const grantedQuery = useGrantedDelegationsQuery(() => session.canManageDelegation)
+const grantedQuery = useGrantedDelegationsQuery(() => session.canViewDelegation)
 const seatsQuery = useOwnSeatsQuery(() => session.canManageDelegation)
 const receivedQuery = useReceivedDelegationsQuery()
 const isIncomingDelegate = computed(() =>
@@ -149,7 +149,7 @@ type TabKey = 'granted' | 'assignments' | 'received' | 'history'
 
 const tabs = computed(() => {
   const items: { key: TabKey; label: string }[] = []
-  if (session.canManageDelegation) {
+  if (session.canViewDelegation) {
     items.push({ key: 'granted', label: 'My delegates' })
   }
   if (session.canManageTeamDelegation) {
@@ -163,16 +163,16 @@ const activeTab = ref<TabKey>('received')
 const tabTouched = ref(false)
 
 watch(
-  () => [session.canManageDelegation, session.canManageTeamDelegation] as const,
-  ([canGrantOwn, canAssignTeam]) => {
+  () => [session.canViewDelegation, session.canManageTeamDelegation] as const,
+  ([canView, canAssignTeam]) => {
     if (tabTouched.value) {
-      if (activeTab.value === 'granted' && !canGrantOwn) activeTab.value = 'received'
+      if (activeTab.value === 'granted' && !canView) activeTab.value = 'received'
       if (activeTab.value === 'assignments' && !canAssignTeam) {
-        activeTab.value = canGrantOwn ? 'granted' : 'received'
+        activeTab.value = canView ? 'granted' : 'received'
       }
       return
     }
-    activeTab.value = canGrantOwn ? 'granted' : 'received'
+    activeTab.value = canView ? 'granted' : 'received'
   },
   { immediate: true },
 )
@@ -188,15 +188,17 @@ function selectTab(tab: TabKey) {
     <TabStrip :tabs="tabs" :model-value="activeTab" @update:model-value="selectTab" />
 
     <div
-      v-if="activeTab === 'granted' && session.canManageDelegation"
-      class="grid items-start gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]"
+      v-if="activeTab === 'granted' && session.canViewDelegation"
+      class="grid items-start gap-4"
+      :class="session.canManageDelegation ? 'lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]' : ''"
     >
-      <Card>
+      <Card v-if="session.canManageDelegation">
         <CardHeader>
           <CardTitle>Grant access</CardTitle>
           <CardDescription>
-            Delegate every position you occupy. Each position is covered as a whole, including
-            every role on it. Chain delegation is not allowed.
+            Delegate access for one or more positions assigned to you. Delegating a position
+            grants access to all roles associated with that position. Delegated access cannot be
+            delegated again to another user.
           </CardDescription>
         </CardHeader>
         <CardContent class="grid gap-4">
@@ -259,7 +261,13 @@ function selectTab(tab: TabKey) {
       <Card>
         <CardHeader>
           <CardTitle>My delegates</CardTitle>
-          <CardDescription>Open delegations. Revoke to end one immediately.</CardDescription>
+          <CardDescription>
+            {{
+              session.canManageDelegation
+                ? 'View active delegations. Select "Revoke" to end a delegation immediately.'
+                : 'View who currently has delegated access to your position.'
+            }}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ListLoading v-if="grantedLoading" />
@@ -272,7 +280,7 @@ function selectTab(tab: TabKey) {
                   <TableHead>Status</TableHead>
                   <TableHead>Operator</TableHead>
                   <TableHead>Operated at</TableHead>
-                  <TableHead class="w-28" />
+                  <TableHead v-if="session.canManageDelegation" class="w-28" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -296,14 +304,14 @@ function selectTab(tab: TabKey) {
                   <TableCell class="text-sm">
                     {{ formatInstantForCenter(row.createdAt, row.delegatorCenter) }}
                   </TableCell>
-                  <TableCell class="text-right">
+                  <TableCell v-if="session.canManageDelegation" class="text-right">
                     <Button type="button" variant="destructive" size="sm" @click="requestRevoke(row)">
                       Revoke
                     </Button>
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="!grantedOpen.length">
-                  <TableCell colspan="6" class="h-20 text-center text-muted-foreground">
+                  <TableCell :colspan="session.canManageDelegation ? 6 : 5" class="h-20 text-center text-muted-foreground">
                     No one can act for you right now.
                   </TableCell>
                 </TableRow>
@@ -320,7 +328,8 @@ function selectTab(tab: TabKey) {
       <CardHeader>
         <CardTitle>Delegate for</CardTitle>
         <CardDescription>
-          Positions and people you can act for. You stay signed in as yourself.
+          View the people and positions for which you have delegated access. You remain signed in
+          under your own account while acting on their behalf.
         </CardDescription>
       </CardHeader>
         <CardContent>
@@ -386,7 +395,10 @@ function selectTab(tab: TabKey) {
     <Card v-else-if="activeTab === 'history'">
       <CardHeader>
         <CardTitle>History</CardTitle>
-        <CardDescription>Ended authorizations. Actions taken stay on the documents.</CardDescription>
+        <CardDescription>
+          View expired or revoked delegations. Actions completed during the delegation remain
+          recorded in the document history.
+        </CardDescription>
       </CardHeader>
         <CardContent>
         <ListLoading v-if="historyLoading" />

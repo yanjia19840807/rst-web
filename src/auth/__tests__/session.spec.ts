@@ -25,10 +25,11 @@ describe('session test login', () => {
     expect(session.displayName).toBe('CHEN Cindy')
     expect(session.hasPermission('exercise:manage')).toBe(true)
     expect(session.canManageDelegation).toBe(true)
+    expect(session.canViewDelegation).toBe(true)
     expect(session.canManageTeamDelegation).toBe(true)
   })
 
-  it('hides team delegation when the caller is only an Agent', () => {
+  it('hides delegation management when the caller is only an Agent', () => {
     setActivePinia(createPinia())
     writeDevIdentity({ ccgid: 'S00661142', role: 'AGENT' })
 
@@ -36,7 +37,8 @@ describe('session test login', () => {
     session.applyLocalIdentity()
 
     expect(session.roles).toEqual(['AGENT'])
-    expect(session.canManageDelegation).toBe(true)
+    expect(session.canManageDelegation).toBe(false)
+    expect(session.canViewDelegation).toBe(true)
     expect(session.canManageTeamDelegation).toBe(false)
   })
 
@@ -50,6 +52,7 @@ describe('session test login', () => {
     expect(session.jobRole).toBe('')
     expect(session.hasPermission('timesheet:sync')).toBe(true)
     expect(session.hasPermission('exercise:manage')).toBe(false)
+    expect(session.canViewDelegation).toBe(false)
   })
 
   it('builds a single-line position delegation banner with the occupant', () => {

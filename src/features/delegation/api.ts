@@ -29,9 +29,10 @@ export const delegationApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  candidates: (query: { q?: string; page: number; pageSize: number }) => {
+  candidates: (query: { q?: string; page: number; pageSize: number; scope?: 'own' | 'assignment' }) => {
     const params = new URLSearchParams()
     if (query.q?.trim()) params.set('q', query.q.trim())
+    if (query.scope === 'assignment') params.set('scope', 'assignment')
     params.set('page', String(query.page))
     params.set('pageSize', String(query.pageSize))
     return apiRequest<DelegationCandidatePage>(`${base}/candidates?${params.toString()}`)

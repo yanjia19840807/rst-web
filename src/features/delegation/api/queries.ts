@@ -9,8 +9,8 @@ export const delegationQueryKeys = {
   received: () => [...delegationQueryKeys.all, 'received'] as const,
   seats: () => [...delegationQueryKeys.all, 'seats'] as const,
   assignments: () => [...delegationQueryKeys.all, 'assignments'] as const,
-  candidates: (q: string, page: number, pageSize: number) =>
-    [...delegationQueryKeys.all, 'candidates', q, page, pageSize] as const,
+  candidates: (scope: string, q: string, page: number, pageSize: number) =>
+    [...delegationQueryKeys.all, 'candidates', scope, q, page, pageSize] as const,
 }
 
 export function useGrantedDelegationsQuery(enabled: MaybeRefOrGetter<boolean> = true) {
@@ -46,13 +46,13 @@ export function usePositionAssignmentsQuery(enabled: MaybeRefOrGetter<boolean> =
 }
 
 export function useDelegationCandidatesQuery(
-  query: MaybeRefOrGetter<{ q?: string; page: number; pageSize: number }>,
+  query: MaybeRefOrGetter<{ q?: string; page: number; pageSize: number; scope?: 'own' | 'assignment' }>,
   enabled: MaybeRefOrGetter<boolean> = true,
 ) {
   return useQuery({
     queryKey: computed(() => {
       const value = toValue(query)
-      return delegationQueryKeys.candidates(value.q ?? '', value.page, value.pageSize)
+      return delegationQueryKeys.candidates(value.scope ?? 'own', value.q ?? '', value.page, value.pageSize)
     }),
     queryFn: () => delegationApi.candidates(toValue(query)),
     enabled: computed(() => toValue(enabled)),
