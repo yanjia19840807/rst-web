@@ -349,7 +349,7 @@ async function confirmOfficial() {
 
 async function requestSubmit() {
   if (!exercise.value?.officialScenarioId) {
-    toast.warning('An Official Scenario is required before Submit.')
+    toast.warning('Set a scenario as Official before Submit.')
     return
   }
   submitOpen.value = true

@@ -8,7 +8,7 @@ describe('isMissingInputProblem', () => {
     expect(
       isMissingInputProblem(
         new ApiError(
-          'An active Cycle Time baseline is required before sizing. (cycle-time-required)',
+          'Set a Cycle Time median in Associated Data → TMS before sizing. Apply a TMS period, or enter a manual median. (cycle-time-required)',
           422,
           'cycle-time-required',
         ),
@@ -16,13 +16,17 @@ describe('isMissingInputProblem', () => {
     ).toBe(true)
     expect(
       isMissingInputProblem(
-        new ApiError('Team Setup is required before sizing. (team-setup-required)', 422, 'team-setup-required'),
+        new ApiError(
+          'Complete Team Setup in Associated Data before sizing. (team-setup-required)',
+          422,
+          'team-setup-required',
+        ),
       ),
     ).toBe(true)
     expect(
       isMissingInputProblem(
         new ApiError(
-          'Sizing month must have Actual Volume before forecast. (forecast-sizing-actual-required)',
+          'Enter Actual Volume for the sizing month in Associated Data → Volume Input → Monthly before forecast. (forecast-sizing-actual-required)',
           422,
           'forecast-sizing-actual-required',
         ),
