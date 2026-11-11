@@ -2,6 +2,7 @@ import { h } from 'vue'
 import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import StatusBadge from '@/components/StatusBadge.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import '@/components/ui/data-table/types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 import { hasDistinctActor, viaLabel, type AuditActor } from '@/lib/auditActor'
@@ -85,7 +86,19 @@ export function createTmsSessionColumns(
   const columns = [
     columnHelper.accessor('id', {
       header: 'Session No',
-      cell: ({ row }) => h('span', { class: 'font-mono' }, row.original.id),
+      cell: ({ row }) => {
+        const id = row.original.id
+        if (!options.onOpen) return h('span', { class: 'font-mono' }, id)
+        return h(
+          TableTextLink,
+          {
+            class: 'font-mono',
+            title: `View ${id}`,
+            onClick: () => options.onOpen?.(id),
+          },
+          () => id,
+        )
+      },
     }),
     columnHelper.display({
       id: 'agent',
@@ -194,7 +207,7 @@ export function createTmsSessionColumns(
     )
   }
 
-  if (options.showActions === false) {
+  if (options.showActions === false || !options.canToggleEnabled) {
     return columns as ColumnDef<TmsSessionTableRow>[]
   }
 
@@ -206,13 +219,11 @@ export function createTmsSessionColumns(
       enableHiding: false,
       cell: ({ row }) =>
         h(TmsSessionRowActions, {
-          canToggleEnabled: options.canToggleEnabled,
           enabled: row.original.enabled !== false,
           toggling: options.togglingId === row.original.id,
-          onOpen: () => options.onOpen?.(row.original.id),
           onToggleEnabled: () => options.onToggleEnabled?.(row.original.id),
         }),
-      meta: { headerClass: 'min-w-[4.5rem] text-right', cellClass: 'min-w-[4.5rem] text-right' },
+      meta: { headerClass: 'text-right', cellClass: 'text-right' },
     }),
   ] as ColumnDef<TmsSessionTableRow>[]
 }

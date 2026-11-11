@@ -16,10 +16,10 @@ import {
 import ScopeChangedBadge from '@/features/timesheet-alignment/components/ScopeChangedBadge.vue'
 
 import CreatedByText from '@/components/CreatedByText.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import type { Exercise } from '../types'
 import { currentStepLabel, isReturned } from '../workflowLabels'
 import ExerciseCurrentStepCell from './ExerciseCurrentStepCell.vue'
-import ExerciseRowActions from './ExerciseRowActions.vue'
 import ToolkitNameCell from './ToolkitNameCell.vue'
 
 export type ExerciseListColumnOptions = {
@@ -72,7 +72,14 @@ export function createExerciseListColumns(
       header: 'Exercise No',
       cell: ({ row }) =>
         h('span', { class: 'inline-flex flex-wrap items-center gap-1.5' }, [
-          h('span', row.original.exerciseCode),
+          h(
+            TableTextLink,
+            {
+              title: `Open ${row.original.exerciseCode}`,
+              onClick: () => options.onOpen?.(row.original),
+            },
+            () => row.original.exerciseCode,
+          ),
           row.original.timesheetAlignment?.structuralDrift ? h(ScopeChangedBadge) : null,
         ]),
     }),
@@ -183,16 +190,6 @@ export function createExerciseListColumns(
       id: 'aging',
       header: withUnit('Aging', FieldUnit.days),
       cell: ({ row }) => h(AgingBadge, { days: row.original.agingDays }),
-    }),
-    columnHelper.display({
-      id: 'actions',
-      enableHiding: false,
-      header: () => h('div', { class: 'text-right' }, 'Action'),
-      cell: ({ row }) =>
-        h(ExerciseRowActions, {
-          onOpen: () => options.onOpen?.(row.original),
-        }),
-      meta: { headerClass: 'text-right', cellClass: 'text-right' },
     }),
   ] as ColumnDef<Exercise>[]
 }

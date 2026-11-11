@@ -3,6 +3,7 @@ import { createColumnHelper, type ColumnDef } from '@tanstack/vue-table'
 
 import AgingBadge from '@/components/AgingBadge.vue'
 import CreatedByText from '@/components/CreatedByText.vue'
+import TableTextLink from '@/components/TableTextLink.vue'
 import '@/components/ui/data-table/types'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 import { joinCommaTokens } from '@/lib/commaTokens'
@@ -25,7 +26,6 @@ import type { ApprovalQueueItem } from '../types'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 
 import ApprovalDecisionBadge from './ApprovalDecisionBadge.vue'
-import ApprovalQueueRowActions from './ApprovalQueueRowActions.vue'
 
 export type { ApprovalQueueTab }
 
@@ -65,11 +65,25 @@ export function createApprovalQueueColumns(
   return [
     columnHelper.accessor('exerciseCode', {
       header: 'Exercise No',
-      cell: ({ row }) =>
-        h('span', { class: 'inline-flex flex-wrap items-center gap-1.5 font-semibold' }, [
-          row.original.exerciseCode,
+      cell: ({ row }) => {
+        const code = row.original.exerciseCode
+        const reviewing = options.tab === AWAITING_REVIEW_TAB
+        return h('span', { class: 'inline-flex flex-wrap items-center gap-1.5' }, [
+          h(
+            TableTextLink,
+            {
+              title: reviewing ? `Review ${code}` : `View ${code}`,
+              to: {
+                name: 'approver-review',
+                params: { submissionId: row.original.submissionId },
+                query: { tab: approvalQueueTabQuery(options.tab) },
+              },
+            },
+            () => code,
+          ),
           row.original.scopeChanged ? h(ScopeChangedBadge) : null,
-        ]),
+        ])
+      },
     }),
     columnHelper.display({
       id: 'toolkitName',
@@ -190,21 +204,6 @@ export function createApprovalQueueColumns(
         row.original.actedBy
           ? h(CreatedByText, { actor: row.original.actedBy })
           : '—',
-    }),
-    columnHelper.display({
-      id: 'actions',
-      enableHiding: false,
-      header: () => h('div', { class: 'text-right' }, 'Action'),
-      cell: ({ row }) =>
-        h(ApprovalQueueRowActions, {
-          label: options.tab === AWAITING_REVIEW_TAB ? 'Review' : 'View',
-          to: {
-            name: 'approver-review',
-            params: { submissionId: row.original.submissionId },
-            query: { tab: approvalQueueTabQuery(options.tab) },
-          },
-        }),
-      meta: { headerClass: 'relative z-10 text-right', cellClass: 'relative z-10 text-right' },
     }),
   ] as ColumnDef<ApprovalQueueItem>[]
 }
