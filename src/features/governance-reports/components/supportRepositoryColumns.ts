@@ -9,6 +9,7 @@ import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
 import { joinCommaTokens } from '@/lib/commaTokens'
 
+import { exerciseNoLink } from '../reportSubmission'
 import { displayOrDash, formatHc, formatVolume } from '../reportFormat'
 import type { SupportCategorySummary, SupportRow } from '../types'
 
@@ -45,7 +46,11 @@ export function createSupportRowColumns(
   options: SupportRowColumnOptions = {},
 ): ColumnDef<SupportRow>[] {
   return [
-    rowHelper.accessor('exerciseNo', { header: 'Exercise No' }),
+    rowHelper.accessor('exerciseNo', {
+      header: 'Exercise No',
+      cell: ({ row }) =>
+        exerciseNoLink('support', row.original.exerciseNo, row.original.submissionId),
+    }),
     rowHelper.display({
       id: 'toolkit',
       header: 'Toolkit',
@@ -83,7 +88,11 @@ export function createSupportRowColumns(
       id: 'fte',
       header: withUnit('Support', FieldUnit.fte),
     }),
-    rowHelper.accessor((row) => row.comments || '—', { id: 'comments', header: 'Comments' }),
+    rowHelper.accessor((row) => row.comments || '—', {
+      id: 'comments',
+      header: 'Comments',
+      meta: { cellClass: 'max-w-sm whitespace-normal align-top break-words' },
+    }),
     rowHelper.accessor((row) => formatCivilDateTime(row.validatedDate), {
       id: 'validatedDate',
       header: 'Validated at',

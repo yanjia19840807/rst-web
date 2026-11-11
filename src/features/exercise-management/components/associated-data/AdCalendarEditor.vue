@@ -491,7 +491,9 @@ async function onImportFile(event: Event) {
             <template v-else>
               <TableCell>{{ row.holidayDate }}</TableCell>
               <TableCell>{{ holidayTypeLabel(row.holidayType) }}</TableCell>
-              <TableCell>{{ row.holidayName }}</TableCell>
+              <TableCell class="max-w-xs whitespace-normal align-top break-words">
+                {{ row.holidayName }}
+              </TableCell>
               <TableCell v-if="!readOnly">
                 <span class="inline-flex gap-3">
                   <TableTextLink :disabled="busy || formLocked" @click="startEdit(row)">

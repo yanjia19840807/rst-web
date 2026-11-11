@@ -15,6 +15,7 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 import { MultiSelect } from '@/components/ui/multi-select'
 
+import { useListMemory } from '@/composables/useListMemory'
 import { useClusterQuery, useCountriesQuery, useRegionsQuery } from '@/features/geography/api/queries'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
@@ -48,6 +49,7 @@ const draft = reactive(emptyFilters())
 const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
+useListMemory('rst-repository', { draft, applied, page, pageSize })
 const exportOpen = ref(false)
 const exporting = ref(false)
 const queryClient = useQueryClient()

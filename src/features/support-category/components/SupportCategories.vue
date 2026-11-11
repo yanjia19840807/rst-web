@@ -298,7 +298,9 @@ async function saveUpdate(
                 </TableCell>
               </template>
               <template v-else>
-                <TableCell class="font-medium">{{ row.name }}</TableCell>
+                <TableCell class="max-w-sm font-medium whitespace-normal align-top break-words">
+                  {{ row.name }}
+                </TableCell>
                 <TableCell>{{ row.displayOrder }}</TableCell>
                 <TableCell>
                   <CreatedByText :actor="row.createdBy" />

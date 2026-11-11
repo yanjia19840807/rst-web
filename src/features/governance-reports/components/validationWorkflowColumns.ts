@@ -9,6 +9,7 @@ import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 import { joinCommaTokens } from '@/lib/commaTokens'
 import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 
+import { exerciseNoLink } from '../reportSubmission'
 import { displayOrDash } from '../reportFormat'
 import type { ValidationWorkflowRow } from '../types'
 import CapacityCell from './CapacityCell.vue'
@@ -31,7 +32,11 @@ export function createValidationWorkflowColumns(
   options: ValidationWorkflowColumnOptions = {},
 ): ColumnDef<ValidationWorkflowRow>[] {
   return [
-    columnHelper.accessor('exerciseNo', { header: 'Exercise No' }),
+    columnHelper.accessor('exerciseNo', {
+      header: 'Exercise No',
+      cell: ({ row }) =>
+        exerciseNoLink('validation', row.original.exerciseNo, row.original.submissionId),
+    }),
     columnHelper.display({
       id: 'toolkit',
       header: 'Toolkit',

@@ -34,6 +34,28 @@ describe('allowsRoute', () => {
     expect(allowsRoute(route('/approver/clusters', ['ho']), ['SR_MANAGER'])).toBe(false)
   })
 
+  it('lets governance viewers open a report submission, not validation when they lack it', () => {
+    expect(
+      allowsRoute(route('/approver/repository/submissions/abc', ['approver', 'ho']), ['GOVERNANCE']),
+    ).toBe(true)
+    expect(
+      allowsRoute(route('/approver/support-repository/submissions/abc', ['approver', 'ho']), [
+        'ADMIN',
+      ]),
+    ).toBe(true)
+    expect(
+      allowsRoute(route('/approver/validation-workflow/submissions/abc', ['approver']), ['ADMIN']),
+    ).toBe(true)
+    expect(
+      allowsRoute(route('/approver/validation-workflow/submissions/abc', ['approver']), [
+        'GOVERNANCE',
+      ]),
+    ).toBe(false)
+    expect(
+      allowsRoute(route('/approver/repository/submissions/abc', ['approver', 'ho']), ['SUPERVISOR']),
+    ).toBe(false)
+  })
+
   it('lets Supervisor open toolkit child routes', () => {
     expect(allowsRoute(route('/supervisor/toolkits/new', ['supervisor']), ['SUPERVISOR'])).toBe(true)
     expect(allowsRoute(route('/approver/dashboard', ['approver', 'ho']), ['SUPERVISOR'])).toBe(false)

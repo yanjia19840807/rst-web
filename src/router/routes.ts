@@ -228,6 +228,39 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/approver/repository/submissions/:submissionId',
+    name: 'approver-repository-submission',
+    component: () => import('@/pages/approver/ApprovalReviewPage.vue'),
+    meta: {
+      title: 'Submission Review',
+      subtitle: 'Read-only submitted exercise',
+      roles: ['approver', 'ho'],
+      reportSource: 'repository',
+    },
+  },
+  {
+    path: '/approver/support-repository/submissions/:submissionId',
+    name: 'approver-support-submission',
+    component: () => import('@/pages/approver/ApprovalReviewPage.vue'),
+    meta: {
+      title: 'Submission Review',
+      subtitle: 'Read-only submitted exercise',
+      roles: ['approver', 'ho'],
+      reportSource: 'support',
+    },
+  },
+  {
+    path: '/approver/validation-workflow/submissions/:submissionId',
+    name: 'approver-validation-submission',
+    component: () => import('@/pages/approver/ApprovalReviewPage.vue'),
+    meta: {
+      title: 'Submission Review',
+      subtitle: 'Read-only submitted exercise',
+      roles: ['approver'],
+      reportSource: 'validation',
+    },
+  },
+  {
     path: '/approver/dashboard',
     name: 'approver-dashboard',
     component: () => import('@/pages/approver/GlobalDashboardPage.vue'),

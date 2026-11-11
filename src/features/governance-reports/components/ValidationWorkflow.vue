@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import { useListMemory } from '@/composables/useListMemory'
 import { distinctCommaTokens } from '@/lib/commaTokens'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import type { Exercise } from '@/features/exercise-management/types'
@@ -49,6 +50,7 @@ const draft = reactive(emptyFilters())
 const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
+useListMemory('validation-workflow', { draft, applied, page, pageSize })
 const queryClient = useQueryClient()
 const toolkitInfoOpen = ref(false)
 const toolkitSnapshot = ref<Exercise['snapshot'] | null>(null)

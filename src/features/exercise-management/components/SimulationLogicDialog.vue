@@ -104,7 +104,7 @@ function showGroupLabel(sections: LogicSection[], index: number) {
                       <TableCell class="px-2 py-1.5 text-xs whitespace-nowrap">
                         {{ row.source }}
                       </TableCell>
-                      <TableCell class="px-2 py-1.5 text-xs whitespace-normal text-muted-foreground">
+                      <TableCell class="px-2 py-1.5 text-xs whitespace-normal break-words text-muted-foreground">
                         {{ row.rule }}
                       </TableCell>
                     </TableRow>

@@ -94,7 +94,11 @@ export function createAgentToolkitColumns(
     columnHelper.accessor((row) => agentToolkitSubtaskNames(row), {
       id: 'subtasks',
       header: 'Subtasks',
-      meta: { cellClass: 'max-w-64 truncate' },
+      meta: { cellClass: 'w-64 max-w-64 align-top' },
+      cell: ({ getValue }) => {
+        const text = String(getValue() ?? '—')
+        return h('div', { class: 'truncate', title: text === '—' ? undefined : text }, text)
+      },
     }),
     columnHelper.display({
       id: 'createdBy',

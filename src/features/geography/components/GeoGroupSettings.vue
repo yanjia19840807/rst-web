@@ -260,8 +260,12 @@ async function confirmDelete() {
                   </TableCell>
                 </template>
                 <template v-else>
-                  <TableCell class="font-medium">{{ group.name }}</TableCell>
-                  <TableCell>{{ group.countries.join(', ') }}</TableCell>
+                  <TableCell class="max-w-xs font-medium whitespace-normal align-top break-words">
+                    {{ group.name }}
+                  </TableCell>
+                  <TableCell class="max-w-md whitespace-normal align-top break-words">
+                    {{ group.countries.join(', ') }}
+                  </TableCell>
                   <TableCell>
                     <span class="inline-flex flex-wrap gap-3">
                       <TableTextLink :disabled="saving || formLocked" @click="startEdit(group)">

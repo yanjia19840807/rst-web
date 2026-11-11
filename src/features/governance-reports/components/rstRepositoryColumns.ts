@@ -7,6 +7,7 @@ import { formatCivilDateTime, formatMonth } from '@/lib/datetime'
 import ToolkitNameCell from '@/features/exercise-management/components/ToolkitNameCell.vue'
 import { FieldUnit, withUnit } from '@/features/exercise-management/fieldUnits'
 
+import { exerciseNoLink } from '../reportSubmission'
 import { formatHc } from '../reportFormat'
 import type { RepositoryRow } from '../types'
 import CapacityCell from './CapacityCell.vue'
@@ -21,7 +22,11 @@ export function createRstRepositoryColumns(
   options: RstRepositoryColumnOptions = {},
 ): ColumnDef<RepositoryRow>[] {
   return [
-    columnHelper.accessor('exerciseId', { header: 'Exercise No' }),
+    columnHelper.accessor('exerciseId', {
+      header: 'Exercise No',
+      cell: ({ row }) =>
+        exerciseNoLink('repository', row.original.exerciseId, row.original.submissionId),
+    }),
     columnHelper.display({
       id: 'toolkit',
       header: 'Toolkit',

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { permissionsForRoles, type AppRole } from '@/auth/permissions'
 
-import { isAgentWorkspace, menuItems } from '../menu'
+import { isAgentWorkspace, isMenuItemActive, menuItems } from '../menu'
 
 function visibleLabels(roles: readonly AppRole[]) {
   const allowed = new Set(permissionsForRoles(roles))
@@ -38,6 +38,30 @@ describe('menu order', () => {
       'Timesheet Sync',
       'Support Categories',
     ])
+  })
+})
+
+describe('report submission routes', () => {
+  it('keeps the source report active and leaves the approval queue inactive', () => {
+    const item = (label: string) => menuItems.find((entry) => entry.label === label)!
+    expect(isMenuItemActive(item('RST Repository'), '/approver/repository/submissions/abc')).toBe(
+      true,
+    )
+    expect(isMenuItemActive(item('Approval Queue'), '/approver/repository/submissions/abc')).toBe(
+      false,
+    )
+    expect(
+      isMenuItemActive(item('Support Repository'), '/approver/support-repository/submissions/abc'),
+    ).toBe(true)
+    expect(
+      isMenuItemActive(
+        item('Validation Workflow'),
+        '/approver/validation-workflow/submissions/abc',
+      ),
+    ).toBe(true)
+    expect(
+      isMenuItemActive(item('RST Repository'), '/approver/support-repository/submissions/abc'),
+    ).toBe(false)
   })
 })
 

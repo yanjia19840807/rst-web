@@ -595,7 +595,9 @@ async function onImportFile(event: Event) {
               </template>
               <template v-else>
                 <TableCell>{{ item.category }}</TableCell>
-                <TableCell>{{ item.activity }}</TableCell>
+                <TableCell class="max-w-xs whitespace-normal align-top break-words">
+                  {{ item.activity }}
+                </TableCell>
                 <TableCell>{{ frequencyLabel(item.frequencyCode) }}</TableCell>
                 <TableCell>{{ formatNumber(item.volume, 2) }}</TableCell>
                 <TableCell>{{ item.unitOfMeasure }}</TableCell>
@@ -610,7 +612,9 @@ async function onImportFile(event: Event) {
                 <TableCell>
                   {{ item.supportFte != null ? formatNumber(item.supportFte, 2) : '—' }}
                 </TableCell>
-                <TableCell>{{ item.comments || '—' }}</TableCell>
+                <TableCell class="max-w-xs whitespace-normal align-top break-words">
+                  {{ item.comments || '—' }}
+                </TableCell>
                 <TableCell v-if="!readOnly">
                   <span class="inline-flex gap-3">
                     <TableTextLink :disabled="busy || formLocked" @click="startEdit(item)">

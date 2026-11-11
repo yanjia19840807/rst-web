@@ -48,17 +48,21 @@ defineProps<{
             :key="row.actionId"
             :class="row.mine ? 'bg-primary/5' : undefined"
           >
-            <TableCell class="font-medium">{{ row.step }}</TableCell>
-            <TableCell>{{ row.role || '—' }}</TableCell>
-            <TableCell>
+            <TableCell class="align-top font-medium whitespace-normal">{{ row.step }}</TableCell>
+            <TableCell class="align-top whitespace-normal">{{ row.role || '—' }}</TableCell>
+            <TableCell class="align-top whitespace-normal">
               <CreatedByText v-if="row.actedBy" :actor="row.actedBy" />
               <span v-else>{{ row.actor || '—' }}</span>
             </TableCell>
-            <TableCell>
+            <TableCell class="align-top">
               <StatusBadge :status="row.decision" />
             </TableCell>
-            <TableCell class="max-w-xs wrap-break-word">{{ row.comments?.trim() || '—' }}</TableCell>
-            <TableCell>{{ formatInstantForCenter(row.completedAt, center) }}</TableCell>
+            <TableCell class="max-w-sm align-top whitespace-normal break-words">
+              {{ row.comments?.trim() || '—' }}
+            </TableCell>
+            <TableCell class="align-top whitespace-nowrap">
+              {{ formatInstantForCenter(row.completedAt, center) }}
+            </TableCell>
           </TableRow>
           <TableRow v-if="!(rows ?? []).length">
             <TableCell colspan="6" class="h-24 text-center text-muted-foreground">

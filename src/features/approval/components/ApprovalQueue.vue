@@ -214,11 +214,15 @@ watch(
   <div class="grid min-w-0 gap-4">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <AdMetric label="Awaiting Me" :value="String(metrics.awaitingMe)" hint="Current approval step" />
-      <AdMetric label="Overdue" :value="String(metrics.overdue)" hint="Aging 5 days or more" />
       <AdMetric
-        label="Due Within 2 Days"
+        label="Aging 2 to 4 days"
+        :value="String(metrics.overdue)"
+        hint="Days on the current step"
+      />
+      <AdMetric
+        label="Aging 5 days or more"
         :value="String(metrics.dueWithin2Days)"
-        hint="Approaching review target"
+        hint="Days on the current step"
       />
       <AdMetric
         label="High-risk Submissions"

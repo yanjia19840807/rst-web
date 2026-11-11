@@ -10,7 +10,7 @@ const props = defineProps<{
 <template>
   <div
     data-slot="alert-action"
-    :class="cn('col-start-3 row-span-2 row-start-1 self-center justify-self-end', props.class)"
+    :class="cn('col-start-3 row-span-2 row-start-1 shrink-0 self-center justify-self-end', props.class)"
   >
     <slot />
   </div>

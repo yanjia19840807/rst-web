@@ -35,6 +35,7 @@ import ApprovalCompletedPanel from '@/features/approval/components/ApprovalCompl
 import ApprovalInProgressPanel from '@/features/approval/components/ApprovalInProgressPanel.vue'
 import { historyFromActions } from '@/features/approval/historyFromActions'
 import type { ApprovalDetailView } from '@/features/approval/types'
+import { reportList, reportSourceFrom } from '@/features/governance-reports/reportSubmission'
 import { submittedDetailsBreadcrumbs } from '@/navigation/breadcrumbs'
 import { usePageBreadcrumb } from '@/navigation/pageBreadcrumb'
 
@@ -75,6 +76,11 @@ const isApprover = computed(() => props.mode === 'approver')
 
 const router = useRouter()
 const route = useRoute()
+const reportSource = computed(() => reportSourceFrom(route.meta.reportSource))
+const report = computed(() => {
+  const source = reportSource.value
+  return source ? reportList(source) : null
+})
 const pageTab = ref<'exercise' | 'approval'>('exercise')
 const comments = ref('')
 const redirected = ref(false)
@@ -167,9 +173,11 @@ function redirectAway(message: string) {
   redirected.value = true
   toast.error(message)
   void router.push(
-    isApprover.value
-      ? queueLocation.value
-      : { name: 'supervisor-exercise-detail', params: { id: props.exerciseId } },
+    report.value
+      ? { name: report.value.listName }
+      : isApprover.value
+        ? queueLocation.value
+        : { name: 'supervisor-exercise-detail', params: { id: props.exerciseId } },
   )
 }
 
@@ -204,6 +212,23 @@ const queueLocation = computed(() =>
 const queueBackLabel = computed(() =>
   approvalQueueBackLabel(route.query.tab, workspace.value?.mode),
 )
+const backLabel = computed(() => {
+  if (report.value) return report.value.backLabel
+  if (isApprover.value) return queueBackLabel.value
+  return exerciseListBackLabel(exercise.value?.workflowStatus ?? details.value?.workflowStatus)
+})
+
+function goBack() {
+  if (report.value) {
+    void router.push({ name: report.value.listName })
+    return
+  }
+  void router.push(
+    isApprover.value
+      ? queueLocation.value
+      : exerciseListLocation(exercise.value?.workflowStatus ?? details.value?.workflowStatus),
+  )
+}
 
 usePageBreadcrumb(
   computed(() =>
@@ -212,6 +237,9 @@ usePageBreadcrumb(
       workflowStatus: exercise.value?.workflowStatus ?? details.value?.workflowStatus,
       queueTab: route.query.tab,
       workspaceMode: workspace.value?.mode,
+      list: report.value
+        ? { label: report.value.listLabel, to: { name: report.value.listName } }
+        : undefined,
     }),
   ),
 )
@@ -401,20 +429,8 @@ async function downloadSummary() {
   <ListLoading v-if="loading" class="h-48" />
   <div v-else-if="details && exercise" class="grid gap-4">
     <PageActions>
-      <PageBackButton
-        @click="
-          router.push(
-            isApprover
-              ? queueLocation
-              : exerciseListLocation(exercise?.workflowStatus ?? details?.workflowStatus),
-          )
-        "
-      >
-        {{
-          isApprover
-            ? queueBackLabel
-            : exerciseListBackLabel(exercise?.workflowStatus ?? details?.workflowStatus)
-        }}
+      <PageBackButton @click="goBack">
+        {{ backLabel }}
       </PageBackButton>
       <Button
         v-if="isApprover"
@@ -623,7 +639,7 @@ async function downloadSummary() {
       </Card>
 
       <ApprovalInProgressPanel
-        v-if="inProgress"
+        v-if="inProgress && !report"
         :workspace="workspace"
         :comments="comments"
         :pending="pending"

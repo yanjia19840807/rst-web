@@ -75,6 +75,21 @@ describe('exerciseDetailBreadcrumbs', () => {
     ).toEqual(['Exercises', 'Exercise', 'Peak week'])
   })
 
+  it('returns a report submission review to the list that opened it', () => {
+    expect(
+      breadcrumbsForRoute({
+        name: 'approver-repository-submission',
+        params: { submissionId: 'sub-1' },
+      }),
+    ).toEqual([
+      { label: 'RST Repository', to: { name: 'approver-repository' } },
+      { label: 'Submission Review' },
+    ])
+    expect(
+      breadcrumbsForRoute({ name: 'approver-validation-submission' }).map((item) => item.label),
+    ).toEqual(['Validation Workflow', 'Submission Review'])
+  })
+
   it('returns a snapshot through submitted details', () => {
     expect(
       exerciseDetailBreadcrumbs({

@@ -83,12 +83,14 @@ function mismatchesOf(finding: ValidationFinding) {
       </TableHeader>
       <TableBody>
         <TableRow v-for="finding in findings" :key="finding.ruleCode">
-          <TableCell>{{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}</TableCell>
+          <TableCell class="whitespace-normal align-top">
+            {{ findingLabel[finding.ruleCode] ?? finding.ruleCode }}
+          </TableCell>
           <TableCell>
             <StatusBadge :status="finding.severity" />
           </TableCell>
-          <TableCell>
-            <div>{{ findingDetail(finding) }}</div>
+          <TableCell class="whitespace-normal align-top">
+            <div class="min-w-0 break-words">{{ findingDetail(finding) }}</div>
             <details v-if="mismatchesOf(finding).length" class="mt-1">
               <summary class="cursor-pointer text-xs text-muted-foreground">
                 View {{ mismatchesOf(finding).length }}

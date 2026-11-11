@@ -162,6 +162,7 @@ export function createTmsSessionColumns(
     columnHelper.accessor((row) => row.subtaskName || '—', {
       id: 'subtaskName',
       header: 'Subtask',
+      meta: { cellClass: 'max-w-xs whitespace-normal align-top break-words' },
     }),
     columnHelper.accessor((row) => formatInstantForCenter(row.startedAt, row.center), {
       id: 'startedAt',
@@ -182,6 +183,7 @@ export function createTmsSessionColumns(
     columnHelper.accessor((row) => row.reference || '—', {
       id: 'reference',
       header: 'Reference',
+      meta: { cellClass: 'max-w-sm whitespace-normal align-top break-words' },
     }),
     columnHelper.accessor((row) =>
       formatSessionVolume(row.processedVolume),
@@ -192,7 +194,11 @@ export function createTmsSessionColumns(
     columnHelper.accessor((row) => row.remarks || '—', {
       id: 'remarks',
       header: 'Remarks',
-      meta: { cellClass: 'max-w-52 truncate' },
+      meta: { cellClass: 'w-52 max-w-52 align-top' },
+      cell: ({ getValue }) => {
+        const text = String(getValue() ?? '—')
+        return h('div', { class: 'truncate', title: text === '—' ? undefined : text }, text)
+      },
     }),
   )
   if (options.showStatus) {

@@ -34,6 +34,7 @@ export type DashboardResponse = {
 export type RepositoryRow = {
   exerciseId: string
   exerciseUuid: string
+  submissionId: string
   carrier: string
   site: string
   country: string
@@ -104,6 +105,7 @@ export type SupportCategoryOption = {
 export type SupportRow = {
   exerciseNo: string
   exerciseUuid: string
+  submissionId: string
   center: string
   domain: string
   pl1: string
@@ -164,6 +166,7 @@ export type SupportRepositoryResponse = {
 export type ValidationWorkflowRow = {
   exerciseNo: string
   exerciseUuid: string
+  submissionId: string
   gbs: string
   domain: string
   pl1: string

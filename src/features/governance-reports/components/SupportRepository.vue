@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
+import { useListMemory } from '@/composables/useListMemory'
 import { distinctCommaTokens } from '@/lib/commaTokens'
 import ToolkitInfoDialog from '@/features/exercise-management/components/ToolkitInfoDialog.vue'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
@@ -51,6 +52,7 @@ const draft = reactive(emptyFilters())
 const applied = reactive(emptyFilters())
 const page = ref(1)
 const pageSize = ref(10)
+useListMemory('support-repository', { draft, applied, page, pageSize })
 const exportOpen = ref(false)
 const exporting = ref(false)
 const queryClient = useQueryClient()

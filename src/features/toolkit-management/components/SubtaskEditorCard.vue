@@ -280,7 +280,7 @@ function applyToolkit(toolkit: SupervisorToolkit) {
                 <TableCell v-if="isEdit && editingId === subtask.id">
                   <Input v-model="editName" size="sm" placeholder="Enter subtask name" />
                 </TableCell>
-                <TableCell v-else-if="isEdit">
+                <TableCell v-else-if="isEdit" class="max-w-md whitespace-normal align-top break-words">
                   {{ subtask.name || '—' }}
                 </TableCell>
                 <TableCell v-else>

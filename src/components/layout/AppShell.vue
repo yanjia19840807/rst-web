@@ -201,9 +201,9 @@ const copyrightYear = new Date().getFullYear()
                 RST
               </span>
             </RouterLink>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <h1 v-if="title" class="truncate text-lg font-semibold">{{ title }}</h1>
-              <p v-if="subtitle" class="hidden text-sm text-muted-foreground lg:block">
+              <p v-if="subtitle" class="hidden truncate text-sm text-muted-foreground lg:block">
                 {{ subtitle }}
               </p>
             </div>
@@ -219,6 +219,16 @@ const copyrightYear = new Date().getFullYear()
               <UserMenu />
             </div>
           </div>
+        </div>
+        <div
+          v-show="breadcrumbs.length"
+          class="flex min-w-0 flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5 sm:px-6"
+        >
+          <AppBreadcrumb :items="breadcrumbs" />
+          <div
+            :id="PAGE_ACTIONS_TARGET_ID"
+            class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 empty:hidden"
+          />
         </div>
         <Alert
           v-if="catalog.error && !catalog.ready"
@@ -244,16 +254,6 @@ const copyrightYear = new Date().getFullYear()
             </Button>
           </AlertAction>
         </Alert>
-        <div
-          v-show="breadcrumbs.length"
-          class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5 sm:px-6"
-        >
-          <AppBreadcrumb :items="breadcrumbs" />
-          <div
-            :id="PAGE_ACTIONS_TARGET_ID"
-            class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 empty:hidden"
-          />
-        </div>
       </header>
 
       <main

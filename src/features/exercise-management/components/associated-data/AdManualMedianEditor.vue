@@ -227,7 +227,9 @@ const readOnlyRows = computed(() => [
             </TableHeader>
             <TableBody>
               <TableRow v-for="file in draftFiles" :key="file.id">
-                <TableCell class="font-medium">{{ file.fileName }}</TableCell>
+                <TableCell class="max-w-xs font-medium whitespace-normal align-top break-all">
+                  {{ file.fileName }}
+                </TableCell>
                 <TableCell>{{ formatSize(file.sizeBytes) }}</TableCell>
                 <TableCell>Uploaded</TableCell>
                 <TableCell v-if="!readOnly">

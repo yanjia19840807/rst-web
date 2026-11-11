@@ -71,7 +71,11 @@ export function submittedDetailsBreadcrumbs(input: {
   workflowStatus?: string | null
   queueTab?: unknown
   workspaceMode?: string | null
+  list?: BreadcrumbItem
 }): BreadcrumbItem[] {
+  if (input.list) {
+    return [input.list, { label: 'Submission Review' }]
+  }
   if (input.approver) {
     return [
       {
@@ -140,6 +144,21 @@ export function breadcrumbsForRoute(route: CrumbRoute): BreadcrumbItem[] {
       return submittedDetailsBreadcrumbs({
         approver: true,
         queueTab: route.query?.tab,
+      })
+    case 'approver-repository-submission':
+      return submittedDetailsBreadcrumbs({
+        approver: true,
+        list: { label: 'RST Repository', to: { name: 'approver-repository' } },
+      })
+    case 'approver-support-submission':
+      return submittedDetailsBreadcrumbs({
+        approver: true,
+        list: { label: 'Support Repository', to: { name: 'approver-support-repository' } },
+      })
+    case 'approver-validation-submission':
+      return submittedDetailsBreadcrumbs({
+        approver: true,
+        list: { label: 'Validation Workflow', to: { name: 'approver-validation-workflow' } },
       })
     default: {
       const title = route.meta?.title

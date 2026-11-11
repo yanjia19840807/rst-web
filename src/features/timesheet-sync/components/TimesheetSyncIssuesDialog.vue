@@ -164,7 +164,9 @@ watch(
             <TableBody>
               <TableRow v-for="issue in issues" :key="issue.id">
                 <TableCell>{{ issue.sourceRow ?? '—' }}</TableCell>
-                <TableCell class="whitespace-normal">{{ displayIssueMessage(issue) }}</TableCell>
+                <TableCell class="whitespace-normal align-top break-words">
+                  {{ displayIssueMessage(issue) }}
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
