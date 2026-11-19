@@ -367,7 +367,7 @@ const kpiAllocationRows = computed(() => {
   })
 })
 
-async function onApprove() {
+async function onApprove(nextPositionId: string | null) {
   if (!props.submissionId || pending.value) return
   try {
     await approve.mutateAsync({
@@ -375,6 +375,7 @@ async function onApprove() {
       body: {
         comments: comments.value.trim() || null,
         requestId: randomId(),
+        nextPositionId,
       },
     })
     toast.success('Submission approved.')

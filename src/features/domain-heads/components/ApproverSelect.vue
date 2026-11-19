@@ -9,14 +9,18 @@ import type { ButtonVariants } from '@/components/ui/button'
 import { useTimesheetPeopleQuery } from '@/features/timesheet/api/queries'
 
 const props = defineProps<{
-  modelValue: string | null
+  modelValue?: string | null
+  multiple?: boolean
   center: string
   fallbackName?: string | null
   fallbackPositionId?: string | null
+  fallbacks?: Array<{ positionId?: string | null; name?: string | null }>
   disabled?: boolean
   size?: ButtonVariants['size']
   triggerClass?: string
 }>()
+
+const many = defineModel<string[]>('many', { default: () => [] })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]
@@ -55,16 +59,20 @@ const emptyText = computed(() =>
 )
 
 function formatLabel(row: PersonPickerRow) {
-  const fallback =
-    row.id === props.fallbackPositionId ? (props.fallbackName ?? '').trim() : ''
-  return row.name.trim() || fallback || 'Select approver'
+  const named = (props.fallbacks ?? []).find((item) => item.positionId === row.id)?.name?.trim()
+  const single = row.id === props.fallbackPositionId ? (props.fallbackName ?? '').trim() : ''
+  const live = row.name.trim()
+  const resolved = live && live !== row.id ? live : named || single
+  return resolved || (props.multiple ? 'Select approvers' : 'Select approver')
 }
 </script>
 
 <template>
   <PersonPicker
-    :model-value="props.modelValue"
-    empty-label="Select approver"
+    :model-value="props.multiple ? null : (props.modelValue ?? null)"
+    v-model:many="many"
+    :multiple="multiple"
+    :empty-label="multiple ? 'Select approvers' : 'Select approver'"
     allow-clear
     :items="items"
     :total="total"

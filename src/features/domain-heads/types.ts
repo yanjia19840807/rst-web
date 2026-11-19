@@ -7,8 +7,12 @@ export type CenterRoleAssignee = {
   status: DomainHeadStatus
 }
 
-export type DomainHeadRow = CenterRoleAssignee & {
+export type DomainHeadAssignee = CenterRoleAssignee
+
+export type DomainHeadRow = {
   domain: string
+  assignees: DomainHeadAssignee[]
+  status: DomainHeadStatus
 }
 
 export type DomainHeadPage = {
@@ -25,6 +29,6 @@ export type SaveDomainHeadsRequest = {
   lthPositionId?: string | null
   mappings: Array<{
     domain: string
-    positionId: string | null
+    positionIds: string[]
   }>
 }

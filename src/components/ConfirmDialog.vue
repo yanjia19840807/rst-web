@@ -33,6 +33,7 @@ const props = withDefaults(
     reasonPlaceholder?: string
     pending?: boolean
     elevated?: boolean
+    confirmDisabled?: boolean
   }>(),
   {
     confirmLabel: 'Confirm',
@@ -43,6 +44,7 @@ const props = withDefaults(
     reasonPlaceholder: 'Optional note',
     pending: false,
     elevated: false,
+    confirmDisabled: false,
   },
 )
 
@@ -80,7 +82,7 @@ watch(open, (value, previous) => {
 })
 
 function onConfirm() {
-  if (props.pending) return
+  if (props.pending || props.confirmDisabled) return
   const trimmed = reason.value.trim()
   if (props.requireReason && !trimmed) return
   submitted.value = true
@@ -127,7 +129,7 @@ function onConfirm() {
         <Button
           type="button"
           :variant="confirmVariant"
-          :disabled="pending || (requireReason && !reason.trim())"
+          :disabled="pending || confirmDisabled || (requireReason && !reason.trim())"
           :aria-busy="pending || undefined"
           @click="onConfirm"
         >

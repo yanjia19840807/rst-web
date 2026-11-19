@@ -7,12 +7,15 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import CreatedByText from '@/components/CreatedByText.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 
 import { ownerViaLabel } from '@/lib/auditActor'
 
+import { chosenNextPositionId, mustChooseHandler } from '../nextHandler'
 import { decisionCommentSchema, returnCommentSchema } from '../schemas/decisionComment'
-import type { ApprovalWorkspaceView } from '../types'
+import type { ApprovalWorkspaceView, NextHandlerOption } from '../types'
 import ApprovalHistoryTable from './ApprovalHistoryTable.vue'
 
 const props = defineProps<{
@@ -24,7 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:comments': [value: string]
-  approve: []
+  approve: [nextPositionId: string | null]
   return: []
 }>()
 
@@ -49,6 +52,15 @@ watch(comments, (value) => {
 
 const approveOpen = ref(false)
 const returnOpen = ref(false)
+const selectedHandler = ref('')
+
+const nextHandlers = computed(() => props.workspace.nextHandlers ?? [])
+const mustPickHandler = computed(() => mustChooseHandler(nextHandlers.value))
+
+watch(approveOpen, (isOpen) => {
+  if (!isOpen) return
+  selectedHandler.value = ''
+})
 
 function askApprove() {
   approveOpen.value = true
@@ -67,8 +79,15 @@ function askReturn() {
 }
 
 function confirmApprove() {
+  const nextPositionId = chosenNextPositionId(nextHandlers.value, selectedHandler.value)
+  if (mustPickHandler.value && !nextPositionId) return
   approveOpen.value = false
-  emit('approve')
+  emit('approve', nextPositionId)
+}
+
+function optionLabel(handler: NextHandlerOption) {
+  return [handler.name, handler.ccgid].filter((part) => Boolean(part && String(part).trim())).join(' · ')
+    || handler.positionId
 }
 
 function confirmReturn() {
@@ -85,15 +104,17 @@ function handlerLabel(workspace: ApprovalWorkspaceView) {
 
 const approveRows = computed(() => {
   const next = props.workspace
-  return [
+  const rows = [
     { label: 'Current step', value: next.currentHop?.step || '—' },
     { label: 'Next step', value: next.nextStep || '—' },
-    { label: 'Position', value: next.nextPositionId || '—' },
-    {
-      label: 'Handler',
-      value: handlerLabel(next) || '—',
-    },
   ]
+  if (!mustPickHandler.value) {
+    rows.push(
+      { label: 'Position', value: next.nextPositionId || '—' },
+      { label: 'Handler', value: handlerLabel(next) || '—' },
+    )
+  }
+  return rows
 })
 </script>
 
@@ -151,8 +172,31 @@ const approveRows = computed(() => {
       confirm-variant="default"
       :rows="approveRows"
       :pending="pending"
+      :confirm-disabled="mustPickHandler && !selectedHandler"
       @confirm="confirmApprove"
-    />
+    >
+      <div v-if="mustPickHandler" class="grid gap-1.5 text-left">
+        <Label for="next-handler">Handler</Label>
+        <NativeSelect
+          id="next-handler"
+          v-model="selectedHandler"
+          class="w-full"
+          placeholder="Select a handler"
+          :disabled="pending"
+        >
+          <option
+            v-for="handler in nextHandlers"
+            :key="handler.positionId"
+            :value="handler.positionId"
+          >
+            {{ optionLabel(handler) }}
+          </option>
+        </NativeSelect>
+        <p class="text-xs text-muted-foreground">
+          This step has more than one handler. Select one before approving.
+        </p>
+      </div>
+    </ConfirmDialog>
 
     <ConfirmDialog
       v-model:open="returnOpen"

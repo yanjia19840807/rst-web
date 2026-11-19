@@ -140,6 +140,12 @@ export interface ApprovalHistoryRow {
   actedBy?: AuditActor | null
 }
 
+export interface NextHandlerOption {
+  positionId: string
+  name?: string | null
+  ccgid?: string | null
+}
+
 export interface ApprovalWorkspaceView {
   mode: 'IN_PROGRESS' | 'COMPLETED'
   statusBar: ApprovalStatusBar
@@ -149,6 +155,7 @@ export interface ApprovalWorkspaceView {
   nextReviewer?: string | null
   nextHandlerCcgid?: string | null
   nextReviewerBy?: AuditActor | null
+  nextHandlers?: NextHandlerOption[] | null
   history: ApprovalHistoryRow[]
 }
 
@@ -175,6 +182,7 @@ export interface ApprovalDetailView {
 export interface ApproveRequest {
   comments?: string | null
   requestId?: string | null
+  nextPositionId?: string | null
 }
 
 export interface ReturnRequest {

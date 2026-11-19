@@ -43,7 +43,7 @@ const usesAdminPicker = computed(
 
 const selectedCenter = ref('')
 const pendingCenter = ref<string | null>(null)
-const drafts = ref<Record<string, string | null>>({})
+const drafts = ref<Record<string, string[]>>({})
 const lthDraft = ref<string | null>(null)
 const domainFilter = ref('')
 const confirmSaveOpen = ref(false)
@@ -83,17 +83,27 @@ const rows = computed(() => {
     : items
 })
 
+function assigneeIds(row: { assignees?: Array<{ positionId?: string | null }> }) {
+  return (row.assignees ?? [])
+    .map((item) => item.positionId)
+    .filter((id): id is string => Boolean(id))
+}
+
+function sameIds(left: string[], right: string[]) {
+  return left.length === right.length && left.every((id, index) => id === right[index])
+}
+
 const dirtyMappings = computed(() => {
   if (!page.value) return []
   return page.value.domains
     .filter((row) => {
+      const current = assigneeIds(row)
       const draft = drafts.value[row.domain]
-      const next = draft === undefined ? row.positionId : draft
-      return next !== row.positionId
+      return draft !== undefined && !sameIds(draft, current)
     })
     .map((row) => ({
       domain: row.domain,
-      positionId: drafts.value[row.domain] === undefined ? null : drafts.value[row.domain],
+      positionIds: drafts.value[row.domain] ?? [],
     }))
 })
 
@@ -112,9 +122,9 @@ watch(
       lthDraft.value = null
       return
     }
-    const next: Record<string, string | null> = {}
+    const next: Record<string, string[]> = {}
     for (const row of value.domains) {
-      next[row.domain] = row.positionId
+      next[row.domain] = assigneeIds(row)
     }
     drafts.value = next
     lthDraft.value = value.lth?.positionId ?? null
@@ -227,8 +237,9 @@ async function confirmSave() {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
         <DialogTitle>Center Roles</DialogTitle>
         <DialogDescription>
-          Assign one LTH per Center and one Domain Head per Domain. Saving remounts in-flight LTH
-          and CDH reviews for the mappings you change.
+          Assign one LTH per Center and one or more Domain Heads per Domain. Saving remounts
+          in-flight LTH reviews. Domain Head changes apply the next time a reviewer chooses
+          the handler.
         </DialogDescription>
       </DialogHeader>
 
@@ -315,13 +326,12 @@ async function confirmSave() {
                     <TableCell class="font-medium">{{ row.domain }}</TableCell>
                     <TableCell>
                       <ApproverSelect
-                        :model-value="drafts[row.domain] ?? null"
+                        v-model:many="drafts[row.domain]"
+                        multiple
                         :center="center"
-                        :fallback-name="row.name"
-                        :fallback-position-id="row.positionId"
+                        :fallbacks="row.assignees"
                         size="sm"
                         trigger-class="w-full"
-                        @update:model-value="drafts[row.domain] = $event"
                       />
                     </TableCell>
                     <TableCell>
@@ -354,7 +364,7 @@ async function confirmSave() {
   <ConfirmDialog
     v-model:open="confirmSaveOpen"
     title="Save Center Roles?"
-    description="In-flight LTH and CDH reviews for the mappings you changed will move to the new approver. Approved steps stay as they are."
+    description="A changed LTH moves in-flight LTH reviews to the new approver. Domain Head changes apply the next time a reviewer chooses the handler. Approved steps stay as they are."
     confirm-label="Save"
     confirm-variant="default"
     :pending="saveMutation.isPending.value"
