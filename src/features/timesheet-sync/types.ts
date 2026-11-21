@@ -78,8 +78,6 @@ export type TimesheetSyncAlertConfig = {
   recipients: string[]
 }
 
-export type TimesheetSnapshotTab = 'people' | 'positions' | 'occupancies' | 'scopes' | 'kpis'
-
 export type TimesheetSnapshotPage<T> = {
   items: T[]
   page: number

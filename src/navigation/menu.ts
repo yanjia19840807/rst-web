@@ -76,7 +76,7 @@ export const menuItems: readonly MenuItem[] = [
     permission: PERMISSIONS.geoClusterManage,
   },
   {
-    label: 'Timesheet Sync',
+    label: 'Source Data',
     to: '/approver/timesheet-sync',
     permission: PERMISSIONS.timesheetSync,
   },

@@ -19,16 +19,18 @@ const props = withDefaults(
       class?: HTMLAttributes['class']
       showCloseButton?: boolean
       closeOnOutside?: boolean
+      inline?: boolean
     }
   >(),
   {
     showCloseButton: true,
     closeOnOutside: true,
+    inline: false,
   },
 )
 const emits = defineEmits<DialogContentEmits>()
 
-const delegatedProps = reactiveOmit(props, 'class', 'showCloseButton', 'closeOnOutside')
+const delegatedProps = reactiveOmit(props, 'class', 'showCloseButton', 'closeOnOutside', 'inline')
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 
@@ -38,7 +40,10 @@ function preventOutsideDismiss(event: Event) {
 </script>
 
 <template>
-  <DialogPortal>
+  <div v-if="inline" data-slot="dialog-content" :class="cn('grid gap-4', props.class)">
+    <slot />
+  </div>
+  <DialogPortal v-else>
     <DialogOverlay />
     <DialogContent
       data-slot="dialog-content"

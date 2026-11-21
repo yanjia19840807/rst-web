@@ -22,6 +22,7 @@ export type DomainHeadPage = {
   remountedCount: number | null
   lth: CenterRoleAssignee
   domains: DomainHeadRow[]
+  sourceMode?: string | null
 }
 
 export type SaveDomainHeadsRequest = {

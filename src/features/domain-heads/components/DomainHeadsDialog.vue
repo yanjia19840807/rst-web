@@ -32,6 +32,13 @@ import type { DomainHeadStatus } from '../types'
 import ApproverSelect from './ApproverSelect.vue'
 
 const open = defineModel<boolean>('open', { default: false })
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+const active = computed(() => props.embedded || open.value)
+
+function onDialogOpen(value: boolean) {
+  if (props.embedded) return
+  open.value = value
+}
 
 const session = useSessionStore()
 const saveMutation = useSaveDomainHeads()
@@ -49,14 +56,17 @@ const domainFilter = ref('')
 const confirmSaveOpen = ref(false)
 const confirmSwitchOpen = ref(false)
 
-const centersQuery = useDomainHeadCentersQuery(() => open.value && usesAdminPicker.value)
+const centersQuery = useDomainHeadCentersQuery(() => active.value && usesAdminPicker.value)
 
 const queryCenter = computed(() => {
   if (usesAdminPicker.value) return selectedCenter.value.trim() || undefined
   return undefined
 })
 
-const pageQuery = useDomainHeadsQuery(queryCenter, () => open.value && (!usesAdminPicker.value || Boolean(selectedCenter.value.trim())))
+const pageQuery = useDomainHeadsQuery(
+  queryCenter,
+  () => active.value && (!usesAdminPicker.value || Boolean(selectedCenter.value.trim())),
+)
 
 const page = computed(() => {
   if (usesAdminPicker.value && !selectedCenter.value.trim()) return undefined
@@ -132,7 +142,7 @@ watch(
   { immediate: true },
 )
 
-watch(open, (isOpen) => {
+watch(active, (isOpen) => {
   if (!isOpen) {
     domainFilter.value = ''
     confirmSaveOpen.value = false
@@ -148,7 +158,7 @@ watch(open, (isOpen) => {
 watch(
   () => centersQuery.data.value,
   (list) => {
-    if (!open.value || !usesAdminPicker.value || selectedCenter.value || !list?.length) return
+    if (!active.value || !usesAdminPicker.value || selectedCenter.value || !list?.length) return
     if (list.length === 1) selectedCenter.value = list[0] ?? ''
   },
 )
@@ -156,7 +166,7 @@ watch(
 watch(
   () => pageQuery.isError.value,
   (isError) => {
-    if (isError && open.value) {
+    if (isError && active.value) {
       toast.error(
         pageQuery.error.value instanceof Error
           ? pageQuery.error.value.message
@@ -176,16 +186,21 @@ function emptyMessage() {
   if (usesAdminPicker.value && !selectedCenter.value.trim()) {
     return centers.value.length
       ? 'Select a Center to configure Center Roles.'
-      : 'No ACTIVE Person or Scope Center is available.'
+      : 'No Center is configured.'
   }
   if (!center.value) return 'Current identity has no Center.'
+  if (page.value?.sourceMode === 'MYHR_SKPI' && !page.value.dailyAvailable) {
+    return 'No current MyHR people are available for this Center.'
+  }
   if (page.value && !page.value.dailyAvailable) {
     return 'No ACTIVE Daily Timesheet snapshot is available.'
   }
   if (page.value && !page.value.monthlyAvailable) {
     return 'No ACTIVE Monthly Timesheet snapshot is available.'
   }
-  return 'This Center has no GBS Domain in the ACTIVE Monthly Timesheet.'
+  return page.value?.sourceMode === 'MYHR_SKPI'
+    ? 'This Center has no GBS Domain in the current SKPI file.'
+    : 'This Center has no GBS Domain in the ACTIVE Monthly Timesheet.'
 }
 
 function onCenterChange(next: unknown) {
@@ -232,8 +247,16 @@ async function confirmSave() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent class="flex h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+  <Dialog :open="embedded || open" :modal="!embedded" @update:open="onDialogOpen">
+    <DialogContent
+      :inline="embedded"
+      :show-close-button="!embedded"
+      :class="
+        embedded
+          ? 'flex min-h-0 flex-col gap-0 overflow-hidden rounded-xl border bg-card'
+          : 'flex h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl'
+      "
+    >
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
         <DialogTitle>Center Roles</DialogTitle>
         <DialogDescription>
@@ -311,7 +334,11 @@ async function confirmSave() {
                 v-if="!page.domains.length"
                 class="py-6 text-center text-sm text-muted-foreground"
               >
-                This Center has no GBS Domain in the ACTIVE Monthly Timesheet.
+                {{
+                  page.sourceMode === 'MYHR_SKPI'
+                    ? 'This Center has no GBS Domain in the current SKPI file.'
+                    : 'This Center has no GBS Domain in the ACTIVE Monthly Timesheet.'
+                }}
               </p>
               <Table v-else>
                 <TableHeader>
@@ -346,7 +373,13 @@ async function confirmSave() {
       </div>
 
       <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
-        <Button type="button" variant="outline" :disabled="saveMutation.isPending.value" @click="open = false">
+        <Button
+          v-if="!embedded"
+          type="button"
+          variant="outline"
+          :disabled="saveMutation.isPending.value"
+          @click="open = false"
+        >
           Cancel
         </Button>
         <Button

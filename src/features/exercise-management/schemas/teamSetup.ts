@@ -100,45 +100,6 @@ export function slaHoursToMinutes(hours: number | null | undefined): number | nu
   return Number(hours) * 60
 }
 
-/** Half-up to 1 decimal. Used only to compare tenure total with Delivery HC. */
-export function roundHc1(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  const negative = value < 0
-  const [whole, frac = ''] = Math.abs(value).toFixed(8).split('.')
-  const digits = (frac + '00000000').slice(0, 8)
-  let tenths = Number(whole) * 10 + Number(digits[0] ?? '0')
-  if (Number(digits[1] ?? '0') >= 5) tenths += 1
-  const rounded = tenths / 10
-  return negative ? -rounded : rounded
-}
-
-export type HeadcountAlignment = {
-  matches: boolean
-  tenureTotal: number
-  tenureRounded: number
-  deliveryHc: number
-  deliveryRounded: number
-}
-
-/** Tenure buckets sum to 0 when empty. Delivery HC null counts as 0. */
-export function headcountAlignment(
-  agents: Array<number | null | undefined>,
-  deliveryHc: number | null | undefined,
-): HeadcountAlignment {
-  const tenureTotal = agents.reduce<number>((sum, value) => sum + (value ?? 0), 0)
-  const delivery =
-    deliveryHc == null || !Number.isFinite(Number(deliveryHc)) ? 0 : Number(deliveryHc)
-  const tenureRounded = roundHc1(tenureTotal)
-  const deliveryRounded = roundHc1(delivery)
-  return {
-    matches: tenureRounded === deliveryRounded,
-    tenureTotal,
-    tenureRounded,
-    deliveryHc: delivery,
-    deliveryRounded,
-  }
-}
-
 export function emptyTeamSetupForm(): TeamSetupFormValues {
   return {
     agentsLt6m: null,

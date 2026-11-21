@@ -16,6 +16,7 @@ describe('menu order', () => {
       'RST Repository',
       'Support Repository',
       'Benchmarking',
+      'Clusters',
     ])
   })
 
@@ -35,8 +36,10 @@ describe('menu order', () => {
       'Support Repository',
       'Validation Workflow',
       'Benchmarking',
-      'Timesheet Sync',
+      'Clusters',
+      'Source Data',
       'Support Categories',
+      'Regions',
     ])
   })
 })

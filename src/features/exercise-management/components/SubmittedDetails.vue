@@ -251,7 +251,7 @@ const deliveryHc = computed(() =>
   ),
 )
 
-const actualSize = computed(() => actualHeadcount(deliveryHc.value))
+const actualSize = computed(() => actualHeadcount(teamSetup.value?.totalAgents))
 
 const supportFte = computed(() => sumSupportFte(support.value))
 

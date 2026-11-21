@@ -13,9 +13,9 @@ export function n(value: number | string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-/** Actual HC is Shared KPI Delivery HC. Tenure totals are not used. */
-export function actualHeadcount(deliveryHc: number | string | null | undefined): number {
-  return n(deliveryHc)
+/** Actual HC is the Team Setup tenure total. */
+export function actualHeadcount(tenureTotal: number | string | null | undefined): number {
+  return n(tenureTotal)
 }
 
 export function monthKey(value: string): string {

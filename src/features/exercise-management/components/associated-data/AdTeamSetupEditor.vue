@@ -22,11 +22,9 @@ import { TimePicker } from '@/components/ui/time-picker'
 
 import {
   emptyTeamSetupForm,
-  headcountAlignment,
   teamSetupFormSchema,
   teamSetupToForm,
   toTeamSetupRequest,
-  type HeadcountAlignment,
   type TeamSetupFormValues,
 } from '../../schemas/teamSetup'
 import type { TeamSetup, TeamSetupRequest } from '../../types'
@@ -93,19 +91,6 @@ const draftTotalAgents = computed(() =>
 const deliveryHc = computed(() => {
   const raw = props.modelValue?.deliveryHc
   return raw == null || !Number.isFinite(Number(raw)) ? 0 : Number(raw)
-})
-
-const alignment = computed(() =>
-  headcountAlignment(
-    [values.agentsLt6m, values.agents6To24m, values.agents24To48m, values.agentsGt48m],
-    deliveryHc.value,
-  ),
-)
-
-const alignmentHint = computed(() => {
-  const check = alignment.value
-  if (check.matches) return ''
-  return `${formatNumber(check.tenureRounded, 1)} vs Delivery HC ${formatNumber(check.deliveryRounded, 1)}`
 })
 
 /** Live preview; Excel Input C10: (3·&lt;6m + 15·6–24m + 36·24–48m + 48·&gt;48m) / 12 / total. */
@@ -228,9 +213,7 @@ const headcountRows = computed(() => [
   { label: withUnit('Agents >48 months', FieldUnit.hc), value: values.agentsGt48m },
   {
     label: withUnit('Total agents', FieldUnit.hc),
-    value: alignmentHint.value
-      ? `${formatNumber(draftTotalAgents.value, 2)} (${alignmentHint.value})`
-      : formatNumber(draftTotalAgents.value, 2),
+    value: formatNumber(draftTotalAgents.value, 2),
   },
   {
     label: withUnit('Average tenure', FieldUnit.years),
@@ -283,11 +266,7 @@ async function toRequest(): Promise<TeamSetupRequest | null> {
   return toTeamSetupRequest(values)
 }
 
-function currentAlignment(): HeadcountAlignment {
-  return alignment.value
-}
-
-defineExpose({ toRequest, currentAlignment })
+defineExpose({ toRequest })
 </script>
 
 <template>
@@ -328,8 +307,9 @@ defineExpose({ toRequest, currentAlignment })
         <Alert variant="info" class="mb-3">
           <Info />
           <AlertDescription>
-            Shared KPI Delivery HC: {{ formatNumber(deliveryHc, 2) }} HC. Sizing uses this value as
-            Actual HC.
+            Actual HC is the tenure total, {{ formatNumber(draftTotalAgents, 2) }} HC. Shared KPI
+            Delivery HC, {{ formatNumber(deliveryHc, 2) }} HC, is used only when splitting results
+            across Shared KPI lines.
           </AlertDescription>
         </Alert>
         <DetailTable :rows="headcountRows" />
@@ -350,8 +330,9 @@ defineExpose({ toRequest, currentAlignment })
         <Alert variant="info" class="mb-3">
           <Info />
           <AlertDescription>
-            Shared KPI Delivery HC: {{ formatNumber(deliveryHc, 2) }} HC. Sizing uses this value as
-            Actual HC.
+            Actual HC is the tenure total, {{ formatNumber(draftTotalAgents, 2) }} HC. Shared KPI
+            Delivery HC, {{ formatNumber(deliveryHc, 2) }} HC, is used only when splitting results
+            across Shared KPI lines.
           </AlertDescription>
         </Alert>
         <div class="grid gap-3 sm:grid-cols-2">
@@ -415,12 +396,7 @@ defineExpose({ toRequest, currentAlignment })
             <TableBody>
               <TableRow>
                 <TableCell>{{ withUnit('Total agents', FieldUnit.hc) }}</TableCell>
-                <TableCell>
-                  {{ formatNumber(draftTotalAgents, 2) }}
-                  <p v-if="alignmentHint" class="text-xs text-muted-foreground">
-                    {{ alignmentHint }}
-                  </p>
-                </TableCell>
+                <TableCell>{{ formatNumber(draftTotalAgents, 2) }}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>{{ withUnit('Average tenure', FieldUnit.years) }}</TableCell>

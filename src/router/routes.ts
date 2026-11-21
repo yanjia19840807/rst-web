@@ -182,8 +182,8 @@ export const routes: RouteRecordRaw[] = [
     name: 'approver-timesheet-sync',
     component: () => import('@/pages/approver/TimesheetSyncPage.vue'),
     meta: {
-      title: 'Timesheet Sync',
-      subtitle: 'Monitor Daily and Monthly snapshots and upload a report.',
+      title: 'Source Data',
+      subtitle: 'Choose a center source, upload files, and browse the current mapped data.',
       roles: ['approver'],
     },
   },

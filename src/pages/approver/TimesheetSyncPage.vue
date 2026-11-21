@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import TimesheetSync from '@/features/timesheet-sync/components/TimesheetSync.vue'
+import SourceData from '@/features/source-data/components/SourceData.vue'
 </script>
 
 <template>
-  <TimesheetSync />
+  <SourceData />
 </template>

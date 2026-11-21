@@ -3,7 +3,6 @@ import { TriangleAlert } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
-import PageActions from '@/components/PageActions.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
@@ -15,29 +14,49 @@ import { useCenterCatalogStore } from '@/catalog/centerCatalog'
 import { PERMISSIONS } from '@/auth/permissions'
 import { useSessionStore } from '@/auth/session'
 import DomainHeadsDialog from '@/features/domain-heads/components/DomainHeadsDialog.vue'
+import { useCenterSourcesQuery } from '@/features/source-data/queries'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 
 import { timesheetSyncApi } from '../api'
 import { useUploadTimesheetSync } from '../api/mutations'
 import { useTimesheetSyncOverviewQuery } from '../api/queries'
-import type { TimesheetSnapshotTab, TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
+import type { TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
 import {
   emptyTimesheetSyncFilters,
   matchesSyncDate,
   toSyncDateRange,
 } from '../timesheetSyncFilters'
-import TimesheetSnapshotTables from './TimesheetSnapshotTables.vue'
 import TimesheetSyncAlertDialog from './TimesheetSyncAlertDialog.vue'
 import TimesheetSyncFilterFields from './TimesheetSyncFilterFields.vue'
 import TimesheetSyncIssuesDialog from './TimesheetSyncIssuesDialog.vue'
-import {
-  createTimesheetActiveColumns,
-  createTimesheetRunColumns,
-  type TimesheetActiveRow,
-} from './timesheetSyncColumns'
+import { createTimesheetActiveColumns, createTimesheetRunColumns } from './timesheetSyncColumns'
+
+const props = withDefaults(
+  defineProps<{
+    showCenterRoles?: boolean
+    lockCenter?: string
+    showAlerts?: boolean
+    allowUpload?: boolean
+  }>(),
+  { showCenterRoles: true, lockCenter: '', showAlerts: true, allowUpload: true },
+)
 
 const catalog = useCenterCatalogStore()
-const centerOptions = computed(() => catalog.items.map((item) => item.center))
+const sourcesQuery = useCenterSourcesQuery()
+const timesheetCenters = computed(
+  () =>
+    new Set(
+      (sourcesQuery.data.value ?? [])
+        .filter((row) => row.mode === 'TIMESHEET')
+        .map((row) => row.center),
+    ),
+)
+const centerOptions = computed(() => {
+  if (props.lockCenter) return [props.lockCenter]
+  return catalog.items
+    .map((item) => item.center)
+    .filter((center) => timesheetCenters.value.has(center))
+})
 
 const draftActive = reactive(emptyTimesheetSyncFilters())
 const appliedActive = reactive(emptyTimesheetSyncFilters())
@@ -52,7 +71,7 @@ const listQuery = computed<TimesheetSyncOverviewQuery>(() => {
   return {
     kind: appliedRuns.kind || undefined,
     status: appliedRuns.status || undefined,
-    center: appliedRuns.center || undefined,
+    center: props.lockCenter || appliedRuns.center || undefined,
     sourceType: appliedRuns.sourceType || undefined,
     dateFrom: dates.dateFrom,
     dateTo: dates.dateTo,
@@ -66,11 +85,6 @@ const overviewQuery = useTimesheetSyncOverviewQuery(listQuery)
 const uploadMutation = useUploadTimesheetSync()
 const selectedRun = ref<TimesheetSyncRunHeader | null>(null)
 const issuesOpen = ref(false)
-const mappedOpen = ref(false)
-const mappedKind = ref<'DAILY' | 'MONTHLY'>('DAILY')
-const mappedCenter = ref('')
-const mappedFileDate = ref('')
-const mappedTab = ref<TimesheetSnapshotTab>('people')
 const alertOpen = ref(false)
 const domainHeadOpen = ref(false)
 const downloadOpen = ref(false)
@@ -80,7 +94,14 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const canConfigureDomainHeads = computed(() => session.hasPermission(PERMISSIONS.domainHeadConfig))
 
 const overview = computed(() => overviewQuery.data.value)
-const runs = computed(() => overview.value?.runs.items ?? [])
+function keptTimesheetRun(center: string | null | undefined) {
+  if (!sourcesQuery.isSuccess.value) return true
+  return timesheetCenters.value.has(center ?? '')
+}
+
+const runs = computed(() =>
+  (overview.value?.runs.items ?? []).filter((row) => keptTimesheetRun(row.center)),
+)
 const total = computed(() => overview.value?.runs.total ?? 0)
 const loading = computed(() => overviewQuery.isPending.value && !overviewQuery.data.value)
 const hasRunFilters = computed(() =>
@@ -106,8 +127,9 @@ const allSnapshots = computed<TimesheetActiveRow[]>(() =>
 const snapshots = computed(() =>
   allSnapshots.value.filter((row) => {
     const run = row.run
-    if (!run) return false
-    if (appliedActive.center && run.center !== appliedActive.center) return false
+    if (!run || !keptTimesheetRun(run.center)) return false
+    const centerFilter = props.lockCenter || appliedActive.center
+    if (centerFilter && run.center !== centerFilter) return false
     if (appliedActive.kind && row.kind !== appliedActive.kind) return false
     if (appliedActive.sourceType && (run.sourceType ?? '').toUpperCase() !== appliedActive.sourceType) {
       return false
@@ -116,11 +138,32 @@ const snapshots = computed(() =>
   }),
 )
 
+watch(
+  () => props.lockCenter,
+  (center) => {
+    if (!center) return
+    for (const draft of [draftActive, appliedActive, draftRuns, appliedRuns]) {
+      draft.center = center
+    }
+  },
+  { immediate: true },
+)
+
+watch(centerOptions, (options) => {
+  if (props.lockCenter) return
+  if (!sourcesQuery.isSuccess.value || catalog.items.length === 0) return
+  for (const draft of [draftActive, appliedActive, draftRuns, appliedRuns]) {
+    if (draft.center && !options.includes(draft.center)) draft.center = ''
+  }
+})
+
 const missingActiveKinds = computed(() => {
   if (!overviewQuery.isSuccess.value || !overview.value) return []
   const missing: Array<'Daily' | 'Monthly'> = []
-  if ((overview.value.daily ?? []).length === 0) missing.push('Daily')
-  if ((overview.value.monthly ?? []).length === 0) missing.push('Monthly')
+  const daily = (overview.value.daily ?? []).filter((run) => keptTimesheetRun(run.center))
+  const monthly = (overview.value.monthly ?? []).filter((run) => keptTimesheetRun(run.center))
+  if (daily.length === 0) missing.push('Daily')
+  if (monthly.length === 0) missing.push('Monthly')
   return missing
 })
 
@@ -130,9 +173,7 @@ const missingActiveLabel = computed(() => {
   return kinds[0] ?? ''
 })
 
-const activeColumns = computed(() =>
-  createTimesheetActiveColumns({ onViewTables: openMapped, onDownload: requestDownload }),
-)
+const activeColumns = computed(() => createTimesheetActiveColumns({ onDownload: requestDownload }))
 const runColumns = computed(() =>
   createTimesheetRunColumns({ onViewIssues: openIssues, onDownload: requestDownload }),
 )
@@ -205,15 +246,6 @@ function openIssues(row: TimesheetSyncRunHeader) {
   issuesOpen.value = true
 }
 
-function openMapped(row: TimesheetActiveRow, tab: TimesheetSnapshotTab) {
-  if (!row.run) return
-  mappedKind.value = row.kind
-  mappedCenter.value = row.run.center ?? ''
-  mappedFileDate.value = row.run.syncDate ?? ''
-  mappedTab.value = tab
-  mappedOpen.value = true
-}
-
 function requestDownload(row: TimesheetSyncRunHeader) {
   downloadTarget.value = row
   downloadOpen.value = true
@@ -237,6 +269,31 @@ async function confirmDownload() {
 
 <template>
   <div class="grid min-w-0 gap-4">
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".xlsx"
+        class="hidden"
+        @change="onFile"
+      />
+      <Button v-if="showAlerts" variant="outline" @click="alertOpen = true">Email alerts</Button>
+      <Button
+        v-if="props.showCenterRoles && canConfigureDomainHeads"
+        variant="outline"
+        @click="domainHeadOpen = true"
+      >
+        Center Roles
+      </Button>
+      <Button
+        v-if="allowUpload"
+        :loading="uploadMutation.isPending.value"
+        @click="fileInput?.click()"
+      >
+        {{ uploadMutation.isPending.value ? 'Uploading…' : 'Upload and sync' }}
+      </Button>
+    </div>
+
     <Alert v-if="missingActiveKinds.length" variant="warning">
       <TriangleAlert />
       <AlertTitle>No ACTIVE Timesheet snapshot</AlertTitle>
@@ -245,27 +302,6 @@ async function confirmDownload() {
         for SharePoint auto-sync.
       </AlertDescription>
     </Alert>
-
-    <PageActions>
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".xlsx"
-        class="hidden"
-        @change="onFile"
-      />
-      <Button variant="outline" @click="alertOpen = true">Email alerts</Button>
-      <Button
-        v-if="canConfigureDomainHeads"
-        variant="outline"
-        @click="domainHeadOpen = true"
-      >
-        Center Roles
-      </Button>
-      <Button :loading="uploadMutation.isPending.value" @click="fileInput?.click()">
-        {{ uploadMutation.isPending.value ? 'Uploading…' : 'Upload and sync' }}
-      </Button>
-    </PageActions>
 
     <Card>
       <CardHeader>
@@ -294,9 +330,10 @@ async function confirmDownload() {
 
     <Card class="mt-4">
       <CardHeader>
-        <CardTitle>Recent runs</CardTitle>
+        <CardTitle>Recent uploads</CardTitle>
         <CardDescription>
-          History of Daily and Monthly sync attempts, including failed and archived runs.
+          History of Daily and Monthly uploads and SharePoint syncs, including failed and archived
+          attempts.
         </CardDescription>
       </CardHeader>
       <CardContent class="space-y-3">
@@ -313,7 +350,7 @@ async function confirmDownload() {
           :data="runs"
           :pending="loading"
           :empty-text="
-            hasRunFilters ? 'No matching Timesheet sync runs.' : 'No Timesheet sync runs yet.'
+            hasRunFilters ? 'No matching uploads.' : 'No uploads yet.'
           "
           table-class="min-w-[1180px]"
           :get-row-id="(row) => row.id"
@@ -323,7 +360,7 @@ async function confirmDownload() {
           :total="total"
           :page="page"
           :page-size="pageSize"
-          label="runs"
+          label="uploads"
           @update:page="page = $event"
           @update:page-size="
             (size) => {
@@ -335,20 +372,13 @@ async function confirmDownload() {
       </CardContent>
     </Card>
 
-    <TimesheetSnapshotTables
-      v-model:open="mappedOpen"
-      :kind="mappedKind"
-      :center="mappedCenter"
-      :file-date="mappedFileDate"
-      :initial-tab="mappedTab"
-    />
     <TimesheetSyncIssuesDialog
       v-model:open="issuesOpen"
       :run-id="selectedRun?.id ?? null"
       :run="selectedRun"
     />
     <TimesheetSyncAlertDialog v-model:open="alertOpen" />
-    <DomainHeadsDialog v-model:open="domainHeadOpen" />
+    <DomainHeadsDialog v-if="props.showCenterRoles" v-model:open="domainHeadOpen" />
 
     <ConfirmDialog
       v-model:open="downloadOpen"

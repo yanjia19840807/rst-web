@@ -247,7 +247,7 @@ async function confirmRemoveScenario() {
 const deliveryHc = computed(() =>
   (exercise.value?.snapshot.sharedKpis ?? []).reduce((sum, item) => sum + Number(item.deliveryHc), 0),
 )
-const actualSize = computed(() => actualHeadcount(deliveryHc.value))
+const actualSize = computed(() => actualHeadcount(teamSetup.value?.totalAgents))
 const supportFte = computed(() => sumSupportFte(support.value))
 const medianLabel = computed(() =>
   cycleTime.value ? Number(cycleTime.value.medianSeconds).toFixed(2) : '—',

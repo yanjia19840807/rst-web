@@ -4,27 +4,43 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { NativeSelect } from '@/components/ui/native-select'
 
-import {
-  isMonthlyKind,
-  normalizeKindDates,
-  type TimesheetSyncFilters,
-} from '../timesheetSyncFilters'
+import { normalizeKindDates, type TimesheetSyncFilters } from '../timesheetSyncFilters'
 
-const props = defineProps<{
-  draft: TimesheetSyncFilters
-  centerOptions: string[]
-  showStatus?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    draft: TimesheetSyncFilters
+    centerOptions?: string[]
+    showStatus?: boolean
+    showCenter?: boolean
+    showSource?: boolean
+    kindOptions?: Array<{ value: string; label: string }>
+    periodKinds?: string[]
+  }>(),
+  {
+    centerOptions: () => [],
+    showCenter: true,
+    showSource: true,
+    kindOptions: () => [
+      { value: 'DAILY', label: 'Daily' },
+      { value: 'MONTHLY', label: 'Monthly' },
+    ],
+    periodKinds: () => ['MONTHLY'],
+  },
+)
 
 const fieldClass = 'w-[180px]'
 
 function onKindChange(value: string) {
-  Object.assign(props.draft, normalizeKindDates(props.draft, String(value ?? '')))
+  Object.assign(props.draft, normalizeKindDates(props.draft, String(value ?? ''), props.periodKinds))
+}
+
+function usesPeriod(kind: string) {
+  return props.periodKinds.includes(kind)
 }
 </script>
 
 <template>
-  <FilterField label="Center">
+  <FilterField v-if="showCenter" label="Center">
     <NativeSelect
       :class="fieldClass"
       :model-value="draft.center"
@@ -43,8 +59,9 @@ function onKindChange(value: string) {
       placeholder="All"
       @update:model-value="onKindChange(String($event ?? ''))"
     >
-      <option value="DAILY">Daily</option>
-      <option value="MONTHLY">Monthly</option>
+      <option v-for="option in kindOptions" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
     </NativeSelect>
   </FilterField>
   <FilterField v-if="showStatus" label="Status">
@@ -60,7 +77,7 @@ function onKindChange(value: string) {
       <option value="ARCHIVED">ARCHIVED</option>
     </NativeSelect>
   </FilterField>
-  <FilterField label="Source">
+  <FilterField v-if="showSource" label="Source">
     <NativeSelect
       :class="fieldClass"
       :model-value="draft.sourceType"
@@ -73,7 +90,7 @@ function onKindChange(value: string) {
   </FilterField>
   <FilterField label="Sync date From">
     <MonthPicker
-      v-if="isMonthlyKind(draft.kind)"
+      v-if="usesPeriod(draft.kind)"
       v-model="draft.syncDateFrom"
       aria-label="Sync date from"
       placeholder="From"
@@ -89,7 +106,7 @@ function onKindChange(value: string) {
   </FilterField>
   <FilterField label="Sync date To">
     <MonthPicker
-      v-if="isMonthlyKind(draft.kind)"
+      v-if="usesPeriod(draft.kind)"
       v-model="draft.syncDateTo"
       aria-label="Sync date to"
       placeholder="To"

@@ -35,9 +35,13 @@ function asMonth(value: string) {
   return match ? `${match[1]}-${match[2]}` : ''
 }
 
-export function normalizeKindDates(filters: TimesheetSyncFilters, nextKind: string): TimesheetSyncFilters {
-  const monthly = isMonthlyKind(nextKind)
-  const wasMonthly = isMonthlyKind(filters.kind)
+export function normalizeKindDates(
+  filters: TimesheetSyncFilters,
+  nextKind: string,
+  periodKinds: readonly string[] = ['MONTHLY'],
+): TimesheetSyncFilters {
+  const monthly = periodKinds.includes(nextKind)
+  const wasMonthly = periodKinds.includes(filters.kind)
   if (monthly === wasMonthly) return { ...filters, kind: nextKind }
   return {
     ...filters,
@@ -47,8 +51,11 @@ export function normalizeKindDates(filters: TimesheetSyncFilters, nextKind: stri
   }
 }
 
-export function toSyncDateRange(filters: TimesheetSyncFilters) {
-  if (isMonthlyKind(filters.kind)) {
+export function toSyncDateRange(
+  filters: TimesheetSyncFilters,
+  periodKinds: readonly string[] = ['MONTHLY'],
+) {
+  if (periodKinds.includes(filters.kind)) {
     return {
       dateFrom: filters.syncDateFrom ? `${filters.syncDateFrom}-01` : undefined,
       dateTo: filters.syncDateTo ? monthEnd(filters.syncDateTo) : undefined,

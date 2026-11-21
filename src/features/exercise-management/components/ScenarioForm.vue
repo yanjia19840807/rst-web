@@ -159,14 +159,7 @@ const readOnly = computed(() => !exercise.value?.canEdit)
 
 const supportFte = computed(() => sumSupportFte(support.value))
 
-const deliveryHc = computed(() =>
-  (exercise.value?.snapshot.sharedKpis ?? []).reduce(
-    (sum, item) => sum + Number(item.deliveryHc),
-    0,
-  ),
-)
-
-const actualSize = computed(() => actualHeadcount(deliveryHc.value))
+const actualSize = computed(() => actualHeadcount(teamSetup.value?.totalAgents))
 
 const shiftSetupLabel = computed(() => {
   const n = shiftRows.value?.length ?? 0

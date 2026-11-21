@@ -49,7 +49,6 @@ export function createSnapshotPositionColumns(): ColumnDef<TimesheetSnapshotPosi
       id: 'parentRoleType',
       header: 'Parent role',
     }),
-    positionHelper.accessor((row) => dash(row.occupantName), { id: 'occupantName', header: 'Occupant' }),
   ]
 }
 
