@@ -90,6 +90,7 @@ const { putTeamSetup, createManualCycleTime } = useExerciseAssociatedDataMutatio
 const {
   confirmOpen,
   scenarioCount,
+  prompt: clearPrompt,
   pending: clearingResults,
   cancel: cancelClearResults,
   confirm: confirmClearResults,
@@ -237,7 +238,9 @@ async function persist(
   teamBody: TeamSetupRequest | null,
   manualBody: Awaited<ReturnType<NonNullable<typeof manualEditor.value>['toRequest']>> | null,
 ) {
-  if (!(await beforeAssociatedDataWrite())) return
+  const clearAction =
+    props.editor === 'team' ? 'Saving Team Setup' : 'Saving the Cycle Time median'
+  if (!(await beforeAssociatedDataWrite('ALL', clearAction))) return
 
   busy.value = true
   try {
@@ -397,9 +400,9 @@ async function persist(
   <ConfirmDialog
     :open="confirmOpen"
     elevated
-    title="Clear saved simulation results?"
+    :title="clearPrompt.title"
     @update:open="onImpactOpenChange"
-    description="Saving Associated Data will clear saved Forecast and Simulation results on all scenarios, including the Official Scenario. Scenario inputs (name, Right Sizing HC, shifts) stay. Run simulation again afterwards."
+    :description="clearPrompt.description"
     :rows="
       scenarioCount > 0
         ? [{ label: 'Scenarios with results', value: String(scenarioCount), strong: true }]

@@ -10,6 +10,7 @@ import {
   useToolkitHierarchyQuery,
   useToolkitQuery,
 } from '../api/queries'
+import { cascadeHierarchy } from '../hierarchyCascade'
 import { kpiKey } from '../kpiKey'
 import { emptyToolkitForm, toolkitEditorSchema, type ToolkitFormValues } from '../schemas/toolkit'
 import type { SharedKpiKey } from '../types'
@@ -73,38 +74,19 @@ export function useToolkitEditor(toolkitId: MaybeRefOrGetter<string | undefined>
   const noTimesheetHierarchy = computed(
     () => hierarchyQuery.isSuccess.value && hierarchy.value.length === 0,
   )
-  const centers = computed(() => unique(hierarchy.value.map((item) => item.center)))
-  const domains = computed(() =>
-    unique(hierarchy.value.filter((item) => item.center === values.center).map((item) => item.domain)),
+  const cascaded = computed(() =>
+    cascadeHierarchy(hierarchy.value, {
+      center: values.center,
+      domain: values.domain,
+      pl1: values.pl1,
+      pl2: values.pl2,
+    }),
   )
-  const pl1s = computed(() =>
-    unique(
-      hierarchy.value
-        .filter((item) => item.center === values.center && item.domain === values.domain)
-        .map((item) => item.pl1),
-    ),
-  )
-  const pl2s = computed(() =>
-    unique(
-      hierarchy.value
-        .filter(
-          (item) =>
-            item.center === values.center &&
-            item.domain === values.domain &&
-            item.pl1 === values.pl1,
-        )
-        .map((item) => item.pl2),
-    ),
-  )
-  const pl3s = computed(() =>
-    hierarchy.value.filter(
-      (item) =>
-        item.center === values.center &&
-        item.domain === values.domain &&
-        item.pl1 === values.pl1 &&
-        item.pl2 === values.pl2,
-    ),
-  )
+  const centers = computed(() => cascaded.value.centers)
+  const domains = computed(() => cascaded.value.domains)
+  const pl1s = computed(() => cascaded.value.pl1s)
+  const pl2s = computed(() => cascaded.value.pl2s)
+  const pl3s = computed(() => cascaded.value.pl3s)
 
   const candidates = computed(() => candidatesQuery.data.value?.items ?? [])
   const countries = computed(() => countryCatalogQuery.data.value?.customerCountries ?? [])

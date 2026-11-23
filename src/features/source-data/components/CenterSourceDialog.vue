@@ -76,8 +76,7 @@ async function save() {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
         <DialogTitle>Center source</DialogTitle>
         <DialogDescription>
-          Each center uses either Timesheet or MyHR + SKPI. Saving does not delete the other
-          source's snapshots. Both imports read this setting.
+          This setting decides which source each center uses: Timesheet or MyHR + SKPI.
         </DialogDescription>
       </DialogHeader>
       <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
@@ -106,7 +105,10 @@ async function save() {
           </TableBody>
         </Table>
       </div>
-      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3">
+      <DialogFooter class="mx-0 mt-0 mb-0 shrink-0 rounded-none px-5 py-3 sm:items-center">
+        <p class="text-left text-sm text-muted-foreground sm:mr-auto sm:max-w-xs">
+          Changing a center's source does not delete data already uploaded from the other source.
+        </p>
         <Button type="button" variant="outline" :disabled="saving" @click="open = false">
           Cancel
         </Button>

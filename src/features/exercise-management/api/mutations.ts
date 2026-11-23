@@ -34,6 +34,12 @@ import type {
   UpdateSlotPeriodResult,
 } from '../types'
 import { exerciseQueryKeys } from './queries'
+import {
+  forgetTargets,
+  scopeFromClearNotice,
+  type ResultClearScope,
+  type SimForgetTarget,
+} from '../resultClear'
 
 type QueryClient = ReturnType<typeof useQueryClient>
 
@@ -65,9 +71,7 @@ function writeSlotPeriodResult(
 ) {
   queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
   queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
-  void queryClient.invalidateQueries({
-    predicate: (query) => exerciseQueryKeys.isSimKind(query.queryKey, exerciseId, 'slot'),
-  })
+  forgetSlotSimulation(queryClient, exerciseId)
   invalidateSubmitPreview(queryClient, exerciseId)
 }
 
@@ -78,9 +82,7 @@ function writeSlotImportResult(
 ) {
   queryClient.setQueryData(exerciseQueryKeys.volumesSlot(exerciseId), result.volumes)
   invalidateDetailAndList(queryClient, exerciseId)
-  void queryClient.invalidateQueries({
-    predicate: (query) => exerciseQueryKeys.isSimKind(query.queryKey, exerciseId, 'slot'),
-  })
+  forgetSlotSimulation(queryClient, exerciseId)
   invalidateSubmitPreview(queryClient, exerciseId)
 }
 
@@ -129,6 +131,67 @@ function invalidateAfterDecision(queryClient: QueryClient, exerciseId: string) {
   void queryClient.invalidateQueries({ queryKey: governanceQueryKeys.all })
 }
 
+function clearedScope(notices: string[] | null | undefined): ResultClearScope | null {
+  for (const notice of notices ?? []) {
+    const scope = scopeFromClearNotice(notice)
+    if (scope) return scope
+  }
+  return null
+}
+
+function matchesSimTarget(
+  queryKey: readonly unknown[],
+  exerciseId: string,
+  target: SimForgetTarget,
+) {
+  if (!exerciseQueryKeys.isSimKind(queryKey, exerciseId, target.kind)) return false
+  if (target.kind !== 'forecast') return true
+  return queryKey[5] === target.level
+}
+
+function forgetSimulationResults(queryClient: QueryClient, exerciseId: string) {
+  const filters = { queryKey: exerciseQueryKeys.simPrefix(exerciseId) }
+  void queryClient.cancelQueries(filters)
+  queryClient.setQueriesData(filters, () => null)
+}
+
+function forgetClearedResults(
+  queryClient: QueryClient,
+  exerciseId: string,
+  scope: ResultClearScope,
+) {
+  if (scope === 'ALL') {
+    forgetSimulationResults(queryClient, exerciseId)
+    return
+  }
+  for (const target of forgetTargets(scope)) {
+    const filters = {
+      predicate: (query: { queryKey: readonly unknown[] }) =>
+        matchesSimTarget(query.queryKey, exerciseId, target),
+    }
+    void queryClient.cancelQueries(filters)
+    queryClient.setQueriesData(filters, () => null)
+  }
+}
+
+function forgetSlotSimulation(queryClient: QueryClient, exerciseId: string) {
+  forgetClearedResults(queryClient, exerciseId, 'SLOT')
+}
+
+function applyPeriodMutation(
+  queryClient: QueryClient,
+  result: { exercise: Exercise; notices?: string[] | null },
+) {
+  const exerciseId = result.exercise.id
+  queryClient.setQueryData(exerciseQueryKeys.detail(exerciseId), result.exercise)
+  const scope = clearedScope(result.notices)
+  if (scope) forgetClearedResults(queryClient, exerciseId, scope)
+  void queryClient.invalidateQueries({
+    queryKey: exerciseQueryKeys.committedResults(exerciseId),
+  })
+  invalidateAfterPeriodsChange(queryClient, exerciseId)
+}
+
 function invalidateAfterPeriodsChange(queryClient: QueryClient, exerciseId: string) {
   invalidateLists(queryClient)
   void queryClient.invalidateQueries({ queryKey: exerciseQueryKeys.calendar(exerciseId) })
@@ -156,11 +219,7 @@ export function useExerciseMutations() {
     mutationFn: ({ id, body }: { id: string; body: UpdateExercisePeriodsInput }) =>
       exerciseApi.updatePeriods(id, body),
     onSuccess: (result) => {
-      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
-      queryClient.setQueryData(exerciseQueryKeys.committedResults(result.exercise.id), {
-        scenarioCount: 0,
-      })
-      invalidateAfterPeriodsChange(queryClient, result.exercise.id)
+      applyPeriodMutation(queryClient, result)
     },
   })
 
@@ -168,22 +227,14 @@ export function useExerciseMutations() {
     mutationFn: ({ id, body }: { id: string; body: UpdateTmsPeriodInput }) =>
       exerciseApi.updateTmsPeriod(id, body),
     onSuccess: (result) => {
-      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
-      queryClient.setQueryData(exerciseQueryKeys.committedResults(result.exercise.id), {
-        scenarioCount: 0,
-      })
-      invalidateAfterPeriodsChange(queryClient, result.exercise.id)
+      applyPeriodMutation(queryClient, result)
     },
   })
 
   const clearTmsPeriod = useMutation({
     mutationFn: (id: string) => exerciseApi.clearTmsPeriod(id),
     onSuccess: (result) => {
-      queryClient.setQueryData(exerciseQueryKeys.detail(result.exercise.id), result.exercise)
-      queryClient.setQueryData(exerciseQueryKeys.committedResults(result.exercise.id), {
-        scenarioCount: 0,
-      })
-      invalidateAfterPeriodsChange(queryClient, result.exercise.id)
+      applyPeriodMutation(queryClient, result)
     },
   })
 
@@ -198,10 +249,14 @@ export function useExerciseMutations() {
   })
 
   const clearCommittedResults = useMutation({
-    mutationFn: (id: string) => exerciseApi.clearCommittedResults(id),
-    onSuccess: (status, id) => {
-      queryClient.setQueryData(exerciseQueryKeys.committedResults(id), status)
-      queryClient.removeQueries({ queryKey: exerciseQueryKeys.simPrefix(id) })
+    mutationFn: ({ id, scope }: { id: string; scope: ResultClearScope }) =>
+      exerciseApi.clearCommittedResults(id, scope),
+    onSuccess: (_status, { id, scope }) => {
+      forgetClearedResults(queryClient, id, scope)
+      void queryClient.invalidateQueries({
+        queryKey: exerciseQueryKeys.committedResults(id),
+      })
+      invalidateSubmitPreview(queryClient, id)
     },
   })
 

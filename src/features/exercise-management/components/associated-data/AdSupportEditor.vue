@@ -174,7 +174,7 @@ function cancelAdd() {
 async function confirmAdd() {
   const body = await buildRequest()
   if (!body) return
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('SUPPORT', 'Saving Production Support'))) return
   busy.value = true
   try {
     const created = await createSupport.mutateAsync({ exerciseId: props.exerciseId, body })
@@ -202,7 +202,7 @@ async function confirmEdit() {
   if (!editingId.value) return
   const body = await buildRequest()
   if (!body) return
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('SUPPORT', 'Saving Production Support'))) return
   const itemId = editingId.value
   busy.value = true
   try {
@@ -234,7 +234,7 @@ async function confirmDelete() {
   const item = deleteTarget.value
   if (!item) return
   deleteOpen.value = false
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('SUPPORT', 'Deleting Production Support'))) return
   busy.value = true
   try {
     await deleteSupport.mutateAsync({ exerciseId: props.exerciseId, itemId: item.id })
@@ -301,7 +301,7 @@ async function onImportFile(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file || props.readOnly) return
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('SUPPORT', 'Importing Production Support'))) return
   try {
     await withExcel('import', async () => {
       const saved = await importSupport.mutateAsync({

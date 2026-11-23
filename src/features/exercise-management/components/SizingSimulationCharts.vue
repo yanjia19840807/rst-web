@@ -64,6 +64,9 @@ const hasMonthly = computed(
   () => (props.monthly?.rows?.length ?? 0) > 0 || (monthlyVolumesQuery.data.value?.length ?? 0) > 0,
 )
 const hasDailySimulation = computed(() => (props.daily?.rows?.length ?? 0) > 0)
+const dailyOmitted = computed(
+  () => !hasDailySimulation.value && (dailyVolumesQuery.data.value?.length ?? 0) === 0,
+)
 const hasDaily = computed(
   () => hasDailySimulation.value || (dailyVolumesQuery.data.value?.length ?? 0) > 0,
 )
@@ -521,7 +524,11 @@ const slaOption = computed<ChartOption>(() => {
           <div
             class="flex h-52 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
           >
-            No daily simulation data.
+            {{
+              dailyOmitted
+                ? 'Daily sizing was not run. No Daily Volume was entered.'
+                : 'No daily simulation data.'
+            }}
           </div>
         </template>
         <template #extra>
@@ -571,7 +578,11 @@ const slaOption = computed<ChartOption>(() => {
           <div
             class="flex h-44 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
           >
-            No daily simulation data for SLA%.
+            {{
+              dailyOmitted
+                ? 'Daily sizing was not run, so SLA% is unavailable.'
+                : 'No daily simulation data for SLA%.'
+            }}
           </div>
         </template>
         <template #extra>

@@ -88,11 +88,6 @@ const draftTotalAgents = computed(() =>
   ),
 )
 
-const deliveryHc = computed(() => {
-  const raw = props.modelValue?.deliveryHc
-  return raw == null || !Number.isFinite(Number(raw)) ? 0 : Number(raw)
-})
-
 /** Live preview; Excel Input C10: (3·&lt;6m + 15·6–24m + 36·24–48m + 48·&gt;48m) / 12 / total. */
 const draftAverageTenureYears = computed(() => {
   const total = draftTotalAgents.value
@@ -304,14 +299,6 @@ defineExpose({ toRequest })
     <div v-if="readOnly" class="grid gap-4 lg:grid-cols-2">
       <section class="rounded-lg border bg-card p-4">
         <h3 class="mb-3 text-sm font-bold">Basic Info And Headcount</h3>
-        <Alert variant="info" class="mb-3">
-          <Info />
-          <AlertDescription>
-            Actual HC is the tenure total, {{ formatNumber(draftTotalAgents, 2) }} HC. Shared KPI
-            Delivery HC, {{ formatNumber(deliveryHc, 2) }} HC, is used only when splitting results
-            across Shared KPI lines.
-          </AlertDescription>
-        </Alert>
         <DetailTable :rows="headcountRows" />
       </section>
       <section class="rounded-lg border bg-card p-4">
@@ -327,14 +314,6 @@ defineExpose({ toRequest })
     <div v-else class="grid gap-4 lg:grid-cols-2">
       <section class="rounded-lg border bg-card p-4">
         <h3 class="mb-3 text-sm font-bold">Basic Info And Headcount</h3>
-        <Alert variant="info" class="mb-3">
-          <Info />
-          <AlertDescription>
-            Actual HC is the tenure total, {{ formatNumber(draftTotalAgents, 2) }} HC. Shared KPI
-            Delivery HC, {{ formatNumber(deliveryHc, 2) }} HC, is used only when splitting results
-            across Shared KPI lines.
-          </AlertDescription>
-        </Alert>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1 text-sm"
             >{{ withUnit('Agents <6 months', FieldUnit.hc) }}

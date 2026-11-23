@@ -16,11 +16,13 @@ export type TimesheetActiveRow = {
 
 export type TimesheetActiveColumnOptions = {
   onDownload?: (row: TimesheetSyncRunHeader) => void
+  downloadingIds?: readonly string[]
 }
 
 export type TimesheetSyncColumnOptions = {
   onViewIssues?: (row: TimesheetSyncRunHeader) => void
   onDownload?: (row: TimesheetSyncRunHeader) => void
+  downloadingIds?: readonly string[]
 }
 
 const activeHelper = createColumnHelper<TimesheetActiveRow>()
@@ -56,10 +58,18 @@ function interimKindLabelOf(kind: string | null | undefined) {
 function fileCell(
   row: TimesheetSyncRunHeader | null,
   onDownload?: (row: TimesheetSyncRunHeader) => void,
+  downloadingIds: readonly string[] = [],
 ) {
   if (!row?.sourceFileName) return '—'
-  if (!row.hasSourceFile) return row.sourceFileName
-  return h(TableTextLink, { onClick: () => onDownload?.(row) }, () => row.sourceFileName)
+  if (!row.hasSourceFile || !row.id) return row.sourceFileName
+  return h(
+    TableTextLink,
+    {
+      loading: downloadingIds.includes(row.id),
+      onClick: () => onDownload?.(row),
+    },
+    () => row.sourceFileName,
+  )
 }
 
 function viewIssuesButton(row: TimesheetSyncRunHeader | null, onViewIssues?: (row: TimesheetSyncRunHeader) => void) {
@@ -93,7 +103,7 @@ export function createTimesheetActiveColumns(
     activeHelper.display({
       id: 'sourceFileName',
       header: 'File',
-      cell: ({ row }) => fileCell(row.original.run, options.onDownload),
+      cell: ({ row }) => fileCell(row.original.run, options.onDownload, options.downloadingIds),
     }),
     activeHelper.display({
       id: 'rowCount',
@@ -147,7 +157,7 @@ export function createTimesheetRunColumns(
     runHelper.display({
       id: 'sourceFileName',
       header: 'File',
-      cell: ({ row }) => fileCell(row.original, options.onDownload),
+      cell: ({ row }) => fileCell(row.original, options.onDownload, options.downloadingIds),
     }),
     runHelper.display({
       id: 'createdBy',
@@ -187,7 +197,7 @@ export function createInterimActiveColumns(
     runHelper.display({
       id: 'sourceFileName',
       header: 'File',
-      cell: ({ row }) => fileCell(row.original, options.onDownload),
+      cell: ({ row }) => fileCell(row.original, options.onDownload, options.downloadingIds),
     }),
     runHelper.accessor((row) => dash(row.rowCount), {
       id: 'rowCount',
@@ -235,7 +245,7 @@ export function createInterimUploadColumns(
     runHelper.display({
       id: 'sourceFileName',
       header: 'File',
-      cell: ({ row }) => fileCell(row.original, options.onDownload),
+      cell: ({ row }) => fileCell(row.original, options.onDownload, options.downloadingIds),
     }),
     runHelper.display({
       id: 'createdBy',

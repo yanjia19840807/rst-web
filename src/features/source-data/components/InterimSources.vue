@@ -42,6 +42,7 @@ const uploading = ref<'myhr' | 'skpi' | null>(null)
 const siteOpen = ref(false)
 const issuesOpen = ref(false)
 const issuesRunId = ref<string | null>(null)
+const downloadingIds = ref<string[]>([])
 const myHrInput = ref<HTMLInputElement | null>(null)
 const skpiInput = ref<HTMLInputElement | null>(null)
 
@@ -77,14 +78,20 @@ const runsLoading = computed(() => runsQuery.isPending.value && !runsQuery.data.
 const hasUploadFilters = computed(() =>
   Boolean(applied.kind || applied.status || applied.syncDateFrom || applied.syncDateTo),
 )
-const activeColumns = createInterimActiveColumns({
-  onViewIssues: openIssues,
-  onDownload: (row) => downloadRun(row),
-})
-const uploadColumns = createInterimUploadColumns({
-  onViewIssues: openIssues,
-  onDownload: (row) => downloadRun(row),
-})
+const activeColumns = computed(() =>
+  createInterimActiveColumns({
+    onViewIssues: openIssues,
+    onDownload: (row) => downloadRun(row),
+    downloadingIds: downloadingIds.value,
+  }),
+)
+const uploadColumns = computed(() =>
+  createInterimUploadColumns({
+    onViewIssues: openIssues,
+    onDownload: (row) => downloadRun(row),
+    downloadingIds: downloadingIds.value,
+  }),
+)
 
 function openIssues(row: TimesheetSyncRunHeader) {
   issuesRunId.value = row.id
@@ -107,12 +114,15 @@ function clearUploads() {
 }
 
 async function downloadRun(row: TimesheetSyncRunHeader) {
-  if (!row.hasSourceFile) return
+  if (!row.hasSourceFile || !row.id || downloadingIds.value.includes(row.id)) return
+  downloadingIds.value = [...downloadingIds.value, row.id]
   try {
     const result = await sourceDataApi.download(row.id, row.sourceFileName || 'source.xlsx')
     triggerDownload(result.blob, result.filename)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'File is no longer available.')
+  } finally {
+    downloadingIds.value = downloadingIds.value.filter((id) => id !== row.id)
   }
 }
 
@@ -128,10 +138,13 @@ async function onFile(kindName: 'myhr' | 'skpi', event: Event) {
     await queryClient.invalidateQueries({ queryKey: ['timesheet-sync'] })
     page.value = 1
     const issues = result.issueCount
+    const label = sourceKindLabel[result.kind] ?? result.kind
+    const issueText =
+      issues > 0 ? ` ${issues} row issue${issues === 1 ? '' : 's'} recorded.` : ''
     toast.success(
-      issues > 0
-        ? `Imported ${sourceKindLabel[result.kind] ?? result.kind}. ${issues} row issue${issues === 1 ? '' : 's'} recorded.`
-        : `Imported ${sourceKindLabel[result.kind] ?? result.kind}.`,
+      result.status === 'ARCHIVED'
+        ? `Imported ${label}. A newer period is already current, so this file was kept in history.${issueText}`
+        : `Imported ${label}.${issueText}`,
     )
     if (issues > 0) {
       issuesRunId.value = result.id
@@ -165,8 +178,9 @@ async function onFile(kindName: 'myhr' | 'skpi', event: Event) {
         <div>
           <CardTitle>ACTIVE snapshots</CardTitle>
           <CardDescription>
-            Latest successful MyHR and SKPI snapshot. A new success replaces the current file
-            and keeps the previous rows.
+            The SKPI upload with the latest data period becomes the current snapshot. A new
+            successful MyHR upload replaces the current MyHR snapshot. Previous uploads are kept
+            in history.
           </CardDescription>
         </div>
       </CardHeader>

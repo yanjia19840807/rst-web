@@ -20,6 +20,7 @@ defineProps<{
 const findingLabel: Record<ValidationRuleCode, string> = {
   DAILY_VS_MONTHLY: 'Daily total vs monthly total',
   TMS_RATIO: 'TMS ratio vs Daily volume',
+  DAILY_SIZING_OMITTED: 'Daily sizing skipped',
 }
 
 const reasonLabel: Record<string, string> = {
@@ -33,6 +34,8 @@ const reasonLabel: Record<string, string> = {
   'incomplete-coverage': 'Daily volume is missing for some dates in the TMS period',
   'below-threshold': 'TMS ratio is below 80%',
   'daily-volume-zero': 'Daily volume in the TMS period sums to 0',
+  'no-daily-volume':
+    'No Daily Volume was entered. Daily sizing was not run. Monthly sizing was saved.',
 }
 
 function findingDetail(finding: ValidationFinding): string {

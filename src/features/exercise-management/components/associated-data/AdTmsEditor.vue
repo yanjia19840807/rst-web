@@ -327,7 +327,7 @@ async function clearPeriod() {
   <ConfirmDialog
     v-model:open="confirmPeriodOpen"
     title="Change TMS Period"
-    description="Changing the period refreshes linked COMPLETED sessions and the SYSTEM median. Saved Forecast and Simulation results on all scenarios will be cleared."
+    description="Changing the period refreshes linked COMPLETED sessions and the SYSTEM median. Saved Monthly and Daily forecast and sizing, and Slot simulation, are cleared. Scenario inputs (name, Right Sizing HC, shifts) stay."
     confirm-label="Apply Period"
     confirm-variant="default"
     :pending="busyAction === 'period'"
@@ -337,7 +337,7 @@ async function clearPeriod() {
   <ConfirmDialog
     v-model:open="confirmClearPeriodOpen"
     title="Clear TMS Period"
-    description="Clearing the period unlinks TMS sessions and removes the SYSTEM median. Saved Forecast and Simulation results on all scenarios will be cleared."
+    description="Clearing the period unlinks TMS sessions and removes the SYSTEM median. Saved Monthly and Daily forecast and sizing, and Slot simulation, are cleared. Scenario inputs (name, Right Sizing HC, shifts) stay."
     confirm-label="Clear"
     :pending="busyAction === 'clear-period'"
     @confirm="clearPeriod"

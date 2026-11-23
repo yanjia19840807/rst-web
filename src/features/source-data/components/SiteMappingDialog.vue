@@ -119,8 +119,9 @@ async function confirmDelete() {
       <DialogHeader class="mx-0 mt-0 shrink-0 rounded-none px-5 py-4">
         <DialogTitle>Site mapping</DialogTitle>
         <DialogDescription>
-          Maps a SKPI office to the 5-character site code used by Timesheet. Offices that share a
-          code are summed together on import. Upload SKPI again after a change.
+          Maps a GBS site to the 5-character site code used by Timesheet. GBS sites that share a
+          code, such as MANILA-1 and MANILA-2, are summed together on import. Upload SKPI again
+          after a change.
         </DialogDescription>
       </DialogHeader>
       <div class="grid min-h-0 flex-1 gap-3 overflow-auto px-5 py-4">
@@ -260,7 +261,7 @@ async function confirmDelete() {
     title="Delete site mapping?"
     :description="
       deleteTarget
-        ? `Remove ${deleteTarget.gbsSite}. The next SKPI upload will skip that office until it is mapped again.`
+        ? `Remove ${deleteTarget.gbsSite}. The next SKPI upload will skip that GBS site until it is mapped again.`
         : ''
     "
     confirm-label="Delete"

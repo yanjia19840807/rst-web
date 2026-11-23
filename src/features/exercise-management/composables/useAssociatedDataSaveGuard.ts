@@ -1,24 +1,24 @@
 import { computed, inject, provide, ref, toValue, type InjectionKey, type MaybeRefOrGetter } from 'vue'
 import { toast } from 'vue-sonner'
 
+import { exerciseApi } from '../api'
 import { useExerciseMutations } from '../api/mutations'
-import { useCommittedResultsQuery } from '../api/queries'
+import { resultClearPrompt, type ResultClearScope } from '../resultClear'
 
-export const beforeAssociatedDataWriteKey: InjectionKey<() => Promise<boolean>> = Symbol(
-  'beforeAssociatedDataWrite',
-)
+export const beforeAssociatedDataWriteKey: InjectionKey<
+  (scope: ResultClearScope, action: string) => Promise<boolean>
+> = Symbol('beforeAssociatedDataWrite')
 
 export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<string>) {
-  const query = useCommittedResultsQuery(exerciseId)
   const { clearCommittedResults } = useExerciseMutations()
   const confirmOpen = ref(false)
   const accepting = ref(false)
+  const scenarioCount = ref(0)
+  const pendingScope = ref<ResultClearScope>('ALL')
+  const prompt = ref(resultClearPrompt('ALL', 'Saving Associated Data'))
   let waiter: ((agreed: boolean) => void) | null = null
 
-  const scenarioCount = computed(() => query.data.value?.scenarioCount ?? 0)
-  const pending = computed(
-    () => accepting.value || clearCommittedResults.isPending.value,
-  )
+  const pending = computed(() => accepting.value || clearCommittedResults.isPending.value)
 
   function finish(agreed: boolean) {
     const done = waiter
@@ -36,7 +36,6 @@ export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<stri
   }
 
   function cancel() {
-    // Confirm closes the dialog before mutate finishes; do not treat that as Cancel.
     if (accepting.value || clearCommittedResults.isPending.value) return
     finish(false)
   }
@@ -45,7 +44,10 @@ export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<stri
     if (!waiter || accepting.value || clearCommittedResults.isPending.value) return
     accepting.value = true
     try {
-      await clearCommittedResults.mutateAsync(toValue(exerciseId))
+      await clearCommittedResults.mutateAsync({
+        id: toValue(exerciseId),
+        scope: pendingScope.value,
+      })
       finish(true)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not clear saved results.')
@@ -53,10 +55,21 @@ export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<stri
     }
   }
 
-  async function beforeAssociatedDataWrite(): Promise<boolean> {
-    const result = await query.refetch()
-    if (result.error || (result.data?.scenarioCount ?? 0) > 0) return ask()
-    return true
+  async function beforeAssociatedDataWrite(
+    scope: ResultClearScope,
+    action: string,
+  ): Promise<boolean> {
+    pendingScope.value = scope
+    prompt.value = resultClearPrompt(scope, action)
+    try {
+      const status = await exerciseApi.committedResults(toValue(exerciseId), scope)
+      scenarioCount.value = status.scenarioCount
+      if (status.scenarioCount > 0) return ask()
+      return true
+    } catch {
+      scenarioCount.value = 0
+      return ask()
+    }
   }
 
   provide(beforeAssociatedDataWriteKey, beforeAssociatedDataWrite)
@@ -64,6 +77,7 @@ export function provideAssociatedDataSaveGuard(exerciseId: MaybeRefOrGetter<stri
   return {
     confirmOpen,
     scenarioCount,
+    prompt,
     pending,
     cancel,
     confirm,

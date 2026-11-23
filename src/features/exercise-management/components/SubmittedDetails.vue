@@ -630,7 +630,7 @@ async function downloadSummary() {
         </CardHeader>
         <CardContent class="grid gap-3">
           <p class="text-xs text-muted-foreground">
-            Captured at Submit. Daily vs Monthly and TMS ratio on this exercise.
+            Captured at Submit. Daily vs Monthly, TMS ratio, and skipped Daily sizing.
           </p>
           <ValidationFindingsTable
             :findings="details.findings ?? []"

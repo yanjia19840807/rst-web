@@ -3,7 +3,6 @@ import { TriangleAlert } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import QueryPanel from '@/components/QueryPanel.vue'
 import TablePager from '@/components/TablePager.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -87,9 +86,7 @@ const selectedRun = ref<TimesheetSyncRunHeader | null>(null)
 const issuesOpen = ref(false)
 const alertOpen = ref(false)
 const domainHeadOpen = ref(false)
-const downloadOpen = ref(false)
-const downloadPending = ref(false)
-const downloadTarget = ref<TimesheetSyncRunHeader | null>(null)
+const downloadingIds = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const canConfigureDomainHeads = computed(() => session.hasPermission(PERMISSIONS.domainHeadConfig))
 
@@ -173,9 +170,18 @@ const missingActiveLabel = computed(() => {
   return kinds[0] ?? ''
 })
 
-const activeColumns = computed(() => createTimesheetActiveColumns({ onDownload: requestDownload }))
+const activeColumns = computed(() =>
+  createTimesheetActiveColumns({
+    onDownload: downloadRun,
+    downloadingIds: downloadingIds.value,
+  }),
+)
 const runColumns = computed(() =>
-  createTimesheetRunColumns({ onViewIssues: openIssues, onDownload: requestDownload }),
+  createTimesheetRunColumns({
+    onViewIssues: openIssues,
+    onDownload: downloadRun,
+    downloadingIds: downloadingIds.value,
+  }),
 )
 
 watch(
@@ -246,23 +252,16 @@ function openIssues(row: TimesheetSyncRunHeader) {
   issuesOpen.value = true
 }
 
-function requestDownload(row: TimesheetSyncRunHeader) {
-  downloadTarget.value = row
-  downloadOpen.value = true
-}
-
-async function confirmDownload() {
-  const row = downloadTarget.value
-  if (!row || downloadPending.value) return
-  downloadPending.value = true
+async function downloadRun(row: TimesheetSyncRunHeader) {
+  if (!row.hasSourceFile || !row.id || downloadingIds.value.includes(row.id)) return
+  downloadingIds.value = [...downloadingIds.value, row.id]
   try {
     const result = await timesheetSyncApi.download(row.id, row.sourceFileName || 'timesheet.xlsx')
     triggerDownload(result.blob, result.filename)
-    downloadOpen.value = false
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'File is no longer available.')
   } finally {
-    downloadPending.value = false
+    downloadingIds.value = downloadingIds.value.filter((id) => id !== row.id)
   }
 }
 </script>
@@ -380,18 +379,5 @@ async function confirmDownload() {
     <TimesheetSyncAlertDialog v-model:open="alertOpen" />
     <DomainHeadsDialog v-if="props.showCenterRoles" v-model:open="domainHeadOpen" />
 
-    <ConfirmDialog
-      v-model:open="downloadOpen"
-      title="Download Source File"
-      :description="
-        downloadTarget?.sourceFileName
-          ? `Download ${downloadTarget.sourceFileName}?`
-          : 'Download the Timesheet source Excel file?'
-      "
-      confirm-label="Download"
-      confirm-variant="default"
-      :pending="downloadPending"
-      @confirm="confirmDownload"
-    />
   </div>
 </template>

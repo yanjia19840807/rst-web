@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
 import ListLoading from '@/components/ListLoading.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TablePager from '@/components/TablePager.vue'
 import TableTextLink from '@/components/TableTextLink.vue'
 import { Button } from '@/components/ui/button'
@@ -38,7 +37,6 @@ const props = defineProps<{
 
 const page = ref(1)
 const pageSize = ref(10)
-const downloadOpen = ref(false)
 const downloadPending = ref(false)
 
 const issuesQuery = computed(() =>
@@ -79,14 +77,13 @@ const header = computed(() => detailQuery.data.value?.run ?? props.run ?? null)
 const fileName = computed(() => header.value?.sourceFileName || '')
 const canDownload = computed(() => Boolean(header.value?.hasSourceFile && header.value?.id))
 
-async function confirmDownload() {
+async function downloadFile() {
   const run = header.value
-  if (!run?.id || downloadPending.value) return
+  if (!run?.id || !run.hasSourceFile || downloadPending.value) return
   downloadPending.value = true
   try {
     const result = await timesheetSyncApi.download(run.id, run.sourceFileName || 'timesheet.xlsx')
     triggerDownload(result.blob, result.filename)
-    downloadOpen.value = false
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'File is no longer available.')
   } finally {
@@ -132,7 +129,9 @@ watch(
         <DialogDescription>
           Errors that blocked this run from becoming ACTIVE.
           <template v-if="fileName">
-            <TableTextLink v-if="canDownload" @click="downloadOpen = true">{{ fileName }}</TableTextLink>
+            <TableTextLink v-if="canDownload" :loading="downloadPending" @click="downloadFile">
+              {{ fileName }}
+            </TableTextLink>
             <template v-else> {{ fileName }}</template>
           </template>
         </DialogDescription>
@@ -194,14 +193,4 @@ watch(
     </DialogContent>
   </Dialog>
 
-  <ConfirmDialog
-    v-model:open="downloadOpen"
-    elevated
-    title="Download Source File"
-    :description="fileName ? `Download ${fileName}?` : 'Download the Timesheet source Excel file?'"
-    confirm-label="Download"
-    confirm-variant="default"
-    :pending="downloadPending"
-    @confirm="confirmDownload"
-  />
 </template>

@@ -90,6 +90,7 @@ const runningSizing = computed(() => previewSizing.isPending.value)
 const runningSlot = computed(() => runSlotSimulation.isPending.value)
 const busy = computed(() => saving.value || runningSizing.value || runningSlot.value)
 const deleteOpen = ref(false)
+const sizingConfirmOpen = ref(false)
 const identityOpen = ref(false)
 const identityPending = computed(() => updateScenarioIdentity.isPending.value)
 const deletePending = computed(() => deleteScenario.isPending.value)
@@ -440,34 +441,21 @@ const slotLockReason = computed(() => {
 })
 
 async function loadSimulationResultsFromQueries() {
-  sizingCompleted.value = false
-  slotCompleted.value = false
-  latestForecastBundle.value = null
-  latestMonthlySizing.value = null
-  latestDailySizing.value = null
-  latestSlotSimulation.value = null
-
   const monthlySizing = monthlyQuery.data.value ?? null
   const dailySizing = dailyQuery.data.value ?? null
   const monthlyForecast = monthlyForecastQuery.data.value ?? null
   const dailyForecast = dailyForecastQuery.data.value ?? null
+  const slot = slotQuery.data.value ?? null
 
   latestMonthlySizing.value = monthlySizing
   latestDailySizing.value = dailySizing
-  if (monthlyForecast && dailyForecast) {
-    latestForecastBundle.value = { monthly: monthlyForecast, daily: dailyForecast }
-  }
-
-  const hasSizing =
-    (monthlySizing?.rows?.length ?? 0) > 0 &&
-    (dailySizing?.rows?.length ?? 0) > 0 &&
-    latestForecastBundle.value != null
-  sizingCompleted.value = hasSizing
-
-  if (!hasSizing) return
-
-  const slot = slotQuery.data.value ?? null
+  latestForecastBundle.value = monthlyForecast
+    ? { monthly: monthlyForecast, daily: dailyForecast }
+    : null
   latestSlotSimulation.value = slot
+
+  sizingCompleted.value =
+    (monthlySizing?.rows?.length ?? 0) > 0 && latestForecastBundle.value != null
   slotCompleted.value = slot != null && (slot.rows?.length ?? 0) > 0
 }
 
@@ -542,16 +530,16 @@ watch(
 )
 
 watch(
-  () => workspace?.associatedDataRevision.value ?? 0,
-  (revision, previous) => {
-    if (!previous || revision === previous) return
+  () => [
+    monthlyQuery.data.value,
+    dailyQuery.data.value,
+    monthlyForecastQuery.data.value,
+    dailyForecastQuery.data.value,
+    slotQuery.data.value,
+  ],
+  () => {
     if (hydratedKey.value !== currentKey.value) return
-    sizingCompleted.value = false
-    slotCompleted.value = false
-    latestForecastBundle.value = null
-    latestMonthlySizing.value = null
-    latestDailySizing.value = null
-    latestSlotSimulation.value = null
+    loadSimulationResultsFromQueries()
   },
 )
 
@@ -617,12 +605,33 @@ function applyZodIssues(issues: { path: PropertyKey[]; message: string }[]) {
   }
 }
 
+function formatSlotIssues(issues: { path: PropertyKey[]; message: string }[]): string {
+  const byShift = new Map<number, string[]>()
+  const other: string[] = []
+  for (const issue of issues) {
+    const path = issue.path.map(String)
+    if (path[0] === 'shifts' && path.length >= 2 && Number.isInteger(Number(path[1]))) {
+      const index = Number(path[1])
+      const list = byShift.get(index) ?? []
+      if (!list.includes(issue.message)) list.push(issue.message)
+      byShift.set(index, list)
+    } else if (issue.message && !other.includes(issue.message)) {
+      other.push(issue.message)
+    }
+  }
+  const parts = [...other]
+  for (const [index, messages] of [...byShift.entries()].sort((a, b) => a[0] - b[0])) {
+    parts.push(`Shift ${index + 1}: ${messages.join(' ')}`)
+  }
+  return parts.join(' ')
+}
+
 async function persistScenario(
   formValues: ScenarioFormValues,
-  results: {
+    results: {
     forecast: ForecastBundle
     monthly: MonthlySizingView
-    daily: DailySizingView
+    daily: DailySizingView | null
     slot: SlotSimulationView | null
   } | null,
   successMessage?: string,
@@ -643,12 +652,18 @@ async function persistScenario(
   workspace?.markSaved(props.scenarioId, formValues)
 }
 
+const hasDailyVolume = computed(() =>
+  dailyVolumes.value.some((row) => row.actualVolume != null),
+)
+
+const sizingConfirmDescription = computed(() =>
+  hasDailyVolume.value
+    ? 'This replaces saved Monthly and Daily sizing for this scenario.'
+    : 'No Daily Volume was entered. This run saves Monthly sizing only and skips Daily sizing. Saved Daily sizing is cleared. Submit records this in Validation Result and requires remarks.',
+)
+
 function currentSizingResults(slot: SlotSimulationView | null) {
-  if (
-    !latestForecastBundle.value ||
-    !latestMonthlySizing.value ||
-    !latestDailySizing.value
-  ) {
+  if (!latestForecastBundle.value || !latestMonthlySizing.value) {
     return null
   }
   return {
@@ -672,6 +687,27 @@ async function runSizing() {
     toast.warning(firstFormError(errors.value) ?? 'Check the highlighted fields.')
     return
   }
+  if (monthlyVolumesQuery.isPending.value || dailyVolumesQuery.isPending.value) {
+    toast.warning('Volume data is still loading.')
+    return
+  }
+  const sizingMonth = monthKey(exercise.value?.sizingMonth)
+  const hasSizingMonth = monthlyVolumes.value.some(
+    (row) => monthKey(row.month) === sizingMonth && row.actualVolume != null,
+  )
+  if (!sizingMonth || !hasSizingMonth) {
+    toast.warning(
+      `Enter Actual Volume for ${sizingMonth || 'the sizing month'} in Associated Data → Volume Input → Monthly. Months before that month do not replace the sizing month.`,
+    )
+    return
+  }
+  sizingConfirmOpen.value = true
+}
+
+async function confirmRunSizing() {
+  if (readOnly.value || busy.value) return
+  sizingConfirmOpen.value = false
+  const hc = Number(values.rightSizingHc)
   try {
     const preview = await previewSizing.mutateAsync({
       exerciseId: props.exerciseId,
@@ -683,6 +719,9 @@ async function runSizing() {
     latestDailySizing.value = preview.daily
     sizingCompleted.value = true
     const method = preview.forecast.monthly?.method ?? 'forecast'
+    const dailyNote = preview.daily
+      ? `${preview.daily.rows.length} days`
+      : 'daily skipped'
     try {
       await persistScenario(
         values,
@@ -692,7 +731,7 @@ async function runSizing() {
           daily: preview.daily,
           slot: slotCompleted.value ? latestSlotSimulation.value : null,
         },
-        `Sizing simulation saved (${method}, ${preview.monthly.rows.length} months, ${preview.daily.rows.length} days).`,
+        `Sizing simulation saved (${method}, ${preview.monthly.rows.length} months, ${dailyNote}).`,
       )
     } catch (error) {
       toastProblem(error, 'Save failed.')
@@ -710,7 +749,7 @@ async function runSlot() {
   const slot = scenarioSlotSchema.safeParse(values)
   if (!slot.success) {
     applyZodIssues(slot.error.issues)
-    toast.warning('Check the highlighted fields.')
+    toast.warning(formatSlotIssues(slot.error.issues) || 'Check the highlighted fields.')
     return
   }
   clearShiftFieldErrors()
@@ -920,6 +959,15 @@ async function saveIdentity(payload: { name: string; description: string | null 
         :rows="resultRows"
       />
     </div>
+
+    <ConfirmDialog
+      v-model:open="sizingConfirmOpen"
+      title="Run Sizing Simulation"
+      :description="sizingConfirmDescription"
+      confirm-label="Run Simulation"
+      confirm-variant="default"
+      @confirm="confirmRunSizing"
+    />
 
     <ConfirmDialog
       v-model:open="deleteOpen"

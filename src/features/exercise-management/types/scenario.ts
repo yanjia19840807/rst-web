@@ -60,19 +60,19 @@ export interface ForecastView {
 
 export interface ForecastBundle {
   monthly: ForecastView
-  daily: ForecastView
+  daily: ForecastView | null
 }
 
 export interface SizingPreviewBundle {
   forecast: ForecastBundle
   monthly: MonthlySizingView
-  daily: DailySizingView
+  daily: DailySizingView | null
 }
 
 export interface CommitScenarioResults {
   forecast: ForecastBundle
   monthly: MonthlySizingView
-  daily: DailySizingView
+  daily: DailySizingView | null
   slot?: SlotSimulationView | null
 }
 

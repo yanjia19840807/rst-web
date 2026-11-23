@@ -37,9 +37,9 @@ import {
   dailyTrainDates,
   deriveSlotPeriodLabel,
   shiftYearMonth,
-  SLOT_PERIOD_HINT_DESCRIPTION,
-  VOLUME_DAILY_HINT_DESCRIPTION,
-  VOLUME_MONTHLY_HINT_DESCRIPTION,
+  volumeDailyHint,
+  volumeMonthlyHint,
+  volumeSlotHint,
 } from '../../periodWindows'
 import {
   dailyVolumeContextIssue,
@@ -301,9 +301,9 @@ const currentTotal = computed(() => {
 })
 
 const volumeHint = computed(() => {
-  if (tab.value === 'monthly') return VOLUME_MONTHLY_HINT_DESCRIPTION
-  if (tab.value === 'daily') return VOLUME_DAILY_HINT_DESCRIPTION
-  return SLOT_PERIOD_HINT_DESCRIPTION
+  if (tab.value === 'monthly') return volumeMonthlyHint(props.sizingMonth)
+  if (tab.value === 'daily') return volumeDailyHint(props.sizingMonth)
+  return volumeSlotHint(props.slotStartDate, props.slotWeeks)
 })
 
 function comparePeriod(a: string, b: string) {
@@ -583,7 +583,7 @@ async function confirmEdit() {
       toast.warning(context.message)
       return
     }
-    if (!(await beforeAssociatedDataWrite())) return
+    if (!(await beforeAssociatedDataWrite('MONTHLY', 'Saving Monthly Volume'))) return
     try {
       await withBusy('save', async () => {
         monthDrafts.value = monthDrafts.value.map((row) =>
@@ -622,7 +622,7 @@ async function confirmEdit() {
     toast.warning(context.message)
     return
   }
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('DAILY', 'Saving Daily Volume'))) return
   try {
     await withBusy('save', async () => {
       dayDrafts.value = dayDrafts.value.map((row) =>
@@ -652,7 +652,7 @@ async function confirmSlotEdit() {
     toast.warning(firstFormError(slotForm.errors.value) ?? 'Check the highlighted fields.')
     return
   }
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('SLOT', 'Saving Per-slot Volume'))) return
   try {
     await withBusy('save', async () => {
       const row = slotDrafts.value[idx]
@@ -714,7 +714,7 @@ async function removeMonth(row: DraftMonthly) {
     return
   }
   const previous = monthDrafts.value
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('MONTHLY', 'Deleting Monthly Volume'))) return
   try {
     await withBusy('delete', async () => {
       monthDrafts.value = previous.filter((item) => item.key !== row.key)
@@ -740,7 +740,7 @@ async function removeDay(row: DraftDaily) {
     return
   }
   const previous = dayDrafts.value
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('DAILY', 'Deleting Daily Volume'))) return
   try {
     await withBusy('delete', async () => {
       dayDrafts.value = previous.filter((item) => item.key !== row.key)
@@ -890,7 +890,9 @@ async function confirmSeriesImport() {
   const file = pendingSeriesFile.value
   const grain = pendingSeriesGrain.value
   if (!file || !grain || props.readOnly || busy.value) return
-  if (!(await beforeAssociatedDataWrite())) return
+  const importScope = grain === 'monthly' ? 'MONTHLY' : 'DAILY'
+  const importAction = grain === 'monthly' ? 'Importing Monthly Volume' : 'Importing Daily Volume'
+  if (!(await beforeAssociatedDataWrite(importScope, importAction))) return
   try {
     await withBusy('import', async () => {
       if (grain === 'monthly') {

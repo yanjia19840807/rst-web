@@ -23,13 +23,14 @@ export interface ValidationDetail {
   threshold?: number | string | null
 }
 
-export type ValidationRuleCode = 'DAILY_VS_MONTHLY' | 'TMS_RATIO'
+export type ValidationRuleCode = 'DAILY_VS_MONTHLY' | 'TMS_RATIO' | 'DAILY_SIZING_OMITTED'
 export type ValidationSeverity = 'OK' | 'WARNING' | 'SEVERE'
 
 /** Failure grade is fixed per rule, same as the API ValidationRule enum. */
 export const VALIDATION_RULES: Record<ValidationRuleCode, { severity: ValidationSeverity }> = {
   DAILY_VS_MONTHLY: { severity: 'WARNING' },
   TMS_RATIO: { severity: 'WARNING' },
+  DAILY_SIZING_OMITTED: { severity: 'WARNING' },
 }
 
 export interface ValidationFinding {

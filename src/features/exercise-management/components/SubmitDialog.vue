@@ -4,9 +4,12 @@ import { computed, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 
+import { TriangleAlert } from '@lucide/vue'
+
 import { toastProblem } from '@/api/problemSeverity'
 import DetailTable from '@/components/DetailTable.vue'
 import ListLoading from '@/components/ListLoading.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -114,16 +117,27 @@ function validationSummary(): string {
   return 'Ready to submit'
 }
 
-const submissionPathRows = computed(() => {
+function handlerLabel() {
   const path = preview.value
-  const handler = ownerViaLabel(path?.nextHandler)
+  return (
+    ownerViaLabel(path?.nextHandler)
     || [path?.nextHandlerName, path?.nextHandlerCcgid]
       .filter((part) => Boolean(part && String(part).trim()))
       .join(' · ')
+  )
+}
+
+const vacantHandler = computed(() => {
+  const position = preview.value?.nextPositionId?.trim()
+  return Boolean(position) && !handlerLabel()
+})
+
+const submissionPathRows = computed(() => {
+  const path = preview.value
   return [
     { label: 'Next step', value: path?.nextStep || 'Manager Review' },
     { label: 'Position', value: path?.nextPositionId || '—' },
-    { label: 'Handler', value: handler || '—' },
+    { label: 'Handler', value: handlerLabel() || '—' },
   ]
 })
 </script>
@@ -159,6 +173,14 @@ const submissionPathRows = computed(() => {
               Submission path
             </div>
             <DetailTable :rows="submissionPathRows" />
+            <Alert v-if="vacantHandler" variant="warning" class="mt-3">
+              <TriangleAlert />
+              <AlertTitle>No one is assigned to this position</AlertTitle>
+              <AlertDescription>
+                You can still submit. The review stays on this position until a Domain Head or
+                Local Transformation Head assigns a delegate.
+              </AlertDescription>
+            </Alert>
           </div>
 
           <div class="mt-4">

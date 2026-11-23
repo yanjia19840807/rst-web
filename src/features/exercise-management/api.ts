@@ -1,5 +1,7 @@
 import { ApiError, apiHeaders, apiRequest } from '@/api/client'
 
+import type { ResultClearScope } from './resultClear'
+
 import type {
   CalendarRequest,
   CalendarView,
@@ -157,12 +159,15 @@ export const exerciseApi = {
     apiRequest<UpdateSlotPeriodResult>(exercisePath(id, '/slot-period'), {
       method: 'DELETE',
     }),
-  committedResults: (id: string) =>
-    apiRequest<CommittedResultsStatus>(exercisePath(id, '/committed-results')),
-  clearCommittedResults: (id: string) =>
-    apiRequest<CommittedResultsStatus>(exercisePath(id, '/committed-results/clear'), {
-      method: 'POST',
-    }),
+  committedResults: (id: string, scope: ResultClearScope = 'ALL') =>
+    apiRequest<CommittedResultsStatus>(
+      exercisePath(id, `/committed-results?scope=${encodeURIComponent(scope)}`),
+    ),
+  clearCommittedResults: (id: string, scope: ResultClearScope) =>
+    apiRequest<CommittedResultsStatus>(
+      exercisePath(id, `/committed-results/clear?scope=${encodeURIComponent(scope)}`),
+      { method: 'POST' },
+    ),
   delete: (id: string) =>
     apiRequest<void>(exercisePath(id), {
       method: 'DELETE',

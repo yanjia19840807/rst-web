@@ -135,7 +135,7 @@ async function confirmSave() {
   <ConfirmDialog
     v-model:open="confirmOpen"
     title="Update Exercise Periods"
-    description="Sizing Month change resets Monthly and Daily Volume from Toolkit (last 36 months). Volume edits on this Exercise are discarded. Saved Forecast and Simulation results on all scenarios will be cleared."
+    description="Sizing Month change resets Monthly and Daily Volume from Toolkit (last 36 months). Volume edits on this Exercise are discarded. Saved Monthly and Daily forecast and sizing are cleared. Slot simulation stays. Scenario inputs (name, Right Sizing HC, shifts) stay."
     confirm-label="Save"
     confirm-variant="default"
     :pending="busy"

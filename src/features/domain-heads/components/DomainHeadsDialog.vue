@@ -262,7 +262,7 @@ async function confirmSave() {
         <DialogDescription>
           Assign one LTH per Center and one or more Domain Heads per Domain. Saving remounts
           in-flight LTH reviews. Domain Head changes apply the next time a reviewer chooses
-          the handler.
+          the handler. A review already on a Domain Head is not affected.
         </DialogDescription>
       </DialogHeader>
 
@@ -397,7 +397,7 @@ async function confirmSave() {
   <ConfirmDialog
     v-model:open="confirmSaveOpen"
     title="Save Center Roles?"
-    description="A changed LTH moves in-flight LTH reviews to the new approver. Domain Head changes apply the next time a reviewer chooses the handler. Approved steps stay as they are."
+    description="A changed LTH moves in-flight LTH reviews to the new approver. Domain Head changes apply the next time a reviewer chooses the handler. A review already on a Domain Head is not affected. Approved steps stay as they are."
     confirm-label="Save"
     confirm-variant="default"
     :pending="saveMutation.isPending.value"

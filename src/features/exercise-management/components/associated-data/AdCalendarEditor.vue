@@ -160,7 +160,7 @@ async function persist(
 ) {
   const exerciseId = requireExerciseId()
   if (!exerciseId) return false
-  if (!(await beforeAssociatedDataWrite())) return false
+  if (!(await beforeAssociatedDataWrite('SIZING', 'Saving Calendar'))) return false
   try {
     const saved = await withBusy(action, async () => {
       const result = await putCalendar.mutateAsync({
@@ -299,7 +299,7 @@ async function onImportFile(event: Event) {
   if (!file || props.readOnly) return
   const exerciseId = requireExerciseId()
   if (!exerciseId) return
-  if (!(await beforeAssociatedDataWrite())) return
+  if (!(await beforeAssociatedDataWrite('SIZING', 'Importing Calendar'))) return
   try {
     await withBusy('import', async () => {
       const saved = await importCalendar.mutateAsync({

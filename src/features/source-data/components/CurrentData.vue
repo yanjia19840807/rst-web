@@ -218,7 +218,7 @@ const interimHcColumns: ColumnDef<SourceDeliveryHc>[] = [
 const tabs = [
   { key: 'people' as const, label: 'People' },
   { key: 'positions' as const, label: 'Positions' },
-  { key: 'seats' as const, label: 'Seats' },
+  { key: 'seats' as const, label: 'Incumbents' },
   { key: 'process' as const, label: 'Process' },
   { key: 'hc' as const, label: 'Delivery HC' },
 ]
@@ -228,13 +228,18 @@ function fileDate(file: SourceFile) {
   return file.syncDate ? formatCivilDate(file.syncDate) : ''
 }
 
+const downloadingId = ref<string | null>(null)
+
 async function download(file: SourceFile) {
-  if (!file.id || !file.hasSourceFile) return
+  if (!file.id || !file.hasSourceFile || downloadingId.value === file.id) return
+  downloadingId.value = file.id
   try {
     const result = await sourceDataApi.download(file.id, file.sourceFileName || 'source.xlsx')
     triggerDownload(result.blob, result.filename)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'File is no longer available.')
+  } finally {
+    if (downloadingId.value === file.id) downloadingId.value = null
   }
 }
 </script>
@@ -266,11 +271,11 @@ async function download(file: SourceFile) {
       <div class="grid gap-2 rounded-lg border bg-card px-4 py-3">
         <p class="text-sm text-muted-foreground">
           <template v-if="isTimesheet">
-            People, positions, and seats come from the current Daily file. Process and Delivery HC
+            People, positions, and incumbents come from the current Daily file. Process and Delivery HC
             come from the current Monthly file.
           </template>
           <template v-else-if="isInterim">
-            People, positions, and seats come from the current MyHR file. Process and Delivery HC
+            People, positions, and incumbents come from the current MyHR file. Process and Delivery HC
             come from the current SKPI file.
           </template>
         </p>
@@ -283,6 +288,7 @@ async function download(file: SourceFile) {
           <span class="w-20 font-medium">{{ sourceKindLabel[file.kind] ?? file.kind }}</span>
           <TableTextLink
             v-if="file.id && file.hasSourceFile && file.sourceFileName"
+            :loading="downloadingId === file.id"
             @click="download(file)"
           >
             {{ file.sourceFileName }}
@@ -315,7 +321,7 @@ async function download(file: SourceFile) {
           :columns="seatColumns"
           :data="timesheetSeats.data.value?.items ?? []"
           :pending="pending"
-          empty-text="No seats in the current Daily snapshot."
+          empty-text="No incumbents in the current Daily snapshot."
         />
         <DataTable
           v-else-if="tab === 'process'"
@@ -352,7 +358,7 @@ async function download(file: SourceFile) {
           :columns="interimSeatColumns"
           :data="interimSeats.data.value?.items ?? []"
           :pending="pending"
-          empty-text="No seats in the current MyHR snapshot."
+          empty-text="No incumbents in the current MyHR snapshot."
         />
         <DataTable
           v-else-if="tab === 'process'"

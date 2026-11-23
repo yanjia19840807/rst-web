@@ -86,17 +86,27 @@ const pl3Selection = computed({
           <NativeSelect
             v-model="domain"
             :class="fieldClass"
+            :disabled="Boolean(hasHierarchy) && !center"
             :aria-invalid="Boolean(errors.domain)"
           >
-            <option value="">Select Domain</option>
+            <option value="">
+              {{ hasHierarchy && !center ? 'Select GBS Center first' : 'Select Domain' }}
+            </option>
             <option v-for="item in domains" :key="item" :value="item">{{ item }}</option>
           </NativeSelect>
           <p v-if="errors.domain" class="text-xs text-destructive">{{ errors.domain }}</p>
         </div>
         <div class="grid gap-1.5">
           <Label>PL1</Label>
-          <NativeSelect v-model="pl1" :class="fieldClass" :aria-invalid="Boolean(errors.pl1)">
-            <option value="">Select PL1</option>
+          <NativeSelect
+            v-model="pl1"
+            :class="fieldClass"
+            :disabled="Boolean(hasHierarchy) && !domain"
+            :aria-invalid="Boolean(errors.pl1)"
+          >
+            <option value="">
+              {{ hasHierarchy && !domain ? 'Select Domain first' : 'Select PL1' }}
+            </option>
             <option v-for="item in pl1s" :key="item" :value="item">{{ item }}</option>
           </NativeSelect>
           <p v-if="errors.pl1" class="text-xs text-destructive">{{ errors.pl1 }}</p>
@@ -106,11 +116,11 @@ const pl3Selection = computed({
           <NativeSelect
             v-model="pl2"
             :class="fieldClass"
-            :disabled="Boolean(hasHierarchy) && !pl2s.length"
+            :disabled="Boolean(hasHierarchy) && !pl1"
             :aria-invalid="Boolean(errors.pl2)"
           >
             <option value="">
-              {{ hasHierarchy && !pl2s.length ? 'Select PL1 first' : 'Select PL2' }}
+              {{ hasHierarchy && !pl1 ? 'Select PL1 first' : 'Select PL2' }}
             </option>
             <option v-for="item in pl2s" :key="item" :value="item">{{ item }}</option>
           </NativeSelect>
@@ -121,11 +131,11 @@ const pl3Selection = computed({
           <NativeSelect
             v-model="pl3Selection"
             :class="fieldClass"
-            :disabled="Boolean(hasHierarchy) && !pl3s.length"
+            :disabled="Boolean(hasHierarchy) && !pl2"
             :aria-invalid="Boolean(errors.supervisorPositionId || errors.pl3Code)"
           >
             <option value="">
-              {{ hasHierarchy && !pl3s.length ? 'Select PL2 first' : 'Select PL3' }}
+              {{ hasHierarchy && !pl2 ? 'Select PL2 first' : 'Select PL3' }}
             </option>
             <option
               v-for="item in pl3s"

@@ -111,14 +111,48 @@ export function deriveSlotPeriodLabel(
   return `${formatCivilDate(startDate)} – ${formatCivilDate(end)} (${weekLabel})`
 }
 
-export const VOLUME_MONTHLY_HINT_DESCRIPTION =
-  'Months must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Commercial Ratio is optional and blank means 0%. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
+/** Last civil day of a `yyyy-MM` sizing month, or empty when the month is invalid. */
+export function sizingMonthEndDate(sizingMonth: string): string {
+  const parsed = parseYearMonth(sizingMonth)
+  if (!parsed) return ''
+  const last = new Date(parsed.year, parsed.month, 0).getDate()
+  return `${sizingMonth}-${String(last).padStart(2, '0')}`
+}
 
-export const VOLUME_DAILY_HINT_DESCRIPTION =
-  'Dates must be consecutive, unique, and on or before Sizing Month. Actual Volume is required and must be non-negative. Daily Volume Adjustment Ratio is optional and blank means 0%. Import resets this grid from Toolkit (last 36 months), then merges a continuous file that overlaps or adjoins that window.'
+/**
+ * Volume Input → Monthly. Names the sizing month Sizing Simulation actually checks.
+ */
+export function volumeMonthlyHint(sizingMonth: string): string {
+  const month = formatMonth(sizingMonth)
+  const floor = formatMonth(volumeHistoryFloorMonth(sizingMonth))
+  const forecast = `${formatMonth(shiftYearMonth(sizingMonth, 1))} – ${formatMonth(shiftYearMonth(sizingMonth, 3))}`
+  return `Sizing Simulation requires Actual Volume for ${month}. Months before ${month} are optional and do not replace it. Keep months consecutive, unique, and on or before ${month}. Filled months from ${floor} through ${month} are used for the forecast. ${forecast} is calculated and cannot be entered. Commercial Ratio is optional; blank means 0%.`
+}
 
-export const SLOT_PERIOD_HINT_DESCRIPTION =
-  'Per-slot Volume uses this window. Each day is 00:00–24:00 in 30-minute slots. Applying a period rebuilds an empty grid.'
+/**
+ * Volume Input → Daily. Names the last day of the sizing month.
+ */
+export function volumeDailyHint(sizingMonth: string): string {
+  const end = formatCivilDate(sizingMonthEndDate(sizingMonth))
+  const nextMonth = shiftYearMonth(sizingMonth, 1)
+  const forecast = monthDayRange(nextMonth)
+  return `Daily Volume is optional. Leave it empty to run Monthly sizing only; Submit records that Daily sizing was skipped. If you enter any day, Actual Volume on ${end} (the last day of ${formatMonth(sizingMonth)}) is required. Earlier dates are optional and do not replace that day. Keep dates consecutive, unique, and on or before ${end}. ${forecast} is forecast and cannot be entered. Daily Volume Adjustment Ratio is optional; blank means 0%.`
+}
+
+/**
+ * Volume Input → Per-slot. Sizing Simulation does not read this grid.
+ */
+export function volumeSlotHint(
+  startDate: string | null | undefined,
+  weeks: number | null | undefined,
+): string {
+  const window = deriveSlotPeriodLabel(startDate, weeks)
+  const period =
+    window === '—'
+      ? 'Set a Slot Period of 1–12 weeks first.'
+      : `Current Slot Period is ${window}.`
+  return `${period} Slot Simulation requires Actual Volume on at least one slot. A blank slot counts as 0. Sizing Simulation does not use this grid. Each day is 00:00–24:00 in 30-minute slots. Applying a period rebuilds the grid.`
+}
 
 export const TMS_PERIOD_HINT_DESCRIPTION =
   'Links COMPLETED TMS sessions in this inclusive date range and refreshes the SYSTEM median. Changing the range adds or drops sessions.'
