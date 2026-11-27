@@ -15,6 +15,7 @@ import type {
   TimesheetSnapshotPositionsQuery,
   TimesheetSnapshotScope,
   TimesheetSnapshotScopesQuery,
+  SharePointSyncStatus,
   TimesheetSyncAlertConfig,
   TimesheetSyncOverview,
   TimesheetSyncOverviewQuery,
@@ -50,6 +51,9 @@ export const timesheetSyncApi = {
       method: 'PUT',
       body: JSON.stringify(config),
     }),
+  sharePointStatus: () => apiRequest<SharePointSyncStatus>(`${base}/sharepoint`),
+  startSharePoint: () =>
+    apiRequest<SharePointSyncStatus>(`${base}/sharepoint`, { method: 'POST' }),
   upload: async (file: File) => {
     const form = new FormData()
     form.append('file', file)

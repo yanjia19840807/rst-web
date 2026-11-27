@@ -17,7 +17,7 @@ import { useCenterSourcesQuery } from '@/features/source-data/queries'
 import { triggerDownload } from '@/features/exercise-management/downloadBlob'
 
 import { timesheetSyncApi } from '../api'
-import { useUploadTimesheetSync } from '../api/mutations'
+import { useStartSharePointSync, useUploadTimesheetSync } from '../api/mutations'
 import { useTimesheetSyncOverviewQuery } from '../api/queries'
 import type { TimesheetSyncOverviewQuery, TimesheetSyncRunHeader } from '../types'
 import {
@@ -82,6 +82,10 @@ const listQuery = computed<TimesheetSyncOverviewQuery>(() => {
 const session = useSessionStore()
 const overviewQuery = useTimesheetSyncOverviewQuery(listQuery)
 const uploadMutation = useUploadTimesheetSync()
+const sharePointMutation = useStartSharePointSync()
+const canSyncSharePoint = computed(
+  () => session.roles.includes('ADMIN') && !session.roles.includes('LOCAL_TRANSFORMATION_HEAD'),
+)
 const selectedRun = ref<TimesheetSyncRunHeader | null>(null)
 const issuesOpen = ref(false)
 const alertOpen = ref(false)
@@ -209,6 +213,16 @@ watch(
   },
 )
 
+async function syncFromSharePoint() {
+  if (!canSyncSharePoint.value || sharePointMutation.isPending.value) return
+  try {
+    await sharePointMutation.mutateAsync()
+    toast.success('SharePoint sync finished. Recent uploads shows each center.')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Could not sync from SharePoint.')
+  }
+}
+
 async function onFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -283,6 +297,14 @@ async function downloadRun(row: TimesheetSyncRunHeader) {
         @click="domainHeadOpen = true"
       >
         Center Roles
+      </Button>
+      <Button
+        v-if="canSyncSharePoint"
+        variant="outline"
+        :loading="sharePointMutation.isPending.value"
+        @click="syncFromSharePoint"
+      >
+        {{ sharePointMutation.isPending.value ? 'Syncing…' : 'Sync from SharePoint' }}
       </Button>
       <Button
         v-if="allowUpload"

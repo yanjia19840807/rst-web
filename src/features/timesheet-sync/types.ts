@@ -78,6 +78,10 @@ export type TimesheetSyncAlertConfig = {
   recipients: string[]
 }
 
+export type SharePointSyncStatus = {
+  running: boolean
+}
+
 export type TimesheetSnapshotPage<T> = {
   items: T[]
   page: number
